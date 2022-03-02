@@ -74,12 +74,13 @@ public class ImportResults {
 
 	public void addTestrayBuild(long projectId, Document document)
 		throws Exception  {
-		String runName = null;
 		String description = null;
 		String description1 = null;
 		String description2 = null;
 		String description3 = null;
 		String description4 = null;
+		String productVersion = null;
+		String runName = null;
 		
 		Map<String, String> map = new HashMap<>();
 
@@ -143,6 +144,12 @@ public class ImportResults {
 						map.put("testrayRoutineId", String.valueOf(routineId));
 
 					}
+					else if(name.equals("testray.product.version")){
+						productVersion = propertyNode.getAttributes(
+						).getNamedItem(
+							"value"
+						).getTextContent();
+					}
 					else if(name.equals("liferay.plugins.git.id")) {
 						value = propertyNode.getAttributes(
 						).getNamedItem(
@@ -199,6 +206,12 @@ public class ImportResults {
 
 		map.put("description", description);
 
+		if(productVersion!=null){
+			long productVersionId = fetchOrAddTestrayProductVersion(projectId, productVersion);
+
+			map.put("testrayProjectId", String.valueOf(projectId));
+		}
+
 		JSONObject responseJSONObject = HttpUtil.invoke(
 				new JSONObject(
 					map
@@ -209,8 +222,6 @@ public class ImportResults {
 
 		if (runName != null){
 			long runId = fetchOrAddTestrayRun(buildId,runName);
-
-			System.out.println(runId);
 		}
 	}
 
@@ -463,6 +474,37 @@ public class ImportResults {
 				bodyMap
 			).toString(),
 			"testrayprojects", null, null, HttpInvoker.HttpMethod.POST);
+
+		return responseJSONObject.getLong("id");
+	}
+
+	public long fetchOrAddTestrayProductVersion(long projectId, String productVersion) throws Exception{
+		Map<String, String> parametersMap = new HashMap<>();
+
+		parametersMap.put("filter", "name eq '" + productVersion + "'");
+
+		JSONObject responseJSONObject = HttpUtil.invoke(
+			null, "testrayproductversions", null, parametersMap,
+			HttpInvoker.HttpMethod.GET);
+
+		JSONArray versionsJSONArray = responseJSONObject.getJSONArray("items");
+
+		if (!versionsJSONArray.isEmpty()) {
+			JSONObject versionJSONObject = versionsJSONArray.getJSONObject(0);
+
+			return versionJSONObject.getLong("id");
+		}
+
+		Map<String, String> bodyMap = new HashMap<>();
+
+		bodyMap.put("name", productVersion);
+		bodyMap.put("testrayProjectId", String.valueOf(projectId));
+
+		responseJSONObject = HttpUtil.invoke(
+			new JSONObject(
+				bodyMap
+			).toString(),
+			"testrayproductversions", null, null, HttpInvoker.HttpMethod.POST);
 
 		return responseJSONObject.getLong("id");
 	}
