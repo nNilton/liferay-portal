@@ -221,7 +221,7 @@ public class ImportResults {
 		long buildId = responseJSONObject.getLong("id");
 
 		if (runName != null){
-			long runId = fetchOrAddTestrayRun(buildId,runName);
+			long runId = fetchOrAddTestrayRun(buildId, runName, document);
 		}
 	}
 
@@ -376,7 +376,7 @@ public class ImportResults {
 	   	return responseJSONObject.getLong("id");
 	}
 
-	public long fetchOrAddTestrayRun(long buildId, String runName) throws Exception {
+	public long fetchOrAddTestrayRun(long buildId, String runName, Document document) throws Exception {
 
 		Map<String, String> parametersMap = new HashMap<>();
 
@@ -406,7 +406,141 @@ public class ImportResults {
 			).toString(),
 			"testrayruns", null, null, HttpInvoker.HttpMethod.POST);
 
+		long runId = responseJSONObject.getLong("id");
+
+		String environmentHash = getEnvironmentHash(document, runId);
+
+		bodyMap.put("environmentHash", environmentHash);
+
+		responseJSONObject = HttpUtil.invoke(
+			new JSONObject(
+				bodyMap
+			).toString(),
+			"testrayruns/" + String.valueOf(runId), null, null, HttpInvoker.HttpMethod.PUT);
+
+	   	return runId;
+	}
+
+	public String getEnvironmentHash(Document document, long runId) throws Exception{
+
+		StringBuilder stringBuilder = new StringBuilder();
+
+		NodeList environmentsNodeList = document.getElementsByTagName(
+			"environment");
+
+		for(int i=0; i<environmentsNodeList.getLength();i++){
+			Node node = environmentsNodeList.item(i);
+
+			if ((node.getNodeType() == Node.ELEMENT_NODE) &&
+				!node.getNodeName(
+				).equals(
+					"#text"
+				) &&
+				(node.getAttributes(
+				).getLength() > 0)) {
+
+				String type = node.getAttributes(
+				).getNamedItem(
+					"type"
+				).getTextContent();
+
+				if (type!=null) {
+					String option = node.getAttributes(
+					).getNamedItem(
+						"option"
+					).getTextContent();
+
+					long categoryId = fetchOrAddTestrayFactorCategory(type);
+					long optionId = fetchOrAddTestrayFactorOption(option, categoryId);
+
+					Map<String, String> map = new HashMap<>();
+					map.put("classNameId", String.valueOf(runId));
+					map.put("classPK", String.valueOf(runId));
+					map.put("testrayFactorCategoryId", String.valueOf(categoryId));
+					map.put("testrayFactorCategoryName", type);
+					map.put("testrayFactorOptionId", String.valueOf(optionId));
+					map.put("testrayFactorOptionName", option);
+
+					HttpUtil.invoke(
+						new JSONObject(
+							map
+						).toString(),
+						"testrayfactors", null, null, HttpInvoker.HttpMethod.POST);
+
+					stringBuilder.append(categoryId);
+					stringBuilder.append(optionId);
+
+				}
+			}
+		}
+
+		String testrayFactorsString = stringBuilder.toString();
+
+		return String.valueOf(testrayFactorsString.hashCode());
+	}
+
+	public long fetchOrAddTestrayFactorCategory(String category) throws Exception{
+
+		Map<String, String> parametersMap = new HashMap<>();
+
+		parametersMap.put("filter", "name eq '" + category + "'");
+
+		JSONObject responseJSONObject = HttpUtil.invoke(
+			null, "testrayfactorcategories", null, parametersMap,
+			HttpInvoker.HttpMethod.GET);
+
+		JSONArray categoriesJSONArray = responseJSONObject.getJSONArray("items");
+
+		if (!categoriesJSONArray.isEmpty()) {
+			JSONObject categoryJSONObject = categoriesJSONArray.getJSONObject(0);
+
+			return categoryJSONObject.getLong("id");
+		}
+
+		Map<String, String> bodyMap = new HashMap<>();
+
+		bodyMap.put("name", category);
+
+		responseJSONObject = HttpUtil.invoke(
+			new JSONObject(
+				bodyMap
+			).toString(),
+			"testrayfactorcategories", null, null, HttpInvoker.HttpMethod.POST);
+
+		return responseJSONObject.getLong("id");
+	}
+
+	public long fetchOrAddTestrayFactorOption(String option, long categoryId) throws Exception{
+
+		Map<String, String> parametersMap = new HashMap<>();
+
+		parametersMap.put("filter", "name eq '" + option + "'");
+
+		JSONObject responseJSONObject = HttpUtil.invoke(
+			null, "testrayfactoroptions", null, parametersMap,
+			HttpInvoker.HttpMethod.GET);
+
+		JSONArray optionsJSONArray = responseJSONObject.getJSONArray("items");
+
+		if (!optionsJSONArray.isEmpty()) {
+			JSONObject optionJSONObject = optionsJSONArray.getJSONObject(0);
+
+			return optionJSONObject.getLong("id");
+		}
+
+		Map<String, String> bodyMap = new HashMap<>();
+
+		bodyMap.put("name", option);
+		bodyMap.put("testrayFactorCategoryId", String.valueOf(categoryId));
+
+		responseJSONObject = HttpUtil.invoke(
+			new JSONObject(
+				bodyMap
+			).toString(),
+			"testrayfactoroptions", null, null, HttpInvoker.HttpMethod.POST);
+
 	   	return responseJSONObject.getLong("id");
+
 	}
 
 
