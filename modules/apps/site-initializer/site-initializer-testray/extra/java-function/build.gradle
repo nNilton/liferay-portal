@@ -8,6 +8,7 @@ dependencies {
 	compile group: "org.json", name: "json", version: "20180813"
 	compile group: "com.liferay", name: "com.liferay.petra.http.invoker", version: "1.0.0"
 	compile group: "org.rauschig", name: "jarchivelib", version: "0.7.1"
+	compileOnly group: 'com.liferay', name: 'com.liferay.petra.string', version: '5.0.3'
 	implementation group: "com.google.cloud", name: "google-cloud-storage", version: "2.4.0"
 
 }
