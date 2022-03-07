@@ -24,6 +24,7 @@ import com.liferay.petra.http.invoker.HttpInvoker;
 import com.liferay.site.initializer.testray.extra.java.function.http.HttpUtil;
 import com.liferay.site.initializer.testray.extra.java.function.util.PropsUtil;
 import com.liferay.site.initializer.testray.extra.java.function.util.PropsValues;
+import com.liferay.petra.string.StringBundler;
 
 import java.io.File;
 import java.io.InputStream;
@@ -423,7 +424,7 @@ public class ImportResults {
 
 	public String getEnvironmentHash(Document document, long runId) throws Exception{
 
-		StringBuilder stringBuilder = new StringBuilder();
+		StringBundler stringBuilder = new StringBundler();
 
 		NodeList environmentsNodeList = document.getElementsByTagName(
 			"environment");
@@ -540,6 +541,52 @@ public class ImportResults {
 			"testrayfactoroptions", null, null, HttpInvoker.HttpMethod.POST);
 
 	   	return responseJSONObject.getLong("id");
+
+	}
+
+	public void addTestrayTestCaseWarnings(long caseResultId, Document document) throws Exception{
+
+		NodeList environmentsNodeList = document.getElementsByTagName(
+			"property");
+
+		for(int i=0; i<environmentsNodeList.getLength();i++){
+			Node node = environmentsNodeList.item(i);
+
+			if ((node.hasChildNodes()) &&
+				!node.getNodeName(
+				).equals(
+					"#text"
+				) &&
+				(node.getAttributes(
+				).getLength() > 0)) {
+
+				String name = node.getAttributes(
+				).getNamedItem(
+					"name"
+				).getTextContent();
+
+				if (name.equals("testray.testcase.warnings")) {
+					//starts from here
+					Map<String,String> bodyMap = new HashMap<String,String>();
+					System.out.println("test");
+					NodeList test = node.getChildNodes();
+					for(int j=0; j< test.getLength();j++){
+						System.out.println(test.item(j).getTextContent());
+
+						bodyMap.put("content", "sysout");
+						bodyMap.put("caseResultId", String.valueOf(caseResultId));
+
+						JSONObject responseJSONObject = HttpUtil.invoke(
+							new JSONObject(
+								bodyMap
+							).toString(),
+							"testraycaseresultwarnings", null, null, HttpInvoker.HttpMethod.POST);
+
+					}
+
+				}
+			}
+		}
 
 	}
 
