@@ -32,4 +32,6 @@ public class TestrayConstants {
 	public static final int TESTRAY_STATUS_TEST_FIX = 6;
 
 	public static final int TESTRAY_STATUS_UNTESTED = 0;
+
+	public static final int EXTERNAL_REFERENCE_TYPE_POSHI = 1;
 }

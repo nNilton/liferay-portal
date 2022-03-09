@@ -314,6 +314,28 @@ public class ImportResults {
 		}
 	}
 
+	private long _createRun(long buildId, String runName, String jenkinsJobKey)
+		throws Exception{
+
+		Map<String, String> bodyMap = new HashMap<>();
+
+		bodyMap.put("externalReferencePK", runName);
+		bodyMap.put("externalReferenceType",
+			String.valueOf(TestrayConstants.EXTERNAL_REFERENCE_TYPE_POSHI));
+		bodyMap.put("jenkinsJobKey", jenkinsJobKey);
+		bodyMap.put("name", runName);
+		bodyMap.put("testrayBuildId", String.valueOf(buildId));
+
+		JSONObject responseJSONObject = HttpUtil.invoke(
+			new JSONObject(
+				bodyMap
+			).toString(),
+			"testrayruns", null, null, HttpInvoker.HttpMethod.POST);
+
+		return responseJSONObject.getLong("id");
+
+	}
+
 	private long _fetchOrAddTestrayCaseType(String caseTypeName) throws Exception {
 
 		Map<String, String> parametersMap = new HashMap<>();
@@ -651,9 +673,13 @@ public class ImportResults {
 		return responseJSONObject.getLong("id");
 	}
 
-	private long _fetchOrAddTestrayRun(long buildId, String runName) throws Exception {
+	private long _fetchOrAddTestrayRun(long buildId,
+			Map<String, String> propertiesMap)
+		throws Exception {
 
 		Map<String, String> parametersMap = new HashMap<>();
+
+		String runName = propertiesMap.get("testray.run.id");
 
 		parametersMap.put("filter", "name eq '" + runName + "'");
 
@@ -669,19 +695,10 @@ public class ImportResults {
 			return runJSONObject.getLong("id");
 		}
 
-		Map<String, String> bodyMap = new HashMap<>();
+		long runId = _createRun(buildId, propertiesMap.get("testray.run.id"),
+			propertiesMap.get("jenkins.job.id"));
 
-		bodyMap.put("externalReferencePK", runName);
-		bodyMap.put("name", runName);
-		bodyMap.put("testrayBuildId", String.valueOf(buildId));
-
-		responseJSONObject = HttpUtil.invoke(
-			new JSONObject(
-				bodyMap
-			).toString(),
-			"testrayruns", null, null, HttpInvoker.HttpMethod.POST);
-
-		return responseJSONObject.getLong("id");
+		return runId;
 	}
 
 	private String _getAttributeValue(Node node, String attributeName) {
@@ -834,7 +851,7 @@ public class ImportResults {
 			propertiesMap);
 
 		long testrayRunId = _fetchOrAddTestrayRun(testrayBuildId,
-			propertiesMap.get("testray.run.id"));
+			propertiesMap);
 
 		_addTestrayCases(rootElement, testrayBuildId, testrayProjectId,
 			testrayRunId);
