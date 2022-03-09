@@ -379,6 +379,40 @@ public class ImportResults {
 	   	return responseJSONObject.getLong("id");
 	}
 
+	private long _fetchOrAddTestrayProductVersion(long projectId,
+			String productVersion)
+		throws Exception{
+
+		Map<String, String> parametersMap = new HashMap<>();
+
+		parametersMap.put("filter", "name eq '" + productVersion + "'");
+
+		JSONObject responseJSONObject = HttpUtil.invoke(
+			null, "testrayproductversions", null, parametersMap,
+			HttpInvoker.HttpMethod.GET);
+
+		JSONArray versionsJSONArray = responseJSONObject.getJSONArray("items");
+
+		if (!versionsJSONArray.isEmpty()) {
+			JSONObject versionJSONObject = versionsJSONArray.getJSONObject(0);
+
+			return versionJSONObject.getLong("id");
+		}
+
+		Map<String, String> bodyMap = new HashMap<>();
+
+		bodyMap.put("name", productVersion);
+		bodyMap.put("testrayProjectId", String.valueOf(projectId));
+
+		responseJSONObject = HttpUtil.invoke(
+			new JSONObject(
+				bodyMap
+			).toString(),
+			"testrayproductversions", null, null, HttpInvoker.HttpMethod.POST);
+
+		return responseJSONObject.getLong("id");
+	}
+
 	private long _fetchOrAddTestrayRoutine(long projectId,
 		   String routineName) throws Exception {
 
@@ -567,6 +601,11 @@ public class ImportResults {
 		bodyMap.put("dueDate", propertiesMap.get("testray.build.time"));
 		bodyMap.put("name", buildName);
 		bodyMap.put("testrayProjectId", String.valueOf(projectId));
+
+		long productVersionId = _fetchOrAddTestrayProductVersion(projectId,
+			propertiesMap.get("testray.product.version"));
+
+		bodyMap.put("testrayProductVersionId", String.valueOf(productVersionId));
 
 		long routineId = _fetchOrAddTestrayRoutine(projectId,
 			propertiesMap.get("testray.build.type"));
