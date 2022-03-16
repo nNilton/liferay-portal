@@ -42,6 +42,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import java.lang.Thread;
+import java.lang.*;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -56,11 +59,12 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import com.liferay.site.initializer.testray.extra.java.function.Test;
 
 /**
  * @author José Abelenda
  */
-public class ImportResults {
+public class ImportResults{
 
 	public static void main(String[] args) {
 		try {
@@ -146,13 +150,17 @@ public class ImportResults {
 			Map<String, Object> testrayCasePropertiesMap =
 				_getTestrayCaseProperties((Element)testcaseNode);
 
-			_addTestrayCase(
-				testcaseNode, testrayBuildId, testrayProjectId, testrayRunId,
+			Test test = new Test(testcaseNode, testrayBuildId, testrayProjectId, testrayRunId,
 				testrayCasePropertiesMap);
+			test.start();
+
+			/*_addTestrayCase(
+				testcaseNode, testrayBuildId, testrayProjectId, testrayRunId,
+				testrayCasePropertiesMap);*/
 		}
 	}
 
-	private void _addTestrayCase(
+	public void _addTestrayCase(
 			Node testcaseNode, long testrayBuildId, long testrayProjectId,
 			long testrayRunId, Map<String, Object> testrayCasePropertiesMap)
 		throws Exception {
