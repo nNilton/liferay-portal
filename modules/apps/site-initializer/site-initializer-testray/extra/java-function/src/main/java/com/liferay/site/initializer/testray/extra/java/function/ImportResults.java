@@ -150,13 +150,17 @@ public class ImportResults{
 			Map<String, Object> testrayCasePropertiesMap =
 				_getTestrayCaseProperties((Element)testcaseNode);
 
-			Test test = new Test(testcaseNode, testrayBuildId, testrayProjectId, testrayRunId,
-				testrayCasePropertiesMap);
-			test.start();
-
-			/*_addTestrayCase(
-				testcaseNode, testrayBuildId, testrayProjectId, testrayRunId,
-				testrayCasePropertiesMap);*/
+			new Thread(){
+				public void run(){
+					try{
+						_addTestrayCase(
+							testcaseNode, testrayBuildId, testrayProjectId,
+							testrayRunId, testrayCasePropertiesMap);
+					}catch(Exception e){
+						e.printStackTrace();
+					}
+				}
+			}.start();
 		}
 	}
 
