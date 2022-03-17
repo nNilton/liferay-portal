@@ -17,6 +17,8 @@ package com.liferay.site.initializer.testray.extra.java.function;
 import com.google.api.gax.paging.Page;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.BlobId;
+import java.nio.file.Paths;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 
@@ -146,9 +148,17 @@ public class ImportResults {
 			Map<String, Object> testrayCasePropertiesMap =
 				_getTestrayCaseProperties((Element)testcaseNode);
 
-			_addTestrayCase(
-				testcaseNode, testrayBuildId, testrayProjectId, testrayRunId,
-				testrayCasePropertiesMap);
+			new Thread(){
+				public void run(){
+					try{
+						_addTestrayCase(
+							testcaseNode, testrayBuildId, testrayProjectId,
+							testrayRunId, testrayCasePropertiesMap);
+					}catch(Exception e){
+						e.printStackTrace();
+					}
+				}
+			}.start();
 		}
 	}
 
@@ -859,23 +869,53 @@ public class ImportResults {
 	}
 
 	private void _readFiles() throws Exception {
-		Page<Blob> page = _storage.list(
+		/*Page<Blob> page = _storage.list(
 			PropsValues.TESTRAY_BUCKET_NAME,
 			Storage.BlobListOption.prefix("inbox"));
-		
-		for (Blob blob : page.iterateAll()) {
-			String name = blob.getName();
+		*/
 
-			if(name.equals("inbox/")) {
+		Page<Blob> page = _storage.list(
+			PropsValues.TESTRAY_BUCKET_NAME,
+			Storage.BlobListOption.prefix("2022-02"));
+
+		String folderName = "2022-02";
+	int i = 0;
+		for (Blob blob : page.iterateAll()) {
+			System.out.println(blob.getName());
+			i++;
+			if (blob.getName().endsWith("results.tar.gz")) {
+				Blob completed = _storage.get(PropsValues.TESTRAY_BUCKET_NAME,
+					blob.getName().replace("results.tar.gz", ".lfr-testray-completed"));
+
+				if(completed != null) {
+					blob.downloadTo(Paths.get("/home/me/remove/" +  i + "results.tar.gz"));
+				}
 				continue;
 			}
 
+			if (blob.getName().endsWith("/")) {
+				folderName = blob.getName().replace(folderName,"");
+
+				if(!folderName.equals("")){
+					//readFiles(folderName);
+				}
+			}
+		}
+
+		/*for (Blob blob : page.iterateAll()) {
+			String name = blob.getName();
+
+			System.out.println(name);
+
+			if(name.endsWith("results.tar.gz"))
+				break;
+
 			_unTarGzip(blob.getContent());
 			
-			blob.copyTo(PropsValues.TESTRAY_BUCKET_NAME,
-				"done/"+ name.replace("inbox/", ""));
-    		blob.delete();
-		}
+			//blob.copyTo(PropsValues.TESTRAY_BUCKET_NAME,
+			//	"done/"+ name.replace("inbox/", ""));
+    		//blob.delete();
+		}*/
 	}
 
 	private void _unTarGzip(byte[] bytes) throws Exception {
