@@ -352,10 +352,17 @@ public class ImportResults {
 		_addEntity(bodyMap, "factors");
 	}
 
-	private void _addTestrayIssue(String issue, long caseResultId)
+	private void _fetchOrAddTestrayIssue(String issue, long caseResultId)
 		throws Exception {
 
 		if (_isEmpty(issue)) {
+			return;
+		}
+
+		long testrayIssue = _fetchEntityIdByName("issues", issue);
+
+		if (testrayIssue > 0) {
+			_addTestrayIssue(caseResultId, testrayIssue);
 			return;
 		}
 
@@ -365,7 +372,12 @@ public class ImportResults {
 
 		long issueId = _addEntity(bodyMap, "issues");
 
-		bodyMap = new HashMap<>();
+		_addTestrayIssue(caseResultId, issueId);
+	}
+
+	private void _addTestrayIssue(long caseResultId, long issueId)
+		throws Exception{
+		Map<String, String> bodyMap = new HashMap<>();
 
 		bodyMap.put("r_caseResultToCaseResultsIssues_c_caseResultId",
 			String.valueOf(caseResultId));
