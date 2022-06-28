@@ -136,9 +136,18 @@ public class TestrayDispatchTaskExecutor extends BaseDispatchTaskExecutor {
 		try {
 			_invoke(() -> _load(dispatchTrigger.getCompanyId()));
 
-			_invoke(
-				() -> _uploadToTestray(
-					dispatchTrigger.getCompanyId(), unicodeProperties));
+			if (Validator.isNull(
+					unicodeProperties.getProperty("localFolderPath"))) {
+
+				_invoke(
+					() -> _uploadToTestray(
+						dispatchTrigger.getCompanyId(), unicodeProperties));
+			}
+			else {
+				_invoke(
+					() -> _readFile(
+						dispatchTrigger.getCompanyId(), unicodeProperties));
+			}
 		}
 		finally {
 			PermissionThreadLocal.setPermissionChecker(
@@ -1271,6 +1280,24 @@ public class TestrayDispatchTaskExecutor extends BaseDispatchTaskExecutor {
 			_getTestrayRunId(
 				companyId, element, propertiesMap, testrayBuildId,
 				propertiesMap.get("testray.run.id")));
+	}
+
+	private void _readFile(long companyId, UnicodeProperties unicodeProperties)
+		throws Exception {
+
+		File pathFile = new File(
+			unicodeProperties.getProperty("localFolderPath"));
+
+		for (File file : pathFile.listFiles()) {
+			byte[] fileContent = Files.readAllBytes(file.toPath());
+
+			try {
+				_processArchive(companyId, fileContent);
+			}
+			catch (Exception exception) {
+				_log.error(exception);
+			}
+		}
 	}
 
 	private void _uploadToTestray(
