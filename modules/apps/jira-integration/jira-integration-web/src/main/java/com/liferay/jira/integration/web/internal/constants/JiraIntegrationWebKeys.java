@@ -12,22 +12,23 @@
  * details.
  */
 
-package com.liferay.jira.integration.web.internal.configuration.settings.definition;
+package com.liferay.jira.integration.web.internal.constants;
 
-import com.liferay.jira.integration.web.internal.configuration.JiraIntegrationConfiguration;
-import com.liferay.portal.kernel.settings.definition.ConfigurationBeanDeclaration;
-
-import org.osgi.service.component.annotations.Component;
 /**
  * @author Nilton Vieira
  */
-@Component(service = ConfigurationBeanDeclaration.class)
-public class JiraIntegrationConfigurationBeanDeclaration
-	implements ConfigurationBeanDeclaration {
+public interface JiraIntegrationWebKeys {
 
-	@Override
-	public Class<?> getConfigurationBeanClass() {
-		return JiraIntegrationConfiguration.class;
-	}
+	public static final String JIRA_INTEGRATION_ENABLED =
+		"JIRA_INTEGRATION_ENABLED";
+
+	public static final String JIRA_INTEGRATION_JIRA_PASSWORD =
+		"JIRA_INTEGRATION_JIRA_USERNAME";
+
+	public static final String JIRA_INTEGRATION_JIRA_USERNAME =
+		"JIRA_INTEGRATION_JIRA_USERNAME";
+
+	public static final String JIRA_INTEGRATION_SITE_SETTINGS_STRATEGY =
+		"JIRA_INTEGRATION_SITE_SETTINGS_STRATEGY";
 
 }
