@@ -46,7 +46,7 @@ JiraIntegrationConfiguration jiraIntegrationConfiguration = (JiraIntegrationConf
 		<label class="text-secondary">
 			<liferay-ui:message arguments="jira-integration" key="site-settings-strategy-description" />
 		</label>
-	</div>JiraIntegrationConfiguration
+	</div>
 </div>
 
 <div id="<portlet:namespace />jiraIntegrationProviderCredentials">
@@ -59,11 +59,11 @@ JiraIntegrationConfiguration jiraIntegrationConfiguration = (JiraIntegrationConf
 
 	<div class="form-group row">
 		<div class="col-md-6">
-			<aui:input label="jira-username" name="jiraUsername" type="text" value="<%= jiraIntegrationConfiguration.jiraUsername() %>" />
+			<aui:input label="Jira Username" name="jiraUsername" type="text" value="<%= jiraIntegrationConfiguration.jiraUsername() %>" />
 		</div>
 
 		<div class="col-md-6">
-			<aui:input label="jira-password" name="jiraPassword" type="text" value="<%= jiraIntegrationConfiguration.jiraPassword() %>" />
+			<aui:input label="Jira Password" name="jiraPassword" type="text" value="<%= jiraIntegrationConfiguration.jiraPassword() %>" />
 		</div>
 	</div>
 </div>
