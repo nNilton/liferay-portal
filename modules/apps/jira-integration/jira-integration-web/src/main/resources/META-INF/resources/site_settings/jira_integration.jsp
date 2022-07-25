@@ -63,11 +63,11 @@ JiraIntegrationConfiguration jiraIntegrationConfiguration = (JiraIntegrationConf
 
 	<div class="form-group row">
 		<div class="col-md-6">
-			<aui:input disabled="<%= disabled %>" label="jira-username" name="jiraUsername" type="text" value="<%= GetterUtil.getString(request.getAttribute(JiraIntegrationWebKeys.JIRA_INTEGRATION_JIRA_USERNAME)) %>" />
+			<aui:input disabled="<%= disabled %>" label="Jira Username" name="jiraUsername" type="text" value="<%= GetterUtil.getString(request.getAttribute(JiraIntegrationWebKeys.JIRA_INTEGRATION_JIRA_USERNAME)) %>" />
 		</div>
 
 		<div class="col-md-6">
-			<aui:input disabled="<%= disabled %>" label="jira-password" name="jiraPassword" type="text" value="<%= GetterUtil.getString(request.getAttribute(JiraIntegrationWebKeys.JIRA_INTEGRATION_JIRA_PASSWORD)) %>" />
+			<aui:input disabled="<%= disabled %>" label="Jira Password" name="jiraPassword" type="text" value="<%= GetterUtil.getString(request.getAttribute(JiraIntegrationWebKeys.JIRA_INTEGRATION_JIRA_PASSWORD)) %>" />
 		</div>
 	</div>
 </div>
