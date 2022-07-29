@@ -1,10 +1,10 @@
-apiDir: "../digital-signature-rest-api/src/main/java"
-apiPackagePath: "com.liferay.digital.signature.rest"
+apiDir: "../jira-integration-rest-api/src/main/java"
+apiPackagePath: "com.liferay.jira.integration.rest"
 application:
-  baseURI: "/digital-signature-rest"
-  className: "DigitalSignatureRESTApplication"
-  name: "Liferay.Digital.Signature.REST"
-author: "José Abelenda"
-clientDir: "../digital-signature-rest-client/src/main/java"
+  baseURI: "/jira-integration-rest"
+  className: "JiraIntegrationRESTApplication"
+  name: "Liferay.Jira.Integration.REST"
+author: "Nilton Vieira"
+clientDir: "../jira-integration-rest-client/src/main/java"
 forcePredictableOperationId: true
-testDir: "../digital-signature-rest-test/src/testIntegration/java"
+testDir: "../jira-integration-rest-test/src/testIntegration/java"
