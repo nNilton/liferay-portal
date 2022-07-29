@@ -1,3 +1,5 @@
-Bundle-Name: Jira Integration API
+Bundle-Name: Liferay Jira Integration API
 Bundle-SymbolicName: com.liferay.jira.integration.api
-Bundle-Version: 1.0.0
+Bundle-Version: 3.0.10
+Export-Package:\
+	com.liferay.jira.integration.manager

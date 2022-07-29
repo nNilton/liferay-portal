@@ -1,0 +1,3 @@
+Bundle-Name: Jira Integration Implementation
+Bundle-SymbolicName: com.liferay.jira.integration.impl
+Bundle-Version: 1.0.0
