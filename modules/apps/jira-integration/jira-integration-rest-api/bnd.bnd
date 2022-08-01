@@ -1,3 +1,6 @@
 Bundle-Name: Jira Integration REST API
 Bundle-SymbolicName: com.liferay.jira.integration.rest.api
 Bundle-Version: 1.0.0
+Export-Package:\
+	com.liferay.jira.integration.rest.dto.v1_0,\
+	com.liferay.jira.integration.rest.resource.v1_0

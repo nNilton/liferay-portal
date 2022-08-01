@@ -2,3 +2,5 @@ Bundle-Name: Liferay Jira Integration Web
 Bundle-SymbolicName: com.liferay.jira.integration.web
 Bundle-Version: 1.0.22
 Web-ContextPath: /jira-integration-web
+Export-Package:\
+	com.liferay.jira.integration.web.internal.configuration

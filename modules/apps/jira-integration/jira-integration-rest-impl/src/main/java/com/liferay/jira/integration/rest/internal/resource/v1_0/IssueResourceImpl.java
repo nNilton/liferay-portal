@@ -16,8 +16,13 @@ package com.liferay.jira.integration.rest.internal.resource.v1_0;
 
 import com.liferay.jira.integration.rest.resource.v1_0.IssueResource;
 
+
+import com.liferay.jira.integration.manager.JiraIssueManager;
+import com.liferay.portal.kernel.json.JSONObject;
+
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ServiceScope;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Nilton Vieira
@@ -28,9 +33,13 @@ import org.osgi.service.component.annotations.ServiceScope;
 )
 public class IssueResourceImpl extends BaseIssueResourceImpl {
 
-	public Issue getSiteIssue(Long siteId, String issueId){
-		return _issueManager.getIssue(
-				contextCompany.getCompanyId(), siteId, dsEnvelopeId);
+	public JSONObject getSiteIssues(Long siteId, String issueId){
+		return _jiraIssueManager.getIssue(
+				contextCompany.getCompanyId(), siteId, issueId);
 	}
+
+
+	@Reference
+	private JiraIssueManager _jiraIssueManager;
 
 }

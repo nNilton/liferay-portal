@@ -44,8 +44,8 @@ import org.osgi.service.component.annotations.Reference;
 /**
  * @author Nilton Vieira
  */
-@Component(immediate = true, service = IssueManagerImpl.class)
-public class IssueManagerImpl implements JiraIssueManager {
+@Component(immediate = true, service = JiraIssueManagerImpl.class)
+public class JiraIssueManagerImpl implements JiraIssueManager {
 
 	@Override
 	public JSONObject getIssue(
