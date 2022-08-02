@@ -1,4 +1,4 @@
-Bundle-Name: Jira Integration REST API
+Bundle-Name: Liferay Jira Integration REST API
 Bundle-SymbolicName: com.liferay.jira.integration.rest.api
 Bundle-Version: 1.0.0
 Export-Package:\
