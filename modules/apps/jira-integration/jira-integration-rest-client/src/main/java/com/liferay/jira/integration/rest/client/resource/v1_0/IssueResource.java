@@ -38,9 +38,9 @@ public interface IssueResource {
 		return new Builder();
 	}
 
-	public Issue getSiteIssue(Long siteId, String issueId) throws Exception;
+	public Issue getIssue(Long siteId, String issueId) throws Exception;
 
-	public HttpInvoker.HttpResponse getSiteIssueHttpResponse(
+	public HttpInvoker.HttpResponse getIssueHttpResponse(
 			Long siteId, String issueId)
 		throws Exception;
 
@@ -122,10 +122,8 @@ public interface IssueResource {
 
 	public static class IssueResourceImpl implements IssueResource {
 
-		public Issue getSiteIssue(Long siteId, String issueId)
-			throws Exception {
-
-			HttpInvoker.HttpResponse httpResponse = getSiteIssueHttpResponse(
+		public Issue getIssue(Long siteId, String issueId) throws Exception {
+			HttpInvoker.HttpResponse httpResponse = getIssueHttpResponse(
 				siteId, issueId);
 
 			String content = httpResponse.getContent();
@@ -165,7 +163,7 @@ public interface IssueResource {
 			}
 		}
 
-		public HttpInvoker.HttpResponse getSiteIssueHttpResponse(
+		public HttpInvoker.HttpResponse getIssueHttpResponse(
 				Long siteId, String issueId)
 			throws Exception {
 
@@ -193,7 +191,7 @@ public interface IssueResource {
 			httpInvoker.path(
 				_builder._scheme + "://" + _builder._host + ":" +
 					_builder._port + _builder._contextPath +
-						"/o/jira-integration-rest/v1.0/sites/{siteId}/{issueId}");
+						"/o/jira-integration-rest/v1.0/issue/{siteId}/{issueId}");
 
 			httpInvoker.path("siteId", siteId);
 			httpInvoker.path("issueId", issueId);

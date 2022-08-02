@@ -70,7 +70,7 @@ public class Query {
 		return _applyComponentServiceObjects(
 			_issueResourceComponentServiceObjects,
 			this::_populateResourceContext,
-			issueResource -> issueResource.getSiteIssue(
+			issueResource -> issueResource.getIssue(
 				Long.valueOf(siteKey), issueId));
 	}
 

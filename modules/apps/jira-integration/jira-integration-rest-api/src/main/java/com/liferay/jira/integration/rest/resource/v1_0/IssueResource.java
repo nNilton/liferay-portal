@@ -54,7 +54,7 @@ public interface IssueResource {
 		return FactoryHolder.factory.create();
 	}
 
-	public Issue getSiteIssue(Long siteId, String issueId) throws Exception;
+	public Issue getIssue(Long siteId, String issueId) throws Exception;
 
 	public default void setContextAcceptLanguage(
 		AcceptLanguage contextAcceptLanguage) {

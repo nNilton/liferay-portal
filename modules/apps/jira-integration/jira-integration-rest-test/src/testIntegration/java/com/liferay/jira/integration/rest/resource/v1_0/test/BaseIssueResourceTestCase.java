@@ -198,29 +198,29 @@ public abstract class BaseIssueResourceTestCase {
 	}
 
 	@Test
-	public void testGetSiteIssue() throws Exception {
-		Issue postIssue = testGetSiteIssue_addIssue();
+	public void testGetIssue() throws Exception {
+		Issue postIssue = testGetIssue_addIssue();
 
-		Issue getIssue = issueResource.getSiteIssue(
-			testGetSiteIssue_getSiteId(), postIssue.getId());
+		Issue getIssue = issueResource.getIssue(
+			testGetIssue_getSiteId(), postIssue.getId());
 
 		assertEquals(postIssue, getIssue);
 		assertValid(getIssue);
 	}
 
-	protected Long testGetSiteIssue_getSiteId() throws Exception {
+	protected Long testGetIssue_getSiteId() throws Exception {
 		throw new UnsupportedOperationException(
 			"This method needs to be implemented");
 	}
 
-	protected Issue testGetSiteIssue_addIssue() throws Exception {
+	protected Issue testGetIssue_addIssue() throws Exception {
 		throw new UnsupportedOperationException(
 			"This method needs to be implemented");
 	}
 
 	@Test
-	public void testGraphQLGetSiteIssue() throws Exception {
-		Issue issue = testGraphQLGetSiteIssue_addIssue();
+	public void testGraphQLGetIssue() throws Exception {
+		Issue issue = testGraphQLGetIssue_addIssue();
 
 		Assert.assertTrue(
 			equals(
@@ -235,7 +235,7 @@ public abstract class BaseIssueResourceTestCase {
 										put(
 											"siteKey",
 											"\"" +
-												testGraphQLGetSiteIssue_getSiteId() +
+												testGraphQLGetIssue_getSiteId() +
 													"\"");
 										put(
 											"issueId",
@@ -246,13 +246,13 @@ public abstract class BaseIssueResourceTestCase {
 						"JSONObject/data", "Object/issue"))));
 	}
 
-	protected Long testGraphQLGetSiteIssue_getSiteId() throws Exception {
+	protected Long testGraphQLGetIssue_getSiteId() throws Exception {
 		throw new UnsupportedOperationException(
 			"This method needs to be implemented");
 	}
 
 	@Test
-	public void testGraphQLGetSiteIssueNotFound() throws Exception {
+	public void testGraphQLGetIssueNotFound() throws Exception {
 		String irrelevantIssueId = "\"" + RandomTestUtil.randomString() + "\"";
 
 		Assert.assertEquals(
@@ -274,7 +274,7 @@ public abstract class BaseIssueResourceTestCase {
 				"Object/code"));
 	}
 
-	protected Issue testGraphQLGetSiteIssue_addIssue() throws Exception {
+	protected Issue testGraphQLGetIssue_addIssue() throws Exception {
 		return testGraphQLIssue_addIssue();
 	}
 

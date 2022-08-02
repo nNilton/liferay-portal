@@ -52,7 +52,7 @@ public abstract class BaseIssueResourceImpl implements IssueResource {
 	/**
 	 * Invoke this method with the command line:
 	 *
-	 * curl -X 'GET' 'http://localhost:8080/o/jira-integration-rest/v1.0/sites/{siteId}/{issueId}'  -u 'test@liferay.com:test'
+	 * curl -X 'GET' 'http://localhost:8080/o/jira-integration-rest/v1.0/issue/{siteId}/{issueId}'  -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Parameters(
 		value = {
@@ -70,10 +70,10 @@ public abstract class BaseIssueResourceImpl implements IssueResource {
 		value = {@io.swagger.v3.oas.annotations.tags.Tag(name = "Issue")}
 	)
 	@javax.ws.rs.GET
-	@javax.ws.rs.Path("/sites/{siteId}/{issueId}")
+	@javax.ws.rs.Path("/issue/{siteId}/{issueId}")
 	@javax.ws.rs.Produces({"application/json", "application/xml"})
 	@Override
-	public Issue getSiteIssue(
+	public Issue getIssue(
 			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
 			@javax.validation.constraints.NotNull
 			@javax.ws.rs.PathParam("siteId")

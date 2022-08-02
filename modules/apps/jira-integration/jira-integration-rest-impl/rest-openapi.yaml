@@ -1,17 +1,17 @@
 components:
-  schemas:
-    Issue:
-      properties:
-        id:
-          type: string
-        key:
-          type: string
-        description:
-          type: string
-        name:
-          type: string
-        priority:
-          type: string
+    schemas:
+        Issue:
+            properties:
+                description:
+                    type: string
+                id:
+                    type: string
+                key:
+                    type: string
+                name:
+                    type: string
+                priority:
+                    type: string
 info:
     description:
         "A Java client JAR is available for use with the group ID 'com.liferay', artifact ID
@@ -23,9 +23,9 @@ info:
     version: v1.0
 openapi: 3.0.1
 paths:
-    "/sites/{siteId}/{issueId}":
+    "/issue/{siteId}/{issueId}":
         get:
-            operationId: getSiteIssue
+            operationId: getIssue
             parameters:
                 - in: path
                   name: siteId

@@ -1,9 +1,9 @@
 apiDir: "../jira-integration-rest-api/src/main/java"
 apiPackagePath: "com.liferay.jira.integration.rest"
 application:
-  baseURI: "/jira-integration-rest"
-  className: "JiraIntegrationRESTApplication"
-  name: "Liferay.Jira.Integration.REST"
+    baseURI: "/jira-integration-rest"
+    className: "JiraIntegrationRESTApplication"
+    name: "Liferay.Jira.Integration.REST"
 author: "Nilton Vieira"
 clientDir: "../jira-integration-rest-client/src/main/java"
 forcePredictableOperationId: true
