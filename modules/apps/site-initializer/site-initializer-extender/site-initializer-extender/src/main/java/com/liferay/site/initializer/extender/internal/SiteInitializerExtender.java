@@ -23,6 +23,7 @@ import com.liferay.dynamic.data.mapping.service.DDMStructureLocalService;
 import com.liferay.dynamic.data.mapping.service.DDMTemplateLocalService;
 import com.liferay.dynamic.data.mapping.util.DefaultDDMStructureHelper;
 import com.liferay.fragment.importer.FragmentsImporter;
+import com.liferay.fragment.processor.PortletRegistry;
 import com.liferay.headless.admin.list.type.resource.v1_0.ListTypeDefinitionResource;
 import com.liferay.headless.admin.list.type.resource.v1_0.ListTypeEntryResource;
 import com.liferay.headless.admin.taxonomy.resource.v1_0.TaxonomyCategoryResource;
@@ -48,6 +49,7 @@ import com.liferay.object.admin.rest.resource.v1_0.ObjectRelationshipResource;
 import com.liferay.object.service.ObjectActionLocalService;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
+import com.liferay.portal.kernel.comment.CommentManager;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.service.GroupLocalService;
@@ -122,7 +124,7 @@ public class SiteInitializerExtender
 			new SiteInitializerExtension(
 				_accountResourceFactory, _accountRoleLocalService,
 				_accountRoleResourceFactory, _assetCategoryLocalService,
-				_assetListEntryLocalService, bundle,
+				_assetListEntryLocalService, bundle, _commentManager,
 				_clientExtensionEntryLocalService, _configurationProvider,
 				_ddmStructureLocalService, _ddmTemplateLocalService,
 				_defaultDDMStructureHelper, _dlURLHelper,
@@ -149,7 +151,7 @@ public class SiteInitializerExtender
 				_siteNavigationMenuItemTypeRegistry,
 				_siteNavigationMenuLocalService,
 				_structuredContentFolderResourceFactory,
-				_styleBookEntryZipProcessor, _taxonomyCategoryResourceFactory,
+				_styleBookEntryZipProcessor,_portletRegistry, _taxonomyCategoryResourceFactory,
 				_taxonomyVocabularyResourceFactory, _themeLocalService,
 				_userAccountResourceFactory, _userGroupLocalService,
 				_userLocalService, _workflowDefinitionLinkLocalService,
@@ -232,7 +234,7 @@ public class SiteInitializerExtender
 					Bundle.class.getClassLoader(), Bundle.class,
 					new FileBackedBundleDelegate(
 						_bundleContext, file, _jsonFactory, symbolicName),
-					null),
+					null), _commentManager,
 				_clientExtensionEntryLocalService, _configurationProvider,
 				_ddmStructureLocalService, _ddmTemplateLocalService,
 				_defaultDDMStructureHelper, _dlURLHelper,
@@ -264,7 +266,7 @@ public class SiteInitializerExtender
 				_siteNavigationMenuItemTypeRegistry,
 				_siteNavigationMenuLocalService,
 				_structuredContentFolderResourceFactory,
-				_styleBookEntryZipProcessor, _taxonomyCategoryResourceFactory,
+				_styleBookEntryZipProcessor,_portletRegistry, _taxonomyCategoryResourceFactory,
 				_taxonomyVocabularyResourceFactory, _themeLocalService,
 				_userAccountResourceFactory, _userGroupLocalService,
 				_userLocalService, _workflowDefinitionLinkLocalService,
@@ -292,6 +294,9 @@ public class SiteInitializerExtender
 
 	private BundleContext _bundleContext;
 	private BundleTracker<?> _bundleTracker;
+
+	@Reference
+	private CommentManager _commentManager;
 
 	@Reference
 	private ClientExtensionEntryLocalService _clientExtensionEntryLocalService;
@@ -440,6 +445,9 @@ public class SiteInitializerExtender
 
 	@Reference
 	private StyleBookEntryZipProcessor _styleBookEntryZipProcessor;
+
+	@Reference
+	private PortletRegistry _portletRegistry;
 
 	@Reference
 	private TaxonomyCategoryResource.Factory _taxonomyCategoryResourceFactory;

@@ -2100,7 +2100,8 @@
 				"type": "Section"
 			}
 		],
-		"type": "Root"
+		"type": "Root",
+		"segmentsExperienceID": "[$SEGMENTS_EXPERIENCE_ID:Segments Experience$]"
 	},
 	"settings": {
 		"masterPage": {

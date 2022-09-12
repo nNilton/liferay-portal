@@ -64,4 +64,6 @@ public interface LayoutPageTemplateStructureRel
 
 			};
 
+	static void getData(String segmentsExperienceKey) {
+	}
 }
