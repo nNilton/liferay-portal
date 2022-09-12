@@ -37,6 +37,9 @@ import com.liferay.dynamic.data.mapping.util.DefaultDDMStructureHelper;
 import com.liferay.expando.kernel.model.ExpandoBridge;
 import com.liferay.expando.kernel.util.ExpandoBridgeFactoryUtil;
 import com.liferay.fragment.importer.FragmentsImporter;
+import com.liferay.fragment.model.FragmentEntry;
+import com.liferay.fragment.processor.FragmentEntryProcessor;
+import com.liferay.fragment.processor.PortletRegistry;
 import com.liferay.headless.admin.list.type.dto.v1_0.ListTypeDefinition;
 import com.liferay.headless.admin.list.type.dto.v1_0.ListTypeEntry;
 import com.liferay.headless.admin.list.type.resource.v1_0.ListTypeDefinitionResource;
@@ -72,10 +75,12 @@ import com.liferay.journal.service.JournalArticleLocalService;
 import com.liferay.layout.page.template.importer.LayoutPageTemplatesImporter;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.model.LayoutPageTemplateStructure;
+import com.liferay.layout.page.template.model.LayoutPageTemplateStructureRel;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalService;
 import com.liferay.layout.page.template.service.LayoutPageTemplateStructureLocalService;
 import com.liferay.layout.util.LayoutCopyHelper;
 import com.liferay.layout.util.structure.LayoutStructure;
+import com.liferay.message.boards.comment.internal.MBCommentManagerImpl;
 import com.liferay.notification.rest.dto.v1_0.NotificationTemplate;
 import com.liferay.notification.rest.resource.v1_0.NotificationTemplateResource;
 import com.liferay.object.admin.rest.dto.v1_0.ObjectDefinition;
@@ -88,10 +93,12 @@ import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectActionLocalService;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
+import com.liferay.layout.page.template.model.impl.LayoutPageTemplateStructureImpl;
 import com.liferay.petra.function.UnsafeRunnable;
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.comment.CommentManager;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
@@ -105,6 +112,7 @@ import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutConstants;
 import com.liferay.portal.kernel.model.LayoutSet;
 import com.liferay.portal.kernel.model.LayoutTypePortlet;
+import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.ResourceAction;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.ResourcePermission;
@@ -164,6 +172,7 @@ import com.liferay.segments.model.SegmentsEntry;
 import com.liferay.segments.model.SegmentsExperience;
 import com.liferay.segments.service.SegmentsEntryLocalService;
 import com.liferay.segments.service.SegmentsExperienceLocalService;
+import com.liferay.layout.content.page.editor.web.internal.segments.SegmentsExperienceUtil;
 import com.liferay.site.exception.InitializationException;
 import com.liferay.site.initializer.SiteInitializer;
 import com.liferay.site.initializer.extender.internal.util.SiteInitializerUtil;
@@ -194,11 +203,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 
 import javax.servlet.ServletContext;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.wiring.BundleWiring;
+
+import static com.liferay.layout.page.template.model.LayoutPageTemplateStructureRel.getData;
 
 /**
  * @author Brian Wing Shun Chan
@@ -211,6 +223,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 		AccountRoleResource.Factory accountRoleResourceFactory,
 		AssetCategoryLocalService assetCategoryLocalService,
 		AssetListEntryLocalService assetListEntryLocalService, Bundle bundle,
+		CommentManager commentManager,
 		ClientExtensionEntryLocalService clientExtensionEntryLocalService,
 		ConfigurationProvider configurationProvider,
 		DDMStructureLocalService ddmStructureLocalService,
@@ -259,6 +272,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 		StructuredContentFolderResource.Factory
 			structuredContentFolderResourceFactory,
 		StyleBookEntryZipProcessor styleBookEntryZipProcessor,
+		PortletRegistry portletRegistry,
 		TaxonomyCategoryResource.Factory taxonomyCategoryResourceFactory,
 		TaxonomyVocabularyResource.Factory taxonomyVocabularyResourceFactory,
 		ThemeLocalService themeLocalService,
@@ -274,6 +288,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 		_assetCategoryLocalService = assetCategoryLocalService;
 		_assetListEntryLocalService = assetListEntryLocalService;
 		_bundle = bundle;
+		_commentManager = commentManager;
 		_clientExtensionEntryLocalService = clientExtensionEntryLocalService;
 		_configurationProvider = configurationProvider;
 		_ddmStructureLocalService = ddmStructureLocalService;
@@ -327,6 +342,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 		_structuredContentFolderResourceFactory =
 			structuredContentFolderResourceFactory;
 		_styleBookEntryZipProcessor = styleBookEntryZipProcessor;
+		_portletRegistry = portletRegistry;
 		_taxonomyCategoryResourceFactory = taxonomyCategoryResourceFactory;
 		_taxonomyVocabularyResourceFactory = taxonomyVocabularyResourceFactory;
 		_themeLocalService = themeLocalService;
@@ -1664,6 +1680,11 @@ public class BundleSiteInitializer implements SiteInitializer {
 
 		Layout draftLayout = layout.fetchDraftLayout();
 
+		SegmentsExperience segmentsExperience =
+			_segmentsExperienceLocalService.fetchSegmentsExperience(
+				Long.valueOf(segmentsExperiencesIdsStringUtilReplaceValues.get(
+					"SEGMENTS_EXPERIENCE_ID:Segments Experience")));
+
 		String type = StringUtil.toLowerCase(jsonObject.getString("type"));
 
 		if (Objects.equals(type, "widget")) {
@@ -1690,15 +1711,22 @@ public class BundleSiteInitializer implements SiteInitializer {
 								draftLayout.getGroupId(), draftLayout.getPlid(),
 								true);
 
+					LayoutPageTemplateStructure layoutPageTemplateStructure1 =
+						_layoutPageTemplateStructureLocalService.updateLayoutPageTemplateStructureData(
+							draftLayout.getGroupId(), draftLayout.getPlid(),
+							segmentsExperience.getSegmentsExperienceId(), null);
+
 					LayoutStructure layoutStructure = LayoutStructure.of(
-						layoutPageTemplateStructure.
-							getDefaultSegmentsExperienceData());
+						layoutPageTemplateStructure1.
+							getData(
+								segmentsExperience.getSegmentsExperienceId()));
 
 					for (int i = 0; i < jsonArray.length(); i++) {
 						_layoutPageTemplatesImporter.importPageElement(
 							draftLayout, layoutStructure,
 							layoutStructure.getMainItemId(),
-							jsonArray.getString(i), i);
+							jsonArray.getString(i), i,
+							segmentsExperience.getSegmentsExperienceId());
 					}
 				}
 			}
@@ -1741,7 +1769,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 			}
 
 			layout = _layoutCopyHelper.copyLayout(
-				jsonObject.getLong("segmentsExperienceID"), draftLayout,
+				segmentsExperience.getSegmentsExperienceId(),
+				draftLayout,
 				layout);
 
 			_layoutLocalService.updateStatus(
@@ -2994,7 +3023,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 		for (int i = 0; i < jsonArray.length(); i++) {
 			JSONObject jsonObject = jsonArray.getJSONObject(i);
 
-			Layout layout = _layoutLocalService.getLayoutByFriendlyURL(
+			Layout layout = _layoutLocalService.fetchLayoutByFriendlyURL(
 				serviceContext.getScopeGroupId(), false,
 				jsonObject.getString("friendlyURL"));
 
@@ -3011,16 +3040,14 @@ public class BundleSiteInitializer implements SiteInitializer {
 
 			if (segmentsExperience == null) {
 				segmentsExperience =
-					_segmentsExperienceLocalService.addSegmentsExperience(
+					_segmentsExperienceLocalService.appendSegmentsExperience(
 						serviceContext.getUserId(),
 						serviceContext.getScopeGroupId(),
 						jsonObject.getLong("segmentsEntryId"),
-						jsonObject.getString("segmentsExperienceKey"),
 						jsonObject.getLong("classNameId"),
 						classPK,
 						SiteInitializerUtil.toMap(
 							jsonObject.getString("name_i18n")),
-						jsonObject.getInt("priority"),
 						jsonObject.getBoolean("active", true),
 						new UnicodeProperties(true), serviceContext);
 			}
@@ -3036,7 +3063,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 
 			segmentsExperiencesIdsStringUtilReplaceValues.put(
 				"SEGMENTS_EXPERIENCE_ID:" +
-				segmentsExperience.getSegmentsExperienceKey(),
+				segmentsExperience.getName("Segments Experience"),
 				String.valueOf(segmentsExperience.getSegmentsExperienceId()));
 		}
 		return segmentsExperiencesIdsStringUtilReplaceValues;
@@ -4233,6 +4260,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 		_listTypeDefinitionResourceFactory;
 	private final ListTypeEntryResource _listTypeEntryResource;
 	private final ListTypeEntryResource.Factory _listTypeEntryResourceFactory;
+
+	private final CommentManager _commentManager;
 	private final NotificationTemplateResource.Factory
 		_notificationTemplateResourceFactory;
 	private final ObjectActionLocalService _objectActionLocalService;
@@ -4265,6 +4294,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 	private final StructuredContentFolderResource.Factory
 		_structuredContentFolderResourceFactory;
 	private final StyleBookEntryZipProcessor _styleBookEntryZipProcessor;
+	private final PortletRegistry _portletRegistry;
 	private final TaxonomyCategoryResource.Factory
 		_taxonomyCategoryResourceFactory;
 	private final TaxonomyVocabularyResource.Factory
@@ -4306,5 +4336,6 @@ public class BundleSiteInitializer implements SiteInitializer {
 			_siteNavigationMenuItemSettings = new HashMap<>();
 
 	}
+
 
 }
