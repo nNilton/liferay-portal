@@ -522,11 +522,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 					objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,
 					serviceContext));
 
-			Map<String, String> segmentsExperiencesIdsStringUtilReplaceValues =
-				_invoke(
-					() -> _addSegmentsExperiences(
-						serviceContext,
-						segmentsEntriesIdsStringUtilReplaceValues));
+
 
 			// TODO Review order/dependency
 
@@ -542,10 +538,16 @@ public class BundleSiteInitializer implements SiteInitializer {
 					ddmStructureEntryIdsStringUtilReplaceValues,
 					documentsStringUtilReplaceValues, layouts,
 					objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,
-					segmentsExperiencesIdsStringUtilReplaceValues,
+					null,
 					serviceContext,
 					siteNavigationMenuItemSettingsBuilder.build(),
 					taxonomyCategoryIdsStringUtilReplaceValues));
+
+			Map<String, String> segmentsExperiencesIdsStringUtilReplaceValues =
+				_invoke(
+					() -> _addSegmentsExperiences(
+						serviceContext,
+						segmentsEntriesIdsStringUtilReplaceValues, layouts));
 
 			_invoke(() -> _addWorkflowDefinitions(serviceContext));
 		}
@@ -1672,18 +1674,12 @@ public class BundleSiteInitializer implements SiteInitializer {
 			ddmStructureEntryIdsStringUtilReplaceValues,
 			documentsStringUtilReplaceValues,
 			objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,
-			segmentsExperiencesIdsStringUtilReplaceValues,
 			taxonomyCategoryIdsStringUtilReplaceValues);
 
 		JSONObject pageDefinitionJSONObject = JSONFactoryUtil.createJSONObject(
 			json);
 
 		Layout draftLayout = layout.fetchDraftLayout();
-
-		SegmentsExperience segmentsExperience =
-			_segmentsExperienceLocalService.fetchSegmentsExperience(
-				Long.valueOf(segmentsExperiencesIdsStringUtilReplaceValues.get(
-					"SEGMENTS_EXPERIENCE_ID:Segments Experience")));
 
 		String type = StringUtil.toLowerCase(jsonObject.getString("type"));
 
@@ -1711,22 +1707,14 @@ public class BundleSiteInitializer implements SiteInitializer {
 								draftLayout.getGroupId(), draftLayout.getPlid(),
 								true);
 
-					LayoutPageTemplateStructure layoutPageTemplateStructure1 =
-						_layoutPageTemplateStructureLocalService.updateLayoutPageTemplateStructureData(
-							draftLayout.getGroupId(), draftLayout.getPlid(),
-							segmentsExperience.getSegmentsExperienceId(), null);
-
 					LayoutStructure layoutStructure = LayoutStructure.of(
-						layoutPageTemplateStructure1.
-							getData(
-								segmentsExperience.getSegmentsExperienceId()));
+						layoutPageTemplateStructure.getDefaultSegmentsExperienceData());
 
 					for (int i = 0; i < jsonArray.length(); i++) {
 						_layoutPageTemplatesImporter.importPageElement(
 							draftLayout, layoutStructure,
 							layoutStructure.getMainItemId(),
-							jsonArray.getString(i), i,
-							segmentsExperience.getSegmentsExperienceId());
+							jsonArray.getString(i), i);
 					}
 				}
 			}
@@ -1769,7 +1757,6 @@ public class BundleSiteInitializer implements SiteInitializer {
 			}
 
 			layout = _layoutCopyHelper.copyLayout(
-				segmentsExperience.getSegmentsExperienceId(),
 				draftLayout,
 				layout);
 
@@ -3000,7 +2987,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 
 	private Map<String, String> _addSegmentsExperiences(
 		ServiceContext serviceContext,
-		Map<String, String> segmentsEntriesIdsStringUtilReplaceValues)
+		Map<String, String> segmentsEntriesIdsStringUtilReplaceValues,
+		Map<String, Layout> layouts)
 		throws Exception {
 
 		Map<String, String> segmentsExperiencesIdsStringUtilReplaceValues =
@@ -3066,6 +3054,51 @@ public class BundleSiteInitializer implements SiteInitializer {
 				segmentsExperience.getName("Segments Experience"),
 				String.valueOf(segmentsExperience.getSegmentsExperienceId()));
 		}
+
+		for(Map.Entry<String, Layout> entry:layouts.entrySet()){
+			String resourcePath = entry.getKey();
+
+			Layout layout = entry.getValue();
+
+			if(!resourcePath.contains("home")){
+				continue;
+			}
+
+			SegmentsExperience segmentsExperience =
+				_segmentsExperienceLocalService.fetchSegmentsExperience(
+					Long.valueOf(segmentsExperiencesIdsStringUtilReplaceValues.get(
+						"SEGMENTS_EXPERIENCE_ID:Segments Experience")));
+
+			String json1 = SiteInitializerUtil.read(
+				resourcePath + "page-definition.json", _servletContext);
+
+			JSONObject pageDefinitionJSONObject = JSONFactoryUtil.createJSONObject(
+				json1);
+
+			Layout draftLayout = layout.fetchDraftLayout();
+
+
+			if (resourcePath.contains("home")) {
+				SegmentsExperience dfl =
+					_segmentsExperienceLocalService.fetchSegmentsExperience(
+						serviceContext.getScopeGroupId(),
+						_portal.getClassNameId(Layout.class),
+						draftLayout.getClassPK(),
+						0);
+
+				SegmentsExperienceUtil.copySegmentsExperienceData(
+					layout.getPlid(), _commentManager,
+					serviceContext.getScopeGroupId(), _portletRegistry,
+					dfl.getSegmentsExperienceId(),
+					segmentsExperience.getSegmentsExperienceId(),
+					className -> serviceContext, serviceContext.getUserId());
+			}
+
+		}
+
+
+
+
 		return segmentsExperiencesIdsStringUtilReplaceValues;
 	}
 
