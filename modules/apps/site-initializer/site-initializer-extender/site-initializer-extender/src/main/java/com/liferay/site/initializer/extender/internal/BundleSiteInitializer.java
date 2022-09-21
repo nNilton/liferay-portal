@@ -3321,7 +3321,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 			"/site-initializer/segments-experiences.json", _servletContext);
 
 		if (json == null) {
-			Collections.emptyMap();
+			return;
 		}
 
 		JSONArray jsonArray = JSONFactoryUtil.createJSONArray(
@@ -3338,23 +3338,23 @@ public class BundleSiteInitializer implements SiteInitializer {
 
 			Layout draftLayout = layout.fetchDraftLayout();
 
-			Long classPK = draftLayout.getClassPK();
-
 			SegmentsExperience segmentsExperience =
 				_segmentsExperienceLocalService.fetchSegmentsExperience(
 					serviceContext.getScopeGroupId(),
 					jsonObject.getString("segmentsExperienceKey"),
-					jsonObject.getLong("classNameId"), classPK);
+					jsonObject.getLong("classNameId"), draftLayout.getClassPK());
 
 			if (segmentsExperience == null) {
 				segmentsExperience =
-					_segmentsExperienceLocalService.appendSegmentsExperience(
+					_segmentsExperienceLocalService.addSegmentsExperience(
 						serviceContext.getUserId(),
 						serviceContext.getScopeGroupId(),
 						jsonObject.getLong("segmentsEntryId"),
-						jsonObject.getLong("classNameId"), classPK,
+						jsonObject.getString("segmentsExperienceKey"),
+						jsonObject.getLong("classNameId"), draftLayout.getClassPK(),
 						SiteInitializerUtil.toMap(
 							jsonObject.getString("name_i18n")),
+						jsonObject.getInt("priority"),
 						jsonObject.getBoolean("active", true),
 						new UnicodeProperties(true), serviceContext);
 			}
@@ -3368,8 +3368,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 						jsonObject.getBoolean("active", true));
 			}
 
-			if (json.contains(layout.getFriendlyURL())) {
-				SegmentsExperience segmentsExperienceDefaultId =
+				SegmentsExperience segmentsExperienceDefault =
 					_segmentsExperienceLocalService.fetchSegmentsExperience(
 						serviceContext.getScopeGroupId(),
 						_portal.getClassNameId(Layout.class),
@@ -3378,10 +3377,10 @@ public class BundleSiteInitializer implements SiteInitializer {
 				_layoutCopyHelper.copySegmentsExperienceData(
 					layout.getPlid(), _commentManager,
 					serviceContext.getScopeGroupId(), _portletRegistry,
-					segmentsExperienceDefaultId.getSegmentsExperienceId(),
+					segmentsExperienceDefault.getSegmentsExperienceId(),
 					segmentsExperience.getSegmentsExperienceId(),
 					className -> serviceContext, serviceContext.getUserId());
-			}
+
 		}
 	}
 
