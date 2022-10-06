@@ -531,7 +531,13 @@ public class BundleSiteInitializer implements SiteInitializer {
 
 			_invoke(
 				() -> _addSegmentsExperiences(
-					serviceContext, segmentsEntriesIdsStringUtilReplaceValues));
+					assetListEntryIdsStringUtilReplaceValues,
+					clientExtensionEntryIdsStringUtilReplaceValues,
+					ddmStructureEntryIdsStringUtilReplaceValues,
+					documentsStringUtilReplaceValues, layouts,
+					objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,
+					serviceContext,segmentsEntriesIdsStringUtilReplaceValues,
+					taxonomyCategoryIdsStringUtilReplaceValues));
 
 			_invoke(() -> _addWorkflowDefinitions(serviceContext));
 		}
@@ -3312,17 +3318,20 @@ public class BundleSiteInitializer implements SiteInitializer {
 		return segmentsEntriesIdsStringUtilReplaceValues;
 	}
 
-	private void _addSegmentsExperiences(
-			ServiceContext serviceContext,
-			Map<String, String> segmentsEntriesIdsStringUtilReplaceValues)
-		throws Exception {
+	private void _addSegmentsExperience(
+		String resourcePath,
+		Map<String, String> assetListEntryIdsStringUtilReplaceValues,
+										Map<String, String> clientExtensionEntryIdsStringUtilReplaceValues,
+										Map<String, String> ddmStructureEntryIdsStringUtilReplaceValues,
+										Map<String, String> documentsStringUtilReplaceValues,
+										Map<String, String>
+											objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,
+										ServiceContext serviceContext,
+										Map<String, String> segmentsEntriesIdsStringUtilReplaceValues,
+										Map<String, String> taxonomyCategoryIdsStringUtilReplaceValues) throws Exception{
 
 		String json = SiteInitializerUtil.read(
-			"/site-initializer/segments-experiences.json", _servletContext);
-
-		if (json == null) {
-			return;
-		}
+			resourcePath + "page.json", _servletContext);
 
 		JSONArray jsonArray = JSONFactoryUtil.createJSONArray(
 			_replace(
@@ -3370,13 +3379,61 @@ public class BundleSiteInitializer implements SiteInitializer {
 						jsonObject.getBoolean("active", true));
 			}
 
-			_layoutCopyHelper.copySegmentsExperienceData(
+			/*_layoutCopyHelper.copySegmentsExperienceData(
 				layout.getPlid(), _commentManager,
 				serviceContext.getScopeGroupId(), _portletRegistry,
 				_segmentsExperienceLocalService.
 					fetchDefaultSegmentsExperienceId(draftLayout.getClassPK()),
 				segmentsExperience.getSegmentsExperienceId(),
-				className -> serviceContext, serviceContext.getUserId());
+				className -> serviceContext, serviceContext.getUserId());*/
+
+			_addLayoutContent(assetListEntryIdsStringUtilReplaceValues,
+				clientExtensionEntryIdsStringUtilReplaceValues,
+				ddmStructureEntryIdsStringUtilReplaceValues,
+				documentsStringUtilReplaceValues,
+				objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,
+				layout, resourcePath, serviceContext,
+				taxonomyCategoryIdsStringUtilReplaceValues,
+				segmentsExperience.getSegmentsExperienceId());
+		}
+
+
+	}
+
+	private void _addSegmentsExperiences(
+			Map<String, String> assetListEntryIdsStringUtilReplaceValues,
+			Map<String, String> clientExtensionEntryIdsStringUtilReplaceValues,
+			Map<String, String> ddmStructureEntryIdsStringUtilReplaceValues,
+			Map<String, String> documentsStringUtilReplaceValues,
+			Map<String, Layout> layouts,
+			Map<String, String>
+				objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,
+			ServiceContext serviceContext,
+			Map<String, String> segmentsEntriesIdsStringUtilReplaceValues,
+			Map<String, String> taxonomyCategoryIdsStringUtilReplaceValues)
+
+		throws Exception {
+
+		Set<String> resourcePaths = _servletContext.getResourcePaths(
+			"/site-initializer/segments-experiences");
+
+		//String json = SiteInitializerUtil.read(
+		//	"/site-initializer/segments-experiences.json", _servletContext);
+
+		if (resourcePaths == null) {
+			return;
+		}
+
+		for (String resourcePath : resourcePaths) {
+			if (resourcePath.endsWith("/")) {
+				_addSegmentsExperience(resourcePath, assetListEntryIdsStringUtilReplaceValues,
+					clientExtensionEntryIdsStringUtilReplaceValues,
+					ddmStructureEntryIdsStringUtilReplaceValues,
+					documentsStringUtilReplaceValues,
+					objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,serviceContext,
+					segmentsEntriesIdsStringUtilReplaceValues,
+					taxonomyCategoryIdsStringUtilReplaceValues);
+			}
 		}
 	}
 
