@@ -443,7 +443,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 			_invoke(() -> _addOrUpdateKnowledgeBaseArticles(serviceContext));
 			_invoke(() -> _addOrUpdateOrganizations(serviceContext));
 			_invoke(() -> _addOrUpdateSAPEntries(serviceContext));
-			_invoke(() -> _addOrUpdateSegmentsEntries(serviceContext));
+			Map<String, String> segmentsEntriesIdsStringUtilReplaceValues =
+				_invoke(() -> _addOrUpdateSegmentsEntries(serviceContext));
 			_invoke(() -> _addSiteConfiguration(serviceContext));
 			_invoke(() -> _addSiteSettings(serviceContext));
 			_invoke(() -> _addStyleBookEntries(serviceContext));
@@ -838,7 +839,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 			Map<String, String>
 				objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,
 			Layout layout, String resourcePath, ServiceContext serviceContext,
-			Map<String, String> taxonomyCategoryIdsStringUtilReplaceValues)
+			Map<String, String> taxonomyCategoryIdsStringUtilReplaceValues, long segmentExperienceId)
 		throws Exception {
 
 		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
@@ -911,7 +912,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 						_layoutPageTemplatesImporter.importPageElement(
 							draftLayout, layoutStructure,
 							layoutStructure.getMainItemId(),
-							jsonArray.getString(i), i);
+							jsonArray.getString(i), i, segmentExperienceId);
 					}
 				}
 			}
@@ -1073,7 +1074,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 				documentsStringUtilReplaceValues,
 				objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,
 				entry.getValue(), entry.getKey(), serviceContext,
-				taxonomyCategoryIdsStringUtilReplaceValues);
+				taxonomyCategoryIdsStringUtilReplaceValues, 0l);
 		}
 
 		_addSiteNavigationMenus(serviceContext, siteNavigationMenuItemSettings);
@@ -2865,14 +2866,14 @@ public class BundleSiteInitializer implements SiteInitializer {
 		}
 	}
 
-	private void _addOrUpdateSegmentsEntries(ServiceContext serviceContext)
+	private Map<String, String> _addOrUpdateSegmentsEntries(ServiceContext serviceContext)
 		throws Exception {
 
 		String json = SiteInitializerUtil.read(
 			"/site-initializer/segments-entries.json", _servletContext);
 
 		if (json == null) {
-			return;
+			return null;
 		}
 
 		JSONArray jsonArray = JSONFactoryUtil.createJSONArray(json);
@@ -2904,7 +2905,9 @@ public class BundleSiteInitializer implements SiteInitializer {
 					jsonObject.getString("criteria"), serviceContext);
 			}
 		}
+		return null;
 	}
+
 
 	private Long _addOrUpdateStructuredContentFolders(
 			Long documentFolderId, String parentResourcePath,
