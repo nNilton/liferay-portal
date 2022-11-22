@@ -17,7 +17,7 @@ package com.liferay.portal.vulcan.internal.graphql.servlet.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
-import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.vulcan.graphql.servlet.ServletData;
 
@@ -49,23 +49,27 @@ public class GraphQLServletTest extends BaseGraphQLServlet {
 
 		BundleContext bundleContext = bundle.getBundleContext();
 
-		String field = RandomTestUtil.randomString();
-		long id = RandomTestUtil.randomLong();
+		TestServletData testServletData = new TestServletData();
 
 		ServiceRegistration<ServletData> serviceRegistration =
 			bundleContext.registerService(
-				ServletData.class, new TestServletData(field, id), null);
+				ServletData.class, testServletData, null);
 
-		String key = RandomTestUtil.randomString();
+		String testDTOSimpleClassName = StringUtil.lowerCaseFirstLetter(
+			TestQuery.TestDTO.class.getSimpleName());
 
 		GraphQLField graphQLField = new GraphQLField(
-			key, new GraphQLField("field"), new GraphQLField("id"));
+			testDTOSimpleClassName, new GraphQLField("field"),
+			new GraphQLField("_id"));
 
 		JSONObject jsonObject = JSONUtil.getValueAsJSONObject(
-			invoke(graphQLField), "JSONObject/data", "JSONObject/" + key);
+			invoke(graphQLField), "JSONObject/data",
+			"JSONObject/" + testDTOSimpleClassName);
 
-		Assert.assertEquals(jsonObject.get("field"), field);
-		Assert.assertEquals(jsonObject.get("id"), id);
+		TestQuery testQuery = testServletData.getQuery();
+
+		Assert.assertEquals(jsonObject.get("field"), testQuery.getField());
+		Assert.assertEquals(jsonObject.get("_id"), testQuery.getId());
 
 		serviceRegistration.unregister();
 	}

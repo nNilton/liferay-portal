@@ -16,15 +16,24 @@ import classNames from 'classnames';
 import React from 'react';
 
 interface ILoadingProps {
+	absolute?: boolean;
 	inline?: boolean;
 }
 
-const Loading: React.FC<ILoadingProps> = ({inline = false}) => {
+const Loading: React.FC<ILoadingProps> = ({
+	absolute = false,
+	inline = false,
+}) => {
 	return (
 		<span
 			className={classNames({'inline-item inline-item-before': inline})}
 		>
-			<span aria-hidden="true" className="loading-animation" />
+			<span
+				aria-hidden="true"
+				className={classNames('loading-animation', {
+					'loading-absolute': absolute,
+				})}
+			/>
 		</span>
 	);
 };

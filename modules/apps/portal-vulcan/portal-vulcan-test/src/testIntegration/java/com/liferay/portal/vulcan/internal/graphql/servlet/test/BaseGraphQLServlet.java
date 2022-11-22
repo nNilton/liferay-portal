@@ -22,7 +22,6 @@ import com.liferay.portal.kernel.util.Base64;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.HttpUtil;
-import com.liferay.portal.vulcan.graphql.annotation.GraphQLTypeExtension;
 import com.liferay.portal.vulcan.graphql.servlet.ServletData;
 
 import java.util.Arrays;
@@ -35,59 +34,7 @@ import java.util.Map;
  */
 public class BaseGraphQLServlet {
 
-	public class TestDTO {
-
-		public TestDTO(long id) {
-			_id = id;
-		}
-
-		public long getId() {
-			return _id;
-		}
-
-		@com.liferay.portal.vulcan.graphql.annotation.GraphQLField
-		private long _id;
-
-	}
-
-	public class TestQuery {
-
-		public TestQuery(String field, long id) {
-			_field = field;
-			_id = id;
-		}
-
-		@com.liferay.portal.vulcan.graphql.annotation.GraphQLField
-		public BaseGraphQLServlet.TestDTO testDTO() throws Exception {
-			return new TestDTO(_id);
-		}
-
-		@GraphQLTypeExtension(TestDTO.class)
-		public class TestGraphQLTypeExtension {
-
-			public TestGraphQLTypeExtension(TestDTO testDTO) {
-				_testDTO = testDTO;
-			}
-
-			@com.liferay.portal.vulcan.graphql.annotation.GraphQLField
-			public String field() {
-				return _field;
-			}
-
-			private final TestDTO _testDTO;
-
-		}
-
-		private final String _field;
-		private final long _id;
-
-	}
-
 	public class TestServletData implements ServletData {
-
-		public TestServletData(String field, long id) {
-			_testQuery = new TestQuery(field, id);
-		}
 
 		@Override
 		public Object getMutation() {
@@ -100,11 +47,11 @@ public class BaseGraphQLServlet {
 		}
 
 		@Override
-		public Object getQuery() {
+		public TestQuery getQuery() {
 			return _testQuery;
 		}
 
-		private final TestQuery _testQuery;
+		private final TestQuery _testQuery = new TestQuery();
 
 	}
 

@@ -12,12 +12,18 @@
  * details.
  */
 
-import React from 'react';
-interface IPanelProps {
-	onSyncAllAccountsChange: () => void;
-	onSyncAllContactsChange: () => void;
-	syncAllAccounts: boolean;
-	syncAllContacts: boolean;
+/// <reference types="react" />
+
+interface ReadOnlyContainerProps {
+	disabled?: boolean;
+	objectFieldSettings: ObjectFieldSetting[];
+	requiredField: boolean;
+	setValues: (value: Partial<ObjectField>) => void;
 }
-declare const SelectPanels: React.FC<IPanelProps>;
-export default SelectPanels;
+export declare function ReadOnlyContainer({
+	disabled,
+	objectFieldSettings,
+	requiredField,
+	setValues,
+}: ReadOnlyContainerProps): JSX.Element;
+export {};

@@ -13,9 +13,8 @@
  */
 
 import React from 'react';
-import {ESteps} from '../pages/wizard/WizardPage';
 interface IConnectProps {
-	onChangeStep?: (step: ESteps) => void;
+	onConnect?: () => void;
 	title: string;
 }
 declare const Connect: React.FC<IConnectProps>;

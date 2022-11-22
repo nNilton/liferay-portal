@@ -12,19 +12,26 @@
  * details.
  */
 
-import React from 'react';
-declare type TState = {
-	accountsCount: number;
-	organizationsCount: number;
-	usersCount: number;
-};
-declare const useData: () => TState;
-declare const useDispatch: () => any;
-export declare enum Events {
-	AccountsCount = 'ACCOUNTS_COUNT',
-	OrganizationsCount = 'ORGANIZATIONS_COUNT',
-	UsersCount = 'USERS_COUNT',
+import {TFormattedItems} from '../components/table/Table';
+
+export function getIds(items: TFormattedItems, initialIds: number[]): number[] {
+	const ids = [...initialIds];
+
+	Object.values(items).forEach((item) => {
+		if (ids.length) {
+			ids.forEach((id, index) => {
+				if (id === Number(item.id) && !item.checked) {
+					ids.splice(index, 1);
+				}
+				else if (id !== Number(item.id) && item.checked) {
+					ids.push(Number(item.id));
+				}
+			});
+		}
+		else if (item.checked) {
+			ids.push(Number(item.id));
+		}
+	});
+
+	return [...new Set(ids)];
 }
-declare const PeopleContextProvider: React.FC;
-export {useData, useDispatch};
-export default PeopleContextProvider;
