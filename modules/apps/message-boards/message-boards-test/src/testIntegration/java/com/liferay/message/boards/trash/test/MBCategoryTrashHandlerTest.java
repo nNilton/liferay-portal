@@ -25,6 +25,7 @@ import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.TrashedModel;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
@@ -133,8 +134,8 @@ public class MBCategoryTrashHandlerTest
 		MBCategory parentCategory = (MBCategory)parentBaseModel;
 
 		return MBCategoryLocalServiceUtil.addCategory(
-			TestPropsValues.getUserId(), parentCategory.getCategoryId(), _TITLE,
-			StringPool.BLANK, serviceContext);
+			TestPropsValues.getUserId(), parentCategory.getCategoryId(),
+			RandomTestUtil.randomString(75), StringPool.BLANK, serviceContext);
 	}
 
 	@Override
@@ -144,8 +145,8 @@ public class MBCategoryTrashHandlerTest
 
 		return MBCategoryLocalServiceUtil.addCategory(
 			TestPropsValues.getUserId(),
-			MBCategoryConstants.DEFAULT_PARENT_CATEGORY_ID, _TITLE,
-			StringPool.BLANK, serviceContext);
+			MBCategoryConstants.DEFAULT_PARENT_CATEGORY_ID,
+			RandomTestUtil.randomString(75), StringPool.BLANK, serviceContext);
 	}
 
 	@Override
@@ -185,8 +186,8 @@ public class MBCategoryTrashHandlerTest
 		throws Exception {
 
 		return MBCategoryLocalServiceUtil.addCategory(
-			TestPropsValues.getUserId(), parentBaseModelId, _TITLE,
-			StringPool.BLANK, serviceContext);
+			TestPropsValues.getUserId(), parentBaseModelId,
+			RandomTestUtil.randomString(75), StringPool.BLANK, serviceContext);
 	}
 
 	@Override
