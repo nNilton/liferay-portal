@@ -29,6 +29,14 @@ import java.util.Objects;
 public class SiteInitializerTestrayAutoFillBuilds
 	extends SiteInitializerTestrayAutoFillWrapper {
 
+	public SiteInitializerTestrayAutoFillBuilds() {
+	}
+
+	public SiteInitializerTestrayAutoFillBuilds(
+		SiteInitializerTestrayAutoFill siteInitializerTestrayAutoFill) {
+		super(siteInitializerTestrayAutoFill);
+	}
+
 	@Override
 	public void testrayAutoFill(
 			long companyId, ObjectEntry objectEntry1, ObjectEntry objectEntry2)

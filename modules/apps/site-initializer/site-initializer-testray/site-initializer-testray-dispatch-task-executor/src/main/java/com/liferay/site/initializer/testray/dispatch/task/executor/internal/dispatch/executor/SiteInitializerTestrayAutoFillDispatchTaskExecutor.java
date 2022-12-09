@@ -33,6 +33,7 @@ import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 import com.liferay.site.initializer.testray.dispatch.task.executor.internal.dispatch.executor.autofill.util.SiteInitializerTestrayAutoFillBuilds;
+import com.liferay.site.initializer.testray.dispatch.task.executor.internal.dispatch.executor.autofill.util.SiteInitializerTestrayAutoFillCaseResults;
 import com.liferay.site.initializer.testray.dispatch.task.executor.internal.dispatch.executor.autofill.util.SiteInitializerTestrayAutoFillRuns;
 import com.liferay.site.initializer.testray.dispatch.task.executor.internal.dispatch.executor.autofill.util.SiteInitializerTestrayAutoFillWrapper;
 
@@ -121,7 +122,7 @@ public class SiteInitializerTestrayAutoFillDispatchTaskExecutor
 		if (StringUtil.equals(autoFillType, "Run")) {
 			SiteInitializerTestrayAutoFillWrapper
 				siteInitializerTestrayAutoFillWrapper =
-					new SiteInitializerTestrayAutoFillRuns();
+					new SiteInitializerTestrayAutoFillRuns(new SiteInitializerTestrayAutoFillCaseResults());
 
 			siteInitializerTestrayAutoFillWrapper.testrayAutoFill(
 				companyId, objectEntry1, objectEntry2);
@@ -129,7 +130,7 @@ public class SiteInitializerTestrayAutoFillDispatchTaskExecutor
 		else if (StringUtil.equals(autoFillType, "Build")) {
 			SiteInitializerTestrayAutoFillWrapper
 				siteInitializerTestrayAutoFillWrapper =
-					new SiteInitializerTestrayAutoFillBuilds();
+					new SiteInitializerTestrayAutoFillBuilds(new SiteInitializerTestrayAutoFillCaseResults());
 
 			siteInitializerTestrayAutoFillWrapper.testrayAutoFill(
 				companyId, objectEntry1, objectEntry2);
