@@ -26,10 +26,15 @@ import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
+import com.liferay.site.initializer.testray.dispatch.task.executor.internal.dispatch.executor.autofill.util.SiteInitializerTestrayAutoFillBuilds;
+import com.liferay.site.initializer.testray.dispatch.task.executor.internal.dispatch.executor.autofill.util.SiteInitializerTestrayAutoFillRuns;
+import com.liferay.site.initializer.testray.dispatch.task.executor.internal.dispatch.executor.autofill.util.SiteInitializerTestrayAutoFillWrapper;
 
 /**
  * @author Nilton Vieira
@@ -56,7 +61,8 @@ public class SiteInitializerTestrayAutoFillDispatchTaskExecutor
 			dispatchTrigger.getDispatchTaskSettingsUnicodeProperties();
 
 		if (Validator.isNull(unicodeProperties.getProperty("testrayEntity1")) ||
-			Validator.isNull(unicodeProperties.getProperty("testrayEntity2"))) {
+			Validator.isNull(unicodeProperties.getProperty("testrayEntity2")) ||
+			Validator.isNull(unicodeProperties.getProperty("autoFillType"))) {
 
 			_log.error("The required properties are not set");
 
@@ -81,6 +87,8 @@ public class SiteInitializerTestrayAutoFillDispatchTaskExecutor
 
 		try {
 			loadObjectDefinitions(dispatchTrigger.getCompanyId());
+
+			_process(dispatchTrigger.getCompanyId(), unicodeProperties);
 		}
 		finally {
 			PermissionThreadLocal.setPermissionChecker(
@@ -95,10 +103,40 @@ public class SiteInitializerTestrayAutoFillDispatchTaskExecutor
 		return "testray-autofill";
 	}
 
-	private void _autoFillRuns(
-			long companyId, ObjectEntry testrayRunObjectEntry1,
-			ObjectEntry testrayRunObjectEntry2)
+	private void _process(long companyId, UnicodeProperties unicodeProperties)
 		throws Exception {
+
+		long testrayEntityId1 = GetterUtil.getLong(
+			unicodeProperties.getProperty("testrayEntityId1"));
+		long testrayEntityId2 = GetterUtil.getLong(
+			unicodeProperties.getProperty("testrayEntityId1"));
+		String autoFillType = GetterUtil.getString(
+			unicodeProperties.getProperty("autoFillType"));
+
+		ObjectEntry objectEntry1 = getObjectEntry(
+			autoFillType, testrayEntityId1);
+		ObjectEntry objectEntry2 = getObjectEntry(
+			autoFillType, testrayEntityId2);
+
+		if (StringUtil.equals(autoFillType, "Run")) {
+			SiteInitializerTestrayAutoFillWrapper
+				siteInitializerTestrayAutoFillWrapper =
+					new SiteInitializerTestrayAutoFillRuns();
+
+			siteInitializerTestrayAutoFillWrapper.testrayAutoFill(
+				companyId, objectEntry1, objectEntry2);
+		}
+		else if (StringUtil.equals(autoFillType, "Build")) {
+			SiteInitializerTestrayAutoFillWrapper
+				siteInitializerTestrayAutoFillWrapper =
+					new SiteInitializerTestrayAutoFillBuilds();
+
+			siteInitializerTestrayAutoFillWrapper.testrayAutoFill(
+				companyId, objectEntry1, objectEntry2);
+		}
+		else {
+			_log.error("AutoFill type selected is not available");
+		}
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
