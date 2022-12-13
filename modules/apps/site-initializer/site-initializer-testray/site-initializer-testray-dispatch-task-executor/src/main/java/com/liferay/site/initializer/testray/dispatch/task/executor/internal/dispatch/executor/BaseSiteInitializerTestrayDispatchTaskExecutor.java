@@ -20,8 +20,12 @@ import com.liferay.object.rest.dto.v1_0.ObjectEntry;
 import com.liferay.object.rest.manager.v1_0.ObjectEntryManager;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.search.Sort;
+import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
+import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.ListUtil;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.vulcan.aggregation.Aggregation;
@@ -40,6 +44,14 @@ import org.osgi.service.component.annotations.Reference;
 public abstract class BaseSiteInitializerTestrayDispatchTaskExecutor
 	extends BaseDispatchTaskExecutor {
 
+	public BaseSiteInitializerTestrayDispatchTaskExecutor() {
+		user = _userLocalService.fetchUser(PrincipalThreadLocal.getUserId());
+
+		defaultDTOConverterContext = new DefaultDTOConverterContext(
+			false, null, null, null, null, LocaleUtil.getSiteDefault(), null,
+			user);
+	}
+
 	protected ObjectEntry addObjectEntry(
 			String objectDefinitionShortName, Map<String, Object> properties)
 		throws Exception {
@@ -51,7 +63,7 @@ public abstract class BaseSiteInitializerTestrayDispatchTaskExecutor
 
 		objectEntry.setProperties(properties);
 
-		return objectEntryManager.addObjectEntry(
+		return _objectEntryManager.addObjectEntry(
 			defaultDTOConverterContext, objectDefinition, objectEntry, null);
 	}
 
@@ -59,7 +71,7 @@ public abstract class BaseSiteInitializerTestrayDispatchTaskExecutor
 			String objectDefinitionShortName)
 		throws Exception {
 
-		ObjectDefinition objectDefinition = objectDefinitionsMap.get(
+		ObjectDefinition objectDefinition = _objectDefinitionsMap.get(
 			objectDefinitionShortName);
 
 		if (objectDefinition == null) {
@@ -87,7 +99,7 @@ public abstract class BaseSiteInitializerTestrayDispatchTaskExecutor
 			String objectDefinitionShortName, Sort[] sorts)
 		throws Exception {
 
-		return objectEntryManager.getObjectEntries(
+		return _objectEntryManager.getObjectEntries(
 			companyId, getObjectDefinition(objectDefinitionShortName), null,
 			aggregation, defaultDTOConverterContext, filter, null, null, sorts);
 	}
@@ -96,7 +108,7 @@ public abstract class BaseSiteInitializerTestrayDispatchTaskExecutor
 			String objectDefinitionShortName, long objectEntryId)
 		throws Exception {
 
-		return objectEntryManager.getObjectEntry(
+		return _objectEntryManager.getObjectEntry(
 			defaultDTOConverterContext,
 			getObjectDefinition(objectDefinitionShortName), objectEntryId);
 	}
@@ -132,7 +144,7 @@ public abstract class BaseSiteInitializerTestrayDispatchTaskExecutor
 
 	protected void loadObjectDefinitions(long companyId) {
 		List<ObjectDefinition> objectDefinitions =
-			objectDefinitionLocalService.getObjectDefinitions(
+			_objectDefinitionLocalService.getObjectDefinitions(
 				companyId, true, WorkflowConstants.STATUS_APPROVED);
 
 		if (ListUtil.isEmpty(objectDefinitions)) {
@@ -140,7 +152,7 @@ public abstract class BaseSiteInitializerTestrayDispatchTaskExecutor
 		}
 
 		for (ObjectDefinition objectDefinition : objectDefinitions) {
-			objectDefinitionsMap.put(
+			_objectDefinitionsMap.put(
 				objectDefinition.getShortName(), objectDefinition);
 		}
 	}
@@ -150,21 +162,25 @@ public abstract class BaseSiteInitializerTestrayDispatchTaskExecutor
 			long objectEntryId)
 		throws Exception {
 
-		objectEntryManager.updateObjectEntry(
+		_objectEntryManager.updateObjectEntry(
 			defaultDTOConverterContext,
 			getObjectDefinition(objectDefinitionShortName), objectEntryId,
 			objectEntry);
 	}
 
 	protected DefaultDTOConverterContext defaultDTOConverterContext;
+	protected User user;
 
 	@Reference
-	protected ObjectDefinitionLocalService objectDefinitionLocalService;
+	private ObjectDefinitionLocalService _objectDefinitionLocalService;
 
-	protected final Map<String, ObjectDefinition> objectDefinitionsMap =
+	private final Map<String, ObjectDefinition> _objectDefinitionsMap =
 		new HashMap<>();
 
 	@Reference(target = "(object.entry.manager.storage.type=default)")
-	protected ObjectEntryManager objectEntryManager;
+	private ObjectEntryManager _objectEntryManager;
+
+	@Reference
+	private UserLocalService _userLocalService;
 
 }

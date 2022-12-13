@@ -23,23 +23,19 @@ import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
-import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.vulcan.aggregation.Aggregation;
 import com.liferay.portal.vulcan.aggregation.Facet;
-import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 import com.liferay.portal.vulcan.pagination.Page;
 
 import java.util.ArrayList;
@@ -50,7 +46,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Nilton Vieira
@@ -86,12 +81,6 @@ public class SiteInitializerTestrayTestFlowDispatchTaskExecutor
 
 			return;
 		}
-
-		User user = _userLocalService.getUser(dispatchTrigger.getUserId());
-
-		defaultDTOConverterContext = new DefaultDTOConverterContext(
-			false, null, null, null, null, LocaleUtil.getSiteDefault(), null,
-			user);
 
 		PermissionChecker originalPermissionChecker =
 			PermissionThreadLocal.getPermissionChecker();
@@ -346,8 +335,5 @@ public class SiteInitializerTestrayTestFlowDispatchTaskExecutor
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		SiteInitializerTestrayTestFlowDispatchTaskExecutor.class);
-
-	@Reference
-	private UserLocalService _userLocalService;
 
 }
