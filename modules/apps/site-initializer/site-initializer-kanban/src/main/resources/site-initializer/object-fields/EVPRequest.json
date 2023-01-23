@@ -1,0 +1,37 @@
+{
+	"listTypeDefinitionId":"[$LIST_TYPE_DEFINITION_ID:Request: Request Status$]",
+	"name": "requestStatus",
+	"objectDefinitionId": "[$OBJECT_DEFINITION_ID:EVPRequest$]",
+	"listTypeDefinitionExternalReferenceCode": "",
+	"indexed": true,
+	"defaultValue": "pendingEVPApproval",
+	"objectFieldSettings": [
+		{
+			"name": "stateFlow",
+			"value": {
+				"objectStates": [
+					{
+						"objectStateTransitions": [
+							{ "key": "rejected" },
+							{ "key": "closed" },
+							{ "key": "pendingFinanceApproval" },
+							{ "key": "needMoreInfo" },
+							{ "key": "pendingCompanyApproval" }
+						],
+						"key": "pendingEVPApproval"
+					}
+				]
+			}
+		}
+	],
+	"DBType": "String",
+	"label": { "en_US": "Request: Request Status" },
+	"type": "String",
+	"required": true,
+	"externalReferenceCode": "f253f0c0-9896-15d7-2ea6-f8d7b11d9aa2",
+	"indexedAsKeyword": false,
+	"system": false,
+	"indexedLanguageId": "",
+	"state": true,
+	"businessType": "Picklist"
+}
