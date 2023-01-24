@@ -2643,6 +2643,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 				_objectFieldLocalService.fetchObjectField(
 					objectDefinitionId, objectField.getName());
 
+
+
 			if (existingObjectField == null) {
 				objectFieldResource.postObjectDefinitionObjectField(
 					objectDefinitionId, objectField);
