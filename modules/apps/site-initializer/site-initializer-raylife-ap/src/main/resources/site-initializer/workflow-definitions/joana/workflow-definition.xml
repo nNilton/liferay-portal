@@ -1,0 +1,283 @@
+<?xml version="1.0"?>
+
+<workflow-definition
+	xmlns="urn:liferay.com:liferay-workflow_7.4.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="urn:liferay.com:liferay-workflow_7.4.0 http://www.liferay.com/dtd/liferay-workflow-definition_7_4_0.xsd"
+>
+	<version>14</version>
+	<condition>
+		<name>knockout</name>
+		<description>Has driver under influence accident</description>
+		<metadata>
+			<![CDATA[
+                {
+                    "xy": [
+                        591.434428185185,
+                        431.37119632287914
+                    ]
+                }
+            ]]>
+		</metadata>
+		<labels>
+			<label language-id="en_US">
+				knockout
+			</label>
+		</labels>
+		<script>
+			<![CDATA[returnValue = "Transition ID"]]>
+		</script>
+		<script-language>groovy</script-language>
+		<transitions>
+			<transition>
+				<labels>
+					<label language-id="en_US">
+						yes
+					</label>
+				</labels>
+				<name>f02d8885-0c98-4082-aec6-0b5d73e56240</name>
+				<target>rejected</target>
+				<default>true</default>
+			</transition>
+			<transition>
+				<labels>
+					<label language-id="en_US">
+						No
+					</label>
+				</labels>
+				<name>612e6f47-151d-43eb-959c-1f2bee731a00</name>
+				<target>underwriter</target>
+				<default>false</default>
+			</transition>
+		</transitions>
+	</condition>
+	<condition>
+		<name>hasAccident</name>
+		<description>Execute conditional logic.</description>
+		<metadata>
+			<![CDATA[
+                {
+                    "xy": [
+                        296.40988386352245,
+                        291.5206662806602
+                    ]
+                }
+            ]]>
+		</metadata>
+		<labels>
+			<label language-id="en_US">
+				hasAccident
+			</label>
+		</labels>
+		<script>
+			<![CDATA[returnValue = "Transition ID"]]>
+		</script>
+		<script-language>groovy</script-language>
+		<transitions>
+			<transition>
+				<labels>
+					<label language-id="en_US">
+						No
+					</label>
+				</labels>
+				<name>efa11ad7-e49b-4bb7-a92d-9f0326592cab</name>
+				<target>bound</target>
+				<default>true</default>
+			</transition>
+			<transition>
+				<labels>
+					<label language-id="en_US">
+						Yes
+					</label>
+				</labels>
+				<name>8ebf01b6-6785-48ed-9a0d-5e2572853463</name>
+				<target>knockout</target>
+				<default>false</default>
+			</transition>
+		</transitions>
+	</condition>
+	<state>
+		<name>created</name>
+		<description>Begin a workflow.</description>
+		<metadata>
+			<![CDATA[
+                {
+                    "xy": [
+                        300,
+                        100
+                    ]
+                }
+            ]]>
+		</metadata>
+		<initial>true</initial>
+		<labels>
+			<label language-id="en_US">
+				created
+			</label>
+		</labels>
+		<transitions>
+			<transition>
+				<labels>
+					<label language-id="en_US">
+						Transition Label
+					</label>
+				</labels>
+				<name>0e3c4eb4-cdc7-4f4e-be84-f17858e75a9c</name>
+				<target>hasAccident</target>
+				<default>true</default>
+			</transition>
+		</transitions>
+	</state>
+	<state>
+		<name>bound</name>
+		<description>Conclude the workflow.</description>
+		<metadata>
+			<![CDATA[
+                {
+                    "xy": [
+                        -201.47738586166153,
+                        641.2854538242459
+                    ],
+                    "terminal": true
+                }
+            ]]>
+		</metadata>
+		<labels>
+			<label language-id="en_US">
+				bound
+			</label>
+		</labels>
+	</state>
+	<state>
+		<name>rejected</name>
+		<description>Conclude the workflow.</description>
+		<metadata>
+			<![CDATA[
+                {
+                    "xy": [
+                        291.3596734991112,
+                        641.7050525336012
+                    ],
+                    "terminal": true
+                }
+            ]]>
+		</metadata>
+		<labels>
+			<label language-id="en_US">
+				rejected
+			</label>
+		</labels>
+	</state>
+	<task>
+		<name>underwriter</name>
+		<description>Ask a user to work on the item.</description>
+		<metadata>
+			<![CDATA[
+                {
+                    "xy": [
+                        864.9828288861826,
+                        648.041988003951
+                    ]
+                }
+            ]]>
+		</metadata>
+		<actions>
+			<notification>
+				<name>Review Notification</name>
+				<description>
+					<![CDATA[]]>
+				</description>
+				<template>
+					<![CDATA[${userName} sent you a ${entryType} for review in the workflow.]]>
+				</template>
+				<template-language>freemarker</template-language>
+				<notification-type>email</notification-type>
+				<notification-type>user-notification</notification-type>
+				<recipients receptionType="to">
+					<assignees />
+				</recipients>
+				<execution-type>onAssignment</execution-type>
+			</notification>
+			<notification>
+				<name>Review Completion Notification</name>
+				<description>
+					<![CDATA[]]>
+				</description>
+				<template>
+					<![CDATA[Your submission was reviewed<#if taskComments?has_content> and the reviewer applied the following ${taskComments}</#if>.]]>
+				</template>
+				<template-language>freemarker</template-language>
+				<notification-type>user-notification</notification-type>
+				<execution-type>onExit</execution-type>
+			</notification>
+		</actions>
+		<assignments>
+			<roles>
+				<role>
+					<role-id>"[#ROLE_ID:Underwriter#]"</role-id>
+				</role>
+			</roles>
+		</assignments>
+		<labels>
+			<label language-id="en_US">
+				underwriter
+			</label>
+		</labels>
+		<transitions>
+			<transition>
+				<labels>
+					<label language-id="en_US">
+						Reject
+					</label>
+				</labels>
+				<name>90fcfb67-6d36-4104-b40a-16595ad299d8</name>
+				<target>rejected</target>
+				<default>true</default>
+			</transition>
+			<transition>
+				<labels>
+					<label language-id="en_US">
+						Approve
+					</label>
+				</labels>
+				<name>634629db-f592-4864-bbed-685fd45477e3</name>
+				<target>reviewed</target>
+				<default>false</default>
+			</transition>
+		</transitions>
+	</task>
+	<task>
+		<name>reviewed</name>
+		<description>Approved by underwriter.</description>
+		<metadata>
+			<![CDATA[
+                {
+                    "xy": [
+                        874.850114191806,
+                        880.2169627493331
+                    ]
+                }
+            ]]>
+		</metadata>
+		<assignments>
+			<user />
+		</assignments>
+		<labels>
+			<label language-id="en_US">
+				reviewed
+			</label>
+		</labels>
+		<transitions>
+			<transition>
+				<labels>
+					<label language-id="en_US">
+						collect Payment
+					</label>
+				</labels>
+				<name>collect Payment</name>
+				<target>bound</target>
+				<default>true</default>
+			</transition>
+		</transitions>
+	</task>
+</workflow-definition>

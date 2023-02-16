@@ -1,0 +1,59 @@
+{
+	"definition": {
+		"indexed": true,
+		"layout": {
+			"borderWidth": 0,
+			"marginBottom": 0,
+			"marginLeft": 0,
+			"marginRight": 0,
+			"marginTop": 0,
+			"opacity": 100,
+			"paddingBottom": 0,
+			"paddingLeft": 0,
+			"paddingRight": 0,
+			"paddingTop": 0,
+			"widthType": "Fluid"
+		}
+	},
+	"pageElements": [
+		{
+			"definition": {
+				"fragment": {
+					"key": "BASIC_COMPONENT-date"
+				},
+				"fragmentConfig": {},
+				"fragmentFields": [
+					{
+						"id": "element-date",
+						"value": {
+							"fragmentLink": {}
+						}
+					}
+				],
+				"indexed": true
+			},
+			"type": "Fragment"
+		},
+		{
+			"definition": {
+				"fragment": {
+					"key": "BASIC_COMPONENT-heading"
+				},
+				"fragmentConfig": {
+					"headingLevel": "h1"
+				},
+				"fragmentFields": [
+					{
+						"id": "element-text",
+						"value": {
+							"fragmentLink": {}
+						}
+					}
+				],
+				"indexed": true
+			},
+			"type": "Fragment"
+		}
+	],
+	"type": "Section"
+}
