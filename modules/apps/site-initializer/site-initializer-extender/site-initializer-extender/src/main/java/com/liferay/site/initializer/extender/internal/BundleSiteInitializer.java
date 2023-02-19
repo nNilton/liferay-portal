@@ -422,8 +422,10 @@ public class BundleSiteInitializer implements SiteInitializer {
 		}
 
 		try {
-			User user = _userLocalService.getUser(
-				PrincipalThreadLocal.getUserId());
+
+			Group group = _groupLocalService.getGroup(groupId);
+
+			User user = _userLocalService.getUser(group.getCreatorUserId());
 
 			ServiceContext serviceContextThreadLocal =
 				ServiceContextThreadLocal.getServiceContext();
