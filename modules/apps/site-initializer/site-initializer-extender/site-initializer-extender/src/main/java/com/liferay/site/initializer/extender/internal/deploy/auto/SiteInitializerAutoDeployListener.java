@@ -22,14 +22,20 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.util.StringUtil;
+import java.net.URL;
+import com.liferay.portal.kernel.util.Validator;
+import com.liferay.site.initializer.SiteInitializerFactory;
 
+import java.io.File;
+import java.util.Enumeration;
 import java.util.zip.ZipFile;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
 /**
- * @author José Abelenda
+ * @author Nilton Vieira
  */
 @Component(service = AutoDeployListener.class)
 public class SiteInitializerAutoDeployListener implements AutoDeployListener {
@@ -52,7 +58,50 @@ public class SiteInitializerAutoDeployListener implements AutoDeployListener {
 	public boolean isDeployable(AutoDeploymentContext autoDeploymentContext)
 		throws AutoDeployException {
 
-		return true;
+		File file = autoDeploymentContext.getFile();
+
+		String fileName = file.getName();
+
+		if (!StringUtil.endsWith(fileName, ".zip")) {
+			return false;
+		}
+
+		try (ZipFile zipFile = new ZipFile(file)) {
+
+			Enumeration<URL> enumeration = zipFile.entries();
+
+
+
+
+
+
+			for (BatchEngineZipUnit batchEngineZipUnit :
+				_getBatchEngineZipUnits(zipFile)) {
+
+				if (!batchEngineZipUnit.isValid()) {
+					continue;
+				}
+
+				BatchEngineImportConfiguration batchEngineImportConfiguration =
+					_getBatchEngineImportConfiguration(batchEngineZipUnit);
+
+				if ((batchEngineImportConfiguration != null) &&
+					(batchEngineImportConfiguration.companyId > 0) &&
+					(batchEngineImportConfiguration.userId > 0) &&
+					Validator.isNotNull(
+						batchEngineImportConfiguration.className) &&
+					Validator.isNotNull(
+						batchEngineImportConfiguration.version)) {
+
+					return true;
+				}
+			}
+		}
+		catch (Exception exception) {
+			throw new AutoDeployException(exception);
+		}
+
+
 	}
 
 	private void _deploy(ZipFile zipFile) throws Exception {
@@ -65,6 +114,9 @@ public class SiteInitializerAutoDeployListener implements AutoDeployListener {
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		SiteInitializerAutoDeployListener.class);
+
+	@Reference
+	private SiteInitializerFactory _siteInitializerFactory;
 
 	@Reference
 	private CompanyLocalService _companyLocalService;
