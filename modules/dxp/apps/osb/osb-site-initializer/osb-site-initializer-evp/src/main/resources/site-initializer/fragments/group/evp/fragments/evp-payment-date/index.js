@@ -46,7 +46,7 @@ const getPaymentDataFromRequest = async () => {
 		return null;
 	});
 
-	const paymentDate = new Date(paymentDataFromRequest[0].paymentDate);
+	const paymentDate = new Date(paymentDataFromRequests[0].paymentDate);
 
 	const formattedPaymentDate =
 		paymentDate.getMonth() +
