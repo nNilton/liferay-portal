@@ -2,6 +2,9 @@
 [#assign objectRequest = (request.getAttribute("INFO_ITEM_REFERENCE"))! /]
 [#assign requestId = objectRequest.classPK! /]
 [#assign URL = (layoutURL?substring(0, layoutURL?lastIndexOf('/')))! /]
+[#assign approvedRoles =["Administrator", "Finance User"]/]
+[#assign userRoles = permissionChecker.getUserBag().getRoles()/]
+[#assign requestStatus = (restClient.get("/c/evporganizations/" + requestId).organizationStatus.key)! /]
 
 <div id="evp-organization-kebab-button">
 	[@liferay_ui["icon-menu"]
@@ -14,6 +17,19 @@
 			message="Details"
 			url=URL + "/l/" + requestId
 		/]
+	[#list userRoles as role]
+			[#if approvedRoles?seqContains(role.name)]
+
+				[#if requestStatus == "awaitingFinanceApproval"]
+					[@liferay_ui["icon"]
+						message="Edit"
+						url=URL + "/edit-organization-form?id=" + requestId
+					/]
+				[/#if]
+
+				[#break]
+			[/#if]
+		[/#list]
 
 	[/@]
 </div>
