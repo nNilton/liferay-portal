@@ -14,14 +14,18 @@
 
 package com.liferay.jethr0.dalo;
 
+import com.liferay.jethr0.gitbranch.GitBranch;
 import com.liferay.jethr0.project.Project;
 import com.liferay.jethr0.project.ProjectFactory;
+import com.liferay.jethr0.testsuite.TestSuite;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.json.JSONObject;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -68,13 +72,54 @@ public class ProjectDALO extends BaseDALO {
 		List<Project> projects = new ArrayList<>();
 
 		for (JSONObject jsonObject : retrieve()) {
-			projects.add(ProjectFactory.newProject(jsonObject));
+			Project project = ProjectFactory.newProject(jsonObject);
+
+			project.addGitBranches(
+				_projectGitBranchDALO.retrieveGitBranches(project));
+			project.addTestSuites(
+				_projectTestSuiteDALO.retrieveTestSuites(project));
+
+			projects.add(project);
 		}
 
 		return projects;
 	}
 
 	public Project updateProject(Project project) {
+		List<GitBranch> gitBranches = _projectGitBranchDALO.retrieveGitBranches(
+			project);
+
+		for (GitBranch gitBranch : project.getGitBranches()) {
+			if (gitBranches.contains(gitBranch)) {
+				gitBranches.removeAll(Collections.singletonList(gitBranch));
+
+				continue;
+			}
+
+			_projectGitBranchDALO.createRelationship(project, gitBranch);
+		}
+
+		for (GitBranch gitBranch : gitBranches) {
+			_projectGitBranchDALO.deleteRelationship(project, gitBranch);
+		}
+
+		List<TestSuite> testSuites = _projectTestSuiteDALO.retrieveTestSuites(
+			project);
+
+		for (TestSuite testSuite : project.getTestSuites()) {
+			if (testSuites.contains(testSuite)) {
+				testSuites.removeAll(Collections.singletonList(testSuite));
+
+				continue;
+			}
+
+			_projectTestSuiteDALO.createRelationship(project, testSuite);
+		}
+
+		for (TestSuite testSuite : testSuites) {
+			_projectTestSuiteDALO.deleteRelationship(project, testSuite);
+		}
+
 		JSONObject responseJSONObject = update(project.getJSONObject());
 
 		if (responseJSONObject == null) {
@@ -87,5 +132,11 @@ public class ProjectDALO extends BaseDALO {
 	protected String getObjectDefinitionLabel() {
 		return "Project";
 	}
+
+	@Autowired
+	private ProjectGitBranchDALO _projectGitBranchDALO;
+
+	@Autowired
+	private ProjectTestSuiteDALO _projectTestSuiteDALO;
 
 }

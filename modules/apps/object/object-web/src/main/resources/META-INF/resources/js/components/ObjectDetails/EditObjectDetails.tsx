@@ -12,10 +12,13 @@
  * details.
  */
 
-import {API, openToast} from '@liferay/object-js-components-web';
+import {
+	API,
+	getLocalizableLabel,
+	openToast,
+} from '@liferay/object-js-components-web';
 import React, {useEffect, useState} from 'react';
 
-import {defaultLanguageId} from '../../utils/constants';
 import ObjectManagementToolbar from '../ObjectManagementToolbar';
 import {ConfigurationContainer} from './ConfigurationContainer';
 import {EntryDisplayContainer} from './EntryDisplayContainer';
@@ -26,6 +29,7 @@ import {useObjectDetailsForm} from './useObjectDetailsForm';
 
 import './ObjectDetails.scss';
 import {AccountRestrictionContainer} from './AccountRestrictionContainer';
+import {TranslationsContainer} from './TranslationsContainer';
 
 export type KeyValuePair = {
 	key: string;
@@ -99,6 +103,7 @@ export default function EditObjectDetails({
 		values,
 	} = useObjectDetailsForm({
 		initialValues: {
+			defaultLanguageId: 'en_US',
 			externalReferenceCode,
 			id: objectDefinitionId,
 			label,
@@ -211,11 +216,11 @@ export default function EditObjectDetails({
 						hasUpdateObjectDefinitionPermission
 					}
 					isApproved={isApproved}
-					label={
-						(values?.label as LocalizedValue<string>)[
-							defaultLanguageId
-						] as string
-					}
+					label={getLocalizableLabel(
+						values.defaultLanguageId as Liferay.Language.Locale,
+						values.label,
+						values.name
+					)}
 					objectDefinitionId={objectDefinitionId}
 					onSubmit={onSubmit}
 					portletNamespace={portletNamespace}
@@ -278,6 +283,13 @@ export default function EditObjectDetails({
 						setValues={setValues}
 						values={values}
 					/>
+
+					{Liferay.FeatureFlags['LPS-146755'] && (
+						<TranslationsContainer
+							setValues={setValues}
+							values={values}
+						/>
+					)}
 				</Sheet>
 			</div>
 		</>

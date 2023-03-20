@@ -14,7 +14,7 @@ definition {
 		}
 
 		task ("Add a new site") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 
 		task ("Add a new user") {
@@ -571,7 +571,7 @@ definition {
 
 				ApplicationsMenu.gotoSite(site = "Test Site Name");
 
-				ControlMenu.viewHeaderTitle(headerTitle = "Test Page Name *");
+				ControlMenu.viewHeaderDraftTitle(headerTitle = "Test Page Name");
 
 				ContentPages.gotoPageEditor();
 

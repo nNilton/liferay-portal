@@ -35,18 +35,15 @@ import com.liferay.portal.kernel.change.tracking.CTAware;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 import com.liferay.portal.vulcan.fields.NestedField;
 import com.liferay.portal.vulcan.fields.NestedFieldSupport;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 
-import java.io.Serializable;
-
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -72,25 +69,18 @@ public class PinResourceImpl
 			_csDiagramEntryService.fetchCSDiagramEntry(
 				csDiagramPin.getCPDefinitionId(), csDiagramPin.getSequence());
 
-		if (csDiagramEntry != null) {
-			List<CSDiagramPin> csDiagramPins =
+		if ((csDiagramEntry != null) &&
+			!ListUtil.exists(
 				_csDiagramPinService.getCSDiagramPins(
-					csDiagramPin.getCPDefinitionId(), -1, -1);
+					csDiagramPin.getCPDefinitionId(), -1, -1),
+				curCSDiagramPin ->
+					(csDiagramPin.getCSDiagramPinId() !=
+						curCSDiagramPin.getCSDiagramPinId()) &&
+					Objects.equals(
+						csDiagramPin.getSequence(),
+						curCSDiagramPin.getSequence()))) {
 
-			Stream<CSDiagramPin> csDiagramPinsStream = csDiagramPins.stream();
-
-			if (csDiagramPinsStream.filter(
-					curCSDiagramPin ->
-						curCSDiagramPin.getCSDiagramPinId() !=
-							csDiagramPin.getCSDiagramPinId()
-				).noneMatch(
-					curCSDiagramPin -> Objects.equals(
-						curCSDiagramPin.getSequence(),
-						csDiagramPin.getSequence())
-				)) {
-
-				_csDiagramEntryService.deleteCSDiagramEntry(csDiagramEntry);
-			}
+			_csDiagramEntryService.deleteCSDiagramEntry(csDiagramEntry);
 		}
 
 		_csDiagramPinService.deleteCSDiagramPin(csDiagramPin);
@@ -230,15 +220,10 @@ public class PinResourceImpl
 			ServiceContext serviceContext =
 				_serviceContextHelper.getServiceContext(groupId);
 
-			Map<String, Serializable> expandoBridgeAttributes =
+			serviceContext.setExpandoBridgeAttributes(
 				MappedProductUtil.getExpandoBridgeAttributes(
 					contextCompany.getCompanyId(),
-					contextAcceptLanguage.getPreferredLocale(), mappedProduct);
-
-			if (expandoBridgeAttributes != null) {
-				serviceContext.setExpandoBridgeAttributes(
-					expandoBridgeAttributes);
-			}
+					contextAcceptLanguage.getPreferredLocale(), mappedProduct));
 
 			CSDiagramEntry csDiagramEntry =
 				_csDiagramEntryService.fetchCSDiagramEntry(

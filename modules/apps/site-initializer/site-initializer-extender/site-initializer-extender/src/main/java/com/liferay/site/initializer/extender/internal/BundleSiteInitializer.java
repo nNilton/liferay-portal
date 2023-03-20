@@ -118,7 +118,6 @@ import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutConstants;
 import com.liferay.portal.kernel.model.LayoutSet;
 import com.liferay.portal.kernel.model.LayoutTypePortlet;
-import com.liferay.portal.kernel.model.ResourceAction;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.Theme;
@@ -186,6 +185,10 @@ import com.liferay.site.navigation.service.SiteNavigationMenuLocalService;
 import com.liferay.site.navigation.type.SiteNavigationMenuItemType;
 import com.liferay.site.navigation.type.SiteNavigationMenuItemTypeRegistry;
 import com.liferay.style.book.zip.processor.StyleBookEntryZipProcessor;
+
+import java.io.Serializable;
+
+import java.math.BigDecimal;
 
 import java.net.URL;
 import java.net.URLConnection;
@@ -444,8 +447,6 @@ public class BundleSiteInitializer implements SiteInitializer {
 			Map<String, String> ddmStructureEntryIdsStringUtilReplaceValues =
 				_invoke(() -> _addOrUpdateDDMStructures(serviceContext));
 
-			_invoke(() -> _addExpandoColumns(serviceContext));
-
 			Map<String, String> assetListEntryIdsStringUtilReplaceValues =
 				_invoke(
 					() -> _addAssetListEntries(
@@ -459,6 +460,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 					assetListEntryIdsStringUtilReplaceValues,
 					documentsStringUtilReplaceValues, serviceContext));
 
+			_invoke(() -> _addOrUpdateExpandoColumns(serviceContext));
 			_invoke(() -> _addOrUpdateKnowledgeBaseArticles(serviceContext));
 			_invoke(() -> _addOrUpdateOrganizations(serviceContext));
 
@@ -705,57 +707,6 @@ public class BundleSiteInitializer implements SiteInitializer {
 			_bundle, documentsStringUtilReplaceValues,
 			objectDefinitionIdsAndObjectEntryIdsStringUtilReplaceValues,
 			serviceContext, _servletContext);
-	}
-
-	private void _addExpandoColumns(ServiceContext serviceContext)
-		throws Exception {
-
-		String json = SiteInitializerUtil.read(
-			"/site-initializer/expando-columns.json", _servletContext);
-
-		if (json == null) {
-			return;
-		}
-
-		JSONArray jsonArray = _jsonFactory.createJSONArray(json);
-
-		for (int i = 0; i < jsonArray.length(); i++) {
-			JSONObject jsonObject = jsonArray.getJSONObject(i);
-
-			ExpandoBridge expandoBridge =
-				ExpandoBridgeFactoryUtil.getExpandoBridge(
-					serviceContext.getCompanyId(),
-					jsonObject.getString("modelResource"));
-
-			if ((expandoBridge == null) ||
-				(expandoBridge.getAttribute(jsonObject.getString("name")) !=
-					null)) {
-
-				continue;
-			}
-
-			expandoBridge.addAttribute(
-				jsonObject.getString("name"), jsonObject.getInt("dataType"));
-
-			if (jsonObject.has("properties")) {
-				UnicodeProperties unicodeProperties = new UnicodeProperties(
-					true);
-
-				JSONObject propertiesJSONObject = jsonObject.getJSONObject(
-					"properties");
-
-				Map<String, Object> map = propertiesJSONObject.toMap();
-
-				for (Map.Entry<String, Object> entry : map.entrySet()) {
-					unicodeProperties.setProperty(
-						TextFormatter.format(entry.getKey(), TextFormatter.K),
-						String.valueOf(entry.getValue()));
-				}
-
-				expandoBridge.setAttributeProperties(
-					jsonObject.getString("name"), unicodeProperties);
-			}
-		}
 	}
 
 	private void _addFragmentEntries(
@@ -1936,6 +1887,51 @@ public class BundleSiteInitializer implements SiteInitializer {
 				"/site-initializer/documents/group", serviceContext,
 				siteNavigationMenuItemSettingsBuilder)
 		).build();
+	}
+
+	private void _addOrUpdateExpandoColumns(ServiceContext serviceContext)
+		throws Exception {
+
+		String json = SiteInitializerUtil.read(
+			"/site-initializer/expando-columns.json", _servletContext);
+
+		if (json == null) {
+			return;
+		}
+
+		JSONArray jsonArray = _jsonFactory.createJSONArray(json);
+
+		for (int i = 0; i < jsonArray.length(); i++) {
+			JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+			ExpandoBridge expandoBridge =
+				ExpandoBridgeFactoryUtil.getExpandoBridge(
+					serviceContext.getCompanyId(),
+					jsonObject.getString("modelResource"));
+
+			if (expandoBridge == null) {
+				continue;
+			}
+
+			if (expandoBridge.getAttribute(jsonObject.getString("name")) !=
+					null) {
+
+				expandoBridge.setAttributeDefault(
+					jsonObject.getString("name"),
+					_getSerializableObjectValue(
+						jsonObject.get("defaultValue")));
+
+				_setExpandoBridgeAttributeProperties(jsonObject, expandoBridge);
+
+				continue;
+			}
+
+			expandoBridge.addAttribute(
+				jsonObject.getString("name"), jsonObject.getInt("dataType"),
+				_getSerializableObjectValue(jsonObject.get("defaultValue")));
+
+			_setExpandoBridgeAttributeProperties(jsonObject, expandoBridge);
+		}
 	}
 
 	private void _addOrUpdateJournalArticles(
@@ -4337,6 +4333,16 @@ public class BundleSiteInitializer implements SiteInitializer {
 		return map;
 	}
 
+	private Serializable _getSerializableObjectValue(Object object) {
+		if (object instanceof BigDecimal) {
+			BigDecimal bigDecimal = (BigDecimal)object;
+
+			return bigDecimal.doubleValue();
+		}
+
+		return (Serializable)object;
+	}
+
 	private String _getThemeId(
 		long companyId, String defaultThemeId, String themeName) {
 
@@ -4477,6 +4483,28 @@ public class BundleSiteInitializer implements SiteInitializer {
 					setDefaultLayoutUtilityPageEntry(
 						layoutUtilityPageEntry.getLayoutUtilityPageEntryId());
 			}
+		}
+	}
+
+	private void _setExpandoBridgeAttributeProperties(
+		JSONObject jsonObject, ExpandoBridge expandoBridge) {
+
+		if (jsonObject.has("properties")) {
+			UnicodeProperties unicodeProperties = new UnicodeProperties(true);
+
+			JSONObject propertiesJSONObject = jsonObject.getJSONObject(
+				"properties");
+
+			Map<String, Object> map = propertiesJSONObject.toMap();
+
+			for (Map.Entry<String, Object> entry : map.entrySet()) {
+				unicodeProperties.setProperty(
+					TextFormatter.format(entry.getKey(), TextFormatter.K),
+					String.valueOf(entry.getValue()));
+			}
+
+			expandoBridge.setAttributeProperties(
+				jsonObject.getString("name"), unicodeProperties);
 		}
 	}
 
