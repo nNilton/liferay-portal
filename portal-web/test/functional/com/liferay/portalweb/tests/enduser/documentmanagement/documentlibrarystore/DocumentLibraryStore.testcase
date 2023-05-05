@@ -1,6 +1,7 @@
 @component-name = "portal-document-library-store"
 definition {
 
+	property ci.retries.disabled = "true";
 	property portal.release = "true";
 	property portal.upstream = "true";
 	property test.assert.warning.exceptions = "true";
@@ -11,7 +12,7 @@ definition {
 
 		User.firstLoginPG();
 
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 	}
 
 	tearDown {
@@ -104,7 +105,7 @@ definition {
 		property custom.properties = "dl.store.impl=com.liferay.portal.store.db.DBStore";
 		property test.assert.warning.exceptions = "false";
 
-		JSONGroup.addGroup(groupName = "Test Site Name 1");
+		HeadlessSite.addSite(siteName = "Test Site Name 1");
 
 		JSONDocument.addFileWithUploadedFile(
 			dmDocumentDescription = "DM Document Description",

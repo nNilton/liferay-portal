@@ -14,18 +14,16 @@
 
 package com.liferay.object.web.internal.object.definitions.display.context.util;
 
-import com.liferay.object.constants.ObjectFieldConstants;
 import com.liferay.object.model.ObjectField;
 import com.liferay.object.service.ObjectFieldLocalService;
+import com.liferay.osgi.util.service.Snapshot;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
-import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.util.PropsValues;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,37 +32,28 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
-
 /**
  * @author Carolina Barbosa
  */
-@Component(service = {})
 public class ObjectCodeEditorUtil {
 
 	public static List<Map<String, Object>> getCodeEditorElements(
-		boolean includeAggregationObjectField,
 		boolean includeDDMExpressionBuilderElements,
-		boolean includeFormulaObjectField, Locale locale,
-		long objectDefinitionId) {
+		boolean includeGeneralVariables, Locale locale, long objectDefinitionId,
+		Predicate<ObjectField> objectFieldPredicate) {
 
 		List<Map<String, Object>> codeEditorElements = new ArrayList<>();
+
+		ObjectFieldLocalService objectFieldLocalService =
+			_objectFieldLocalServiceSnapshot.get();
 
 		codeEditorElements.add(
 			_createCodeEditorElement(
 				TransformUtil.transform(
 					ListUtil.filter(
-						_objectFieldLocalService.getObjectFields(
+						objectFieldLocalService.getObjectFields(
 							objectDefinitionId),
-						objectField ->
-							(includeAggregationObjectField ||
-							 !objectField.compareBusinessType(
-								 ObjectFieldConstants.
-									 BUSINESS_TYPE_AGGREGATION)) &&
-							(includeFormulaObjectField ||
-							 !objectField.compareBusinessType(
-								 ObjectFieldConstants.BUSINESS_TYPE_FORMULA))),
+						objectFieldPredicate),
 					objectField -> HashMapBuilder.put(
 						"content", objectField.getName()
 					).put(
@@ -73,17 +62,20 @@ public class ObjectCodeEditorUtil {
 						"label", objectField.getLabel(locale)
 					).build()),
 				"fields", locale));
-		codeEditorElements.add(
-			_createCodeEditorElement(
-				Collections.singletonList(
-					HashMapBuilder.put(
-						"content", "currentUserId"
-					).put(
-						"helpText", StringPool.BLANK
-					).put(
-						"label", LanguageUtil.get(locale, "current-user")
-					).build()),
-				"general-variables", locale));
+
+		if (includeGeneralVariables) {
+			codeEditorElements.add(
+				_createCodeEditorElement(
+					Collections.singletonList(
+						HashMapBuilder.put(
+							"content", "currentUserId"
+						).put(
+							"helpText", StringPool.BLANK
+						).put(
+							"label", LanguageUtil.get(locale, "current-user")
+						).build()),
+					"general-variables", locale));
+		}
 
 		if (includeDDMExpressionBuilderElements) {
 			Collections.addAll(
@@ -104,11 +96,14 @@ public class ObjectCodeEditorUtil {
 		Locale locale, long objectDefinitionId,
 		Predicate<ObjectField> objectFieldPredicate) {
 
+		ObjectFieldLocalService objectFieldLocalService =
+			_objectFieldLocalServiceSnapshot.get();
+
 		return ListUtil.fromArray(
 			_createCodeEditorElement(
 				TransformUtil.transform(
 					ListUtil.filter(
-						_objectFieldLocalService.getObjectFields(
+						objectFieldLocalService.getObjectFields(
 							objectDefinitionId),
 						objectFieldPredicate),
 					objectField -> HashMapBuilder.put(
@@ -208,14 +203,9 @@ public class ObjectCodeEditorUtil {
 		).build();
 	}
 
-	@Reference(unbind = "-")
-	private void _setObjectFieldLocalService(
-		ObjectFieldLocalService objectFieldLocalService) {
-
-		_objectFieldLocalService = objectFieldLocalService;
-	}
-
-	private static ObjectFieldLocalService _objectFieldLocalService;
+	private static final Snapshot<ObjectFieldLocalService>
+		_objectFieldLocalServiceSnapshot = new Snapshot<>(
+			ObjectCodeEditorUtil.class, ObjectFieldLocalService.class);
 
 	private enum DDMExpressionFunction {
 
@@ -328,19 +318,8 @@ public class ObjectCodeEditorUtil {
 			List<Map<String, String>> values = new ArrayList<>();
 
 			for (DDMExpressionFunction ddmExpressionFunction : values()) {
-				if (StringUtil.equals(
-						ddmExpressionFunction._key, "old-value") &&
-					(!GetterUtil.getBoolean(
-						PropsUtil.get("feature.flag.LPS-171440")) ||
-					 (PropsValues.OBJECT_ENTRY_SCRIPT_VARIABLES_VERSION !=
-						 2))) {
-
-					continue;
-				}
-
 				if (StringUtil.equals(ddmExpressionFunction._key, "power") &&
-					!GetterUtil.getBoolean(
-						PropsUtil.get("feature.flag.LPS-164948"))) {
+					!FeatureFlagManagerUtil.isEnabled("LPS-164948")) {
 
 					continue;
 				}

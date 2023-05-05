@@ -72,11 +72,7 @@ definition {
 		else {
 			Navigator.gotoPage(pageName = "Calendar Page");
 
-			if (IsElementPresent(locator1 = "Calendar#SCHEDULER_EVENT_GENERIC")) {
-				CalendarEvent.tearDown();
-			}
-
-			Calendar.tearDown();
+			JSONCalendar.tearDown();
 
 			PagesAdmin.tearDownCP();
 
@@ -121,7 +117,6 @@ definition {
 		property app.server.types = "jboss,tcserver,tomcat,weblogic,websphere,wildfly";
 		property database.types = "db2,hypersonic,mariadb,mysql,oracle,postgresql,sqlserver,sybase";
 		property portal.acceptance = "true";
-		property portal.upstream = "quarantine";
 
 		var siteName = TestCase.getSiteName();
 
@@ -171,6 +166,8 @@ definition {
 	@description = "Verify that a calendar event created on the pop up can be approved"
 	@priority = 4
 	test CalendarPopUpCanBeApproved {
+		property ci.retries.disabled = "true";
+
 		CalendarScheduler.selectSpecificEvent(eventTitle = "Calendar Event Title");
 
 		CalendarScheduler.gotoDetailsViaDialogBox();
@@ -203,6 +200,8 @@ definition {
 	@description = "Verify that a calendar event created on the pop up can be rejected"
 	@priority = 3
 	test CalendarPopUpCanBeRejected {
+		property ci.retries.disabled = "true";
+
 		CalendarNavigator.gotoEventDetails(eventTitle = "Calendar Event Title");
 
 		CalendarEvent.viewStatusViaDetails(status = "PENDING");
@@ -255,8 +254,8 @@ definition {
 		CalendarNavigator.gotoEditEvent(eventTitle = "Event Title Draft");
 
 		AssertClick(
-			locator1 = "Button#SUBMIT_FOR_PUBLICATION",
-			value1 = "Submit for Publication");
+			locator1 = "Button#SUBMIT_FOR_WORKFLOW",
+			value1 = "Submit for Workflow");
 
 		Navigator.gotoPage(pageName = "Calendar Page");
 

@@ -3,7 +3,7 @@ definition {
 
 	property portal.release = "true";
 	property portal.upstream = "true";
-	property testray.main.component.name = "Site Administration";
+	property testray.main.component.name = "Sites Administration";
 
 	setUp {
 		task ("Set up instance and sign in") {
@@ -13,7 +13,7 @@ definition {
 		}
 
 		task ("Add a site via JSON") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 	}
 
@@ -60,7 +60,15 @@ definition {
 
 			AssetPublisherPortlet.configureDisplaySettings(displaySettings = "Comments");
 
-			AssetPublisherPortlet.configureDynamicAssetSelectionPG(portletName = "Asset Publisher");
+			SelectFrame(locator1 = "IFrame#MODAL_BODY");
+
+			Navigator.gotoNavTab(navTab = "Asset Selection");
+
+			Click(locator1 = "APConfiguration#ASSET_SELECTION_DYNAMIC");
+
+			Alert.viewSuccessMessage();
+
+			IFrame.closeFrame();
 
 			AssetPublisherPortlet.configureScope(globalSite = "Global");
 
@@ -86,16 +94,14 @@ definition {
 		}
 
 		task ("And: Add and login a virtual instance") {
-			PortalInstances.openVirtualInstancesAdmin();
-
-			PortalInstances.addCP(
-				mailDomain = "www.able.com",
-				virtualHost = "www.able.com",
-				webId = "www.able.com");
+			HeadlessPortalInstanceAPI.addPortalInstance(
+				domain = "liferay.com",
+				portalInstanceId = "www.able.com",
+				virtualHost = "www.able.com");
 
 			User.firstLoginPG(
 				password = "test",
-				userEmailAddress = "test@www.able.com",
+				userEmailAddress = "test@liferay.com",
 				virtualHostsURL = "http://www.able.com:8080");
 		}
 
@@ -112,7 +118,7 @@ definition {
 	@priority = 5
 	test ExportImportSiteWithEmbeddedWCDInFragment {
 		property portal.acceptance = "true";
-		property testray.component.names = "Content Pages,Site Administration";
+		property testray.component.names = "Content Pages,Sites Administration";
 
 		task ("Add a fragment collection in site") {
 			JSONFragment.addFragmentCollection(
@@ -186,7 +192,11 @@ definition {
 		}
 
 		task ("Add another site and import the site lar") {
-			JSONGroup.addGroup(groupName = "Site Name");
+			HeadlessSite.addSite(siteName = "Site Name");
+
+			JSONLayoututilitypage.deleteLayoutUtilityPage(
+				groupName = "Site Name",
+				layoutUtilityPageName = "404 Error");
 
 			LAR.importSiteCP(
 				larFileName = ${larFileName},
@@ -327,7 +337,11 @@ definition {
 		}
 
 		task ("Import the lar file to a new site") {
-			JSONGroup.addGroup(groupName = "Site Name");
+			HeadlessSite.addSite(siteName = "Site Name");
+
+			JSONLayoututilitypage.deleteLayoutUtilityPage(
+				groupName = "Site Name",
+				layoutUtilityPageName = "404 Error");
 
 			LAR.importSiteCP(
 				larFileName = ${larFileName},
@@ -404,7 +418,11 @@ definition {
 		}
 
 		task ("Add a new site based on Blank Site") {
-			JSONGroup.addGroup(groupName = "Site Name");
+			HeadlessSite.addSite(siteName = "Site Name");
+
+			JSONLayoututilitypage.deleteLayoutUtilityPage(
+				groupName = "Site Name",
+				layoutUtilityPageName = "404 Error");
 		}
 
 		task ("Import the lar into the new site") {
@@ -496,7 +514,11 @@ definition {
 		}
 
 		task ("Import the lar file to a new site") {
-			JSONGroup.addGroup(groupName = "Site Name");
+			HeadlessSite.addSite(siteName = "Site Name");
+
+			JSONLayoututilitypage.deleteLayoutUtilityPage(
+				groupName = "Site Name",
+				layoutUtilityPageName = "404 Error");
 
 			LAR.importSiteCP(
 				larFileName = ${larFileName},
@@ -543,7 +565,11 @@ definition {
 		}
 
 		task ("Add a new site based on Blank Site") {
-			JSONGroup.addGroup(groupName = "Site Name");
+			HeadlessSite.addSite(siteName = "Site Name");
+
+			JSONLayoututilitypage.deleteLayoutUtilityPage(
+				groupName = "Site Name",
+				layoutUtilityPageName = "404 Error");
 		}
 
 		task ("Import the lar into the new site") {
@@ -609,6 +635,10 @@ definition {
 		}
 
 		task ("Import the new site into the default site") {
+			JSONLayoututilitypage.deleteLayoutUtilityPage(
+				groupName = "Guest",
+				layoutUtilityPageName = 404);
+
 			LAR.importSiteCP(
 				larFileName = ${larFileName},
 				siteName = "Guest");

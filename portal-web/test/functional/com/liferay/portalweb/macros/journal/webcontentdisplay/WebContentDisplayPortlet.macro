@@ -82,9 +82,7 @@ definition {
 			webContentContent = ${webContentContent},
 			webContentTitle = ${webContentTitle});
 
-		Button.click(button = "Submit for Publication");
-
-		SelectFrame(value1 = "relative=top");
+		Button.click(button = "Submit for Workflow");
 
 		AssertTextEquals(
 			locator1 = "Message#ERROR_3",

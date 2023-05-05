@@ -3,7 +3,7 @@ definition {
 
 	property portal.release = "true";
 	property portal.upstream = "true";
-	property testray.main.component.name = "Site Administration";
+	property testray.main.component.name = "Sites Administration";
 
 	setUp {
 		task ("Set up instance and sign in") {
@@ -14,7 +14,7 @@ definition {
 
 		task ("Add two sites via JSON") {
 			for (var n : list "1,2") {
-				JSONGroup.addGroup(groupName = "Test Site Name ${n}");
+				HeadlessSite.addSite(siteName = "Test Site Name ${n}");
 			}
 		}
 
@@ -190,6 +190,7 @@ definition {
 	test ImportLiveSiteToStagingSite {
 		property portal.acceptance = "true";
 		property test.name.skip.portal.instance = "SitesExportImportWithStaging#ImportLiveSiteToStagingSite";
+		property timeout.explicit.wait = "30";
 
 		task ("Export the first site") {
 			LAR.openExportAdmin(siteScopeName = "test-site-name-1");
@@ -202,6 +203,11 @@ definition {
 		}
 
 		task ("Import the first site's lar into the staging site for the second site") {
+			JSONLayoututilitypage.deleteLayoutUtilityPage(
+				groupName = "Test Site Name 2 (Staging)",
+				layoutUtilityPageName = "404 Error",
+				site = "false");
+
 			LAR.openImportAdmin(siteName = "test-site-name-2-staging");
 
 			LexiconEntry.gotoAdd();

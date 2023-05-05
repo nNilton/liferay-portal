@@ -328,25 +328,19 @@ public class ThemeDisplay
 	}
 
 	/**
-	 * Returns the portal instance's default user.
-	 *
-	 * @return the portal instance's default user
+	 * @deprecated As of Cavanaugh (7.4.x), replaced by {@link #getGuestUser}
 	 */
+	@Deprecated
 	public User getDefaultUser() throws PortalException {
-		if (_defaultUser == null) {
-			_defaultUser = _company.getDefaultUser();
-		}
-
-		return _defaultUser;
+		return getGuestUser();
 	}
 
 	/**
-	 * Returns the ID of the portal instance's default user.
-	 *
-	 * @return the ID of the portal instance's default user
+	 * @deprecated As of Cavanaugh (7.4.x), replaced by {@link #getGuestUserId}
 	 */
+	@Deprecated
 	public long getDefaultUserId() throws PortalException {
-		return getDefaultUser().getUserId();
+		return getGuestUserId();
 	}
 
 	/**
@@ -386,6 +380,28 @@ public class ThemeDisplay
 
 		return getPathThemeImages() + "/" +
 			PropsUtil.get(PropsKeys.THEME_SHORTCUT_ICON);
+	}
+
+	/**
+	 * Returns the portal instance's guest user.
+	 *
+	 * @return the portal instance's guest user
+	 */
+	public User getGuestUser() throws PortalException {
+		if (_guestUser == null) {
+			_guestUser = _company.getGuestUser();
+		}
+
+		return _guestUser;
+	}
+
+	/**
+	 * Returns the ID of the portal instance's guest user.
+	 *
+	 * @return the ID of the portal instance's guest user
+	 */
+	public long getGuestUserId() throws PortalException {
+		return getGuestUser().getUserId();
 	}
 
 	/**
@@ -590,6 +606,15 @@ public class ThemeDisplay
 
 	public String getPathContext() {
 		return _pathContext;
+	}
+
+	/**
+	 * Returns the URL for the control panel's spritemap.
+	 *
+	 * @return the URL for the control panel's spritemap
+	 */
+	public String getPathControlPanelSpritemap() {
+		return _pathControlPanelSpritemap;
 	}
 
 	/**
@@ -1202,6 +1227,10 @@ public class ThemeDisplay
 		return _secure;
 	}
 
+	public boolean isShowControlMenu() {
+		return _showControlMenu;
+	}
+
 	public boolean isShowControlPanelIcon() {
 		return _showControlPanelIcon;
 	}
@@ -1478,6 +1507,12 @@ public class ThemeDisplay
 			cdnBaseURL + themeStaticResourcePath +
 				colorScheme.getColorSchemeImagesPath());
 
+		String claySpritemapPath = StringBundler.concat(
+			cdnBaseURL, themeStaticResourcePath, theme.getImagesPath(),
+			"/clay/icons.svg");
+
+		setPathControlPanelSpritemap(claySpritemapPath);
+
 		String dynamicResourcesHost = getCDNDynamicResourcesHost();
 
 		if (Validator.isNull(dynamicResourcesHost)) {
@@ -1511,11 +1546,7 @@ public class ThemeDisplay
 			setPathThemeRoot(themeStaticResourcePath + rootPath);
 		}
 
-		setPathThemeSpritemap(
-			StringBundler.concat(
-				cdnBaseURL, themeStaticResourcePath, theme.getImagesPath(),
-				"/clay/icons.svg"));
-
+		setPathThemeSpritemap(claySpritemapPath);
 		setPathThemeTemplates(
 			cdnBaseURL + themeStaticResourcePath + theme.getTemplatesPath());
 	}
@@ -1546,6 +1577,10 @@ public class ThemeDisplay
 
 	public void setPathContext(String pathContext) {
 		_pathContext = pathContext;
+	}
+
+	public void setPathControlPanelSpritemap(String pathControlPanelSpritemap) {
+		_pathControlPanelSpritemap = pathControlPanelSpritemap;
 	}
 
 	public void setPathFriendlyURLPrivateGroup(
@@ -1705,6 +1740,10 @@ public class ThemeDisplay
 
 	public void setSessionId(String sessionId) {
 		_sessionId = sessionId;
+	}
+
+	public void setShowControlMenu(boolean showControlMenu) {
+		_showControlMenu = showControlMenu;
 	}
 
 	public void setShowControlPanelIcon(boolean showControlPanelIcon) {
@@ -1964,12 +2003,12 @@ public class ThemeDisplay
 	private Contact _contact;
 	private Group _controlPanelGroup;
 	private Layout _controlPanelLayout;
-	private User _defaultUser;
 	private Device _device;
 	private long _doAsGroupId;
 	private String _doAsUserId = StringPool.BLANK;
 	private String _doAsUserLanguageId = StringPool.BLANK;
 	private String _faviconURL;
+	private User _guestUser;
 	private transient HttpServletRequest _httpServletRequest;
 	private transient HttpServletResponse _httpServletResponse;
 	private boolean _hubAction;
@@ -2001,6 +2040,7 @@ public class ThemeDisplay
 	private String _pathCms = StringPool.BLANK;
 	private String _pathColorSchemeImages = StringPool.BLANK;
 	private String _pathContext = StringPool.BLANK;
+	private String _pathControlPanelSpritemap = StringPool.BLANK;
 	private String _pathFriendlyURLPrivateGroup = StringPool.BLANK;
 	private String _pathFriendlyURLPrivateUser = StringPool.BLANK;
 	private String _pathFriendlyURLPublic = StringPool.BLANK;
@@ -2037,6 +2077,7 @@ public class ThemeDisplay
 	private String _serverName;
 	private int _serverPort;
 	private String _sessionId = StringPool.BLANK;
+	private boolean _showControlMenu;
 	private boolean _showControlPanelIcon;
 	private boolean _showHomeIcon;
 	private boolean _showLayoutTemplatesIcon;

@@ -14,9 +14,7 @@ definition {
 		task ("Given a content structure is created in an asset library") {
 			JSONDepot.addDepot(depotName = "Test Depot Name");
 
-			var assetLibraryId = JSONGroupAPI._getDepotIdByName(depotName = "Test Depot Name");
-
-			WebContentNavigator.openWebContentStructuresAdminInAssetLibrary(depotId = ${assetLibraryId});
+			WebContentNavigator.openWebContentStructuresAdmin(depotName = "Test Depot Name");
 
 			WebContentStructures.addCP(structureName = "content-structure");
 
@@ -29,7 +27,7 @@ definition {
 
 		task ("And Given a structured content folder is created with POST request in the asset library") {
 			HeadlessWebcontentFolderAPI.createStructuredContentFolderInAssetLibrary(
-				assetLibraryId = ${assetLibraryId},
+				depotName = "Test Depot Name",
 				name = "Test Folder",
 				setUpGlobalFolderId = "true");
 		}
@@ -64,7 +62,7 @@ definition {
 		}
 
 		task ("When I retrieve the structured content with GET request and structuredContentId") {
-			var structuredContentId = JSONUtil.getWithJSONPath(${response}, "$.id");
+			var structuredContentId = JSONPathUtil.getIdValue(response = ${response});
 
 			var response = HeadlessWebcontentAPI.getStructuredContentsWithDifferentParameters(
 				headlessComponent = "headless-delivery",
@@ -89,7 +87,7 @@ definition {
 				name = "Sub Folder",
 				parentStructuredContentFolderId = ${staticStructuredContentFolderId});
 
-			var subfolderId = JSONUtil.getWithJSONPath(${response}, "$.id");
+			var subfolderId = JSONPathUtil.getIdValue(response = ${response});
 		}
 
 		task ("And Given a structured content is created in the subfolder with POST request") {
@@ -106,7 +104,7 @@ definition {
 		}
 
 		task ("When I retrieve the structured content with GET request and structuredContentId") {
-			var structuredContentId = JSONUtil.getWithJSONPath(${response}, "$.id");
+			var structuredContentId = JSONPathUtil.getIdValue(response = ${response});
 
 			var response = HeadlessWebcontentAPI.getStructuredContentsWithDifferentParameters(
 				headlessComponent = "headless-delivery",
@@ -127,13 +125,11 @@ definition {
 		property portal.acceptance = "true";
 
 		task ("And Given another structured content folder is created with POST request in the asset library") {
-			var assetLibraryId = JSONGroupAPI._getDepotIdByName(depotName = "Test Depot Name");
-
 			var response = HeadlessWebcontentFolderAPI.createStructuredContentFolderInAssetLibrary(
-				assetLibraryId = ${assetLibraryId},
+				depotName = "Test Depot Name",
 				name = "Second Folder");
 
-			var idOfSecondStructuredContentFolder = JSONUtil.getWithJSONPath(${response}, "$.id");
+			var idOfSecondStructuredContentFolder = JSONPathUtil.getIdValue(response = ${response});
 		}
 
 		task ("And Given a structured content is created in a folder with POST request") {
@@ -150,9 +146,9 @@ definition {
 		}
 
 		task ("And Given the structured content is moved into another folder through UI") {
-			Navigator.openWithAppendToBaseURL(
-				baseURL = ${baseURL},
-				urlAppend = "group/asset-library-${assetLibraryId}/~/control_panel/manage?p_p_id=com_liferay_journal_web_portlet_JournalPortlet&_com_liferay_journal_web_portlet_JournalPortlet_folderId=${staticStructuredContentFolderId}");
+			WebContentNavigator.openFolderInWebContentAdmin(
+				depotName = "Test Depot Name",
+				folderId = ${staticStructuredContentFolderId});
 
 			WebContent.moveToFolderCP(
 				folderName = "Second Folder",
@@ -160,7 +156,7 @@ definition {
 		}
 
 		task ("When I retrieve the structured content with GET request and structuredContentId") {
-			var structuredContentId = JSONUtil.getWithJSONPath(${response}, "$.id");
+			var structuredContentId = JSONPathUtil.getIdValue(response = ${response});
 
 			var response = HeadlessWebcontentAPI.getStructuredContentsWithDifferentParameters(
 				headlessComponent = "headless-delivery",

@@ -10,28 +10,27 @@ definition {
 	var portletName = "Calendar";
 
 	setUp {
+		var portalURL = PropsUtil.get("portal.url");
+
 		TestCase.setUpPortalInstance();
 
 		User.firstLoginPG();
 
-		ProductMenu.gotoPortlet(
-			category = "Site Builder",
-			portlet = "Pages");
+		JSONLayout.addPublicLayout(
+			groupName = "Guest",
+			layoutName = "Calendar Page");
 
-		PagesAdmin.addPage(
-			pageName = "Calendar Page",
-			sitePageType = "Widget Page");
+		JSONLayout.updateLayoutTemplateOfPublicLayout(
+			groupName = "Guest",
+			layoutName = "Calendar Page",
+			layoutTemplate = "1 Column");
 
-		PagesAdmin.configurePage(
-			columnName = "1 Column",
-			pageName = "Calendar Page",
-			sitePageType = "Widget Page");
+		JSONLayout.addWidgetToPublicLayout(
+			groupName = "Guest",
+			layoutName = "Calendar Page",
+			widgetName = "Calendar");
 
-		Navigator.gotoPage(pageName = "Calendar Page");
-
-		Portlet.addPG(
-			pageName = "Calendar Page",
-			portletName = "Calendar");
+		Navigator.openSpecificURL(url = "${portalURL}/web/guest/calendar-page");
 	}
 
 	tearDown {
@@ -43,13 +42,7 @@ definition {
 		else {
 			Navigator.gotoPage(pageName = "Calendar Page");
 
-			if (IsElementPresent(locator1 = "Calendar#SCHEDULER_EVENT_GENERIC")) {
-				CalendarEvent.tearDown();
-			}
-
-			Calendar.tearDown();
-
-			Calendar.tearDownColor();
+			JSONCalendar.tearDown();
 
 			CalendarResource.tearDown();
 
@@ -268,6 +261,8 @@ definition {
 
 		Navigator.gotoPage(pageName = "Calendar Page");
 
+		CalendarConfiguration.editNumberOfDaysDisplayedOnAgenda(maxNumberOfDays = 2);
+
 		CalendarEvent.deleteRepeatingEventViaAgendaView(
 			deleteOptionSet = "Following Events",
 			eventTitle = "Calendar Event Repeating Title",
@@ -297,6 +292,8 @@ definition {
 		CalendarEvent.publish();
 
 		Navigator.gotoPage(pageName = "Calendar Page");
+
+		CalendarConfiguration.editNumberOfDaysDisplayedOnAgenda(maxNumberOfDays = 2);
 
 		CalendarNavigator.gotoMonthViaSmallCalendar(dateMonth = "February 2016");
 
@@ -841,7 +838,7 @@ definition {
 			endDateTime = " 8:00 PM",
 			startDateTime = " 7:00 PM");
 
-		Button.clickSubmitForPublication();
+		Button.clickSubmitForWorkflow();
 
 		Navigator.gotoPage(pageName = "Calendar Page");
 
@@ -903,36 +900,22 @@ definition {
 
 	@priority = 4
 	test ViewCalendarChange {
-		ApplicationsMenu.gotoPortlet(
-			category = "Users",
-			panel = "Control Panel",
-			portlet = "Users and Organizations");
+		property custom.properties = "jsonws.web.service.paths.excludes=";
 
-		User.addCP(
+		JSONUser.addUser(
 			userEmailAddress = "userea@liferay.com",
 			userFirstName = "userfn",
 			userLastName = "userln",
 			userScreenName = "usersn");
 
-		ApplicationsMenu.gotoPortlet(
-			category = "Users",
-			panel = "Control Panel",
-			portlet = "Users and Organizations");
+		JSONUser.setFirstPassword(
+			agreeToTermsAndAnswerReminderQuery = "true",
+			requireReset = "false",
+			userEmailAddress = "userea@liferay.com");
 
-		User.editPasswordCP(
-			userEmailAddress = "userea@liferay.com",
-			userScreenName = "usersn");
-
-		Navigator.openURL();
-
-		ProductMenu.gotoPortlet(
-			category = "People",
-			portlet = "Memberships");
-
-		Site.assignUserAsMemberCP(
-			userFirstName = "userfn",
-			userLastName = "userln",
-			userScreenName = "usersn");
+		JSONUser.addUserToSite(
+			groupName = "Guest",
+			userEmailAddress = "userea@liferay.com");
 
 		Navigator.gotoPage(pageName = "Calendar Page");
 

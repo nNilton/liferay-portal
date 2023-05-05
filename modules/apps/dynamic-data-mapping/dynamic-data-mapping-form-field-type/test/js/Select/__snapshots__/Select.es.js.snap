@@ -89,242 +89,252 @@ exports[`Select calls onChange callback when an item is selected using multisele
         <div
           class="dropdown-menu ddm-btn-full ddm-select-dropdown show"
           role="presentation"
-          style="max-width: 500px; width: 100%; left: -1049px; top: -1003px;"
+          style="max-width: 500px; width: 100%; left: -999px; top: -995px;"
         >
           <ul
             class="list-unstyled"
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="label1"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-21"
+                class="list-unstyled"
+                role="group"
               >
-                <div
-                  class="custom-control custom-checkbox"
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label1"
-                      class="custom-control-input"
-                      data-testid="labelItem-item1"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="label1"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label1
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-1"
-                label="label2"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label1"
+                          class="custom-control-input"
+                          data-testid="labelItem-item1"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label1
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label2"
-                      class="custom-control-input"
-                      data-testid="labelItem-item2"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-1"
+                    label="label2"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label2
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-2"
-                label="label3"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label2"
+                          class="custom-control-input"
+                          data-testid="labelItem-item2"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label2
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label3"
-                      class="custom-control-input"
-                      data-testid="labelItem-item3"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-2"
+                    label="label3"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label3
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-3"
-                label="label4"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label3"
+                          class="custom-control-input"
+                          data-testid="labelItem-item3"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label3
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label4"
-                      class="custom-control-input"
-                      data-testid="labelItem-item4"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-3"
+                    label="label4"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label4
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-4"
-                label="label5"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label4"
+                          class="custom-control-input"
+                          data-testid="labelItem-item4"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label4
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label5"
-                      class="custom-control-input"
-                      data-testid="labelItem-item5"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-4"
+                    label="label5"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label5
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-5"
-                label="label6"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label5"
+                          class="custom-control-input"
+                          data-testid="labelItem-item5"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label5
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label6"
-                      class="custom-control-input"
-                      data-testid="labelItem-item6"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-5"
+                    label="label6"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label6
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-6"
-                label="label7"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label6"
+                          class="custom-control-input"
+                          data-testid="labelItem-item6"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label6
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label7"
-                      class="custom-control-input"
-                      data-testid="labelItem-item7"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-6"
+                    label="label7"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label7
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
+                      <label>
+                        <input
+                          aria-label="label7"
+                          class="custom-control-input"
+                          data-testid="labelItem-item7"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label7
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -343,7 +353,6 @@ exports[`Select calls onChange callback when an item is selected using multisele
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -411,7 +420,7 @@ exports[`Select filters according to the input and calls onChange callback when 
         <div
           class="dropdown-menu ddm-btn-full ddm-select-dropdown show"
           role="presentation"
-          style="max-width: 500px; width: 100%; left: -1049px; top: -1003px;"
+          style="max-width: 500px; width: 100%; left: -999px; top: -995px;"
         >
           <form
             class=""
@@ -434,6 +443,7 @@ exports[`Select filters according to the input and calls onChange callback when 
                     class="input-group-inset-item input-group-inset-item-after"
                   >
                     <button
+                      aria-label="Search"
                       class="btn btn-unstyled"
                       type="button"
                     >
@@ -456,136 +466,146 @@ exports[`Select filters according to the input and calls onChange callback when 
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="label1"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-24"
+                class="list-unstyled"
+                role="group"
               >
-                <div
-                  class="custom-control custom-checkbox"
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label1"
-                      class="custom-control-input"
-                      data-testid="labelItem-item1"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="label1"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label1
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-1"
-                label="label10"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label1"
+                          class="custom-control-input"
+                          data-testid="labelItem-item1"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label1
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label10"
-                      class="custom-control-input"
-                      data-testid="labelItem-item10"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-1"
+                    label="label10"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label10
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-2"
-                label="label11"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label10"
+                          class="custom-control-input"
+                          data-testid="labelItem-item10"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label10
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label11"
-                      class="custom-control-input"
-                      data-testid="labelItem-item11"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-2"
+                    label="label11"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label11
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-3"
-                label="label12"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label11"
+                          class="custom-control-input"
+                          data-testid="labelItem-item11"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label11
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label12"
-                      class="custom-control-input"
-                      data-testid="labelItem-item12"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-3"
+                    label="label12"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label12
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
+                      <label>
+                        <input
+                          aria-label="label12"
+                          class="custom-control-input"
+                          data-testid="labelItem-item12"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label12
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -604,7 +624,6 @@ exports[`Select filters according to the input and calls onChange callback when 
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -675,17 +694,27 @@ exports[`Select has a help text 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-4"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -704,7 +733,9 @@ exports[`Select has a help text 1`] = `
       aria-hidden="true"
       class="form-feedback-group lfr-de__field-feedback"
     >
-      <div>
+      <div
+        id="undefined_fieldHelp"
+      >
         Type something
       </div>
     </div>
@@ -784,17 +815,27 @@ exports[`Select has a key 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-19"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -809,7 +850,6 @@ exports[`Select has a key 1`] = `
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -885,17 +925,35 @@ exports[`Select has a label 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
+              aria-hidden="true"
+              class="dropdown-subheader"
+              id="clay-dropdown-menu-group-10"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              label
+            </li>
+            <li
+              role="presentation"
+            >
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-10"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -986,17 +1044,27 @@ exports[`Select has a placeholder 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-13"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -1011,7 +1079,6 @@ exports[`Select has a placeholder 1`] = `
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -1082,17 +1149,27 @@ exports[`Select has a predefinedValue 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-14"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -1107,7 +1184,6 @@ exports[`Select has a predefinedValue 1`] = `
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -1178,17 +1254,27 @@ exports[`Select has a value 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-18"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -1203,7 +1289,6 @@ exports[`Select has a value 1`] = `
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -1275,17 +1360,27 @@ exports[`Select has an id 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-5"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -1300,7 +1395,6 @@ exports[`Select has an id 1`] = `
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -1371,17 +1465,27 @@ exports[`Select has class dropdown-opened when it's opened 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-12"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -1396,7 +1500,6 @@ exports[`Select has class dropdown-opened when it's opened 1`] = `
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -1467,17 +1570,27 @@ exports[`Select is closed by default 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-11"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -1492,7 +1605,6 @@ exports[`Select is closed by default 1`] = `
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -1563,17 +1675,27 @@ exports[`Select is not required 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-15"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -1588,7 +1710,6 @@ exports[`Select is not required 1`] = `
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -1676,17 +1797,35 @@ exports[`Select puts an asterisk when field is required 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
+              aria-hidden="true"
+              class="dropdown-subheader"
+              id="clay-dropdown-menu-group-16"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              This is the label
+            </li>
+            <li
+              role="presentation"
+            >
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-16"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -1784,17 +1923,35 @@ exports[`Select renders Label if showLabel is true 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
+              aria-hidden="true"
+              class="dropdown-subheader"
+              id="clay-dropdown-menu-group-17"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              text
+            </li>
+            <li
+              role="presentation"
+            >
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-17"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -1885,17 +2042,27 @@ exports[`Select renders no options when options come empty 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-9"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -1910,7 +2077,6 @@ exports[`Select renders no options when options come empty 1`] = `
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -1981,30 +2147,40 @@ exports[`Select renders options 1`] = `
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="choose-an-option"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-7"
+                class="list-unstyled"
+                role="group"
               >
-                choose-an-option
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-1"
-                label="label"
-                role="menuitem"
-              >
-                label
-              </button>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="choose-an-option"
+                    role="menuitem"
+                  >
+                    choose-an-option
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
+                >
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-1"
+                    label="label"
+                    role="menuitem"
+                  >
+                    label
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -2019,7 +2195,6 @@ exports[`Select renders options 1`] = `
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;
@@ -2087,7 +2262,7 @@ exports[`Select shows a search input when the number of options is more than the
         <div
           class="dropdown-menu ddm-btn-full ddm-select-dropdown show"
           role="presentation"
-          style="max-width: 500px; width: 100%; left: -1049px; top: -1003px;"
+          style="max-width: 500px; width: 100%; left: -999px; top: -995px;"
         >
           <form
             class=""
@@ -2110,6 +2285,7 @@ exports[`Select shows a search input when the number of options is more than the
                     class="input-group-inset-item input-group-inset-item-after"
                   >
                     <button
+                      aria-label="Search"
                       class="btn btn-unstyled"
                       type="button"
                     >
@@ -2132,400 +2308,410 @@ exports[`Select shows a search input when the number of options is more than the
             role="menu"
           >
             <li
-              aria-selected="false"
               role="presentation"
             >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-0"
-                label="label1"
-                role="menuitem"
+              <ul
+                aria-labelledby="clay-dropdown-menu-group-23"
+                class="list-unstyled"
+                role="group"
               >
-                <div
-                  class="custom-control custom-checkbox"
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label1"
-                      class="custom-control-input"
-                      data-testid="labelItem-item1"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-0"
+                    label="label1"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label1
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-1"
-                label="label2"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label1"
+                          class="custom-control-input"
+                          data-testid="labelItem-item1"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label1
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label2"
-                      class="custom-control-input"
-                      data-testid="labelItem-item2"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-1"
+                    label="label2"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label2
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-2"
-                label="label3"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label2"
+                          class="custom-control-input"
+                          data-testid="labelItem-item2"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label2
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label3"
-                      class="custom-control-input"
-                      data-testid="labelItem-item3"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-2"
+                    label="label3"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label3
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-3"
-                label="label4"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label3"
+                          class="custom-control-input"
+                          data-testid="labelItem-item3"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label3
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label4"
-                      class="custom-control-input"
-                      data-testid="labelItem-item4"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-3"
+                    label="label4"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label4
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-4"
-                label="label5"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label4"
+                          class="custom-control-input"
+                          data-testid="labelItem-item4"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label4
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label5"
-                      class="custom-control-input"
-                      data-testid="labelItem-item5"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-4"
+                    label="label5"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label5
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-5"
-                label="label6"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label5"
+                          class="custom-control-input"
+                          data-testid="labelItem-item5"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label5
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label6"
-                      class="custom-control-input"
-                      data-testid="labelItem-item6"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-5"
+                    label="label6"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label6
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-6"
-                label="label7"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label6"
+                          class="custom-control-input"
+                          data-testid="labelItem-item6"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label6
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label7"
-                      class="custom-control-input"
-                      data-testid="labelItem-item7"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-6"
+                    label="label7"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label7
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-7"
-                label="label8"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label7"
+                          class="custom-control-input"
+                          data-testid="labelItem-item7"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label7
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label8"
-                      class="custom-control-input"
-                      data-testid="labelItem-item8"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-7"
+                    label="label8"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label8
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-8"
-                label="label9"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label8"
+                          class="custom-control-input"
+                          data-testid="labelItem-item8"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label8
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label9"
-                      class="custom-control-input"
-                      data-testid="labelItem-item9"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-8"
+                    label="label9"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label9
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-9"
-                label="label10"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label9"
+                          class="custom-control-input"
+                          data-testid="labelItem-item9"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label9
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label10"
-                      class="custom-control-input"
-                      data-testid="labelItem-item10"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-9"
+                    label="label10"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label10
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-10"
-                label="label11"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label10"
+                          class="custom-control-input"
+                          data-testid="labelItem-item10"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label10
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label11"
-                      class="custom-control-input"
-                      data-testid="labelItem-item11"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-10"
+                    label="label11"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label11
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
-            </li>
-            <li
-              aria-selected="false"
-              role="presentation"
-            >
-              <button
-                class="dropdown-item"
-                data-testid="dropdownItem-11"
-                label="label12"
-                role="menuitem"
-              >
-                <div
-                  class="custom-control custom-checkbox"
+                      <label>
+                        <input
+                          aria-label="label11"
+                          class="custom-control-input"
+                          data-testid="labelItem-item11"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label11
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+                <li
+                  aria-selected="false"
+                  role="presentation"
                 >
-                  <label>
-                    <input
-                      aria-label="label12"
-                      class="custom-control-input"
-                      data-testid="labelItem-item12"
-                      type="checkbox"
-                    />
-                    <span
-                      class="custom-control-label"
+                  <button
+                    class="dropdown-item"
+                    data-testid="dropdownItem-11"
+                    label="label12"
+                    role="menuitem"
+                  >
+                    <div
+                      class="custom-control custom-checkbox"
                     >
-                      <span
-                        class="custom-control-label-text"
-                      >
-                        label12
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </button>
+                      <label>
+                        <input
+                          aria-label="label12"
+                          class="custom-control-input"
+                          data-testid="labelItem-item12"
+                          type="checkbox"
+                        />
+                        <span
+                          class="custom-control-label"
+                        >
+                          <span
+                            class="custom-control-label-text"
+                          >
+                            label12
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </button>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
@@ -2544,7 +2730,6 @@ exports[`Select shows a search input when the number of options is more than the
       type="hidden"
       value="false"
     />
-    
   </div>
 </div>
 `;

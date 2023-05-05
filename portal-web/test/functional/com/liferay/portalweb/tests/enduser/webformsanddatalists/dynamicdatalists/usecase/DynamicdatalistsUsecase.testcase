@@ -78,7 +78,6 @@ definition {
 	}
 
 	@description = "This is a use case for LPS-50557."
-	@ignore = "true"
 	@priority = 4
 	test AddListWithXSSWorkflowDefinition {
 		property test.name.skip.portal.instance = "DynamicdatalistUsecase#AddListWithXSSWorkflowDefinition";
@@ -511,8 +510,6 @@ definition {
 	@description = "This is a use case for LPS-65069."
 	@priority = 5
 	test AddRecordWithRepeatableTextField {
-		property portal.acceptance = "quarantine";
-
 		DDLList.openDynamicDataListsAdmin(siteURLKey = "guest");
 
 		DDLDataDefinition.addCP();
@@ -903,7 +900,6 @@ definition {
 	}
 
 	@description = "This is a use case for LPS-50549."
-	@ignore = "true"
 	@priority = 4
 	test AddXSSToHTMLField {
 		var ddlRecordFieldData1 = '''<img src=x onerror=alert(/xss/) />''';
@@ -1145,8 +1141,6 @@ definition {
 
 	@priority = 4
 	test AssertGuestCannotEditRecord {
-		property portal.upstream = "quarantine";
-
 		DDLList.openDynamicDataListsAdmin(siteURLKey = "guest");
 
 		DDLDataDefinition.addCP(
@@ -1566,7 +1560,7 @@ definition {
 			fieldFieldLabel = "Title",
 			fieldName = "title");
 
-		DDLRecord.submitForPublication();
+		DDLRecord.submitForWorkflow();
 
 		User.logoutPG();
 
@@ -3126,8 +3120,6 @@ definition {
 	@description = "This is a use case for LPS-60155."
 	@priority = 5
 	test ViewRequiredNestedDocumentsAndMediaField {
-		property portal.upstream = "quarantine";
-
 		DDLList.openDynamicDataListsAdmin(siteURLKey = "guest");
 
 		DDLDataDefinition.addCP(ddlDataDefinitionName = "Data Definition Name");

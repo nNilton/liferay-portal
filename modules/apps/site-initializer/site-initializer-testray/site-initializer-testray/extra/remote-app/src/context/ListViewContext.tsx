@@ -14,21 +14,25 @@
  */
 
 import {ReactNode, createContext, useReducer} from 'react';
+import TestrayStorage, {STORAGE_KEYS} from '~/core/Storage';
+import useStorage from '~/hooks/useStorage';
+import {ActionMap, SortDirection, SortOption} from '~/types';
+import {safeJSONParse} from '~/util';
+import {PAGINATION_DELTA} from '~/util/constants';
+import {CONSENT_TYPE} from '~/util/enum';
+import isDeepEqual from '~/util/object';
 
-import useStorage from '../hooks/useStorage';
-import {ActionMap, SortDirection, SortOption} from '../types';
-
-const STORAGE_NAME_PREFIX = '@testray/listview-';
-
-export type Sort = {
-	direction: SortDirection;
-	key: string;
-};
+const testrayStorage = TestrayStorage.getInstance().getStorage('persisted');
 
 export type Entry = {
 	label: string;
 	name: string;
 	value: string;
+};
+
+export type Sort = {
+	direction: SortDirection;
+	key: string;
 };
 
 type ListViewFilter = {
@@ -38,11 +42,14 @@ type ListViewFilter = {
 	};
 };
 
+type ListViewColumns = {
+	[key: string]: boolean;
+};
+
 export type InitialState = {
 	checkAll: boolean;
-	columns: {
-		[key: string]: boolean;
-	};
+	columns: ListViewColumns;
+	columnsFixed: string[];
 	filters: ListViewFilter;
 	id: string;
 	keywords: string;
@@ -56,6 +63,7 @@ export type InitialState = {
 const initialState: InitialState = {
 	checkAll: false,
 	columns: {},
+	columnsFixed: [],
 	filters: {
 		entries: [],
 		filter: {},
@@ -63,7 +71,7 @@ const initialState: InitialState = {
 	id: '',
 	keywords: '',
 	page: 1,
-	pageSize: 20,
+	pageSize: PAGINATION_DELTA[0],
 	pin: false,
 	selectedRows: [],
 	sort: {direction: SortOption.ASC, key: ''},
@@ -74,13 +82,13 @@ export enum ListViewTypes {
 	SET_CHECKED_ROW = 'SET_CHECKED_ROW',
 	SET_CLEAR = 'SET_CLEAR',
 	SET_COLUMNS = 'SET_COLUMNS',
+	SET_FILTERS = 'SET_FILTERS',
 	SET_PAGE = 'SET_PAGE',
 	SET_PAGE_SIZE = 'SET_PAGE_SIZE',
 	SET_PIN = 'SET_PIN',
 	SET_REMOVE_FILTER = 'SET_REMOVE_FILTER',
 	SET_SEARCH = 'SET_SEARCH',
 	SET_SORT = 'SET_SORT',
-	SET_UPDATE_FILTERS_AND_SORT = 'SET_UPDATE_FILTERS_AND_SORT',
 }
 
 type ListViewPayload = {
@@ -88,13 +96,13 @@ type ListViewPayload = {
 	[ListViewTypes.SET_CHECKED_ROW]: number | number[];
 	[ListViewTypes.SET_CLEAR]: null;
 	[ListViewTypes.SET_COLUMNS]: {columns: any};
+	[ListViewTypes.SET_FILTERS]: {filters?: any; pin?: any};
 	[ListViewTypes.SET_PAGE]: number;
 	[ListViewTypes.SET_PAGE_SIZE]: number;
 	[ListViewTypes.SET_PIN]: undefined;
 	[ListViewTypes.SET_REMOVE_FILTER]: string;
 	[ListViewTypes.SET_SEARCH]: string;
 	[ListViewTypes.SET_SORT]: Sort;
-	[ListViewTypes.SET_UPDATE_FILTERS_AND_SORT]: {filters?: any};
 };
 
 export type AppActions = ActionMap<ListViewPayload>[keyof ActionMap<
@@ -104,6 +112,17 @@ export type AppActions = ActionMap<ListViewPayload>[keyof ActionMap<
 export const ListViewContext = createContext<
 	[InitialState, (param: AppActions) => void]
 >([initialState, () => null]);
+
+const getPinState = (state: InitialState, newFilter: ListViewFilter) => {
+	const appliedFilters = testrayStorage.getItem(
+		(STORAGE_KEYS.LIST_VIEW_PIN + state.id) as STORAGE_KEYS,
+		CONSENT_TYPE.NECESSARY
+	);
+
+	const appliedFilterJSON = safeJSONParse(appliedFilters, {});
+
+	return isDeepEqual(newFilter, appliedFilterJSON);
+};
 
 const reducer = (state: InitialState, action: AppActions) => {
 	switch (action.type) {
@@ -148,9 +167,19 @@ const reducer = (state: InitialState, action: AppActions) => {
 			};
 
 		case ListViewTypes.SET_COLUMNS:
+			const columns = action.payload.columns;
+			const storageColumnsName =
+				STORAGE_KEYS.LIST_VIEW_COLUMNS + state.id;
+
+			testrayStorage.setItem(
+				storageColumnsName,
+				JSON.stringify(columns),
+				CONSENT_TYPE.NECESSARY
+			);
+
 			return {
 				...state,
-				columns: action.payload.columns,
+				columns,
 			};
 
 		case ListViewTypes.SET_PAGE:
@@ -173,16 +202,17 @@ const reducer = (state: InitialState, action: AppActions) => {
 
 			const pin = !state.pin;
 
-			const storageName = STORAGE_NAME_PREFIX + state.id;
+			const storageName = STORAGE_KEYS.LIST_VIEW_PIN + state.id;
 
 			if (pin) {
-				localStorage.setItem(
+				testrayStorage.setItem(
 					storageName,
-					JSON.stringify(state.filters)
+					JSON.stringify(state.filters),
+					CONSENT_TYPE.NECESSARY
 				);
 			}
 			else {
-				localStorage.removeItem(storageName);
+				testrayStorage.removeItem(storageName);
 			}
 
 			return {
@@ -200,12 +230,15 @@ const reducer = (state: InitialState, action: AppActions) => {
 				({name}) => name !== filterKey
 			);
 
+			const filters = {
+				entries: filterEntries,
+				filter: updatedFilters.filter,
+			};
+
 			return {
 				...state,
-				filters: {
-					entries: filterEntries,
-					filter: updatedFilters.filter,
-				},
+				filters,
+				pin: getPinState(state, filters),
 			};
 		}
 
@@ -222,12 +255,15 @@ const reducer = (state: InitialState, action: AppActions) => {
 				sort: action.payload,
 			};
 
-		case ListViewTypes.SET_UPDATE_FILTERS_AND_SORT:
+		case ListViewTypes.SET_FILTERS: {
+			state.pin = getPinState(state, action.payload.filters);
+
 			return {
 				...state,
 				filters: action.payload.filters || state.filters,
 				page: 1,
 			};
+		}
 
 		default:
 			return state;
@@ -239,8 +275,13 @@ export type ListViewContextProviderProps = Partial<InitialState>;
 const ListViewContextProvider: React.FC<
 	ListViewContextProviderProps & {children: ReactNode; id: string}
 > = ({children, id, ...initialStateProps}) => {
+	const [columnsStorage] = useStorage<ListViewColumns>(
+		(STORAGE_KEYS.LIST_VIEW_COLUMNS + id) as STORAGE_KEYS,
+		{consentType: CONSENT_TYPE.NECESSARY, storageType: 'persisted'}
+	);
 	const [filterPinnedStorage] = useStorage<ListViewFilter>(
-		STORAGE_NAME_PREFIX + id
+		(STORAGE_KEYS.LIST_VIEW_PIN + id) as STORAGE_KEYS,
+		{consentType: CONSENT_TYPE.NECESSARY, storageType: 'persisted'}
 	);
 
 	const [state, dispatch] = useReducer(reducer, {
@@ -250,6 +291,7 @@ const ListViewContextProvider: React.FC<
 			filters: filterPinnedStorage,
 			pin: !!filterPinnedStorage.entries.length,
 		}),
+		...(columnsStorage && {columns: columnsStorage}),
 		id,
 	});
 

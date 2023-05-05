@@ -62,9 +62,11 @@ const VerticalNavigationBar = ({
 				setVerticalBarOpen(false);
 			}
 			else {
-				setTimeout(() => {
-					setVerticalBarOpen(true);
-				}, DELAY_ANIMATION);
+				if (activePanel !== SUGGESTION_KEY) {
+					setTimeout(() => {
+						setVerticalBarOpen(true);
+					}, DELAY_ANIMATION);
+				}
 			}
 		};
 
@@ -88,9 +90,9 @@ const VerticalNavigationBar = ({
 			closedProductMenuListener?.removeListener();
 			openProductMenuListener?.removeListener();
 
-			productMenu.destroy();
+			productMenu?.destroy();
 		};
-	}, [initialProductMenuOpen, productMenu]);
+	}, [activePanel, initialProductMenuOpen, productMenu]);
 
 	useEffect(() => {
 		parentContainer.classList.toggle(

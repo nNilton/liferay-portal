@@ -14,9 +14,10 @@
 
 package com.liferay.journal.web.internal.portlet.action;
 
+import com.liferay.change.tracking.spi.constants.CTTimelineKeys;
 import com.liferay.dynamic.data.mapping.exception.TemplateScriptException;
 import com.liferay.dynamic.data.mapping.model.DDMStructure;
-import com.liferay.dynamic.data.mapping.service.DDMStructureServiceUtil;
+import com.liferay.dynamic.data.mapping.service.DDMStructureLocalServiceUtil;
 import com.liferay.journal.constants.JournalArticleConstants;
 import com.liferay.journal.exception.NoSuchArticleException;
 import com.liferay.journal.model.JournalArticle;
@@ -32,7 +33,6 @@ import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextFactory;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.upload.UploadPortletRequest;
-import com.liferay.portal.kernel.util.Base64;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -163,27 +163,9 @@ public class ActionUtil {
 		else {
 			long ddmStructureId = ParamUtil.getLong(
 				httpServletRequest, "ddmStructureId");
-			String ddmStructureKey = ParamUtil.getString(
-				httpServletRequest, "ddmStructureKey");
 
-			DDMStructure ddmStructure = null;
-
-			if (Validator.isNotNull(ddmStructureKey)) {
-				ddmStructure = DDMStructureServiceUtil.fetchStructure(
-					groupId, PortalUtil.getClassNameId(JournalArticle.class),
-					ddmStructureKey, true);
-			}
-			else if (ddmStructureId > 0) {
-				try {
-					ddmStructure = DDMStructureServiceUtil.getStructure(
-						ddmStructureId);
-				}
-				catch (Exception exception) {
-					if (_log.isDebugEnabled()) {
-						_log.debug(exception);
-					}
-				}
-			}
+			DDMStructure ddmStructure =
+				DDMStructureLocalServiceUtil.fetchStructure(ddmStructureId);
 
 			if (ddmStructure == null) {
 				return null;
@@ -215,6 +197,11 @@ public class ActionUtil {
 			}
 		}
 
+		httpServletRequest.setAttribute(
+			CTTimelineKeys.CLASS_NAME, JournalArticle.class.getName());
+		httpServletRequest.setAttribute(
+			CTTimelineKeys.CLASS_PK, article.getPrimaryKey());
+
 		return article;
 	}
 
@@ -243,9 +230,7 @@ public class ActionUtil {
 			return fileScriptContent;
 		}
 
-		return new String(
-			Base64.decode(
-				ParamUtil.getString(uploadPortletRequest, "scriptContent")));
+		return FileUtil.read(uploadPortletRequest.getFile("scriptContent"));
 	}
 
 	private static String _getFileScriptContent(

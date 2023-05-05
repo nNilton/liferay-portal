@@ -1770,9 +1770,6 @@ public interface PropsKeys {
 	public static final String NOTIFICATIONS_MAX_EVENTS =
 		"notifications.max.events";
 
-	public static final String OBJECT_ENTRY_SCRIPT_VARIABLES_VERSION =
-		"object.entry.script.variables.version";
-
 	public static final String OBJECT_NESTED_FIELDS_MAX_QUERY_DEPTH =
 		"object.nested.fields.max.query.depth";
 
@@ -2718,6 +2715,9 @@ public interface PropsKeys {
 
 	public static final String UPGRADE_LOG_CONTEXT_ENABLED =
 		"upgrade.log.context.enabled";
+
+	public static final String UPGRADE_REPORT_DL_STORAGE_SIZE_TIMEOUT =
+		"upgrade.report.dl.storage.size.timeout";
 
 	public static final String UPGRADE_REPORT_ENABLED =
 		"upgrade.report.enabled";

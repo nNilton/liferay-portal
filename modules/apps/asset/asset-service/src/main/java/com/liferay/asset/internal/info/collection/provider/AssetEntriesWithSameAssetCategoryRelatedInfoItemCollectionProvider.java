@@ -73,7 +73,6 @@ import com.liferay.portal.kernel.util.KeyValuePair;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Portal;
-import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.Tuple;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
@@ -215,7 +214,7 @@ public class AssetEntriesWithSameAssetCategoryRelatedInfoItemCollectionProvider
 							new ResourceBundleInfoLocalizedValue(
 								getClass(),
 								"any-category-of-the-same-vocabulary"),
-							"anyAssetCategoryOfTheSameVocabulary"),
+							"anyAssetCategoryOfTheSameAssetVocabulary"),
 						new SelectInfoFieldType.Option(
 							new ResourceBundleInfoLocalizedValue(
 								getClass(), "a-specific-category"),
@@ -265,15 +264,6 @@ public class AssetEntriesWithSameAssetCategoryRelatedInfoItemCollectionProvider
 	@Override
 	public Class<?> getSourceItemClass() {
 		return AssetEntry.class;
-	}
-
-	@Override
-	public boolean isAvailable() {
-		if (!GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-166036"))) {
-			return false;
-		}
-
-		return true;
 	}
 
 	private BooleanFilter
@@ -361,7 +351,7 @@ public class AssetEntriesWithSameAssetCategoryRelatedInfoItemCollectionProvider
 		if ((assetCategoryRuleTuple.getSize() == 1) &&
 			Objects.equals(
 				assetCategoryRuleTuple.getObject(0),
-				"anyAssetCategoryOfTheSameVocabulary")) {
+				"anyAssetCategoryOfTheSameAssetVocabulary")) {
 
 			return _getAnyAssetCategoryOfTheSameAssetVocabularyBooleanFilter(
 				assetEntry, searchContext);
@@ -436,7 +426,8 @@ public class AssetEntriesWithSameAssetCategoryRelatedInfoItemCollectionProvider
 		}
 
 		if (Objects.equals(
-				assetCategoryRule, "anyAssetCategoryOfTheSameVocabulary")) {
+				assetCategoryRule,
+				"anyAssetCategoryOfTheSameAssetVocabulary")) {
 
 			return new Tuple(assetCategoryRule);
 		}
@@ -653,8 +644,6 @@ public class AssetEntriesWithSameAssetCategoryRelatedInfoItemCollectionProvider
 				Field.STATUS, WorkflowConstants.STATUS_APPROVED
 			).put(
 				"head", true
-			).put(
-				"latest", true
 			).build(),
 			serviceContext.getCompanyId(), null, themeDisplay.getLayout(), null,
 			serviceContext.getScopeGroupId(), null, serviceContext.getUserId());

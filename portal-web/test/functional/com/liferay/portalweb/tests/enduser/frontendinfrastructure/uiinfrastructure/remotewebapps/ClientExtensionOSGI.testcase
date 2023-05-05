@@ -71,12 +71,29 @@ definition {
 
 		task ("Then View action is an available option") {
 			AssertElementPresent(
-				key_text = "View",
-				locator1 = "Button#ANY");
+				key_option = "View",
+				locator1 = "ClientExtension#DROPDOWN_OPTIONS");
 		}
 
 		task ("And Then Edit action is not an available option field information is displayed correctly") {
-			MenuItem.viewNotPresent(menuItem = "Edit");
+			AssertElementNotPresent(
+				key_option = "Edit",
+				locator1 = "ClientExtension#DROPDOWN_OPTIONS");
+		}
+	}
+
+	@description = "Verify that the Workspace label is present when a client extension is created through osgi"
+	@priority = 3
+	test OsgiClientExtensionWorkspaceLabelIsPresent {
+		property custom.element.client.extension.created = "true";
+		property test.name.skip.portal.instance = "ClientExtensionOSGI#OsgiClientExtensionWorkspaceLabelIsPresent";
+
+		task ("Then Modified Date column is present") {
+			FDSCustomView.assertColumnPresent(key_field = "Modified Date");
+		}
+
+		task ("And Then showing Label 'Workspace' is present") {
+			ClientExtensionGeneral.viewTableEntryType(entryType = "Workspace");
 		}
 	}
 
@@ -87,9 +104,11 @@ definition {
 		property test.name.skip.portal.instance = "ClientExtensionOSGI#ViewActionCanDisplayFieldsAsNotEditable";
 
 		task ("When select view action") {
+			Click(locator1 = "ClientExtension#REMOTE_TABLE_ELLIPSIS");
+
 			Click(
-				key_text = "View",
-				locator1 = "Button#ANY");
+				key_option = "View",
+				locator1 = "ClientExtension#DROPDOWN_OPTIONS");
 		}
 
 		task ("Then field information is displayed correctly") {

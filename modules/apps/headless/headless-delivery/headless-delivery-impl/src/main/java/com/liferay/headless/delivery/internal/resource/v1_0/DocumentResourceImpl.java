@@ -23,6 +23,7 @@ import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLAppService;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
+import com.liferay.document.library.kernel.service.DLFileEntryService;
 import com.liferay.document.library.kernel.service.DLFileEntryTypeLocalService;
 import com.liferay.dynamic.data.mapping.kernel.DDMFormValues;
 import com.liferay.dynamic.data.mapping.kernel.DDMStructure;
@@ -42,7 +43,6 @@ import com.liferay.headless.delivery.dto.v1_0.DocumentType;
 import com.liferay.headless.delivery.dto.v1_0.Rating;
 import com.liferay.headless.delivery.dto.v1_0.util.CustomFieldsUtil;
 import com.liferay.headless.delivery.dto.v1_0.util.DDMFormValuesUtil;
-import com.liferay.headless.delivery.internal.dto.v1_0.converter.DocumentDTOConverter;
 import com.liferay.headless.delivery.internal.dto.v1_0.util.DisplayPageRendererUtil;
 import com.liferay.headless.delivery.internal.dto.v1_0.util.RatingUtil;
 import com.liferay.headless.delivery.internal.odata.entity.v1_0.DocumentEntityModel;
@@ -58,6 +58,7 @@ import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.events.ServicePreAction;
 import com.liferay.portal.events.ThemeServicePreAction;
+import com.liferay.portal.kernel.change.tracking.CTAware;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.repository.model.FileEntry;
@@ -82,6 +83,7 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.odata.entity.EntityModel;
+import com.liferay.portal.repository.liferayrepository.model.LiferayFileEntry;
 import com.liferay.portal.search.aggregation.Aggregations;
 import com.liferay.portal.search.expando.ExpandoBridgeIndexer;
 import com.liferay.portal.search.legacy.searcher.SearchRequestBuilderFactory;
@@ -89,6 +91,7 @@ import com.liferay.portal.search.query.Queries;
 import com.liferay.portal.search.searcher.SearchRequestBuilder;
 import com.liferay.portal.search.sort.Sorts;
 import com.liferay.portal.vulcan.aggregation.Aggregation;
+import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 import com.liferay.portal.vulcan.multipart.BinaryFile;
@@ -99,6 +102,7 @@ import com.liferay.portal.vulcan.util.SearchUtil;
 import com.liferay.portlet.documentlibrary.constants.DLConstants;
 import com.liferay.ratings.kernel.service.RatingsEntryLocalService;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -120,6 +124,7 @@ import org.osgi.service.component.annotations.ServiceScope;
 	properties = "OSGI-INF/liferay/rest/v1_0/document.properties",
 	scope = ServiceScope.PROTOTYPE, service = DocumentResource.class
 )
+@CTAware
 public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 
 	@Override
@@ -203,6 +208,14 @@ public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 			_createDocumentsPageBooleanQueryUnsafeConsumer(
 				assetLibraryId, flatten),
 			search, aggregation, filter, pagination, sorts);
+	}
+
+	@Override
+	public Page<Document> getAssetLibraryDocumentsRatedByMePage(
+			Long assetLibraryId, Pagination pagination)
+		throws Exception {
+
+		return _getGroupDocumentsRatedByMePage(assetLibraryId, pagination);
 	}
 
 	@Override
@@ -336,6 +349,14 @@ public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 	}
 
 	@Override
+	public Page<Document> getSiteDocumentsRatedByMePage(
+			Long siteId, Pagination pagination)
+		throws Exception {
+
+		return _getGroupDocumentsRatedByMePage(siteId, pagination);
+	}
+
+	@Override
 	public Document patchDocument(Long documentId, MultipartBody multipartBody)
 		throws Exception {
 
@@ -357,12 +378,18 @@ public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 		existingFileEntry = _moveDocument(
 			documentId, document, existingFileEntry);
 
+		String fileName = null;
 		String title = null;
 		String description = null;
 
 		if (document != null) {
+			fileName = document.getFileName();
 			title = document.getTitle();
 			description = document.getDescription();
+		}
+
+		if (fileName == null) {
+			fileName = binaryFile.getFileName();
 		}
 
 		if (title == null) {
@@ -375,10 +402,10 @@ public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 
 		return _toDocument(
 			_dlAppService.updateFileEntry(
-				documentId, binaryFile.getFileName(),
-				binaryFile.getContentType(), title, null, description, null,
-				DLVersionNumberIncrease.AUTOMATIC, binaryFile.getInputStream(),
-				binaryFile.getSize(), existingFileEntry.getExpirationDate(),
+				documentId, fileName, binaryFile.getContentType(), title, null,
+				description, null, DLVersionNumberIncrease.AUTOMATIC,
+				binaryFile.getInputStream(), binaryFile.getSize(),
+				existingFileEntry.getExpirationDate(),
 				existingFileEntry.getReviewDate(),
 				_createServiceContext(
 					Constants.UPDATE,
@@ -522,24 +549,29 @@ public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 			throw new BadRequestException("No file found in body");
 		}
 
+		String fileName = null;
 		String title = null;
 		String description = null;
 
 		if (document != null) {
+			fileName = document.getFileName();
 			title = document.getTitle();
 			description = document.getDescription();
 		}
 
+		if (fileName == null) {
+			fileName = binaryFile.getFileName();
+		}
+
 		if (title == null) {
-			title = binaryFile.getFileName();
+			title = fileName;
 		}
 
 		return _toDocument(
 			_dlAppService.addFileEntry(
-				externalReferenceCode, repositoryId, documentFolderId,
-				binaryFile.getFileName(), binaryFile.getContentType(), title,
-				null, description, null, binaryFile.getInputStream(),
-				binaryFile.getSize(), null, null,
+				externalReferenceCode, repositoryId, documentFolderId, fileName,
+				binaryFile.getContentType(), title, null, description, null,
+				binaryFile.getInputStream(), binaryFile.getSize(), null, null,
 				_createServiceContext(
 					Constants.ADD, () -> new Long[0], () -> new String[0],
 					documentFolderId, document, groupId)));
@@ -759,6 +791,18 @@ public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 					GetterUtil.getLong(document.get(Field.ENTRY_CLASS_PK)))));
 	}
 
+	private Page<Document> _getGroupDocumentsRatedByMePage(
+			long groupId, Pagination pagination)
+		throws Exception {
+
+		return Page.of(
+			_toDocuments(
+				_dlFileEntryService.getFileEntries(
+					groupId, 0.1, pagination.getStartPosition(),
+					pagination.getEndPosition())),
+			pagination, _dlFileEntryService.getFileEntriesCount(groupId, 0.1));
+	}
+
 	private SPIRatingResource<Rating> _getSPIRatingResource() {
 		return new SPIRatingResource<>(
 			DLFileEntry.class.getName(), _ratingsEntryLocalService,
@@ -882,6 +926,18 @@ public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 				contextUser));
 	}
 
+	private List<Document> _toDocuments(List<DLFileEntry> dlFileEntries)
+		throws Exception {
+
+		List<Document> documents = new ArrayList<>();
+
+		for (DLFileEntry dlFileEntry : dlFileEntries) {
+			documents.add(_toDocument(new LiferayFileEntry(dlFileEntry)));
+		}
+
+		return documents;
+	}
+
 	private Document _updateDocument(
 			FileEntry fileEntry, MultipartBody multipartBody)
 		throws Exception {
@@ -905,13 +961,18 @@ public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 		fileEntry = _moveDocument(
 			fileEntry.getFileEntryId(), document, fileEntry);
 
+		String fileName = null;
 		String title = null;
-
 		String description = null;
 
 		if (document != null) {
+			fileName = document.getFileName();
 			title = document.getTitle();
 			description = document.getDescription();
+		}
+
+		if (fileName == null) {
+			fileName = binaryFile.getFileName();
 		}
 
 		if (title == null) {
@@ -920,7 +981,7 @@ public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 
 		return _toDocument(
 			_dlAppService.updateFileEntry(
-				fileEntry.getFileEntryId(), binaryFile.getFileName(),
+				fileEntry.getFileEntryId(), fileName,
 				binaryFile.getContentType(), title, null, description, null,
 				DLVersionNumberIncrease.AUTOMATIC, binaryFile.getInputStream(),
 				binaryFile.getSize(), fileEntry.getExpirationDate(),
@@ -962,10 +1023,15 @@ public class DocumentResourceImpl extends BaseDocumentResourceImpl {
 	private DLFileEntryLocalService _dlFileEntryLocalService;
 
 	@Reference
-	private DLFileEntryTypeLocalService _dlFileEntryTypeLocalService;
+	private DLFileEntryService _dlFileEntryService;
 
 	@Reference
-	private DocumentDTOConverter _documentDTOConverter;
+	private DLFileEntryTypeLocalService _dlFileEntryTypeLocalService;
+
+	@Reference(
+		target = "(component.name=com.liferay.headless.delivery.internal.dto.v1_0.converter.DocumentDTOConverter)"
+	)
+	private DTOConverter<DLFileEntry, Document> _documentDTOConverter;
 
 	@Reference
 	private DTOConverterRegistry _dtoConverterRegistry;

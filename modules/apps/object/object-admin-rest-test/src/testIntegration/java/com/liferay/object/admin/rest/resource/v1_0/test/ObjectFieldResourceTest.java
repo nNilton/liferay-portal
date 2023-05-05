@@ -26,6 +26,7 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 
@@ -43,6 +44,7 @@ import org.junit.runner.RunWith;
 /**
  * @author Javier Gamarra
  */
+@FeatureFlags("LPS-146755")
 @RunWith(Arquillian.class)
 public class ObjectFieldResourceTest extends BaseObjectFieldResourceTestCase {
 
@@ -55,7 +57,7 @@ public class ObjectFieldResourceTest extends BaseObjectFieldResourceTestCase {
 
 		_objectDefinition =
 			_objectDefinitionLocalService.addCustomObjectDefinition(
-				TestPropsValues.getUserId(), false,
+				TestPropsValues.getUserId(), false, true,
 				LocalizedMapUtil.getLocalizedMap(value), value, null, null,
 				LocalizedMapUtil.getLocalizedMap(value),
 				ObjectDefinitionConstants.SCOPE_COMPANY,
@@ -321,7 +323,7 @@ public class ObjectFieldResourceTest extends BaseObjectFieldResourceTestCase {
 
 	@Override
 	protected String[] getAdditionalAssertFieldNames() {
-		return new String[] {"defaultValue", "label", "state"};
+		return new String[] {"label", "state"};
 	}
 
 	@Override

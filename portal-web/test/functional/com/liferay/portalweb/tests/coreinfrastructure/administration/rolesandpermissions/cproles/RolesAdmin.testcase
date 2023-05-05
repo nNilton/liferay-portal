@@ -1,4 +1,4 @@
-@component-name = "portal-user-management-and-portal-configuration"
+@component-name = "portal-security"
 definition {
 
 	property portal.release = "true";
@@ -272,7 +272,7 @@ definition {
 					userLastName = "user${userNum}",
 					userScreenName = "user${userNum}");
 
-				JSONGroup.addGroup(groupName = "Site${userNum}");
+				HeadlessSite.addSite(siteName = "Site${userNum}");
 
 				JSONGroup.assignUserToGroup(
 					groupName = "Site${userNum}",
@@ -524,7 +524,7 @@ definition {
 		property app.server.types = "jboss,tcserver,tomcat,weblogic,websphere,wildfly";
 		property database.types = "db2,hypersonic,mariadb,mysql,oracle,postgresql,sqlserver,sybase";
 		property environment.acceptance = "true";
-		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,solaris,suse,ubuntu,windows";
+		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,rockylinux,solaris,suse,ubuntu,windows";
 		property portal.acceptance = "true";
 
 		Role.openRolesAdmin();
@@ -647,7 +647,7 @@ definition {
 	test SiteCanBeRemovedFromRegularRole {
 		property custom.properties = "jsonws.web.service.paths.excludes=";
 
-		JSONGroup.addGroup(groupName = "Site Name");
+		HeadlessSite.addSite(siteName = "Site Name");
 
 		JSONUser.addUser(
 			userEmailAddress = "userea@liferay.com",
@@ -914,7 +914,7 @@ definition {
 			userLastName = "userln",
 			userScreenName = "usersn");
 
-		JSONGroup.addGroup(groupName = "Site Name");
+		HeadlessSite.addSite(siteName = "Site Name");
 
 		User.openUsersAdmin();
 

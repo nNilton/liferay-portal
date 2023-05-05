@@ -64,12 +64,14 @@ public class LayoutUtilityPageEntryLocalServiceUtil {
 	public static LayoutUtilityPageEntry addLayoutUtilityPageEntry(
 			String externalReferenceCode, long userId, long groupId, long plid,
 			long previewFileEntryId, boolean defaultLayoutUtilityPageEntry,
-			String name, String type, long masterLayoutPlid)
+			String name, String type, long masterLayoutPlid,
+			com.liferay.portal.kernel.service.ServiceContext serviceContext)
 		throws PortalException {
 
 		return getService().addLayoutUtilityPageEntry(
 			externalReferenceCode, userId, groupId, plid, previewFileEntryId,
-			defaultLayoutUtilityPageEntry, name, type, masterLayoutPlid);
+			defaultLayoutUtilityPageEntry, name, type, masterLayoutPlid,
+			serviceContext);
 	}
 
 	public static LayoutUtilityPageEntry copyLayoutUtilityPageEntry(
@@ -262,6 +264,12 @@ public class LayoutUtilityPageEntryLocalServiceUtil {
 
 		return getService().fetchLayoutUtilityPageEntryByExternalReferenceCode(
 			externalReferenceCode, groupId);
+	}
+
+	public static LayoutUtilityPageEntry fetchLayoutUtilityPageEntryByPlid(
+		long plid) {
+
+		return getService().fetchLayoutUtilityPageEntryByPlid(plid);
 	}
 
 	/**

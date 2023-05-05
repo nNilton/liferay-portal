@@ -10,7 +10,7 @@ definition {
 
 		User.firstLoginPG();
 
-		JSONGroup.addGroup(groupName = "Site Name");
+		HeadlessSite.addSite(siteName = "Site Name");
 
 		JSONLayout.addPublicLayout(
 			groupName = "Site Name",
@@ -31,6 +31,8 @@ definition {
 	@description = "Assert Web Content created From Structure is published Via SAP"
 	@priority = 4
 	test AssertWebContentFromStructureNotBeDeletedOnLiveViaSAP {
+		property timeout.explicit.wait = "10";
+
 		task ("Create a basic web content") {
 			JSONWebcontent.addWebContent(
 				content = "WC Content",
@@ -202,6 +204,7 @@ definition {
 			WebContentNavigator.gotoAddWithStructureCP(structureName = "My Image");
 
 			WebContent.addWithStructureCP(
+				dmFolderName = "Provided by Liferay",
 				imageFileName = "tree.png",
 				navTab = "Documents and Media",
 				structureName = "My Image",
@@ -382,6 +385,7 @@ definition {
 	@priority = 5
 	test PublishInStagingWebContentFromStructure {
 		property portal.acceptance = "true";
+		property timeout.explicit.wait = "10";
 
 		task ("Create a basic web content") {
 			JSONWebcontent.addWebContent(
@@ -590,6 +594,7 @@ definition {
 	test PublishWebContentWithImportedStructureDefaultValues {
 		property portal.acceptance = "true";
 		property test.name.skip.portal.instance = "WebContentStaging#PublishWebContentWithImportedStructureDefaultValues";
+		property timeout.explicit.wait = "20";
 
 		task ("Create a basic web content") {
 			JSONWebcontent.addWebContent(
@@ -673,7 +678,7 @@ definition {
 		}
 
 		task ("Create another site") {
-			JSONGroup.addGroup(groupName = "Site Name B");
+			HeadlessSite.addSite(siteName = "Site Name B");
 		}
 
 		task ("Enable Staging in created site") {

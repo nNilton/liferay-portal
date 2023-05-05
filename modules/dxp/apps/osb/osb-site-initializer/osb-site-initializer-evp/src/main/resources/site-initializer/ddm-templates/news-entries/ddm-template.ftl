@@ -15,6 +15,14 @@
 		cursor: pointer;
 	}
 
+	html:not(#__):not(#___) .cadmin img{
+	  max-width: 100%;
+	}
+
+	.modal-dialog, .modal-dialog:focus {
+		outline: none;
+	}
+
 	@media (min-width: 320px){
 		.partner-portal-announcements {
 			-webkit-line-clamp: 6;
@@ -78,8 +86,7 @@
 
 		Liferay.Util.openModal({
 			  headerHTML: title.innerHTML,
-				bodyHTML:
-					text,
+				bodyHTML: '<div class="border-0" style=" max-height: 600px; overflow: auto;">' + text + '</div>',
 				size: 'lg',
 			  center: true,
 			  buttons: [

@@ -29,6 +29,7 @@ import com.liferay.info.item.InfoItemServiceRegistry;
 import com.liferay.info.item.provider.InfoItemObjectProvider;
 import com.liferay.info.list.renderer.InfoListRenderer;
 import com.liferay.info.list.renderer.InfoListRendererRegistry;
+import com.liferay.info.search.InfoSearchClassMapperRegistryUtil;
 import com.liferay.layout.display.page.LayoutDisplayPageProvider;
 import com.liferay.layout.display.page.LayoutDisplayPageProviderRegistry;
 import com.liferay.layout.helper.CollectionPaginationHelper;
@@ -40,12 +41,12 @@ import com.liferay.layout.list.retriever.LayoutListRetrieverRegistry;
 import com.liferay.layout.list.retriever.ListObjectReference;
 import com.liferay.layout.list.retriever.ListObjectReferenceFactory;
 import com.liferay.layout.list.retriever.ListObjectReferenceFactoryRegistry;
-import com.liferay.layout.taglib.internal.info.search.InfoSearchClassMapperRegistryUtil;
 import com.liferay.layout.taglib.internal.servlet.ServletContextUtil;
 import com.liferay.layout.util.structure.CollectionStyledLayoutStructureItem;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringPool;
 import com.liferay.petra.string.StringUtil;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
@@ -58,7 +59,6 @@ import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.util.PropsValues;
@@ -70,7 +70,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -373,12 +372,15 @@ public class RenderCollectionLayoutStructureItemDisplayContext {
 	}
 
 	private Object _getContextObject() {
+		Object infoItem = _httpServletRequest.getAttribute(
+			InfoDisplayWebKeys.INFO_ITEM);
+
 		InfoItemReference infoItemReference =
 			(InfoItemReference)_httpServletRequest.getAttribute(
 				InfoDisplayWebKeys.INFO_ITEM_REFERENCE);
 
 		if (infoItemReference == null) {
-			return null;
+			return infoItem;
 		}
 
 		InfoItemIdentifier infoItemIdentifier =
@@ -393,7 +395,12 @@ public class RenderCollectionLayoutStructureItemDisplayContext {
 				infoItemIdentifier.getInfoItemServiceFilter());
 
 		try {
-			return infoItemObjectProvider.getInfoItem(infoItemIdentifier);
+			Object object = infoItemObjectProvider.getInfoItem(
+				infoItemIdentifier);
+
+			if (object != null) {
+				return object;
+			}
 		}
 		catch (NoSuchInfoItemException noSuchInfoItemException) {
 			if (_log.isDebugEnabled()) {
@@ -401,7 +408,7 @@ public class RenderCollectionLayoutStructureItemDisplayContext {
 			}
 		}
 
-		return null;
+		return infoItem;
 	}
 
 	private DefaultLayoutListRetrieverContext
@@ -413,12 +420,7 @@ public class RenderCollectionLayoutStructureItemDisplayContext {
 			new DefaultLayoutListRetrieverContext();
 
 		defaultLayoutListRetrieverContext.setConfiguration(_getConfiguration());
-		defaultLayoutListRetrieverContext.setContextObject(
-			Optional.ofNullable(
-				_getContextObject()
-			).orElse(
-				_httpServletRequest.getAttribute(InfoDisplayWebKeys.INFO_ITEM)
-			));
+		defaultLayoutListRetrieverContext.setContextObject(_getContextObject());
 		defaultLayoutListRetrieverContext.setInfoFilters(
 			_getInfoFilters(layoutListRetriever, listObjectReference));
 		defaultLayoutListRetrieverContext.setSegmentsEntryIds(
@@ -530,16 +532,9 @@ public class RenderCollectionLayoutStructureItemDisplayContext {
 		LayoutListRetrieverRegistry layoutListRetrieverRegistry =
 			ServletContextUtil.getLayoutListRetrieverRegistry();
 
-		LayoutListRetriever<?, ListObjectReference> layoutListRetriever =
-			(LayoutListRetriever<?, ListObjectReference>)
-				layoutListRetrieverRegistry.getLayoutListRetriever(
-					collectionJSONObject.getString("type"));
-
-		if (layoutListRetriever == null) {
-			return null;
-		}
-
-		return layoutListRetriever;
+		return (LayoutListRetriever<?, ListObjectReference>)
+			layoutListRetrieverRegistry.getLayoutListRetriever(
+				collectionJSONObject.getString("type"));
 	}
 
 	private ListObjectReference _getListObjectReference() {
@@ -632,7 +627,7 @@ public class RenderCollectionLayoutStructureItemDisplayContext {
 	private boolean _hasViewPermission(
 		ListObjectReference listObjectReference) {
 
-		if (!GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-169923"))) {
+		if (!FeatureFlagManagerUtil.isEnabled("LPS-169923")) {
 			return true;
 		}
 

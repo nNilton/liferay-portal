@@ -14,12 +14,28 @@
 
 /// <reference types="react" />
 
-interface IFDSViewsProps {
-	addFDSViewURL: string;
+import {OBJECT_RELATIONSHIP} from './Constants';
+import {FDSEntryType} from './FDSEntries';
+declare type FDSViewType = {
+	[OBJECT_RELATIONSHIP.FDS_ENTRY_FDS_VIEW]: FDSEntryType;
+	defaultItemsPerPage: number;
+	description: string;
+	externalReferenceCode: string;
+	id: string;
+	label: string;
+	listOfItemsPerPage: string;
+};
+interface FDSViewsInterface {
+	fdsEntryId: string;
+	fdsEntryLabel: string;
+	fdsViewURL: string;
 	namespace: string;
 }
 declare const FDSViews: ({
-	addFDSViewURL,
+	fdsEntryId,
+	fdsEntryLabel,
+	fdsViewURL,
 	namespace,
-}: IFDSViewsProps) => JSX.Element;
+}: FDSViewsInterface) => JSX.Element;
+export {FDSViewType};
 export default FDSViews;

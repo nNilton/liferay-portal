@@ -81,11 +81,23 @@ definition {
 	}
 
 	macro navigateToOpenAPI {
-		Variables.assertDefined(parameterList = "${api},${version}");
+		if (isSet(virtualHost)) {
+			if (!(isSet(port))) {
+				var port = 8080;
+			}
 
-		var portalURL = JSONCompany.getPortalURL();
+			var portalURL = "http://${virtualHost}:${port}";
+		}
+		else {
+			var portalURL = JSONCompany.getPortalURL();
+		}
 
-		Navigator.openSpecificURL(url = "${portalURL}/o/api?endpoint=${portalURL}/o/${api}/${version}/openapi.json");
+		if (isSet(api)) {
+			Navigator.openSpecificURL(url = "${portalURL}/o/api?endpoint=${portalURL}/o/${api}/${version}/openapi.json");
+		}
+		else {
+			Navigator.openSpecificURL(url = "${portalURL}/o/api");
+		}
 	}
 
 }

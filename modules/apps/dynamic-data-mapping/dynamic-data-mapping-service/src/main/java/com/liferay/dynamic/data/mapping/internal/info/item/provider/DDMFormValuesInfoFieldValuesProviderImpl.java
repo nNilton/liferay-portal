@@ -270,7 +270,9 @@ public class DDMFormValuesInfoFieldValuesProviderImpl
 
 			if (Objects.equals(
 					ddmFormFieldValue.getType(), DDMFormFieldType.DATE) ||
-				Objects.equals(ddmFormFieldValue.getType(), "date")) {
+				Objects.equals(
+					ddmFormFieldValue.getType(),
+					DDMFormFieldTypeConstants.DATE)) {
 
 				if (Validator.isNull(valueString)) {
 					return null;
@@ -287,6 +289,22 @@ public class DDMFormValuesInfoFieldValuesProviderImpl
 					"yyyy-MM-dd", valueString, locale);
 
 				return dateFormat.format(date);
+			}
+
+			if (Objects.equals(
+					ddmFormFieldValue.getType(),
+					DDMFormFieldTypeConstants.DATE_TIME)) {
+
+				if (Validator.isNull(valueString)) {
+					return null;
+				}
+
+				if (locale.equals(LocaleUtil.ROOT)) {
+					locale = LocaleUtil.getSiteDefault();
+				}
+
+				return DateUtil.parseDate(
+					"yyyy-MM-dd hh:mm", valueString, locale);
 			}
 
 			if (Objects.equals(
@@ -316,7 +334,9 @@ public class DDMFormValuesInfoFieldValuesProviderImpl
 
 			if (Objects.equals(
 					ddmFormFieldValue.getType(), DDMFormFieldType.IMAGE) ||
-				Objects.equals(ddmFormFieldValue.getType(), "image")) {
+				Objects.equals(
+					ddmFormFieldValue.getType(),
+					DDMFormFieldTypeConstants.IMAGE)) {
 
 				return _getWebImage(_jsonFactory.createJSONObject(valueString));
 			}

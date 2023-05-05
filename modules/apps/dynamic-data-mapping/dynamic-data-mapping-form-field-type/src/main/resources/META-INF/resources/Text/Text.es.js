@@ -72,6 +72,7 @@ const CounterContainer = ({
 };
 
 const Text = ({
+	accessibleProps,
 	defaultLanguageId,
 	disabled,
 	displayErrors,
@@ -88,6 +89,7 @@ const Text = ({
 	onBlur,
 	onChange,
 	onFocus,
+	onKeyDown,
 	placeholder,
 	setError,
 	shouldUpdateValue,
@@ -167,11 +169,12 @@ const Text = ({
 					{...getTooltipTitle({placeholder, value})}
 				>
 					<ClayInput
+						{...accessibleProps}
 						className="ddm-field-text"
 						dir={Liferay.Language.direction[editingLanguageId]}
 						disabled={disabled}
 						id={id}
-						lang={editingLanguageId?.replace('_', '-')}
+						lang={editingLanguageId?.replaceAll('_', '-')}
 						maxLength={showCounter ? '' : maxLength}
 						name={name}
 						onBlur={(event) => {
@@ -180,6 +183,7 @@ const Text = ({
 						}}
 						onChange={handleChangeInput}
 						onFocus={onFocus}
+						onKeyDown={onKeyDown}
 						placeholder={placeholder}
 						ref={inputRef}
 						type="text"
@@ -202,6 +206,7 @@ const Text = ({
 };
 
 const Textarea = ({
+	accessibleProps,
 	disabled,
 	displayErrors,
 	editingLanguageId,
@@ -229,11 +234,12 @@ const Textarea = ({
 					{...getTooltipTitle({placeholder, value})}
 				>
 					<textarea
+						{...accessibleProps}
 						className="ddm-field-text form-control"
 						dir={Liferay.Language.direction[editingLanguageId]}
 						disabled={disabled}
 						id={id}
-						lang={editingLanguageId?.replace('_', '-')}
+						lang={editingLanguageId?.replaceAll('_', '-')}
 						name={name}
 						onBlur={onBlur}
 						onChange={(event) => {
@@ -243,7 +249,6 @@ const Textarea = ({
 						onFocus={onFocus}
 						placeholder={placeholder}
 						style={disabled ? {resize: 'none'} : null}
-						type="text"
 						value={value}
 					/>
 				</div>
@@ -263,6 +268,7 @@ const Textarea = ({
 };
 
 const Autocomplete = ({
+	accessibleProps,
 	disabled,
 	editingLanguageId,
 	id,
@@ -343,10 +349,11 @@ const Autocomplete = ({
 	return (
 		<ClayAutocomplete>
 			<ClayAutocomplete.Input
+				{...accessibleProps}
 				dir={Liferay.Language.direction[editingLanguageId]}
 				disabled={disabled}
 				id={id}
-				lang={editingLanguageId?.replace('_', '-')}
+				lang={editingLanguageId?.replaceAll('_', '-')}
 				name={name}
 				onBlur={onBlur}
 				onChange={(event) => {
@@ -456,6 +463,7 @@ const Main = ({
 	onBlur,
 	onChange,
 	onFocus,
+	onKeyDown,
 	options = [],
 	placeholder,
 	predefinedValue = '',
@@ -492,6 +500,16 @@ const Main = ({
 			valid={error.valid ?? valid}
 		>
 			<Component
+				accessibleProps={{
+					...(otherProps.tip && {
+						'aria-describedby': `${id ?? name}_fieldHelp`,
+					}),
+					...(otherProps.errorMessage && {
+						'aria-errormessage': `${id ?? name}_fieldError`,
+					}),
+					'aria-invalid': !valid,
+					'aria-required': otherProps.required,
+				}}
 				defaultLanguageId={defaultLanguageId}
 				disabled={readOnly}
 				displayErrors={displayErrors}
@@ -508,6 +526,7 @@ const Main = ({
 				onBlur={onBlur}
 				onChange={onChange}
 				onFocus={onFocus}
+				onKeyDown={onKeyDown}
 				options={optionsMemo}
 				placeholder={placeholder}
 				setError={setError}

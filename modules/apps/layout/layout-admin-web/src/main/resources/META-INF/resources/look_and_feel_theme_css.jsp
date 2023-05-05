@@ -16,15 +16,12 @@
 
 <%@ include file="/init.jsp" %>
 
-<clay:sheet-section>
-	<h3 class="sheet-subtitle"><liferay-ui:message key="theme-css-client-extension" /></h3>
-
-	<clay:alert
-		displayType="info"
-		message='<%= LanguageUtil.get(request, "by-replacing-the-css-completely-you-will-be-overriding-all-the-declared-design-tokens-and-css-variables") %>'
-	/>
-
-	<p>
+<liferay-frontend:fieldset
+	collapsed="<%= false %>"
+	collapsible="<%= true %>"
+	label="theme-css-client-extension"
+>
+	<p class="text-secondary">
 		<liferay-ui:message key="use-this-client-extension-to-fully-replace-the-default-css-contained-in-the-theme" />
 	</p>
 
@@ -34,4 +31,4 @@
 			props="<%= layoutsAdminDisplayContext.getThemeCSSReplacementSelectorProps() %>"
 		/>
 	</div>
-</clay:sheet-section>
+</liferay-frontend:fieldset>

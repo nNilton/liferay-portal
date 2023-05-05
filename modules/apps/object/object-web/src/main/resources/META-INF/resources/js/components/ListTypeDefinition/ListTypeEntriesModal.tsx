@@ -25,11 +25,10 @@ import {
 import {openToast} from 'frontend-js-web';
 import React, {useEffect, useState} from 'react';
 
+import {defaultLanguageId} from '../../utils/constants';
 import {specialCharactersInString, toCamelCase} from '../../utils/string';
 import {ObjectValidationErrors} from './ListTypeFormBase';
 import {fixLocaleKeys} from './utils';
-
-const defaultLanguageId = Liferay.ThemeDisplay.getDefaultLanguageId();
 export interface IModalState extends Partial<PickListItem> {
 	header?: string;
 	itemExternalReferenceCode?: string;
@@ -163,11 +162,7 @@ function ListTypeEntriesModal() {
 			);
 		}
 
-		if (
-			Liferay.FeatureFlags['LPS-168886'] &&
-			modalType === 'edit' &&
-			invalidateRequired(externalReferenceCode)
-		) {
+		if (modalType === 'edit' && invalidateRequired(externalReferenceCode)) {
 			errors.externalReferenceCode = REQUIRED_MSG;
 		}
 
@@ -253,7 +248,7 @@ function ListTypeEntriesModal() {
 					value={itemKey ?? ''}
 				/>
 
-				{Liferay.FeatureFlags['LPS-168886'] && modalType === 'edit' && (
+				{modalType === 'edit' && (
 					<Input
 						error={errors.externalReferenceCode}
 						label={Liferay.Language.get('external-reference-code')}

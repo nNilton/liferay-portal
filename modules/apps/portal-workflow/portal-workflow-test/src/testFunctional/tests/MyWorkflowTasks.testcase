@@ -294,12 +294,7 @@ definition {
 
 	@priority = 3
 	test AddCommentToTaskCompleted {
-		Navigator.openURL();
-
-		ProductMenu.gotoPortlet(
-			category = "Content & Data",
-			panel = "Site Administration",
-			portlet = "Blogs");
+		BlogsNavigator.openBlogsAdmin(siteURLKey = "guest");
 
 		Blogs.addWithWorkflow(
 			entryContent = "Blogs Entry Content",
@@ -339,6 +334,8 @@ definition {
 
 	@priority = 4
 	test ApproveResubmitTaskByActions {
+		property test.name.skip.portal.instance = "MyWorkflowTasks#ApproveResubmitTaskByActions";
+
 		Navigator.openURL();
 
 		ProductMenu.gotoPortlet(
@@ -435,6 +432,8 @@ definition {
 	@description = "Verify that the user can assign a task to current user in the Assigned to My Roles tab"
 	@priority = 5
 	test CanAssignTaskToCurrentUser {
+		property test.name.skip.portal.instance = "MyWorkflowTasks#CanAssignTaskToCurrentUser";
+
 		JSONBlog.addEntry(
 			entryContent = "Blogs Entry Content",
 			entryTitle = "Blogs Entry Title");
@@ -1445,37 +1444,22 @@ definition {
 
 	@priority = 3
 	test ReviewerApproveResubmitTaskByActionsUser {
-		ApplicationsMenu.gotoPortlet(
-			category = "Users",
-			panel = "Control Panel",
-			portlet = "Users and Organizations");
+		property custom.properties = "jsonws.web.service.paths.excludes=";
 
-		User.addCP(
+		JSONUser.addUser(
 			userEmailAddress = "userea@liferay.com",
 			userFirstName = "userfn",
 			userLastName = "userln",
 			userScreenName = "usersn");
 
-		ApplicationsMenu.gotoPortlet(
-			category = "Users",
-			panel = "Control Panel",
-			portlet = "Users and Organizations");
+		JSONUser.setFirstPassword(
+			agreeToTermsAndAnswerReminderQuery = "true",
+			requireReset = "false",
+			userEmailAddress = "userea@liferay.com");
 
-		User.editPasswordCP(
-			userEmailAddress = "userea@liferay.com",
-			userScreenName = "usersn");
-
-		ApplicationsMenu.gotoPortlet(
-			category = "Users",
-			panel = "Control Panel",
-			portlet = "Roles");
-
-		Workflow.addAssigneeToRegularRole(
-			assigneeName = "usersn",
-			assigneeType = "Users",
-			roleTitle = "Portal Content Reviewer");
-
-		Navigator.openURL();
+		JSONRole.assignRoleToUser(
+			roleTitle = "Portal Content Reviewer",
+			userEmailAddress = "userea@liferay.com");
 
 		JSONBlog.addEntry(
 			entryContent = "Blogs Entry",
@@ -1510,12 +1494,7 @@ definition {
 			workflowAssetType = "Blogs Entry",
 			workflowTask = "Update");
 
-		Navigator.openURL();
-
-		ProductMenu.gotoPortlet(
-			category = "Content & Data",
-			panel = "Site Administration",
-			portlet = "Blogs");
+		BlogsNavigator.openBlogsAdmin(siteURLKey = "guest");
 
 		LexiconEntry.changeDisplayStyle(displayStyle = "cards");
 
@@ -1547,10 +1526,7 @@ definition {
 			userLoginEmailAddress = "test@liferay.com",
 			userLoginFullName = "test test");
 
-		ProductMenu.gotoPortlet(
-			category = "Content & Data",
-			panel = "Site Administration",
-			portlet = "Blogs");
+		BlogsNavigator.openBlogsAdmin(siteURLKey = "guest");
 
 		LexiconEntry.changeDisplayStyle(displayStyle = "cards");
 
@@ -1626,8 +1602,6 @@ definition {
 	@description = "LPS-135888 - Verify that when the user delete the order, the task is not displayed under My Workflow Tasks"
 	@priority = 3
 	test TaskIsNotDisplayedAfterOrderIsDeleted {
-		property portal.upstream = "quarantine";
-
 		CommerceAccelerators.initializeNewSiteViaAccelerator(siteName = "Minium");
 
 		ApplicationsMenu.gotoPortlet(

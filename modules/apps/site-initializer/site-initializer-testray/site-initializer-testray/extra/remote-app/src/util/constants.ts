@@ -19,10 +19,6 @@ export enum RoleTypes {
 	ASSET_LIBRARY = 5,
 }
 
-export enum STORAGE_KEYS {
-	EXPORT_CASE_IDS = '@testray/export-case-ids',
-}
-
 export const DATA_COLORS = {
 	'metrics.blocked': '#F8D72E',
 	'metrics.failed': '#E73A45',
@@ -73,9 +69,4 @@ export const PAGINATION_DELTA = [20, 50, 75, 100, 150];
 export const PAGINATION = {
 	delta: PAGINATION_DELTA,
 	ellipsisBuffer: 3,
-};
-
-export const BUILD_STATUS = {
-	0: {color: 'label-chart-in-analysis', label: 'IN ANALYSIS'},
-	2: {color: 'label-secondary', label: 'OPEN'},
 };

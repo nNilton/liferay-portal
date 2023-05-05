@@ -3,6 +3,7 @@ definition {
 
 	property portal.release = "true";
 	property portal.upstream = "true";
+	property testray.component.names = "Item Selector";
 	property testray.main.component.name = "Knowledge Base";
 
 	setUp {
@@ -10,7 +11,7 @@ definition {
 
 		User.firstLoginPG();
 
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 
 		JSONLayout.addPublicLayout(
 			groupName = "Test Site Name",

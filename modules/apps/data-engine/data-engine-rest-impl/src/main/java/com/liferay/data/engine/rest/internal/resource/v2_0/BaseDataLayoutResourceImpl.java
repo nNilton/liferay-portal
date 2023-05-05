@@ -20,21 +20,16 @@ import com.liferay.data.engine.rest.resource.v2_0.DataLayoutResource;
 import com.liferay.petra.function.UnsafeBiConsumer;
 import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.function.UnsafeFunction;
-import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.GroupedModel;
-import com.liferay.portal.kernel.model.ResourceAction;
-import com.liferay.portal.kernel.model.ResourceConstants;
-import com.liferay.portal.kernel.model.ResourcePermission;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
-import com.liferay.portal.kernel.service.ResourceLocalServiceUtil;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
-import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -47,23 +42,17 @@ import com.liferay.portal.odata.sort.SortParser;
 import com.liferay.portal.odata.sort.SortParserProvider;
 import com.liferay.portal.vulcan.accept.language.AcceptLanguage;
 import com.liferay.portal.vulcan.batch.engine.VulcanBatchEngineTaskItemDelegate;
+import com.liferay.portal.vulcan.batch.engine.resource.VulcanBatchEngineExportTaskResource;
 import com.liferay.portal.vulcan.batch.engine.resource.VulcanBatchEngineImportTaskResource;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
-import com.liferay.portal.vulcan.permission.Permission;
 import com.liferay.portal.vulcan.resource.EntityModelResource;
 import com.liferay.portal.vulcan.util.ActionUtil;
-import com.liferay.portal.vulcan.util.TransformUtil;
 
 import java.io.Serializable;
 
-import java.lang.reflect.Method;
-
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -167,6 +156,89 @@ public abstract class BaseDataLayoutResourceImpl
 		throws Exception {
 
 		return Page.of(Collections.emptyList());
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
+	 * curl -X 'POST' 'http://localhost:8080/o/data-engine/v2.0/data-definitions/{dataDefinitionId}/data-layouts/export-batch'  -u 'test@liferay.com:test'
+	 */
+	@io.swagger.v3.oas.annotations.Parameters(
+		value = {
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
+				name = "dataDefinitionId"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "keywords"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "sort"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "callbackURL"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "contentType"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "fieldNames"
+			)
+		}
+	)
+	@io.swagger.v3.oas.annotations.tags.Tags(
+		value = {@io.swagger.v3.oas.annotations.tags.Tag(name = "DataLayout")}
+	)
+	@javax.ws.rs.Consumes("application/json")
+	@javax.ws.rs.Path(
+		"/data-definitions/{dataDefinitionId}/data-layouts/export-batch"
+	)
+	@javax.ws.rs.POST
+	@javax.ws.rs.Produces("application/json")
+	@Override
+	public Response postDataDefinitionDataLayoutsPageExportBatch(
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.validation.constraints.NotNull
+			@javax.ws.rs.PathParam("dataDefinitionId")
+			Long dataDefinitionId,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("keywords")
+			String keywords,
+			@javax.ws.rs.core.Context Sort[] sorts,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("callbackURL")
+			String callbackURL,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.DefaultValue("JSON")
+			@javax.ws.rs.QueryParam("contentType")
+			String contentType,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("fieldNames")
+			String fieldNames)
+		throws Exception {
+
+		vulcanBatchEngineExportTaskResource.setContextAcceptLanguage(
+			contextAcceptLanguage);
+		vulcanBatchEngineExportTaskResource.setContextCompany(contextCompany);
+		vulcanBatchEngineExportTaskResource.setContextHttpServletRequest(
+			contextHttpServletRequest);
+		vulcanBatchEngineExportTaskResource.setContextUriInfo(contextUriInfo);
+		vulcanBatchEngineExportTaskResource.setContextUser(contextUser);
+		vulcanBatchEngineExportTaskResource.setGroupLocalService(
+			groupLocalService);
+
+		Response.ResponseBuilder responseBuilder = Response.accepted();
+
+		return responseBuilder.entity(
+			vulcanBatchEngineExportTaskResource.postExportTask(
+				DataLayout.class.getName(), callbackURL, contentType,
+				fieldNames)
+		).build();
 	}
 
 	/**
@@ -529,8 +601,7 @@ public abstract class BaseDataLayoutResourceImpl
 			if (parameters.containsKey("dataDefinitionId")) {
 				dataLayoutUnsafeConsumer =
 					dataLayout -> postDataDefinitionDataLayout(
-						Long.parseLong(
-							(String)parameters.get("dataDefinitionId")),
+						_parseLong((String)parameters.get("dataDefinitionId")),
 						dataLayout);
 			}
 			else {
@@ -602,7 +673,7 @@ public abstract class BaseDataLayoutResourceImpl
 
 		if (parameters.containsKey("dataDefinitionId")) {
 			return getDataDefinitionDataLayoutsPage(
-				Long.parseLong((String)parameters.get("dataDefinitionId")),
+				_parseLong((String)parameters.get("dataDefinitionId")),
 				(String)parameters.get("keywords"), pagination, sorts);
 		}
 		else {
@@ -647,7 +718,7 @@ public abstract class BaseDataLayoutResourceImpl
 		if ("UPDATE".equalsIgnoreCase(updateStrategy)) {
 			dataLayoutUnsafeConsumer = dataLayout -> putDataLayout(
 				dataLayout.getId() != null ? dataLayout.getId() :
-					Long.parseLong((String)parameters.get("dataLayoutId")),
+					_parseLong((String)parameters.get("dataLayoutId")),
 				dataLayout);
 		}
 
@@ -666,6 +737,14 @@ public abstract class BaseDataLayoutResourceImpl
 				dataLayoutUnsafeConsumer.accept(dataLayout);
 			}
 		}
+	}
+
+	private Long _parseLong(String value) {
+		if (value != null) {
+			return Long.parseLong(value);
+		}
+
+		return null;
 	}
 
 	public void setContextAcceptLanguage(AcceptLanguage contextAcceptLanguage) {
@@ -742,6 +821,14 @@ public abstract class BaseDataLayoutResourceImpl
 
 	public void setSortParserProvider(SortParserProvider sortParserProvider) {
 		this.sortParserProvider = sortParserProvider;
+	}
+
+	public void setVulcanBatchEngineExportTaskResource(
+		VulcanBatchEngineExportTaskResource
+			vulcanBatchEngineExportTaskResource) {
+
+		this.vulcanBatchEngineExportTaskResource =
+			vulcanBatchEngineExportTaskResource;
 	}
 
 	public void setVulcanBatchEngineImportTaskResource(
@@ -877,6 +964,12 @@ public abstract class BaseDataLayoutResourceImpl
 		return TransformUtil.transformToList(array, unsafeFunction);
 	}
 
+	protected <T, R, E extends Throwable> long[] transformToLongArray(
+		Collection<T> collection, UnsafeFunction<T, R, E> unsafeFunction) {
+
+		return TransformUtil.transformToLongArray(collection, unsafeFunction);
+	}
+
 	protected <T, R, E extends Throwable> List<R> unsafeTransform(
 			Collection<T> collection, UnsafeFunction<T, R, E> unsafeFunction)
 		throws E {
@@ -907,6 +1000,14 @@ public abstract class BaseDataLayoutResourceImpl
 		return TransformUtil.unsafeTransformToList(array, unsafeFunction);
 	}
 
+	protected <T, R, E extends Throwable> long[] unsafeTransformToLongArray(
+			Collection<T> collection, UnsafeFunction<T, R, E> unsafeFunction)
+		throws E {
+
+		return TransformUtil.unsafeTransformToLongArray(
+			collection, unsafeFunction);
+	}
+
 	protected AcceptLanguage contextAcceptLanguage;
 	protected UnsafeBiConsumer
 		<Collection<DataLayout>, UnsafeConsumer<DataLayout, Exception>,
@@ -924,114 +1025,10 @@ public abstract class BaseDataLayoutResourceImpl
 	protected ResourcePermissionLocalService resourcePermissionLocalService;
 	protected RoleLocalService roleLocalService;
 	protected SortParserProvider sortParserProvider;
+	protected VulcanBatchEngineExportTaskResource
+		vulcanBatchEngineExportTaskResource;
 	protected VulcanBatchEngineImportTaskResource
 		vulcanBatchEngineImportTaskResource;
-
-	private void _checkResources(
-			long companyId, long resourceId, String resourceName)
-		throws PortalException {
-
-		int count = resourcePermissionLocalService.getResourcePermissionsCount(
-			companyId, resourceName, ResourceConstants.SCOPE_INDIVIDUAL,
-			String.valueOf(resourceId));
-
-		if (count == 0) {
-			ResourceLocalServiceUtil.addResources(
-				companyId, resourceId, 0, resourceName,
-				String.valueOf(resourceId), false, true, true);
-		}
-	}
-
-	private Collection<Permission> _getPermissions(
-			long companyId, List<ResourceAction> resourceActions,
-			long resourceId, String resourceName, String[] roleNames)
-		throws Exception {
-
-		_checkResources(companyId, resourceId, resourceName);
-
-		Map<String, Permission> permissions = new LinkedHashMap<>();
-
-		List<ResourcePermission> resourcePermissions = new ArrayList<>();
-
-		try {
-			Method method = ResourcePermissionLocalService.class.getMethod(
-				"getResourcePermissions", String.class);
-
-			resourcePermissions = (List<ResourcePermission>)method.invoke(
-				resourcePermissionLocalService, resourceName);
-		}
-		catch (NoSuchMethodException noSuchMethodException) {
-			resourcePermissions =
-				resourcePermissionLocalService.getResourcePermissions(
-					companyId, resourceName, ResourceConstants.SCOPE_INDIVIDUAL,
-					String.valueOf(resourceId));
-		}
-
-		for (ResourcePermission resourcePermission : resourcePermissions) {
-			if ((resourcePermission.getPrimKeyId() == 0) ||
-				(resourcePermission.getPrimKeyId() == resourceId)) {
-
-				com.liferay.portal.kernel.model.Role role =
-					roleLocalService.getRole(resourcePermission.getRoleId());
-
-				if ((roleNames == null) ||
-					((roleNames != null) &&
-					 ArrayUtil.contains(roleNames, role.getName()))) {
-
-					Permission permission = permissions.get(role.getName());
-
-					if (permission == null) {
-						permission = _toPermission(
-							resourceActions, resourcePermission, role);
-
-						permissions.put(role.getName(), permission);
-					}
-					else {
-						Set<String> actionsIdsSet = new HashSet<>();
-
-						Collections.addAll(
-							actionsIdsSet, permission.getActionIds());
-
-						Permission newPermission = _toPermission(
-							resourceActions, resourcePermission, role);
-
-						Collections.addAll(
-							actionsIdsSet, newPermission.getActionIds());
-
-						permission.setActionIds(
-							actionsIdsSet.toArray(new String[0]));
-					}
-				}
-			}
-		}
-
-		return permissions.values();
-	}
-
-	private Permission _toPermission(
-		List<ResourceAction> resourceActions,
-		ResourcePermission resourcePermission,
-		com.liferay.portal.kernel.model.Role role) {
-
-		Set<String> actionsIdsSet = new HashSet<>();
-
-		long actionIds = resourcePermission.getActionIds();
-
-		for (ResourceAction resourceAction : resourceActions) {
-			long bitwiseValue = resourceAction.getBitwiseValue();
-
-			if ((actionIds & bitwiseValue) == bitwiseValue) {
-				actionsIdsSet.add(resourceAction.getActionId());
-			}
-		}
-
-		return new Permission() {
-			{
-				actionIds = actionsIdsSet.toArray(new String[0]);
-				roleName = role.getName();
-			}
-		};
-	}
 
 	private static final com.liferay.portal.kernel.log.Log _log =
 		LogFactoryUtil.getLog(BaseDataLayoutResourceImpl.class);

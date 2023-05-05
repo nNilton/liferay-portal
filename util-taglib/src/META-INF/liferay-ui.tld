@@ -1659,6 +1659,7 @@
 		</attribute>
 	</tag>
 	<tag>
+		<description>Deprecated as of 7.4.0, replaced by the <![CDATA[<code>liferay-frontend:logo-selector</code>]]> tag.</description>
 		<name>logo-selector</name>
 		<tag-class>com.liferay.taglib.ui.LogoSelectorTag</tag-class>
 		<body-content>JSP</body-content>
@@ -3143,22 +3144,6 @@
 			<description>An active tab from the value given in the attribute <![CDATA[<code>tabsValues</code>]]>. No matter which tab a user selects, the tab given for this value always remains active.</description>
 			<name>value</name>
 			<required>false</required>
-			<rtexprvalue>true</rtexprvalue>
-		</attribute>
-	</tag>
-	<tag>
-		<description>Deprecated as of 7.4.0, with no direct replacement.</description>
-		<name>toggle-value</name>
-		<tag-class>com.liferay.taglib.ui.ToggleValueTag</tag-class>
-		<body-content>JSP</body-content>
-		<attribute>
-			<name>defaultValue</name>
-			<required>false</required>
-			<rtexprvalue>true</rtexprvalue>
-		</attribute>
-		<attribute>
-			<name>id</name>
-			<required>true</required>
 			<rtexprvalue>true</rtexprvalue>
 		</attribute>
 	</tag>

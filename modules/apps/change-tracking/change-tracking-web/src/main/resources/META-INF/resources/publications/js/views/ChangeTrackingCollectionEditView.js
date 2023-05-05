@@ -26,6 +26,7 @@ export default function ChangeTrackingCollectionEditView({
 	ctCollectionId,
 	ctCollectionTemplates,
 	ctCollectionTemplatesData,
+	defaultCTCollectionTemplateId,
 	descriptionFieldMaxLength,
 	inviteUsersURL,
 	nameFieldMaxLength,
@@ -37,18 +38,26 @@ export default function ChangeTrackingCollectionEditView({
 	saveButtonLabel,
 	showTemplates,
 }) {
-	const [nameField, setNameField] = useState(publicationName);
-	const [descriptionField, setDescriptionField] = useState(
-		publicationDescription
-	);
-	const [saveButtonDisabled, setSaveButtonDisabled] = useState(
-		revertingPublication
-	);
-	const [ctCollectionTemplateId, setCtCollectionTemplateId] = useState(0);
-
 	const templates = JSON.parse(ctCollectionTemplates);
 	const data = JSON.parse(ctCollectionTemplatesData);
 
+	const [nameField, setNameField] = useState(
+		defaultCTCollectionTemplateId > 0
+			? data[defaultCTCollectionTemplateId].name
+			: publicationName
+	);
+	const [descriptionField, setDescriptionField] = useState(
+		defaultCTCollectionTemplateId > 0
+			? data[defaultCTCollectionTemplateId].description
+			: publicationDescription
+	);
+	const [publishTimeField, setPublishTimeField] = useState(null);
+	const [saveButtonDisabled, setSaveButtonDisabled] = useState(
+		revertingPublication
+	);
+	const [ctCollectionTemplateId, setCtCollectionTemplateId] = useState(
+		defaultCTCollectionTemplateId ? defaultCTCollectionTemplateId : 0
+	);
 	const handleSubmit = (event) => {
 		event.preventDefault();
 
@@ -56,6 +65,7 @@ export default function ChangeTrackingCollectionEditView({
 			[`${namespace}ctCollectionId`]: ctCollectionId,
 			[`${namespace}name`]: nameField,
 			[`${namespace}description`]: descriptionField,
+			[`${namespace}publishTime`]: publishTimeField,
 		});
 
 		fetch(actionUrl, {
@@ -197,7 +207,11 @@ export default function ChangeTrackingCollectionEditView({
 								Liferay.Language.get('select-x'),
 								Liferay.Language.get('template')
 							)}
-							defaultValue={0}
+							defaultValue={
+								defaultCTCollectionTemplateId
+									? defaultCTCollectionTemplateId
+									: 0
+							}
 							id="templateSelector"
 							onChange={(event) => {
 								onSelectValueChange(event.target.value);
@@ -276,7 +290,12 @@ export default function ChangeTrackingCollectionEditView({
 												className="field"
 												id="publishTimeNow"
 												name="publishTime"
-												onChange={() => {
+												onChange={(event) => {
+													if (event.target.checked) {
+														setPublishTimeField(
+															event.target.value
+														);
+													}
 													setSaveButtonDisabled(
 														false
 													);
@@ -314,7 +333,12 @@ export default function ChangeTrackingCollectionEditView({
 												className="field"
 												id="publishTimeLater"
 												name="publishTime"
-												onChange={() => {
+												onChange={(event) => {
+													if (event.target.checked) {
+														setPublishTimeField(
+															event.target.value
+														);
+													}
 													setSaveButtonDisabled(
 														false
 													);
@@ -354,14 +378,15 @@ export default function ChangeTrackingCollectionEditView({
 						<ClayButton
 							disabled={
 								saveButtonDisabled ||
-								nameField.length > nameFieldMaxLength ||
-								nameField.length < 1 ||
-								descriptionField.length >
-									descriptionFieldMaxLength
+								(nameField &&
+									(nameField.length > nameFieldMaxLength ||
+										nameField.length < 1)) ||
+								(descriptionField &&
+									descriptionField.length >
+										descriptionFieldMaxLength)
 							}
 							displayType="primary"
 							id="saveButton"
-							onClick={() => handleSubmit()}
 							type="submit"
 						>
 							{saveButtonLabel}
@@ -369,7 +394,9 @@ export default function ChangeTrackingCollectionEditView({
 
 						<ClayButton
 							displayType="secondary"
-							onClick={() => {
+							onClick={(event) => {
+								event.preventDefault();
+
 								resetForm();
 								navigate(redirect);
 							}}

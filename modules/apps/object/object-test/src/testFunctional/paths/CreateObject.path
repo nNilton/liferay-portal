@@ -10,14 +10,9 @@
 </thead>
 
 <tbody>
-		<tr>
+	<tr>
 		<td>OBJECT_DEFINITION_NAME</td>
 		<td>//input[@id='objectDefinitionName']</td>
-		<td></td>
-	</tr>
-	<tr>
-		<td>VIEW_OBJECT</td>
-		<td>//a[contains(.,'${key_labelName}')]/../../..//a[@class='btn btn-secondary btn-sm link-monospaced']</td>
 		<td></td>
 	</tr>
 	<tr>
@@ -38,6 +33,11 @@
 	<tr>
 		<td>SAVE_BUTTON</td>
 		<td>//button[@id='_com_liferay_object_web_internal_object_definitions_portlet_ObjectDefinitionsPortlet_save']</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td>VIEW_OBJECT</td>
+		<td>//a[contains(.,'${key_labelName}')]/../../..//a[@class='btn btn-secondary btn-sm link-monospaced']</td>
 		<td></td>
 	</tr>
 	<tr>
@@ -126,6 +126,11 @@
 		<td></td>
 	</tr>
 	<tr>
+		<td>VIEW_ENTRY_FIELD_BY_INDEX</td>
+		<td>//div[contains(@class,'dnd-td')][${key_index}]//span[contains(text(),'${key_entry}')]</td>
+		<td></td>
+	</tr>
+	<tr>
 		<td>VIEW_ENTRY_SELECTED_ON_RELATIONSHIP_FIELD</td>
 		<td>//input[contains(@name,'r_relationship') and contains(@value,'${key_entry}')]</td>
 		<td></td>
@@ -133,6 +138,11 @@
 	<tr>
 		<td>VIEW_RELATED_OBJECT_ON_RELATIONSHIP_FIELD</td>
 		<td>//div[contains(@class,'dnd-tbody')]//div[contains(@class, 'dnd-tr')]//div[contains(text(),'${key_relatedObject}') and contains(@class, 'dnd-td')][1]</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td>SELECT_ANY_OBJECT_FIELD_IN_TABLE</td>
+		<td>//div[contains(text(),'${key_name}')]/parent::div//button</td>
 		<td></td>
 	</tr>
 	<tr>
@@ -200,6 +210,9 @@
 		<td>//span[contains(@class,'actions collapse-icon-${key_closedOrOpen}')]</td>
 		<td></td>
 	</tr>
+
+<!--ACCOUNT_RESTRICTION-->
+
 	<tr>
 		<td>ACCOUNT_RESTRICTED_FIELD</td>
 		<td>//label[text()='Account Restricted Field']/following-sibling::div//input</td>

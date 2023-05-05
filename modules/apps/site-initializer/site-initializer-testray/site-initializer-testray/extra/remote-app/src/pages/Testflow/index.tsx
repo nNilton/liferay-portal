@@ -19,13 +19,18 @@ import ListView from '../../components/ListView';
 import TaskbarProgress from '../../components/ProgressBar/TaskbarProgress';
 import StatusBadge from '../../components/StatusBadge';
 import {StatusBadgeType} from '../../components/StatusBadge/StatusBadge';
+import SearchBuilder from '../../core/SearchBuilder';
 import {useHeader} from '../../hooks';
 import i18n from '../../i18n';
-import {PickList, TestrayTask, testrayTaskImpl} from '../../services/rest';
+import {
+	PickList,
+	TestrayTask,
+	UserAccount,
+	testrayTaskImpl,
+} from '../../services/rest';
 import {StatusesProgressScore, chartClassNames} from '../../util/constants';
 import {getTimeFromNow} from '../../util/date';
 import {getPercentLabel} from '../../util/graph.util';
-import {SearchBuilder} from '../../util/search';
 import {TaskStatuses} from '../../util/statuses';
 import TestflowModal from './TestflowModal';
 import useTestflowActions from './useTestflowActions';
@@ -152,26 +157,22 @@ const TestFlow = () => {
 							value: i18n.translate('progress'),
 						},
 						{
-							key: 'assignedUsers',
-							render: (assignedUsers) => {
-								try {
-									return (
-										<Avatar.Group
-											assignedUsers={JSON.parse(
-												assignedUsers
-											)}
-											groupSize={3}
-										/>
-									);
-								}
-								catch {
-									return '';
-								}
-							},
-							value: i18n.translate('assigned'),
+							key: 'users',
+							render: (users: UserAccount[]) => (
+								<Avatar.Group
+									assignedUsers={users.map(
+										({image, name}) => ({
+											name,
+											url: image,
+										})
+									)}
+									groupSize={5}
+								/>
+							),
+							value: i18n.translate('assigned-users'),
 						},
 					],
-					navigateTo: (item) => `/testflow/${item.id}`,
+					navigateTo: (task) => `/testflow/${task.id}`,
 					rowWrap: true,
 				}}
 				transformData={(response) =>

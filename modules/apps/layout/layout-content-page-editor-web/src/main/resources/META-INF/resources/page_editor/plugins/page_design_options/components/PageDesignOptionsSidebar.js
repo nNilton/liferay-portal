@@ -175,6 +175,7 @@ export default function PageDesignOptionsSidebar() {
 							Liferay.Language.get('select-x'),
 							label
 						)}
+						className="p-0"
 						id={getTabPanelId(index)}
 						key={index}
 					>
@@ -195,7 +196,7 @@ const OptionList = ({options = [], icon, type}) => {
 							'this-page-is-using-a-different-theme-than-the-one-set-for-public-pages'
 					  )
 					: Liferay.Language.get(
-							'this-page-is-using-a-different-theme-than-the-one-set-for-pages'
+							'this-page-is-using-a-different-theme-than-the-one-set-for-all-pages'
 					  )}
 			</ClayAlert>
 		);

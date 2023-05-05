@@ -15,6 +15,7 @@
 package com.liferay.object.service;
 
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
+import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectRelationship;
 import com.liferay.petra.sql.dsl.query.DSLQuery;
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
@@ -157,6 +158,10 @@ public interface ObjectRelationshipLocalService
 		throws PortalException;
 
 	public void deleteObjectRelationships(long objectDefinitionId1)
+		throws PortalException;
+
+	public void deleteObjectRelationships(
+			long objectDefinitionId1, boolean reverse)
 		throws PortalException;
 
 	/**
@@ -351,6 +356,10 @@ public interface ObjectRelationshipLocalService
 	public List<ObjectRelationship> getObjectRelationships(
 		long objectDefinitionId1, String deletionType, boolean reverse);
 
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public List<ObjectRelationship> getObjectRelationshipsByObjectDefinitionId2(
+		long objectDefinitionId2);
+
 	/**
 	 * Returns the number of object relationships.
 	 *
@@ -373,6 +382,10 @@ public interface ObjectRelationshipLocalService
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public PersistedModel getPersistedModel(Serializable primaryKeyObj)
 		throws PortalException;
+
+	public void registerObjectRelationshipsRelatedInfoCollectionProviders(
+		ObjectDefinition objectDefinition1,
+		ObjectDefinitionLocalService objectDefinitionLocalService);
 
 	@Indexable(type = IndexableType.REINDEX)
 	public ObjectRelationship updateObjectRelationship(

@@ -46,6 +46,7 @@ const DealRegistrationList = ({getFilteredItems, sort}: IProps) => {
 		onClose: () => setIsVisibleModal(false),
 	});
 	const pagination = usePagination();
+	const siteURL = useLiferayNavigate();
 	const {data, isValidating} = useGetListItemsFromDealRegistration(
 		pagination.activePage,
 		pagination.activeDelta,
@@ -53,7 +54,6 @@ const DealRegistrationList = ({getFilteredItems, sort}: IProps) => {
 		sort
 	);
 	const filteredData = data.items && getFilteredItems(data.items);
-	const siteURL = useLiferayNavigate();
 	const columns = [
 		{
 			columnKey: DealRegistrationColumnKey.ACCOUNT_NAME,

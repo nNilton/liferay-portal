@@ -51,7 +51,6 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.SessionClicks;
-import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.WebKeys;
 
 import java.util.ArrayList;
@@ -79,12 +78,12 @@ public class AddContentPanelDisplayContext {
 		_liferayPortletRequest = liferayPortletRequest;
 		_liferayPortletResponse = liferayPortletResponse;
 
-		_assetHelper = (AssetHelper)_httpServletRequest.getAttribute(
+		_assetHelper = (AssetHelper)httpServletRequest.getAttribute(
 			AssetWebKeys.ASSET_HELPER);
 		_portletCategoryManager =
-			(PortletCategoryManager)_httpServletRequest.getAttribute(
+			(PortletCategoryManager)httpServletRequest.getAttribute(
 				PortletCategoryManager.class.getName());
-		_themeDisplay = (ThemeDisplay)_httpServletRequest.getAttribute(
+		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 	}
 
@@ -194,9 +193,7 @@ public class AddContentPanelDisplayContext {
 				).put(
 					"title",
 					HtmlUtil.escape(
-						StringUtil.shorten(
-							assetRenderer.getTitle(_themeDisplay.getLocale()),
-							60))
+						assetRenderer.getTitle(_themeDisplay.getLocale()))
 				).put(
 					"type",
 					_getAssetEntryTypeLabel(

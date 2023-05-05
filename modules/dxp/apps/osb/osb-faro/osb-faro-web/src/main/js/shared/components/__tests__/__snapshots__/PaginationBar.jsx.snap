@@ -1,0 +1,310 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`PaginationBar should render 1`] = `
+<div>
+  <nav
+    class="navbar navbar-root pagination-bar-root"
+  >
+    <div
+      class="container-fluid"
+    >
+      <div
+        aria-haspopup="true"
+        class="dropdown dropdown-root pagination-items-per-page"
+      >
+        <button
+          class="button-root dropdown-toggle show-caret btn btn-sm btn-unstyled"
+          type="button"
+        >
+          <span
+            class="text-truncate"
+          >
+            10 Items
+          </span>
+          
+          <span
+            class="caret-root"
+          >
+            <svg
+              class="lexicon-icon lexicon-icon-caret-bottom icon-root"
+              role="presentation"
+            >
+              <use
+                xlink:href="#caret-bottom"
+              />
+            </svg>
+          </span>
+        </button>
+      </div>
+      <div
+        class="pagination-results"
+      >
+        Showing 21 to 30 of 100 entries.
+      </div>
+      <ul
+        class="pagination pagination-root"
+      >
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=2"
+          >
+            <svg
+              class="lexicon-icon lexicon-icon-angle-left icon-root"
+              role="presentation"
+            >
+              <use
+                xlink:href="#angle-left"
+              />
+            </svg>
+          </a>
+        </li>
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=1"
+          >
+            1
+          </a>
+        </li>
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=2"
+          >
+            2
+          </a>
+        </li>
+        <li
+          class="page-item active"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=3"
+          >
+            3
+          </a>
+        </li>
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=4"
+          >
+            4
+          </a>
+        </li>
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=5"
+          >
+            5
+          </a>
+        </li>
+        <li
+          class="page-item"
+        >
+          <div
+            aria-haspopup="true"
+            class="dropdown dropdown-root"
+          >
+            <button
+              class="button-root dropdown-toggle page-link btn btn-unstyled"
+              type="button"
+            >
+              <span
+                class="text-truncate"
+              >
+                ...
+              </span>
+              
+            </button>
+          </div>
+        </li>
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=10"
+          >
+            10
+          </a>
+        </li>
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=4"
+          >
+            <svg
+              class="lexicon-icon lexicon-icon-angle-right icon-root"
+              role="presentation"
+            >
+              <use
+                xlink:href="#angle-right"
+              />
+            </svg>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+</div>
+`;
+
+exports[`PaginationBar should render different deltas 1`] = `
+<div>
+  <nav
+    class="navbar navbar-root pagination-bar-root"
+  >
+    <div
+      class="container-fluid"
+    >
+      <div
+        aria-haspopup="true"
+        class="dropdown dropdown-root pagination-items-per-page"
+      >
+        <button
+          class="button-root dropdown-toggle show-caret btn btn-sm btn-unstyled"
+          type="button"
+        >
+          <span
+            class="text-truncate"
+          >
+            1 Item
+          </span>
+          
+          <span
+            class="caret-root"
+          >
+            <svg
+              class="lexicon-icon lexicon-icon-caret-bottom icon-root"
+              role="presentation"
+            >
+              <use
+                xlink:href="#caret-bottom"
+              />
+            </svg>
+          </span>
+        </button>
+      </div>
+      <div
+        class="pagination-results"
+      >
+        Showing 1 to 1 of 10 entries.
+      </div>
+      <ul
+        class="pagination pagination-root"
+      >
+        <li
+          class="page-item disabled"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            disabled=""
+            href="/?page=0"
+          >
+            <svg
+              class="lexicon-icon lexicon-icon-angle-left icon-root"
+              role="presentation"
+            >
+              <use
+                xlink:href="#angle-left"
+              />
+            </svg>
+          </a>
+        </li>
+        <li
+          class="page-item active"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=1"
+          >
+            1
+          </a>
+        </li>
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=2"
+          >
+            2
+          </a>
+        </li>
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=3"
+          >
+            3
+          </a>
+        </li>
+        <li
+          class="page-item"
+        >
+          <div
+            aria-haspopup="true"
+            class="dropdown dropdown-root"
+          >
+            <button
+              class="button-root dropdown-toggle page-link btn btn-unstyled"
+              type="button"
+            >
+              <span
+                class="text-truncate"
+              >
+                ...
+              </span>
+              
+            </button>
+          </div>
+        </li>
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=10"
+          >
+            10
+          </a>
+        </li>
+        <li
+          class="page-item"
+        >
+          <a
+            class="button-root page-link btn btn-unstyled"
+            href="/?page=2"
+          >
+            <svg
+              class="lexicon-icon lexicon-icon-angle-right icon-root"
+              role="presentation"
+            >
+              <use
+                xlink:href="#angle-right"
+              />
+            </svg>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+</div>
+`;

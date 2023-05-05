@@ -138,7 +138,7 @@ public class OAuth2ProviderApplicationUserAgentConfigurationFactory
 			List<String> redirectURIsList, List<String> scopeAliasesList)
 		throws Exception {
 
-		User user = userLocalService.getDefaultUser(companyId);
+		User user = userLocalService.getGuestUser(companyId);
 
 		String clientId = OAuth2SecureRandomGenerator.generateClientId();
 
@@ -151,6 +151,10 @@ public class OAuth2ProviderApplicationUserAgentConfigurationFactory
 			clientId = oAuth2Application.getClientId();
 		}
 
+		String homePageURL = getHomePageURL(
+			oAuth2ProviderApplicationUserAgentConfiguration.homePageURL(),
+			oAuth2ProviderApplicationUserAgentConfiguration.baseURL());
+
 		oAuth2Application =
 			oAuth2ApplicationLocalService.addOrUpdateOAuth2Application(
 				externalReferenceCode, user.getUserId(), user.getScreenName(),
@@ -159,9 +163,7 @@ public class OAuth2ProviderApplicationUserAgentConfigurationFactory
 				"none", user.getUserId(), clientId,
 				ClientProfile.USER_AGENT_APPLICATION.id(), null,
 				oAuth2ProviderApplicationUserAgentConfiguration.description(),
-				Arrays.asList("token.introspection"),
-				oAuth2ProviderApplicationUserAgentConfiguration.homePageURL(),
-				0, null,
+				Arrays.asList("token.introspection"), homePageURL, 0, null,
 				getName(
 					oAuth2ProviderApplicationUserAgentConfiguration.name(),
 					externalReferenceCode),
@@ -182,11 +184,7 @@ public class OAuth2ProviderApplicationUserAgentConfigurationFactory
 					" has client ID ", oAuth2Application.getClientId()));
 		}
 
-		Class<?> clazz = getClass();
-
-		return oAuth2ApplicationLocalService.updateIcon(
-			oAuth2Application.getOAuth2ApplicationId(),
-			clazz.getResourceAsStream("dependencies/logo.png"));
+		return oAuth2Application;
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(

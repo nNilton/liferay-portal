@@ -1341,6 +1341,10 @@ components:
                         The document's file extension.
                     readOnly: true
                     type: string
+                fileName:
+                    description:
+                        The document's file name.
+                    type: string
                 id:
                     description:
                         The document's ID.
@@ -1462,6 +1466,11 @@ components:
                 description:
                     description:
                         The folder's description.
+                    type: string
+                externalReferenceCode:
+                    # @review
+                    description:
+                        The document folder's external reference code.
                     type: string
                 id:
                     description:
@@ -2371,6 +2380,10 @@ components:
                         The file's media type (e.g., application/pdf, etc.).
                     readOnly: true
                     type: string
+                externalReferenceCode:
+                    description:
+                        The attachment's external reference code.
+                    type: string
                 fileExtension:
                     description:
                         The file's extension.
@@ -3249,6 +3262,18 @@ components:
                     # @review
                     description:
                         The Open Graph's image.
+                imageAlt:
+                    # @review
+                    description:
+                        The Open Graph's image alt.
+                    type: string
+                imageAlt_i18n:
+                    additionalProperties:
+                        type: string
+                    # @review
+                    description:
+                        The localized Open Graph's image alts.
+                    type: object
                 title:
                     # @review
                     description:
@@ -4467,6 +4492,35 @@ components:
                     description:
                         A list of localized target keywords of the page to be used by search engines.
                     type: object
+                siteMapSettings:
+                    # @review
+                    description:
+                        Represents settings related with the site map.
+                    properties:
+                        changeFrequency:
+                            description:
+                                Indicates how often a page is updated.
+                            enum:
+                                - Always
+                                - Hourly
+                                - Daily
+                                - Weekly
+                                - Monthly
+                                - Yearly
+                                - Never
+                            type: string
+                        include:
+                            description:
+                                Whether search engines should crawl and index the page.
+                            type: boolean
+                        pagePriority:
+                            description:
+                                How the page should be prioritized relative to other pages.
+                            format: double
+                            maximum: 1
+                            minimum: 0
+                            type: number
+                    type: object
             type: object
         Settings:
             # @review
@@ -4603,6 +4657,12 @@ components:
                     description:
                         The localized relative URLs to the page's rendered content.
                     type: object
+                id:
+                    description:
+                        The page ID.
+                    format: int64
+                    readOnly: true
+                    type: integer
                 keywords:
                     # @review
                     description:
@@ -4618,6 +4678,26 @@ components:
                         Optional field with the structure of all the elements of the page. Can be embedded with
                         nestedFields when retrieving the collection of site pages. When retrieving a single site page,
                         it will automatically be included.
+                pagePermissions:
+                    # @review
+                    description:
+                        The page's permissions.
+                    items:
+                        properties:
+                            actionKeys:
+                                # @review
+                                description:
+                                    The keys of the actions the role has permission for.
+                                items:
+                                    type: string
+                                type: array
+                            roleKey:
+                                # @review
+                                description:
+                                    The role's key.
+                                type: string
+                        type: object
+                    type: array
                 pageSettings:
                     allOf:
                         - $ref: "#/components/schemas/PageSettings"
@@ -4629,6 +4709,17 @@ components:
                     description:
                         The type of the page.
                     type: string
+                parentSitePage:
+                    # @review
+                    description:
+                        The parent page or null if it is a top level page.
+                    properties:
+                        friendlyUrlPath:
+                            # @review
+                            description:
+                                The relative URL of the parent page.
+                            type: string
+                    type: object
                 renderedPage:
                     allOf:
                         - $ref: "#/components/schemas/RenderedPage"
@@ -5394,7 +5485,7 @@ components:
 info:
     description:
         "A Java client JAR is available for use with the group ID 'com.liferay', artifact ID
-        'com.liferay.headless.delivery.client', and version '4.0.48'."
+        'com.liferay.headless.delivery.client', and version '4.0.56'."
     license:
         name: "Apache 2.0"
         url: "http://www.apache.org/licenses/LICENSE-2.0.html"
@@ -5861,6 +5952,40 @@ paths:
                         application/json: {}
                         application/xml: {}
             tags: ["DocumentFolder"]
+    "/asset-libraries/{assetLibraryId}/document-folders/rated-by-me":
+        get:
+            description:
+                Retrieves the document folders rated by the user.
+            operationId: getAssetLibraryDocumentFoldersRatedByMePage
+            parameters:
+                - in: path
+                  name: assetLibraryId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: query
+                  name: page
+                  schema:
+                      type: integer
+                - in: query
+                  name: pageSize
+                  schema:
+                      type: integer
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/DocumentFolder"
+                                type: array
+                        application/xml:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/DocumentFolder"
+                                type: array
+            tags: ["DocumentFolder"]
     "/asset-libraries/{assetLibraryId}/documents":
         get:
             operationId: getAssetLibraryDocumentsPage
@@ -6107,6 +6232,40 @@ paths:
                     content:
                         application/json: {}
                         application/xml: {}
+            tags: ["Document"]
+    "/asset-libraries/{assetLibraryId}/documents/rated-by-me":
+        get:
+            description:
+                Retrieves the documents rated by the user.
+            operationId: getAssetLibraryDocumentsRatedByMePage
+            parameters:
+                - in: path
+                  name: assetLibraryId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: query
+                  name: page
+                  schema:
+                      type: integer
+                - in: query
+                  name: pageSize
+                  schema:
+                      type: integer
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/Document"
+                                type: array
+                        application/xml:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/Document"
+                                type: array
             tags: ["Document"]
     "/asset-libraries/{assetLibraryId}/languages":
         get:
@@ -7653,6 +7812,112 @@ paths:
                             schema:
                                 $ref: "#/components/schemas/Document"
             tags: ["Document"]
+    "/document-folders/{documentFolderId}/my-rating":
+        delete:
+            description:
+                Deletes the document folder's rating and returns a 204 if the operation succeeded.
+            operationId: deleteDocumentFolderMyRating
+            parameters:
+                - in: path
+                  name: documentFolderId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+            tags: ["DocumentFolder"]
+        get:
+            description:
+                Retrieves the document folder's rating.
+            operationId: getDocumentFolderMyRating
+            parameters:
+                - in: path
+                  name: documentFolderId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: query
+                  name: fields
+                  schema:
+                      type: string
+                - in: query
+                  name: restrictFields
+                  schema:
+                      type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Rating"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/Rating"
+            tags: ["DocumentFolder"]
+        post:
+            description:
+                Creates a new rating for the document folder, by the user who authenticated the request.
+            operationId: postDocumentFolderMyRating
+            parameters:
+                - in: path
+                  name: documentFolderId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/Rating"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/Rating"
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Rating"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/Rating"
+            tags: ["DocumentFolder"]
+        put:
+            description:
+                Replaces the rating with the information sent in the request body. Any missing fields are deleted,
+                unless they are required.
+            operationId: putDocumentFolderMyRating
+            parameters:
+                - in: path
+                  name: documentFolderId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/Rating"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/Rating"
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Rating"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/Rating"
+            tags: ["DocumentFolder"]
     "/document-folders/{documentFolderId}/permissions":
         get:
             operationId: getDocumentFolderPermissionsPage
@@ -10195,7 +10460,7 @@ paths:
                                 file:
                                     format: binary
                                     type: string
-                                knowledgeBaseAttachment:
+                                messageBoardAttachment:
                                     $ref: "#/components/schemas/MessageBoardAttachment"
                             type: object
             responses:
@@ -11720,6 +11985,40 @@ paths:
                         application/json: {}
                         application/xml: {}
             tags: ["DocumentFolder"]
+    "/sites/{siteId}/document-folders/rated-by-me":
+        get:
+            description:
+                Retrieves the document folders rated by the user.
+            operationId: getSiteDocumentFoldersRatedByMePage
+            parameters:
+                - in: path
+                  name: siteId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: query
+                  name: page
+                  schema:
+                      type: integer
+                - in: query
+                  name: pageSize
+                  schema:
+                      type: integer
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/DocumentFolder"
+                                type: array
+                        application/xml:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/DocumentFolder"
+                                type: array
+            tags: ["DocumentFolder"]
     "/sites/{siteId}/documents":
         get:
             description:
@@ -11822,6 +12121,93 @@ paths:
                             schema:
                                 $ref: "#/components/schemas/Document"
             tags: ["Document"]
+    "/sites/{siteId}/documents-folder/by-external-reference-code/{externalReferenceCode}":
+        delete:
+            # @review
+            description:
+                Deletes the site's document folder by external reference code returns a 204 if the operation succeeds.
+            operationId: deleteSiteDocumentsFolderByExternalReferenceCode
+            parameters:
+                - in: path
+                  name: siteId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: path
+                  name: externalReferenceCode
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+            tags: ["DocumentFolder"]
+        get:
+            # @review
+            description:
+                Retrieves the site's document folder by external reference code.
+            operationId: getSiteDocumentsFolderByExternalReferenceCode
+            parameters:
+                - in: path
+                  name: siteId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: path
+                  name: externalReferenceCode
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DocumentFolder"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/DocumentFolder"
+            tags: ["DocumentFolder"]
+        put:
+            # @review
+            description:
+                Replaces the document folder by external reference code with the information sent in the request body,
+                or replaces it if it not exists.
+            operationId: putSiteDocumentsFolderByExternalReferenceCode
+            parameters:
+                - in: path
+                  name: siteId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: path
+                  name: externalReferenceCode
+                  required: true
+                  schema:
+                      type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DocumentFolder"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/DocumentFolder"
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DocumentFolder"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/DocumentFolder"
+            tags: ["DocumentFolder"]
     "/sites/{siteId}/documents/by-external-reference-code/{documentExternalReferenceCode}/comments/by-external-reference-code/{externalReferenceCode}":
         delete:
             # @review
@@ -12087,6 +12473,40 @@ paths:
                         application/json: {}
                         application/xml: {}
             tags: ["Document"]
+    "/sites/{siteId}/documents/rated-by-me":
+        get:
+            description:
+                Retrieves the documents rated by the user.
+            operationId: getSiteDocumentsRatedByMePage
+            parameters:
+                - in: path
+                  name: siteId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: query
+                  name: page
+                  schema:
+                      type: integer
+                - in: query
+                  name: pageSize
+                  schema:
+                      type: integer
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/Document"
+                                type: array
+                        application/xml:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/Document"
+                                type: array
+            tags: ["Document"]
     "/sites/{siteId}/knowledge-base-articles":
         get:
             description:
@@ -12284,6 +12704,142 @@ paths:
                             schema:
                                 $ref: "#/components/schemas/KnowledgeBaseArticle"
             tags: ["KnowledgeBaseArticle"]
+    "/sites/{siteId}/knowledge-base-articles/by-external-reference-code/{knowledgeBaseArticleExternalReferenceCode}/knowledge-base-attachments/by-external-reference-code/{externalReferenceCode}":
+        get:
+            # @review
+            description:
+                Retrieves the knowledge base article attachment by external reference code.
+            operationId: getSiteKnowledgeBaseArticleByExternalReferenceCodeKnowledgeBaseArticleExternalReferenceCodeKnowledgeBaseAttachmentByExternalReferenceCode
+            parameters:
+                - in: path
+                  name: siteId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: path
+                  name: knowledgeBaseArticleExternalReferenceCode
+                  required: true
+                  schema:
+                      type: string
+                - in: path
+                  name: externalReferenceCode
+                  required: true
+                  schema:
+                      type: string
+                - in: query
+                  name: fields
+                  schema:
+                      type: string
+                - in: query
+                  name: nestedFields
+                  schema:
+                      type: string
+                - in: query
+                  name: restrictFields
+                  schema:
+                      type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/KnowledgeBaseAttachment"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/KnowledgeBaseAttachment"
+            tags: ["KnowledgeBaseAttachment"]
+        post:
+            # @review
+            description:
+                Creates the knowledge base article attachment by external reference code with the information sent in
+                the request body. The request body must be `multipart/form-data` with two parts, the file's bytes
+                (`file`), and an optional JSON string (`knowledgeBaseAttachment`) with the metadata.
+            operationId: postSiteKnowledgeBaseArticleByExternalReferenceCodeKnowledgeBaseArticleExternalReferenceCodeKnowledgeBaseAttachmentByExternalReferenceCode
+            parameters:
+                - in: path
+                  name: siteId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: path
+                  name: knowledgeBaseArticleExternalReferenceCode
+                  required: true
+                  schema:
+                      type: string
+                - in: path
+                  name: externalReferenceCode
+                  required: true
+                  schema:
+                      type: string
+            requestBody:
+                content:
+                    multipart/form-data:
+                        schema:
+                            properties:
+                                file:
+                                    format: binary
+                                    type: string
+                                knowledgeBaseAttachment:
+                                    $ref: "#/components/schemas/KnowledgeBaseAttachment"
+                            type: object
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/KnowledgeBaseAttachment"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/KnowledgeBaseAttachment"
+            tags: ["KnowledgeBaseAttachment"]
+        put:
+            # @review
+            description:
+                Replaces the knowledge base article attachment by external reference code with the information sent in
+                the request body. Any missing fields are deleted, unless they are required. The request body must be
+                `multipart/form-data` with two parts, the file's bytes (`file`), and an optional JSON string
+                (`knowledgeBaseAttachment`) with the metadata.
+            operationId: putSiteKnowledgeBaseArticleByExternalReferenceCodeKnowledgeBaseArticleExternalReferenceCodeKnowledgeBaseAttachmentByExternalReferenceCode
+            parameters:
+                - in: path
+                  name: siteId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+                - in: path
+                  name: knowledgeBaseArticleExternalReferenceCode
+                  required: true
+                  schema:
+                      type: string
+                - in: path
+                  name: externalReferenceCode
+                  required: true
+                  schema:
+                      type: string
+            requestBody:
+                content:
+                    multipart/form-data:
+                        schema:
+                            properties:
+                                file:
+                                    format: binary
+                                    type: string
+                                knowledgeBaseAttachment:
+                                    $ref: "#/components/schemas/KnowledgeBaseAttachment"
+                            type: object
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/KnowledgeBaseAttachment"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/KnowledgeBaseAttachment"
+            tags: ["KnowledgeBaseAttachment"]
     "/sites/{siteId}/knowledge-base-articles/permissions":
         get:
             operationId: getSiteKnowledgeBaseArticlePermissionsPage
@@ -13462,6 +14018,38 @@ paths:
                                 items:
                                     $ref: "#/components/schemas/SitePage"
                                 type: array
+            tags: ["SitePage"]
+        post:
+            description:
+                Adds a new site page
+            operationId: postSiteSitePage
+            parameters:
+                - in: path
+                  name: siteId
+                  required: true
+                  schema:
+                      format: int64
+                      type: integer
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/SitePage"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/SitePage"
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/SitePage"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/SitePage"
+                    description:
+                        default response
+            # @review
             tags: ["SitePage"]
     "/sites/{siteId}/site-pages/{friendlyUrlPath}":
         get:

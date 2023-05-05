@@ -47,7 +47,6 @@ import com.liferay.headless.delivery.dto.v1_0.util.DDMFormValuesUtil;
 import com.liferay.headless.delivery.dto.v1_0.util.DDMValueUtil;
 import com.liferay.headless.delivery.dto.v1_0.util.StructuredContentUtil;
 import com.liferay.headless.delivery.dynamic.data.mapping.DDMFormFieldUtil;
-import com.liferay.headless.delivery.internal.dto.v1_0.converter.StructuredContentDTOConverter;
 import com.liferay.headless.delivery.internal.dto.v1_0.util.DisplayPageRendererUtil;
 import com.liferay.headless.delivery.internal.dto.v1_0.util.RatingUtil;
 import com.liferay.headless.delivery.internal.dto.v1_0.util.RenderedContentValueUtil;
@@ -73,6 +72,7 @@ import com.liferay.layout.page.template.service.LayoutPageTemplateEntryService;
 import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.change.tracking.CTAware;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.BooleanClauseOccur;
@@ -106,6 +106,7 @@ import com.liferay.portal.search.query.Queries;
 import com.liferay.portal.search.searcher.SearchRequestBuilder;
 import com.liferay.portal.search.sort.Sorts;
 import com.liferay.portal.vulcan.aggregation.Aggregation;
+import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 import com.liferay.portal.vulcan.pagination.Page;
@@ -142,6 +143,7 @@ import org.osgi.service.component.annotations.ServiceScope;
 	properties = "OSGI-INF/liferay/rest/v1_0/structured-content.properties",
 	scope = ServiceScope.PROTOTYPE, service = StructuredContentResource.class
 )
+@CTAware
 public class StructuredContentResourceImpl
 	extends BaseStructuredContentResourceImpl {
 
@@ -534,7 +536,6 @@ public class StructuredContentResourceImpl
 					_toPatchedFields(
 						structuredContent.getContentFields(), journalArticle),
 					journalArticle.getGroupId()),
-				journalArticle.getDDMStructureKey(),
 				_getDDMTemplateKey(ddmStructure),
 				journalArticle.getLayoutUuid(),
 				localDateTime.getMonthValue() - 1,
@@ -752,9 +753,8 @@ public class StructuredContentResourceImpl
 						_getRootDDMFormFields(ddmStructure)),
 					_jsonDDMFormValuesSerializer, _ddmFormValuesValidator,
 					ddmStructure, _journalConverter),
-				ddmStructure.getStructureKey(),
-				_getDDMTemplateKey(ddmStructure), null,
-				localDateTime.getMonthValue() - 1,
+				ddmStructure.getStructureId(), _getDDMTemplateKey(ddmStructure),
+				null, localDateTime.getMonthValue() - 1,
 				localDateTime.getDayOfMonth(), localDateTime.getYear(),
 				localDateTime.getHour(), localDateTime.getMinute(), 0, 0, 0, 0,
 				0, true, 0, 0, 0, 0, 0, true, true, false, null, null, null,
@@ -1251,7 +1251,6 @@ public class StructuredContentResourceImpl
 						titleMap.keySet(), structuredContent.getContentFields(),
 						journalArticle),
 					journalArticle.getGroupId()),
-				journalArticle.getDDMStructureKey(),
 				_getDDMTemplateKey(ddmStructure),
 				journalArticle.getLayoutUuid(),
 				localDateTime.getMonthValue() - 1,
@@ -1393,8 +1392,11 @@ public class StructuredContentResourceImpl
 	@Reference
 	private Sorts _sorts;
 
-	@Reference
-	private StructuredContentDTOConverter _structuredContentDTOConverter;
+	@Reference(
+		target = "(component.name=com.liferay.headless.delivery.internal.dto.v1_0.converter.StructuredContentDTOConverter)"
+	)
+	private DTOConverter<JournalArticle, StructuredContent>
+		_structuredContentDTOConverter;
 
 	@Reference
 	private UserLocalService _userLocalService;

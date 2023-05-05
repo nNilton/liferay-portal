@@ -13,7 +13,7 @@ definition {
 		}
 
 		task ("Add a site") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 	}
 
@@ -385,6 +385,7 @@ definition {
 	@uitest
 	test ViewFragmentsDeployedToSystemWideAreAvailableForExistAndFutureSite {
 		property portal.acceptance = "true";
+		property test.name.skip.portal.instance = "FragmentsDeploy#ViewFragmentsDeployedToSystemWideAreAvailableForExistAndFutureSite";
 
 		task ("Deploy fragments zip are available in System wide") {
 			FragmentsDeploy.deployZipOnLiferayPortal(fragmentsZip = "image.zip");
@@ -417,7 +418,7 @@ definition {
 		}
 
 		task ("Assert new fragments exist in future site") {
-			JSONGroup.addGroup(groupName = "Test Future Site");
+			HeadlessSite.addSite(siteName = "Test Future Site");
 
 			FragmentsAdminNavigator.openFragmentsAdmin(siteURLKey = "test-future-site");
 
@@ -435,6 +436,7 @@ definition {
 	@priority = 3
 	test ViewFragmentsDeployedToSystemWideAreAvailableForExistAndFutureVirtualInstance {
 		property custom.properties = "virtual.hosts.valid.hosts=localhost,127.0.0.1,www.able.com";
+		property database.partition.enabled = "false";
 		property test.name.skip.portal.instance = "FragmentsDeploy#ViewFragmentsDeployedToSystemWideAreAvailableForExistAndFutureVirtualInstance";
 
 		task ("Deploy fragments zip are available in System wide") {

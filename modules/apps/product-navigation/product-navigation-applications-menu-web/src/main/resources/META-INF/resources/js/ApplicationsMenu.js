@@ -215,7 +215,7 @@ const AppsPanel = ({
 
 	return (
 		<div className="applications-menu-wrapper">
-			<div className="applications-menu-header flex-shrink-0">
+			<div className="applications-menu-header">
 				<ClayLayout.ContainerFluid>
 					<ClayLayout.Row>
 						<ClayLayout.Col>
@@ -264,7 +264,7 @@ const AppsPanel = ({
 
 			<div className="applications-menu-bg applications-menu-border-top applications-menu-content">
 				<ClayLayout.ContainerFluid>
-					<ClayLayout.Row className="flex-md-nowrap">
+					<ClayLayout.Row>
 						<ClayLayout.Col lg="9" md="8">
 							<ClayTabs.Content activeIndex={activeTab}>
 								{categories.map(({childCategories}, index) => (
@@ -307,7 +307,7 @@ const AppsPanel = ({
 				</ClayLayout.ContainerFluid>
 			</div>
 
-			<div className="applications-menu-bg applications-menu-footer flex-shrink-0">
+			<div className="applications-menu-bg applications-menu-footer">
 				<ClayLayout.ContainerFluid>
 					<ClayLayout.Row>
 						<ClayLayout.Col lg="9" md="8">
@@ -494,6 +494,7 @@ const ApplicationsMenu = ({
 			)}
 
 			<ClayButtonWithIcon
+				aria-haspopup="dialog"
 				aria-labelledby={buttonTitleId}
 				className="dropdown-toggle lfr-portal-tooltip"
 				data-qa-id="applicationsMenu"

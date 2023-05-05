@@ -3,14 +3,14 @@ definition {
 
 	property portal.release = "true";
 	property portal.upstream = "true";
-	property testray.main.component.name = "Display Pages";
+	property testray.main.component.name = "Display Page Templates";
 
 	setUp {
 		TestCase.setUpPortalInstance();
 
 		User.firstLoginPG();
 
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 	}
 
 	tearDown {
@@ -471,10 +471,10 @@ definition {
 				value1 = "There are no display page template usages.");
 		}
 
-		task ("View the View Usages action is not shown") {
+		task ("View the View Usages action is disabled") {
 			Click(locator1 = "Icon#ANGLE_LEFT_BACK");
 
-			LexiconCard.viewMenuItemNotPresent(
+			LexiconCard.viewMenuItemDisabled(
 				card = "Display Page Name",
 				item = "View Usages");
 		}

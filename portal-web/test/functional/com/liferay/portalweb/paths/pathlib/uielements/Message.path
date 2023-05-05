@@ -67,7 +67,7 @@
 </tr>
 <tr>
 	<td>ROLE_EMPTY_MUTED_INFO</td>
-	<td>//div[h3[*[*[contains(text(),'${key_roleType}')]]]]//div[*[contains(@class,'text-muted')]or contains(@class,'text-muted')]</td>
+	<td>//div[contains(@class,'sheet-subtitle') and contains(.,'${key_roleType}')]//following-sibling::div[contains(@class,'sheet-text')]</td>
 	<td></td>
 </tr>
 <tr>
@@ -296,6 +296,11 @@
 	<td></td>
 </tr>
 <tr>
+	<td>ERROR_WITH_SPECIFIC_ENTRY</td>
+	<td>//div[label[contains(.,'${key_fieldLabel}')]]//following-sibling::div//div[@role='alert' and contains(.,'${key_alertMessage}')]</td>
+	<td></td>
+</tr>
+<tr>
 	<td>GENERIC</td>
 	<td>//div[contains(@class,'alert')]</td>
 	<td></td>
@@ -473,6 +478,11 @@
 <tr>
 	<td>USER_BLOCKED</td>
 	<td>//div[contains(@class,'alert-block')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>WARNING</td>
+	<td>//div[contains(@class,'alert') and contains(@class,'alert-warning')]</td>
 	<td></td>
 </tr>
 <tr>

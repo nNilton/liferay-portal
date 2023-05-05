@@ -14,9 +14,8 @@
 
 package com.liferay.layout.internal.layout.admin.util;
 
+import com.liferay.info.item.InfoItemServiceRegistry;
 import com.liferay.layout.admin.kernel.model.LayoutTypePortletConstants;
-import com.liferay.layout.admin.kernel.util.Sitemap;
-import com.liferay.layout.admin.kernel.util.SitemapURLProvider;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Layout;
@@ -31,6 +30,9 @@ import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.util.LayoutTypeControllerTracker;
+import com.liferay.site.util.Sitemap;
+import com.liferay.site.util.SitemapURLProvider;
+import com.liferay.translation.info.item.provider.InfoItemLanguagesProvider;
 
 import java.util.HashSet;
 import java.util.List;
@@ -141,16 +143,27 @@ public class LayoutSitemapURLProvider implements SitemapURLProvider {
 		}
 	}
 
-	private Set<Locale> _getAvailableLocales(Layout layout) {
+	private Set<Locale> _getAvailableLocales(Layout layout)
+		throws PortalException {
+
 		Set<Locale> availableLocales = new HashSet<>();
 
-		for (String availableLanguageId : layout.getAvailableLanguageIds()) {
+		InfoItemLanguagesProvider<Layout> infoItemLanguagesProvider =
+			_infoItemServiceRegistry.getFirstInfoItemService(
+				InfoItemLanguagesProvider.class, Layout.class.getName());
+
+		for (String availableLanguageId :
+				infoItemLanguagesProvider.getAvailableLanguageIds(layout)) {
+
 			availableLocales.add(
 				LocaleUtil.fromLanguageId(availableLanguageId));
 		}
 
 		return availableLocales;
 	}
+
+	@Reference
+	private InfoItemServiceRegistry _infoItemServiceRegistry;
 
 	@Reference
 	private LayoutLocalService _layoutLocalService;

@@ -16,15 +16,18 @@ import mdfRequestDTO from '../../../common/interfaces/dto/mdfRequestDTO';
 import LiferayPicklist from '../../../common/interfaces/liferayPicklist';
 import MDFRequest from '../../../common/interfaces/mdfRequest';
 import {Liferay} from '../../../common/services/liferay';
-import createMDFRequestActivities from '../../../common/services/liferay/object/activity/createMDFRequestActivities';
+import createMDFRequestActivitiesSF from '../../../common/services/liferay/object/activity/createMDFRequestActivities';
+import deleteMDFRequestActivities from '../../../common/services/liferay/object/activity/deleteMDFRequestActivities';
+import deleteMDFRequestActivitiesSF from '../../../common/services/liferay/object/activity/deleteMDFRequestActivitiesSF';
 import updateMDFRequestActivities from '../../../common/services/liferay/object/activity/updateMDFRequestActivities';
 import createMDFRequestActivityBudget from '../../../common/services/liferay/object/budgets/createMDFRequestActivityBudgets';
+import deleteMDFRequestActivityBudgets from '../../../common/services/liferay/object/budgets/deleteMDFRequestActivityBudgets';
 import updateMDFRequestActivityBudget from '../../../common/services/liferay/object/budgets/updateMDFRequestActivityBudgets';
 import {ResourceName} from '../../../common/services/liferay/object/enum/resourceName';
 import createMDFRequest from '../../../common/services/liferay/object/mdf-requests/createMDFRequest';
 import updateMDFRequest from '../../../common/services/liferay/object/mdf-requests/updateMDFRequest';
 import {Status} from '../../../common/utils/constants/status';
-import getTotalMDFRequest from '../../../common/utils/getTotalMDFRequest';
+import updateStatus from '../../../common/utils/updateStatus';
 import createMDFRequestActivitiesProxyAPI from './createMDFRequestActivitiesProxyAPI';
 import createMDFRequestProxyAPI from './createMDFRequestProxyAPI';
 
@@ -32,35 +35,31 @@ export default async function submitForm(
 	values: MDFRequest,
 	formikHelpers: Omit<FormikHelpers<MDFRequest>, 'setFieldValue'>,
 	siteURL: string,
-	currentRequestStatus?: LiferayPicklist
+	currentRequestStatus?: LiferayPicklist,
+	changeStatus?: boolean
 ) {
 	formikHelpers.setSubmitting(true);
 
-	if (currentRequestStatus) {
-		values.mdfRequestStatus = currentRequestStatus;
-	}
+	const updatedStatus = updateStatus(
+		values.mdfRequestStatus,
+		currentRequestStatus,
+		changeStatus,
+		values.id,
+		values.totalMDFRequestAmount
+	);
 
-	const totalMDFRequestAmount = getTotalMDFRequest(values.activities);
-
-	if (
-		totalMDFRequestAmount >= 15000 &&
-		values.mdfRequestStatus !== Status.DRAFT
-	) {
-		values.mdfRequestStatus = Status.MARKETING_DIRECTOR_REVIEW;
-	}
+	values.mdfRequestStatus = updatedStatus;
 
 	let dtoMDFRequest: mdfRequestDTO | undefined = undefined;
 
-	if (
-		Liferay.FeatureFlags['LPS-164528'] &&
-		values.mdfRequestStatus !== Status.DRAFT
-	) {
+	if (values.mdfRequestStatus.key !== Status.DRAFT.key) {
 		dtoMDFRequest = await createMDFRequestProxyAPI(values);
 	}
 	else if (values.id) {
 		dtoMDFRequest = await updateMDFRequest(
 			ResourceName.MDF_REQUEST_DXP,
-			values
+			values,
+			values.id
 		);
 	}
 	else {
@@ -73,60 +72,83 @@ export default async function submitForm(
 	if (values?.activities?.length && dtoMDFRequest?.id) {
 		const dtoMDFRequestActivities = await Promise.all(
 			values?.activities?.map(async (activity) => {
-				if (
-					Liferay.FeatureFlags['LPS-164528'] &&
-					values.mdfRequestStatus !== Status.DRAFT
-				) {
-					return await createMDFRequestActivitiesProxyAPI(
-						activity,
-						values.company,
-						dtoMDFRequest?.id,
-						dtoMDFRequest?.externalReferenceCodeSF
-					);
-				}
+				if (activity.id && activity.removed) {
+					if (activity.externalReferenceCode) {
+						await deleteMDFRequestActivitiesSF(
+							ResourceName.ACTIVITY_SALESFORCE,
+							activity.externalReferenceCode as string
+						);
+					}
 
-				if (activity.id) {
-					return await updateMDFRequestActivities(
+					await deleteMDFRequestActivities(
 						ResourceName.ACTIVITY_DXP,
+						activity.id as number
+					);
+
+					return null;
+				}
+				if (values.mdfRequestStatus.key !== Status.DRAFT.key) {
+					return createMDFRequestActivitiesProxyAPI(
 						activity,
 						values.company,
 						dtoMDFRequest?.id,
-						dtoMDFRequest?.externalReferenceCodeSF
+						dtoMDFRequest?.externalReferenceCode
 					);
 				}
-
-				return await createMDFRequestActivities(
-					ResourceName.ACTIVITY_DXP,
-					activity,
-					values.company,
-					dtoMDFRequest?.id,
-					dtoMDFRequest?.externalReferenceCodeSF
-				);
+				else {
+					if (activity.id) {
+						await updateMDFRequestActivities(
+							ResourceName.ACTIVITY_DXP,
+							activity,
+							values.company,
+							dtoMDFRequest?.id,
+							dtoMDFRequest?.externalReferenceCode,
+							activity.externalReferenceCode
+						);
+					}
+					else {
+						await createMDFRequestActivitiesSF(
+							ResourceName.ACTIVITY_DXP,
+							activity,
+							values.company,
+							dtoMDFRequest?.id,
+							dtoMDFRequest?.externalReferenceCode,
+							activity.externalReferenceCode
+						);
+					}
+				}
 			})
 		);
 
 		if (dtoMDFRequestActivities?.length) {
-			await Promise.all(
-				values.activities.map(async (activity, index) => {
-					const dtoActivity = dtoMDFRequestActivities[index];
+			values.activities.map((activity, index) => {
+				const dtoActivity = dtoMDFRequestActivities[index];
 
-					if (activity.budgets?.length && dtoActivity?.id) {
-						activity.budgets?.map(async (budget) => {
-							if (budget?.id) {
-								return await updateMDFRequestActivityBudget(
-									dtoActivity.id as number,
-									budget
+				if (activity.budgets?.length && dtoActivity?.id) {
+					activity.budgets?.map(async (budget) => {
+						if (budget?.id) {
+							await updateMDFRequestActivityBudget(
+								dtoActivity.id as number,
+								budget,
+								values.company
+							);
+							if (budget.removed) {
+								await deleteMDFRequestActivityBudgets(
+									ResourceName.BUDGET,
+									budget.id as number
 								);
 							}
-
-							return await createMDFRequestActivityBudget(
+						}
+						else {
+							await createMDFRequestActivityBudget(
 								dtoActivity.id as number,
-								budget
+								budget,
+								values.company
 							);
-						});
-					}
-				})
-			);
+						}
+					});
+				}
+			});
 		}
 	}
 
@@ -134,6 +156,8 @@ export default async function submitForm(
 		Liferay.Util.navigate(
 			`${siteURL}/${PRMPageRoute.MDF_REQUESTS_LISTING}?edit-success=true`
 		);
+
+		return;
 	}
 
 	Liferay.Util.navigate(

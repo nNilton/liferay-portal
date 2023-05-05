@@ -15,7 +15,7 @@ definition {
 	}
 
 	@description = "This is a test for COMMERCE-6226. Price Entry lifecycle"
-	@priority = 3
+	@priority = 5
 	test AddEditAndDeletePriceEntry {
 		property portal.acceptance = "true";
 
@@ -599,16 +599,15 @@ definition {
 	@ignore = "true"
 	@priority = 3
 	test AddEditAndDeleteTierPriceEntry {
-		property portal.acceptance = "false";
 
 		// TODO COMMERCE-6227 AddEditAndDeleteTierPriceEntry Pending Implementation
 
 	}
 
 	@description = "This is a test for COMMERCE-6234. Price List Qualifier Lifecycle"
-	@priority = 3
+	@priority = 5
 	test AddEditAndRemovePLQualifier {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		// TODO Review
 
@@ -740,9 +739,9 @@ definition {
 	}
 
 	@description = "This is a test for COMMERCE-6235. Product Group Lifecycle"
-	@priority = 3
+	@priority = 5
 	test AddEditAndRemoveProductGroupFromPL {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		// TODO Review
 
@@ -1095,7 +1094,7 @@ definition {
 	}
 
 	@description = "This is a test for COMMERCE-8568. Verify multiple Price Entries can be set on the same Price List for the same SKU"
-	@priority = 3
+	@priority = 5
 	test AllowMultiplePriceEntriesInTheSamePriceList {
 		property custom.properties = "jsonws.web.service.paths.excludes=${line.separator}company.security.strangers.verify=false";
 		property osgi.module.configuration.file.names = "com.liferay.commerce.price.list.configuration.CommercePriceEntryConfiguration.config";
@@ -1320,8 +1319,9 @@ definition {
 			locator1 = "CommerceEntry#ITEM_FINDER_ENTRY_NAME");
 	}
 
+	@priority = 5
 	test AssertPriceListCanBeAssociatedWithAccountAndAccountGroup {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 		property portal.upstream = "true";
 
 		for (var entryNumber : list "1,2") {
@@ -1506,6 +1506,7 @@ definition {
 		Alert.viewSpecificRequiredField(fieldFieldLabel = "Currency");
 	}
 
+	@priority = 5
 	test AssertPriceListIsAppliedToAllAssociatedAccounts {
 		property portal.acceptance = "true";
 		property portal.upstream = "true";
@@ -1662,7 +1663,7 @@ definition {
 	}
 
 	@description = "This is a test for COMMERCE-9767. Verify that a Tier Price entry cannot be saved with 0 quantity and an alert is shown"
-	@priority = "3"
+	@priority = 3
 	test CannotCreateTierPriceWithZeroQuantity {
 		property portal.acceptance = "false";
 
@@ -1692,7 +1693,7 @@ definition {
 			Type(
 				key_text = "Quantity",
 				locator1 = "TextInput#ANY",
-				value1 = "0");
+				value1 = 0);
 
 			Click(locator1 = "Button#SUBMIT");
 		}
@@ -1789,11 +1790,84 @@ definition {
 		}
 	}
 
+	@description = "This is a test for COMMERCE-10053. An error message shows up when the eligibility element is already linked"
+	@priority = 3
+	test CannotSelectPriceListEligibilitiesTwice {
+		property portal.acceptance = "false";
+
+		task ("Given a Minium site is created") {
+			CommerceAccelerators.initializeNewSiteViaAccelerator(siteName = "Minium");
+		}
+
+		task ("And a business account is created") {
+			JSONAccountEntry.addAccountEntry(
+				accountEntryName = "Commerce Account",
+				accountEntryType = "Business");
+		}
+
+		task ("And an order type is created") {
+			CommerceJSONOrdersAPI._addOrderType(
+				active = "true",
+				orderTypeName = "Order Type Test");
+		}
+
+		task ("And a price list is created") {
+			CommerceJSONPriceListsAndPromotionsAPI._addPriceList(
+				catalogName = "Minium",
+				currencyCode = "USD",
+				priceListName = "Test Price List");
+		}
+
+		task ("When the admin navigates to the price list entry") {
+			CommercePriceLists.openPriceListsAdmin();
+
+			CommerceNavigator.gotoEntry(entryName = "Test Price List");
+		}
+
+		task ("And sets the eligibilities for the promotion") {
+			CommerceEntry.gotoMenuTab(menuTab = "Eligibility");
+
+			CommerceEntry.setEntryEligibility(
+				accountsEligibility = "Commerce Account",
+				channelsEligibility = "Minium Portal",
+				orderTypesEligibility = "Order Type Test");
+		}
+
+		task ("And sets again the same eligibility for channel") {
+			CommerceEntry.setEntryEligibility(
+				channelsEligibility = "Minium Portal",
+				unpublish = "true");
+		}
+
+		task ("Then an error message shows up") {
+			Alert.viewErrorMessage(errorMessage = "The channel relation already exists.");
+		}
+
+		task ("When the admin sets again the same eligibility for account") {
+			CommerceEntry.setEntryEligibility(
+				accountsEligibility = "Commerce Account",
+				unpublish = "true");
+		}
+
+		task ("Then an error message shows up") {
+			Alert.viewErrorMessage(errorMessage = "The account relation already exists.");
+		}
+
+		task ("When the admin sets again the same eligibility for order type") {
+			CommerceEntry.setEntryEligibility(
+				orderTypesEligibility = "Order Type Test",
+				unpublish = "true");
+		}
+
+		task ("Then an error message shows up") {
+			Alert.viewErrorMessage(errorMessage = "The order type relation already exists.");
+		}
+	}
+
 	@description = "This is a test for COMMERCE-6220. When creating a price list only catalogs for which the user has permission should be visible in the drop down"
 	@ignore = "true"
 	@priority = 3
 	test CheckOnlyPermittedCatalogIsSelectable {
-		property portal.acceptance = "false";
 
 		// TODO COMMERCE-6220 CheckOnlyPermittedCatalogIsSelectable Pending Implementation
 
@@ -1913,6 +1987,7 @@ definition {
 			locator1 = "CommerceNavigation#ENTRY_NAME");
 	}
 
+	@priority = 5
 	test CreateNewPriceList {
 		property portal.acceptance = "true";
 		property portal.upstream = "true";
@@ -2330,7 +2405,6 @@ definition {
 	@ignore = "true"
 	@priority = 3
 	test ViewExpiredPriceModifier {
-		property portal.acceptance = "false";
 
 		// TODO COMMERCE-6224 ViewExpiredPriceModifier Pending Implementation
 

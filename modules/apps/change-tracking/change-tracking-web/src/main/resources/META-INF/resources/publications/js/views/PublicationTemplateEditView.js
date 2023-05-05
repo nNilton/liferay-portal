@@ -14,6 +14,7 @@
 
 import ClayAlert from '@clayui/alert';
 import ClayButton from '@clayui/button';
+import {ClayCheckbox} from '@clayui/form';
 import {fetch, navigate, objectToFormData} from 'frontend-js-web';
 import React, {useState} from 'react';
 
@@ -26,6 +27,8 @@ export default function PublicationTemplateEditView({
 	actionUrl,
 	collaboratorsProps,
 	ctCollectionTemplateId,
+	defaultCTCollectionTemplate,
+	defaultSandboxCTCollectionTemplate,
 	description,
 	getTemplateCollaboratorsURL,
 	name,
@@ -36,17 +39,26 @@ export default function PublicationTemplateEditView({
 	saveButtonLabel,
 	tokens,
 }) {
-	const [showModal, setShowModal] = useState(false);
 	const [collaboratorData, setCollaboratorData] = useState(null);
-	const [nameField, setNameField] = useState(name);
+	const [
+		defaultCTCollectionTemplateField,
+		setDefaultCTCollectionTemplateField,
+	] = useState(defaultCTCollectionTemplate);
+	const [
+		defaultSandboxCTCollectionTemplateField,
+		setDefaultSandboxCTCollectionTemplateField,
+	] = useState(defaultSandboxCTCollectionTemplate);
 	const [descriptionField, setDescriptionField] = useState(description);
-	const [publicationNameField, setPublicationNameField] = useState(
-		publicationName
-	);
+	const [nameField, setNameField] = useState(name);
 	const [
 		publicationDescriptionField,
 		setPublicationDescriptionField,
 	] = useState(publicationDescription);
+	const [publicationNameField, setPublicationNameField] = useState(
+		publicationName
+	);
+
+	const [showModal, setShowModal] = useState(false);
 
 	const afterSubmitNotification = () => {
 		setShowModal(false);
@@ -69,6 +81,8 @@ export default function PublicationTemplateEditView({
 			[`${namespace}userIds`]: collaboratorData
 				? collaboratorData['userIds']
 				: null,
+			[`${namespace}defaultCTCollectionTemplate`]: defaultCTCollectionTemplateField,
+			[`${namespace}defaultSandboxCTCollectionTemplate`]: defaultSandboxCTCollectionTemplateField,
 		});
 
 		fetch(actionUrl, {
@@ -79,8 +93,12 @@ export default function PublicationTemplateEditView({
 				if (response.status === 200) {
 					const successMessage =
 						ctCollectionTemplateId > 0
-							? 'Successfully edited template'
-							: 'Successfully added template';
+							? Liferay.Language.get(
+									'successfully-edited-the-template'
+							  )
+							: Liferay.Language.get(
+									'successfully-added-the-template'
+							  );
 
 					showNotification(
 						successMessage,
@@ -118,7 +136,7 @@ export default function PublicationTemplateEditView({
 				)}
 				componentType="input"
 				fieldValue={nameField}
-				label="Name"
+				label={Liferay.Language.get('name')}
 				onChange={(event) => {
 					setNameField(event.target.value);
 				}}
@@ -135,7 +153,7 @@ export default function PublicationTemplateEditView({
 				)}
 				componentType="textarea"
 				fieldValue={descriptionField}
-				label="Description"
+				label={Liferay.Language.get('description')}
 				onChange={(event) => {
 					setDescriptionField(event.target.value);
 				}}
@@ -145,7 +163,29 @@ export default function PublicationTemplateEditView({
 				required={false}
 			/>
 
-			<CollapsablePanel title="Publication Information">
+			<ClayCheckbox
+				checked={defaultCTCollectionTemplateField}
+				label={Liferay.Language.get('default-template')}
+				onChange={() =>
+					setDefaultCTCollectionTemplateField(
+						!defaultCTCollectionTemplateField
+					)
+				}
+			/>
+
+			<ClayCheckbox
+				checked={defaultSandboxCTCollectionTemplateField}
+				label={Liferay.Language.get('default-sandbox-template')}
+				onChange={() =>
+					setDefaultSandboxCTCollectionTemplateField(
+						!defaultSandboxCTCollectionTemplateField
+					)
+				}
+			/>
+
+			<CollapsablePanel
+				title={Liferay.Language.get('publication-information')}
+			>
 				<ClayAlert
 					className="alert-autofit-stacked alert-indicator-start"
 					displayType="info"
@@ -166,7 +206,7 @@ export default function PublicationTemplateEditView({
 					)}
 					componentType="input"
 					fieldValue={publicationNameField}
-					label="Publication Name"
+					label={Liferay.Language.get('publication-name')}
 					onChange={(event) => {
 						setPublicationNameField(event.target.value);
 					}}
@@ -182,7 +222,7 @@ export default function PublicationTemplateEditView({
 					)}
 					componentType="textarea"
 					fieldValue={publicationDescriptionField}
-					label="Publication Description"
+					label={Liferay.Language.get('publication-description')}
 					onChange={(event) => {
 						setPublicationDescriptionField(event.target.value);
 					}}
@@ -197,7 +237,7 @@ export default function PublicationTemplateEditView({
 				helpTooltip={Liferay.Language.get(
 					'publication-collaborators-help'
 				)}
-				title="Publication Collaborators"
+				title={Liferay.Language.get('publication-collaborators')}
 			>
 				<ManageCollaborators
 					getTemplateCollaboratorsURL={
@@ -215,9 +255,8 @@ export default function PublicationTemplateEditView({
 							onClick={() => setShowModal(true)}
 							small
 							type="button"
-							value="asdf"
 						>
-							Invite Users
+							{Liferay.Language.get('add-users')}
 						</ClayButton>
 					}
 					{...collaboratorsProps}

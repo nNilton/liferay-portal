@@ -17,21 +17,29 @@ package com.liferay.object.service.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.document.library.kernel.exception.NoSuchFileEntryException;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
+import com.liferay.list.type.entry.util.ListTypeEntryUtil;
 import com.liferay.list.type.model.ListTypeDefinition;
 import com.liferay.list.type.service.ListTypeDefinitionLocalService;
-import com.liferay.list.type.service.ListTypeEntryLocalService;
 import com.liferay.object.constants.ObjectDefinitionConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
+import com.liferay.object.constants.ObjectFieldSettingConstants;
 import com.liferay.object.constants.ObjectRelationshipConstants;
+import com.liferay.object.exception.ObjectDefinitionEnableLocalizationException;
 import com.liferay.object.exception.ObjectFieldBusinessTypeException;
 import com.liferay.object.exception.ObjectFieldDBTypeException;
 import com.liferay.object.exception.ObjectFieldLabelException;
+import com.liferay.object.exception.ObjectFieldListTypeDefinitionIdException;
+import com.liferay.object.exception.ObjectFieldLocalizedException;
 import com.liferay.object.exception.ObjectFieldNameException;
 import com.liferay.object.exception.ObjectFieldRelationshipTypeException;
 import com.liferay.object.exception.ObjectFieldSettingNameException;
 import com.liferay.object.exception.ObjectFieldSettingValueException;
+import com.liferay.object.exception.ObjectFieldStateException;
 import com.liferay.object.exception.RequiredObjectFieldException;
+import com.liferay.object.field.builder.DateObjectFieldBuilder;
 import com.liferay.object.field.builder.ObjectFieldBuilder;
+import com.liferay.object.field.builder.PicklistObjectFieldBuilder;
+import com.liferay.object.field.builder.TextObjectFieldBuilder;
 import com.liferay.object.field.util.ObjectFieldUtil;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
@@ -65,6 +73,7 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.TempFileEntryUtil;
 import com.liferay.portal.kernel.util.TextFormatter;
+import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
@@ -75,6 +84,7 @@ import java.sql.Connection;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -90,6 +100,7 @@ import org.junit.runner.RunWith;
  * @author Marco Leo
  * @author Brian Wing Shun Chan
  */
+@FeatureFlags({"LPS-146755", "LPS-163716"})
 @RunWith(Arquillian.class)
 public class ObjectFieldLocalServiceTest {
 
@@ -100,51 +111,31 @@ public class ObjectFieldLocalServiceTest {
 
 	@Before
 	public void setUp() throws Exception {
+		_listTypeEntryKey = RandomTestUtil.randomString();
+
 		_listTypeDefinition =
 			_listTypeDefinitionLocalService.addListTypeDefinition(
 				null, TestPropsValues.getUserId(),
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-				Collections.emptyList());
-
-		_listTypeEntryKey = RandomTestUtil.randomString();
-
-		_listTypeEntryLocalService.addListTypeEntry(
-			null, TestPropsValues.getUserId(),
-			_listTypeDefinition.getListTypeDefinitionId(), _listTypeEntryKey,
-			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()));
+				Collections.singletonList(
+					ListTypeEntryUtil.createListTypeEntry(_listTypeEntryKey)));
 	}
 
 	@Test
-	public void testAddCustomObjectField() throws Exception {
-
-		// Reserved name
-
-		String[] reservedNames = {
-			"actions", "companyId", "createDate", "creator", "dateCreated",
-			"dateModified", "externalReferenceCode", "groupId", "id",
-			"lastPublishDate", "modifiedDate", "statusByUserId",
-			"statusByUserName", "statusDate", "userId", "userName"
-		};
-
-		for (String reservedName : reservedNames) {
-			try {
-				_testAddCustomObjectField(
-					ObjectFieldUtil.createObjectField(
-						ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-						ObjectFieldConstants.DB_TYPE_STRING, reservedName,
-						_getObjectFieldSettings(
-							ObjectFieldConstants.BUSINESS_TYPE_TEXT)));
-
-				Assert.fail();
-			}
-			catch (ObjectFieldNameException objectFieldNameException) {
-				Assert.assertEquals(
-					"Reserved name " + reservedName,
-					objectFieldNameException.getMessage());
-			}
-		}
+	public void testAddCustomObjectField() {
+		_testAddCustomObjectField(
+			ObjectDefinitionEnableLocalizationException.class, null,
+			new TextObjectFieldBuilder(
+			).labelMap(
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
+			).name(
+				"a" + RandomTestUtil.randomString()
+			).localized(
+				true
+			).build());
 
 		_testAddCustomObjectField(
+			ObjectFieldListTypeDefinitionIdException.class,
 			"List type definition ID is 0",
 			new ObjectFieldBuilder(
 			).businessType(
@@ -155,67 +146,59 @@ public class ObjectFieldLocalServiceTest {
 				"a" + RandomTestUtil.randomString()
 			).build());
 
-		String defaultValue = RandomTestUtil.randomString();
-
 		_testAddCustomObjectField(
+			ObjectFieldLocalizedException.class,
 			StringBundler.concat(
-				"Default value \"", defaultValue, "\" is not a list entry in ",
-				"list definition ",
-				_listTypeDefinition.getListTypeDefinitionId()),
-			new ObjectFieldBuilder(
-			).businessType(
-				ObjectFieldConstants.BUSINESS_TYPE_PICKLIST
-			).defaultValue(
-				defaultValue
-			).listTypeDefinitionId(
-				_listTypeDefinition.getListTypeDefinitionId()
-			).build());
-
-		_testAddCustomObjectField(
-			StringBundler.concat(
-				"Object field can only have a default type when the business ",
-				"type is \"", ObjectFieldConstants.BUSINESS_TYPE_PICKLIST,
-				"\""),
-			new ObjectFieldBuilder(
-			).businessType(
-				ObjectFieldConstants.BUSINESS_TYPE_TEXT
-			).dbType(
-				ObjectFieldConstants.DB_TYPE_STRING
-			).defaultValue(
-				RandomTestUtil.randomString()
+				"Only ", ObjectFieldConstants.BUSINESS_TYPE_LONG_TEXT,
+				StringPool.COMMA, ObjectFieldConstants.BUSINESS_TYPE_RICH_TEXT,
+				" and ", ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+				" business types support localization"),
+			new DateObjectFieldBuilder(
 			).labelMap(
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
+			).name(
+				"a" + RandomTestUtil.randomString()
+			).localized(
+				true
+			).build());
+
+		String[] reservedNames = {
+			"actions", "companyId", "createDate", "creator", "dateCreated",
+			"dateModified", "externalReferenceCode", "groupId", "id",
+			"lastPublishDate", "modifiedDate", "statusByUserId",
+			"statusByUserName", "statusDate", "userId", "userName"
+		};
+
+		for (String reservedName : reservedNames) {
+			_testAddCustomObjectField(
+				ObjectFieldNameException.class, "Reserved name " + reservedName,
+				new TextObjectFieldBuilder(
+				).labelMap(
+					LocalizedMapUtil.getLocalizedMap(
+						RandomTestUtil.randomString())
+				).name(
+					reservedName
+				).build());
+		}
+
+		_testAddCustomObjectField(
+			ObjectFieldStateException.class,
+			"Object field must be required when the state is true",
+			new PicklistObjectFieldBuilder(
+			).labelMap(
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
+			).listTypeDefinitionId(
+				_listTypeDefinition.getListTypeDefinitionId()
 			).name(
 				"a" + RandomTestUtil.randomString()
 			).objectFieldSettings(
-				_getObjectFieldSettings(ObjectFieldConstants.BUSINESS_TYPE_TEXT)
-			).build());
-
-		_testAddCustomObjectField(
-			"Object field default value can only be set when the picklist is " +
-				"a state",
-			new ObjectFieldBuilder(
-			).businessType(
-				ObjectFieldConstants.BUSINESS_TYPE_PICKLIST
-			).defaultValue(
-				_listTypeEntryKey
-			).listTypeDefinitionId(
-				_listTypeDefinition.getListTypeDefinitionId()
-			).build());
-
-		_testAddCustomObjectField(
-			"Object field must be required when the state is true",
-			new ObjectFieldBuilder(
-			).businessType(
-				ObjectFieldConstants.BUSINESS_TYPE_PICKLIST
-			).defaultValue(
-				_listTypeEntryKey
-			).labelMap(
-				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
-			).listTypeDefinitionId(
-				_listTypeDefinition.getListTypeDefinitionId()
-			).name(
-				"a" + RandomTestUtil.randomString()
+				Arrays.asList(
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+						_listTypeEntryKey),
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+						ObjectFieldSettingConstants.VALUE_INPUT_AS_VALUE))
 			).state(
 				true
 			).build());
@@ -531,7 +514,7 @@ public class ObjectFieldLocalServiceTest {
 				objectDefinition.getObjectDefinitionId(),
 				ObjectFieldConstants.BUSINESS_TYPE_TEXT,
 				RandomTestUtil.randomString(), RandomTestUtil.randomString(),
-				ObjectFieldConstants.DB_TYPE_STRING, null, false, true, "",
+				ObjectFieldConstants.DB_TYPE_STRING, false, true, "",
 				LocalizedMapUtil.getLocalizedMap("Able"), "able", false, false);
 
 			Assert.fail();
@@ -577,8 +560,9 @@ public class ObjectFieldLocalServiceTest {
 			null, TestPropsValues.getUserId(), 0,
 			objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-			ObjectFieldConstants.DB_TYPE_STRING, null, false, true, "",
-			LocalizedMapUtil.getLocalizedMap("able"), "able", false, false,
+			ObjectFieldConstants.DB_TYPE_STRING, false, true, "",
+			LocalizedMapUtil.getLocalizedMap("able"), false, "able", false,
+			false,
 			_getObjectFieldSettings(ObjectFieldConstants.BUSINESS_TYPE_TEXT));
 
 		Assert.assertNotNull(ableObjectField);
@@ -597,8 +581,9 @@ public class ObjectFieldLocalServiceTest {
 			null, TestPropsValues.getUserId(), 0,
 			objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-			ObjectFieldConstants.DB_TYPE_STRING, null, false, true, "",
-			LocalizedMapUtil.getLocalizedMap("baker"), "baker", false, false,
+			ObjectFieldConstants.DB_TYPE_STRING, false, true, "",
+			LocalizedMapUtil.getLocalizedMap("baker"), false, "baker", false,
+			false,
 			_getObjectFieldSettings(ObjectFieldConstants.BUSINESS_TYPE_TEXT));
 
 		ObjectField bakerObjectField =
@@ -641,13 +626,14 @@ public class ObjectFieldLocalServiceTest {
 			_getObjectFieldSettings(ObjectFieldConstants.BUSINESS_TYPE_TEXT));
 
 		ObjectDefinition objectDefinition =
-			_objectDefinitionLocalService.addSystemObjectDefinition(
+			ObjectDefinitionTestUtil.addUnmodifiableSystemObjectDefinition(
 				TestPropsValues.getUserId(), RandomTestUtil.randomString(),
 				null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 				"A" + RandomTestUtil.randomString(), null, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 				ObjectDefinitionConstants.SCOPE_COMPANY, null, 1,
+				_objectDefinitionLocalService,
 				Collections.singletonList(ableObjectField));
 
 		ableObjectField = _objectFieldLocalService.fetchObjectField(
@@ -672,9 +658,9 @@ public class ObjectFieldLocalServiceTest {
 			null, TestPropsValues.getUserId(), 0,
 			objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-			ObjectFieldConstants.DB_TYPE_STRING, null, false, true, "",
-			LocalizedMapUtil.getLocalizedMap("baker"), "baker", false, false,
-			_getObjectFieldSettings("Text"));
+			ObjectFieldConstants.DB_TYPE_STRING, false, true, "",
+			LocalizedMapUtil.getLocalizedMap("baker"), false, "baker", false,
+			false, _getObjectFieldSettings("Text"));
 
 		ObjectField bakerObjectField =
 			_objectFieldLocalService.fetchObjectField(
@@ -714,9 +700,9 @@ public class ObjectFieldLocalServiceTest {
 			null, TestPropsValues.getUserId(), 0,
 			objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
-			ObjectFieldConstants.DB_TYPE_LONG, null, true, false, null,
+			ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-			"upload", false, false,
+			false, "upload", false, false,
 			Arrays.asList(
 				_createObjectFieldSetting("acceptedFileExtensions", "txt"),
 				_createObjectFieldSetting("fileSource", "userComputer"),
@@ -778,23 +764,97 @@ public class ObjectFieldLocalServiceTest {
 			objectDefinition.getObjectDefinitionId());
 	}
 
+	@FeatureFlags("LPS-163716")
 	@Test
 	public void testObjectFieldSettings() throws Exception {
 
-		// Missing required values
+		// Invalid value
 
 		ObjectDefinition objectDefinition =
 			ObjectDefinitionTestUtil.addObjectDefinition(
-				_objectDefinitionLocalService);
+				_objectDefinitionLocalService,
+				Arrays.asList(
+					ObjectFieldUtil.createObjectField(
+						ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+						ObjectFieldConstants.DB_TYPE_STRING, "text",
+						StringUtil.randomId())));
+
+		try {
+			_objectFieldLocalService.addCustomObjectField(
+				null, TestPropsValues.getUserId(),
+				_listTypeDefinition.getListTypeDefinitionId(),
+				objectDefinition.getObjectDefinitionId(),
+				ObjectFieldConstants.BUSINESS_TYPE_PICKLIST,
+				ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
+				false, "picklist", true, true,
+				Arrays.asList(
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+						_listTypeEntryKey),
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+						ObjectFieldSettingConstants.VALUE_EXPRESSION_BUILDER)));
+
+			Assert.fail();
+		}
+		catch (ObjectFieldSettingValueException.InvalidValue
+					objectFieldSettingValueException) {
+
+			Assert.assertEquals(
+				objectFieldSettingValueException.getMessage(),
+				StringBundler.concat(
+					"The value ",
+					ObjectFieldSettingConstants.VALUE_EXPRESSION_BUILDER,
+					" of setting ",
+					ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+					" is invalid for object field picklist"));
+		}
+
+		String defaultValue = RandomTestUtil.randomString();
+
+		try {
+			_objectFieldLocalService.addCustomObjectField(
+				null, TestPropsValues.getUserId(),
+				_listTypeDefinition.getListTypeDefinitionId(),
+				objectDefinition.getObjectDefinitionId(),
+				ObjectFieldConstants.BUSINESS_TYPE_PICKLIST,
+				ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
+				false, "picklist", true, true,
+				Arrays.asList(
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+						defaultValue),
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+						ObjectFieldSettingConstants.VALUE_INPUT_AS_VALUE)));
+
+			Assert.fail();
+		}
+		catch (ObjectFieldSettingValueException.InvalidValue
+					objectFieldSettingValueException) {
+
+			Assert.assertEquals(
+				objectFieldSettingValueException.getMessage(),
+				StringBundler.concat(
+					"The value ", defaultValue, " of setting ",
+					ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+					" is invalid for object field picklist"));
+		}
+
+		// Missing required values
 
 		try {
 			_objectFieldLocalService.addCustomObjectField(
 				null, TestPropsValues.getUserId(), 0,
 				objectDefinition.getObjectDefinitionId(),
 				ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
-				ObjectFieldConstants.DB_TYPE_LONG, null, true, false, null,
+				ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-				"upload", false, false, Collections.emptyList());
+				false, "upload", false, false, Collections.emptyList());
+
+			Assert.fail();
 		}
 		catch (ObjectFieldSettingValueException.MissingRequiredValues
 					objectFieldSettingValueException) {
@@ -810,17 +870,40 @@ public class ObjectFieldLocalServiceTest {
 				null, TestPropsValues.getUserId(), 0,
 				objectDefinition.getObjectDefinitionId(),
 				ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-				ObjectFieldConstants.DB_TYPE_STRING, null, true, false, null,
+				ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-				"text", false, false,
+				false, "text", false, false,
 				Collections.singletonList(
 					_createObjectFieldSetting("showCounter", "true")));
+
+			Assert.fail();
 		}
 		catch (ObjectFieldSettingValueException.MissingRequiredValues
 					objectFieldSettingValueException) {
 
 			Assert.assertEquals(
 				"The settings maxLength are required for object field text",
+				objectFieldSettingValueException.getMessage());
+		}
+
+		try {
+			_objectFieldLocalService.addCustomObjectField(
+				null, TestPropsValues.getUserId(),
+				_listTypeDefinition.getListTypeDefinitionId(),
+				objectDefinition.getObjectDefinitionId(),
+				ObjectFieldConstants.BUSINESS_TYPE_PICKLIST,
+				ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
+				false, "picklist", true, true, Collections.emptyList());
+
+			Assert.fail();
+		}
+		catch (ObjectFieldSettingValueException.MissingRequiredValues
+					objectFieldSettingValueException) {
+
+			Assert.assertEquals(
+				"The settings defaultValue, defaultValueType are required " +
+					"for object field picklist",
 				objectFieldSettingValueException.getMessage());
 		}
 
@@ -831,12 +914,14 @@ public class ObjectFieldLocalServiceTest {
 				null, TestPropsValues.getUserId(), 0,
 				objectDefinition.getObjectDefinitionId(),
 				ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-				ObjectFieldConstants.DB_TYPE_STRING, null, true, false, null,
+				ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-				"text", false, false,
+				false, "text", false, false,
 				Arrays.asList(
 					_createObjectFieldSetting("anySetting", "10"),
 					_createObjectFieldSetting("showCounter", "true")));
+
+			Assert.fail();
 		}
 		catch (ObjectFieldSettingNameException.NotAllowedNames
 					objectFieldSettingNameException) {
@@ -851,10 +936,12 @@ public class ObjectFieldLocalServiceTest {
 				null, TestPropsValues.getUserId(), 0,
 				objectDefinition.getObjectDefinitionId(),
 				ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-				ObjectFieldConstants.DB_TYPE_STRING, null, true, false, null,
+				ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-				"text", false, false,
+				false, "text", false, false,
 				Arrays.asList(_createObjectFieldSetting("maxLength", null)));
+
+			Assert.fail();
 		}
 		catch (ObjectFieldSettingNameException.NotAllowedNames
 					objectFieldSettingNameException) {
@@ -869,12 +956,14 @@ public class ObjectFieldLocalServiceTest {
 				null, TestPropsValues.getUserId(), 0,
 				objectDefinition.getObjectDefinitionId(),
 				ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-				ObjectFieldConstants.DB_TYPE_STRING, null, true, false, null,
+				ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-				"text", false, false,
+				false, "text", false, false,
 				Arrays.asList(
 					_createObjectFieldSetting("maxLength", "10"),
 					_createObjectFieldSetting("showCounter", "false")));
+
+			Assert.fail();
 		}
 		catch (ObjectFieldSettingNameException.NotAllowedNames
 					objectFieldSettingNameException) {
@@ -884,15 +973,46 @@ public class ObjectFieldLocalServiceTest {
 				objectFieldSettingNameException.getMessage());
 		}
 
+		try {
+			_objectFieldLocalService.addCustomObjectField(
+				null, TestPropsValues.getUserId(), 0,
+				objectDefinition.getObjectDefinitionId(),
+				ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+				ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
+				false, "text", false, false,
+				Arrays.asList(
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+						_listTypeEntryKey),
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+						ObjectFieldSettingConstants.VALUE_INPUT_AS_VALUE),
+					_createObjectFieldSetting("showCounter", "false")));
+
+			Assert.fail();
+		}
+		catch (ObjectFieldSettingNameException.NotAllowedNames
+					objectFieldSettingNameException) {
+
+			Assert.assertEquals(
+				String.format(
+					"The settings %s, %s are not allowed for object field %s",
+					ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+					ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+					"text"),
+				objectFieldSettingNameException.getMessage());
+		}
+
 		// Business type attachment
 
 		ObjectField objectField = _objectFieldLocalService.addCustomObjectField(
 			null, TestPropsValues.getUserId(), 0,
 			objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
-			ObjectFieldConstants.DB_TYPE_LONG, null, true, false, null,
+			ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-			StringUtil.randomId(), false, false,
+			false, StringUtil.randomId(), false, false,
 			Arrays.asList(
 				_createObjectFieldSetting("acceptedFileExtensions", "jpg, png"),
 				_createObjectFieldSetting("fileSource", "userComputer"),
@@ -909,9 +1029,9 @@ public class ObjectFieldLocalServiceTest {
 		objectField = _objectFieldLocalService.updateCustomObjectField(
 			StringPool.BLANK, objectField.getObjectFieldId(), 0,
 			ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
-			ObjectFieldConstants.DB_TYPE_LONG, null, true, false, null,
+			ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-			StringUtil.randomId(), false, false,
+			false, StringUtil.randomId(), false, false,
 			Arrays.asList(
 				_createObjectFieldSetting("acceptedFileExtensions", "jpg"),
 				_createObjectFieldSetting("fileSource", "documentsAndMedia"),
@@ -924,14 +1044,71 @@ public class ObjectFieldLocalServiceTest {
 		_assertObjectFieldSetting(
 			"maximumFileSize", objectField.getObjectFieldId(), "10");
 
+		// Business type picklist
+
+		objectField = _addPicklistObjectField(objectDefinition, false, false);
+
+		_assertObjectFieldSetting(
+			ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+			objectField.getObjectFieldId(), _listTypeEntryKey);
+		_assertObjectFieldSetting(
+			ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+			objectField.getObjectFieldId(),
+			ObjectFieldSettingConstants.VALUE_INPUT_AS_VALUE);
+
+		_objectDefinitionLocalService.publishCustomObjectDefinition(
+			TestPropsValues.getUserId(),
+			objectDefinition.getObjectDefinitionId());
+
+		_assertObjectEntryDefaultValue(
+			_listTypeEntryKey, objectField, new HashMap<>());
+
+		objectField.setObjectFieldSettings(
+			Arrays.asList(
+				_createObjectFieldSetting(
+					ObjectFieldSettingConstants.NAME_DEFAULT_VALUE, "text"),
+				_createObjectFieldSetting(
+					ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+					ObjectFieldSettingConstants.VALUE_EXPRESSION_BUILDER)));
+
+		objectField = _updateCustomObjectField(objectField);
+
+		_assertObjectFieldSetting(
+			ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+			objectField.getObjectFieldId(), "text");
+		_assertObjectFieldSetting(
+			ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+			objectField.getObjectFieldId(),
+			ObjectFieldSettingConstants.VALUE_EXPRESSION_BUILDER);
+
+		_assertObjectEntryDefaultValue(
+			_listTypeEntryKey, objectField,
+			HashMapBuilder.<String, Serializable>put(
+				"text", _listTypeEntryKey
+			).build());
+
+		objectField = _addPicklistObjectField(objectDefinition, true, true);
+
+		_assertObjectFieldSetting(
+			ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+			objectField.getObjectFieldId(), _listTypeEntryKey);
+		_assertObjectFieldSetting(
+			ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+			objectField.getObjectFieldId(),
+			ObjectFieldSettingConstants.VALUE_INPUT_AS_VALUE);
+
+		_assertObjectEntryDefaultValue(
+			_listTypeEntryKey, objectField, new HashMap<>());
+
 		// Business type text
 
-		objectField = _objectFieldLocalService.updateCustomObjectField(
-			StringPool.BLANK, objectField.getObjectFieldId(), 0,
+		objectField = _objectFieldLocalService.addCustomObjectField(
+			StringPool.BLANK, TestPropsValues.getUserId(), 0,
+			objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-			ObjectFieldConstants.DB_TYPE_STRING, null, true, false, null,
+			ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-			StringUtil.randomId(), false, false,
+			false, "a" + RandomTestUtil.randomString(), false, false,
 			_getObjectFieldSettings("Text"));
 
 		Assert.assertNull(
@@ -947,9 +1124,9 @@ public class ObjectFieldLocalServiceTest {
 		objectField = _objectFieldLocalService.updateCustomObjectField(
 			StringPool.BLANK, objectField.getObjectFieldId(), 0,
 			ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-			ObjectFieldConstants.DB_TYPE_STRING, null, true, false, null,
+			ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-			StringUtil.randomId(), false, false,
+			false, StringUtil.randomId(), false, false,
 			Arrays.asList(
 				_createObjectFieldSetting("maxLength", "10"),
 				_createObjectFieldSetting("showCounter", "true")));
@@ -962,9 +1139,9 @@ public class ObjectFieldLocalServiceTest {
 		objectField = _objectFieldLocalService.updateCustomObjectField(
 			StringPool.BLANK, objectField.getObjectFieldId(), 0,
 			ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-			ObjectFieldConstants.DB_TYPE_STRING, null, true, false, null,
+			ObjectFieldConstants.DB_TYPE_STRING, true, false, null,
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-			StringUtil.randomId(), false, false,
+			false, StringUtil.randomId(), false, false,
 			Collections.singletonList(
 				_createObjectFieldSetting("showCounter", "false")));
 
@@ -977,8 +1154,7 @@ public class ObjectFieldLocalServiceTest {
 		_assertObjectFieldSetting(
 			"showCounter", objectField.getObjectFieldId(), "false");
 
-		_objectDefinitionLocalService.deleteObjectDefinition(
-			objectDefinition.getObjectDefinitionId());
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
 	}
 
 	@Test
@@ -997,8 +1173,6 @@ public class ObjectFieldLocalServiceTest {
 			ObjectFieldConstants.BUSINESS_TYPE_LONG_INTEGER
 		).dbType(
 			ObjectFieldConstants.DB_TYPE_LONG
-		).defaultValue(
-			StringPool.BLANK
 		).indexedAsKeyword(
 			true
 		).indexedLanguageId(
@@ -1015,11 +1189,12 @@ public class ObjectFieldLocalServiceTest {
 			objectField.getExternalReferenceCode(), objectField.getUserId(),
 			objectField.getListTypeDefinitionId(),
 			objectField.getObjectDefinitionId(), objectField.getBusinessType(),
-			objectField.getDBType(), objectField.getDefaultValue(),
-			objectField.isIndexed(), objectField.isIndexedAsKeyword(),
+			objectField.getDBType(), objectField.isIndexed(),
+			objectField.isIndexedAsKeyword(),
 			objectField.getIndexedLanguageId(), objectField.getLabelMap(),
-			objectField.getName(), objectField.isRequired(),
-			objectField.isState(), objectField.getObjectFieldSettings());
+			objectField.isLocalized(), objectField.getName(),
+			objectField.isRequired(), objectField.isState(),
+			objectField.getObjectFieldSettings());
 
 		Assert.assertEquals("able_", objectField.getDBColumnName());
 		Assert.assertEquals(
@@ -1054,8 +1229,14 @@ public class ObjectFieldLocalServiceTest {
 			).build());
 
 		_testUpdateCustomObjectField(
-			objectFieldBuilder.defaultValue(
-				_listTypeEntryKey
+			objectFieldBuilder.objectFieldSettings(
+				Arrays.asList(
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+						_listTypeEntryKey),
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+						ObjectFieldSettingConstants.VALUE_INPUT_AS_VALUE))
 			).required(
 				true
 			).state(
@@ -1069,8 +1250,6 @@ public class ObjectFieldLocalServiceTest {
 			ObjectFieldConstants.BUSINESS_TYPE_TEXT
 		).dbColumnName(
 			"baker_"
-		).defaultValue(
-			StringPool.BLANK
 		).indexed(
 			true
 		).indexedLanguageId(
@@ -1096,9 +1275,9 @@ public class ObjectFieldLocalServiceTest {
 		objectField = _objectFieldLocalService.updateCustomObjectField(
 			StringPool.BLANK, objectField.getObjectFieldId(), 0,
 			ObjectFieldConstants.BUSINESS_TYPE_INTEGER,
-			ObjectFieldConstants.DB_TYPE_INTEGER, StringPool.BLANK, false, true,
-			StringPool.BLANK, LocalizedMapUtil.getLocalizedMap("charlie"),
-			"charlie", false, false,
+			ObjectFieldConstants.DB_TYPE_INTEGER, false, true, StringPool.BLANK,
+			LocalizedMapUtil.getLocalizedMap("charlie"), false, "charlie",
+			false, false,
 			_getObjectFieldSettings(ObjectFieldConstants.BUSINESS_TYPE_TEXT));
 
 		Assert.assertEquals("baker_", objectField.getDBColumnName());
@@ -1200,6 +1379,65 @@ public class ObjectFieldLocalServiceTest {
 		Assert.assertTrue(objectField.isRequired());
 	}
 
+	private ObjectField _addCustomObjectField(ObjectField objectField)
+		throws Exception {
+
+		return _objectFieldLocalService.addCustomObjectField(
+			objectField.getExternalReferenceCode(), TestPropsValues.getUserId(),
+			objectField.getListTypeDefinitionId(),
+			objectField.getObjectDefinitionId(), objectField.getBusinessType(),
+			objectField.getDBType(), objectField.isIndexed(),
+			objectField.isIndexedAsKeyword(),
+			objectField.getIndexedLanguageId(), objectField.getLabelMap(),
+			objectField.isLocalized(), objectField.getName(),
+			objectField.isRequired(), objectField.isState(),
+			objectField.getObjectFieldSettings());
+	}
+
+	private ObjectField _addPicklistObjectField(
+			ObjectDefinition objectDefinition, boolean required, boolean state)
+		throws Exception {
+
+		return _addCustomObjectField(
+			new PicklistObjectFieldBuilder(
+			).labelMap(
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
+			).listTypeDefinitionId(
+				_listTypeDefinition.getListTypeDefinitionId()
+			).name(
+				"a" + RandomTestUtil.randomString()
+			).objectDefinitionId(
+				objectDefinition.getObjectDefinitionId()
+			).objectFieldSettings(
+				Arrays.asList(
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+						_listTypeEntryKey),
+					_createObjectFieldSetting(
+						ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+						ObjectFieldSettingConstants.VALUE_INPUT_AS_VALUE))
+			).required(
+				required
+			).state(
+				state
+			).build());
+	}
+
+	private void _assertObjectEntryDefaultValue(
+			String expectedDefaultValue, ObjectField objectField,
+			Map<String, Serializable> values)
+		throws Exception {
+
+		ObjectEntry objectEntry = _objectEntryLocalService.addObjectEntry(
+			TestPropsValues.getUserId(), 0, objectField.getObjectDefinitionId(),
+			values, ServiceContextTestUtil.getServiceContext());
+
+		values = objectEntry.getValues();
+
+		Assert.assertEquals(
+			expectedDefaultValue, values.get(objectField.getName()));
+	}
+
 	private void _assertObjectFieldSetting(
 			String name, long objectFieldId, String value)
 		throws Exception {
@@ -1254,6 +1492,20 @@ public class ObjectFieldLocalServiceTest {
 		}
 	}
 
+	private void _testAddCustomObjectField(
+		Class<?> clazz, String expectedMessage, ObjectField objectField) {
+
+		try {
+			_testAddCustomObjectField(objectField);
+
+			Assert.fail();
+		}
+		catch (Exception exception) {
+			Assert.assertEquals(expectedMessage, exception.getMessage());
+			Assert.assertTrue(clazz.isInstance(exception));
+		}
+	}
+
 	private void _testAddCustomObjectField(ObjectField... objectFields)
 		throws Exception {
 
@@ -1262,7 +1514,7 @@ public class ObjectFieldLocalServiceTest {
 		try {
 			objectDefinition =
 				_objectDefinitionLocalService.addCustomObjectDefinition(
-					TestPropsValues.getUserId(), false,
+					TestPropsValues.getUserId(), false, false,
 					LocalizedMapUtil.getLocalizedMap(
 						RandomTestUtil.randomString()),
 					"A" + RandomTestUtil.randomString(), null, null,
@@ -1277,19 +1529,6 @@ public class ObjectFieldLocalServiceTest {
 				_objectDefinitionLocalService.deleteObjectDefinition(
 					objectDefinition);
 			}
-		}
-	}
-
-	private void _testAddCustomObjectField(
-		String expectedMessage, ObjectField objectField) {
-
-		try {
-			_testAddCustomObjectField(objectField);
-
-			Assert.fail();
-		}
-		catch (Exception exception) {
-			Assert.assertEquals(expectedMessage, exception.getMessage());
 		}
 	}
 
@@ -1308,7 +1547,7 @@ public class ObjectFieldLocalServiceTest {
 
 		try {
 			objectDefinition =
-				_objectDefinitionLocalService.addSystemObjectDefinition(
+				ObjectDefinitionTestUtil.addUnmodifiableSystemObjectDefinition(
 					TestPropsValues.getUserId(), RandomTestUtil.randomString(),
 					null,
 					LocalizedMapUtil.getLocalizedMap(
@@ -1317,7 +1556,7 @@ public class ObjectFieldLocalServiceTest {
 					LocalizedMapUtil.getLocalizedMap(
 						RandomTestUtil.randomString()),
 					ObjectDefinitionConstants.SCOPE_COMPANY, null, 1,
-					Arrays.asList(objectFields));
+					_objectDefinitionLocalService, Arrays.asList(objectFields));
 		}
 		finally {
 			if (objectDefinition != null) {
@@ -1339,11 +1578,11 @@ public class ObjectFieldLocalServiceTest {
 				expectedObjectField.getListTypeDefinitionId(),
 				expectedObjectField.getBusinessType(),
 				expectedObjectField.getDBType(),
-				expectedObjectField.getDefaultValue(),
 				expectedObjectField.isIndexed(),
 				expectedObjectField.isIndexedAsKeyword(),
 				expectedObjectField.getIndexedLanguageId(),
 				expectedObjectField.getLabelMap(),
+				expectedObjectField.isLocalized(),
 				expectedObjectField.getName(), expectedObjectField.isRequired(),
 				expectedObjectField.isState(),
 				expectedObjectField.getObjectFieldSettings());
@@ -1356,9 +1595,6 @@ public class ObjectFieldLocalServiceTest {
 			objectField.getDBColumnName());
 		Assert.assertEquals(
 			expectedObjectField.getDBType(), objectField.getDBType());
-		Assert.assertEquals(
-			expectedObjectField.getDefaultValue(),
-			objectField.getDefaultValue());
 		Assert.assertEquals(
 			expectedObjectField.isIndexed(), objectField.isIndexed());
 		Assert.assertEquals(
@@ -1408,12 +1644,11 @@ public class ObjectFieldLocalServiceTest {
 				StringPool.BLANK, objectField.getObjectFieldId(),
 				objectField.getListTypeDefinitionId(),
 				objectField.getBusinessType(),
-				ObjectFieldConstants.DB_TYPE_STRING,
-				objectField.getDefaultValue(), objectField.isIndexed(),
+				ObjectFieldConstants.DB_TYPE_STRING, objectField.isIndexed(),
 				objectField.isIndexedAsKeyword(),
 				objectField.getIndexedLanguageId(), objectField.getLabelMap(),
-				"able", objectField.isRequired(), objectField.isState(),
-				Collections.emptyList());
+				objectField.isLocalized(), "able", objectField.isRequired(),
+				objectField.isState(), Collections.emptyList());
 
 			Assert.fail();
 		}
@@ -1430,6 +1665,20 @@ public class ObjectFieldLocalServiceTest {
 		}
 	}
 
+	private ObjectField _updateCustomObjectField(ObjectField objectField)
+		throws Exception {
+
+		return _objectFieldLocalService.updateCustomObjectField(
+			StringPool.BLANK, objectField.getObjectFieldId(),
+			objectField.getListTypeDefinitionId(),
+			objectField.getBusinessType(), objectField.getDBType(),
+			objectField.isIndexed(), objectField.isIndexedAsKeyword(),
+			objectField.getIndexedLanguageId(), objectField.getLabelMap(),
+			objectField.isLocalized(), objectField.getName(),
+			objectField.isRequired(), objectField.isState(),
+			objectField.getObjectFieldSettings());
+	}
+
 	@Inject
 	private DLAppLocalService _dlAppLocalService;
 
@@ -1440,9 +1689,6 @@ public class ObjectFieldLocalServiceTest {
 	private ListTypeDefinitionLocalService _listTypeDefinitionLocalService;
 
 	private String _listTypeEntryKey;
-
-	@Inject
-	private ListTypeEntryLocalService _listTypeEntryLocalService;
 
 	@Inject
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;

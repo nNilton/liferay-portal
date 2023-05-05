@@ -22,14 +22,16 @@ definition {
 		}
 
 		task ("Add a new site") {
-			JSONGroup.addGroup(groupName = "Site Name");
+			HeadlessSite.addSite(siteName = "Site Name");
 		}
 	}
 
 	tearDown {
 		var testPortalInstance = PropsUtil.get("test.portal.instance");
 
-		ACUtils.tearDownAC();
+		// It is not possible to delete properties and data source after LRAC-13389. This functionality should return after LRAC-8040
+
+		//ACUtils.tearDownAC();
 
 		ACUtils.tearDownDXP();
 
@@ -340,7 +342,11 @@ definition {
 				property = "version",
 				value = "1.0");
 
-			Click(locator1 = "Button#DOWNLOAD");
+			DMDocument.expandInfo();
+
+			AssertClick.assertPartialTextClickAt(
+				locator1 = "Button#DOWNLOAD_SIDEBAR",
+				value1 = "Download");
 
 			ACUtils.waitForSendingRequest();
 
@@ -485,7 +491,7 @@ definition {
 
 			FormPortlet.submitSuccessfully();
 
-			ProxyUtil.startHarRecording("formEvents");
+			ProxyUtil.startHarRecording("formSubmitted");
 
 			ACUtils.waitForSendingRequest();
 

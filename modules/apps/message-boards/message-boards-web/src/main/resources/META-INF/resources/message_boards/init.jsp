@@ -116,13 +116,13 @@ page import="com.liferay.message.boards.web.internal.security.permission.MBCateg
 page import="com.liferay.message.boards.web.internal.security.permission.MBMessagePermission" %><%@
 page import="com.liferay.message.boards.web.internal.security.permission.MBResourcePermission" %><%@
 page import="com.liferay.message.boards.web.internal.util.MBBreadcrumbUtil" %><%@
+page import="com.liferay.message.boards.web.internal.util.MBDisplayContextUtil" %><%@
 page import="com.liferay.message.boards.web.internal.util.MBMailUtil" %><%@
 page import="com.liferay.message.boards.web.internal.util.MBMessageIterator" %><%@
 page import="com.liferay.message.boards.web.internal.util.MBRSSUtil" %><%@
 page import="com.liferay.message.boards.web.internal.util.MBRequestUtil" %><%@
 page import="com.liferay.message.boards.web.internal.util.MBSubscriptionUtil" %><%@
 page import="com.liferay.message.boards.web.internal.util.MBUtil" %><%@
-page import="com.liferay.message.boards.web.internal.util.MBWebComponentProvider" %><%@
 page import="com.liferay.petra.string.CharPool" %><%@
 page import="com.liferay.petra.string.StringBundler" %><%@
 page import="com.liferay.petra.string.StringPool" %><%@
@@ -156,7 +156,7 @@ page import="com.liferay.portal.kernel.theme.ThemeDisplay" %><%@
 page import="com.liferay.portal.kernel.upload.FileItem" %><%@
 page import="com.liferay.portal.kernel.upload.LiferayFileItemException" %><%@
 page import="com.liferay.portal.kernel.upload.UploadRequestSizeException" %><%@
-page import="com.liferay.portal.kernel.upload.UploadServletRequestConfigurationHelperUtil" %><%@
+page import="com.liferay.portal.kernel.upload.configuration.UploadServletRequestConfigurationProviderUtil" %><%@
 page import="com.liferay.portal.kernel.util.Constants" %><%@
 page import="com.liferay.portal.kernel.util.FastDateFormatFactoryUtil" %><%@
 page import="com.liferay.portal.kernel.util.GetterUtil" %><%@
@@ -234,9 +234,7 @@ int rssDelta = mbGroupServiceSettings.getRSSDelta();
 String rssDisplayStyle = mbGroupServiceSettings.getRSSDisplayStyle();
 String rssFeedType = mbGroupServiceSettings.getRSSFeedType();
 
-MBWebComponentProvider mbWebComponentProvider = MBWebComponentProvider.getMBWebComponentProvider();
-
-MBDisplayContextProvider mbDisplayContextProvider = mbWebComponentProvider.getMBDisplayContextProvider();
+MBDisplayContextProvider mbDisplayContextProvider = MBDisplayContextUtil.getMBDisplayContextProvider();
 
 Format dateFormatDate = FastDateFormatFactoryUtil.getDate(locale, timeZone);
 Format dateFormatDateTime = FastDateFormatFactoryUtil.getDateTime(locale, timeZone);

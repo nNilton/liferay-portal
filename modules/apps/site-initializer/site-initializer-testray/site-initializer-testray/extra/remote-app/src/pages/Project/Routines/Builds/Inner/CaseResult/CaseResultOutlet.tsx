@@ -19,6 +19,7 @@ import {
 	useOutletContext,
 	useParams,
 } from 'react-router-dom';
+import PageRenderer from '~/components/PageRenderer';
 
 import {useFetch} from '../../../../../../hooks/useFetch';
 import useHeader from '../../../../../../hooks/useHeader';
@@ -31,8 +32,6 @@ import {
 	liferayMessageBoardImpl,
 	testrayCaseResultImpl,
 } from '../../../../../../services/rest';
-import {testrayCaseResultsIssuesImpl} from '../../../../../../services/rest/TestrayCaseresultsIssues';
-import {SearchBuilder} from '../../../../../../util/search';
 import useCaseResultActions from './useCaseResultActions';
 
 type OutletContext = {
@@ -51,12 +50,18 @@ const CaseResultOutlet = () => {
 		testrayRoutine,
 	}: OutletContext = useOutletContext();
 
-	const {data: testrayCaseResult, mutate: mutateCaseResult} = useFetch<
-		TestrayCaseResult
-	>(testrayCaseResultImpl.getResource(caseResultId as string), {
-		transformData: (response) =>
-			testrayCaseResultImpl.transformData(response),
-	});
+	const {
+		data: testrayCaseResult,
+		error,
+		loading,
+		mutate: mutateCaseResult,
+	} = useFetch<TestrayCaseResult>(
+		testrayCaseResultImpl.getResource(caseResultId as string),
+		{
+			transformData: (response) =>
+				testrayCaseResultImpl.transformData(response),
+		}
+	);
 
 	const {data: mbMessage} = useFetch(
 		testrayCaseResult?.mbMessageId
@@ -65,22 +70,6 @@ const CaseResultOutlet = () => {
 			  )
 			: null
 	);
-
-	const {data, mutate: mutateCaseResultIssues} = useFetch(
-		testrayCaseResultsIssuesImpl.resource,
-		{
-			params: {
-				filter: SearchBuilder.eq(
-					'caseResultId',
-					caseResultId as string
-				),
-			},
-			transformData: (response) =>
-				testrayCaseResultsIssuesImpl.transformDataFromList(response),
-		}
-	);
-
-	const caseResultsIssues = data?.items || [];
 
 	const basePath = `/project/${projectId}/routines/${routineId}/build/${buildId}/case-result/${caseResultId}`;
 
@@ -97,7 +86,7 @@ const CaseResultOutlet = () => {
 	}, [actions, testrayCaseResult, mutateCaseResult, setHeaderActions]);
 
 	useEffect(() => {
-		if (testrayCaseResult) {
+		if (testrayCaseResult?.case?.name) {
 			setHeading([
 				{
 					category: i18n.translate('project').toUpperCase(),
@@ -143,22 +132,19 @@ const CaseResultOutlet = () => {
 		]);
 	}, [basePath, pathname, setTabs]);
 
-	if (testrayCaseResult) {
-		return (
+	return (
+		<PageRenderer error={error} loading={loading}>
 			<Outlet
 				context={{
+					actions: testrayCaseResult?.actions,
 					caseResult: testrayCaseResult,
-					caseResultsIssues,
 					mbMessage,
 					mutateCaseResult,
-					mutateCaseResultIssues,
 					projectId,
 				}}
 			/>
-		);
-	}
-
-	return null;
+		</PageRenderer>
+	);
 };
 
 export default CaseResultOutlet;

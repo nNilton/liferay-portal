@@ -21,6 +21,7 @@ import com.liferay.portal.kernel.jsonwebservice.JSONWebService;
 import com.liferay.portal.kernel.search.BaseModelSearchResult;
 import com.liferay.portal.kernel.security.access.control.AccessControlled;
 import com.liferay.portal.kernel.service.BaseService;
+import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.transaction.Isolation;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.transaction.Transactional;
@@ -52,13 +53,18 @@ public interface AccountGroupService extends BaseService {
 	 * Never modify this interface directly. Add custom service methods to <code>com.liferay.account.service.impl.AccountGroupServiceImpl</code> and rerun ServiceBuilder to automatically copy the method declarations to this interface. Consume the account group remote service via injection or a <code>org.osgi.util.tracker.ServiceTracker</code>. Use {@link AccountGroupServiceUtil} if injection and service tracking are not available.
 	 */
 	public AccountGroup addAccountGroup(
-			long userId, String description, String name)
+			long userId, String description, String name,
+			ServiceContext serviceContext)
 		throws PortalException;
 
 	public AccountGroup deleteAccountGroup(long accountGroupId)
 		throws PortalException;
 
 	public void deleteAccountGroups(long[] accountGroupIds)
+		throws PortalException;
+
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public AccountGroup getAccountGroup(long accountGroupId)
 		throws PortalException;
 
 	/**
@@ -75,7 +81,8 @@ public interface AccountGroupService extends BaseService {
 		throws PortalException;
 
 	public AccountGroup updateAccountGroup(
-			long accountGroupId, String description, String name)
+			long accountGroupId, String description, String name,
+			ServiceContext serviceContext)
 		throws PortalException;
 
 	public AccountGroup updateExternalReferenceCode(

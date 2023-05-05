@@ -14,7 +14,7 @@ definition {
 
 			Navigator.openURL();
 
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 	}
 
@@ -29,7 +29,7 @@ definition {
 		}
 	}
 
-	@description = ""
+	@description = "LPS-137279 Given the Content Performance Panel When the users leave the page because the session expires or s/he does log out Then they find the panel closed"
 	@priority = 3
 	test ContentPerformanceClosed {
 		task ("Open Content Performance panel") {
@@ -239,6 +239,8 @@ definition {
 	@description = "LPS-108856: When user opens Content Performance panel and AC is connected but not synced, the Content Performance panel displays instructions to sync to AC (Dont show me this again button and the message is not displayed)"
 	@priority = 3
 	test NotSyncedPanel {
+		property ci.retries.disabled = "true";
+
 		task ("Launch AC and get Token") {
 			ACUtils.launchAC();
 
@@ -272,7 +274,7 @@ definition {
 		}
 
 		task ("End connection with Analytics Cloud") {
-			AnalyticsCloud.teardownAnalyticsCloud();
+			ACDXPSettings.disconnectDXPFromAnalyticsCloud();
 		}
 	}
 

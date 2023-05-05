@@ -25,11 +25,12 @@ import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.document.library.kernel.exception.NoSuchFileEntryException;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
+import com.liferay.list.type.entry.util.ListTypeEntryUtil;
 import com.liferay.list.type.model.ListTypeDefinition;
 import com.liferay.list.type.service.ListTypeDefinitionLocalService;
-import com.liferay.list.type.service.ListTypeEntryLocalService;
 import com.liferay.object.constants.ObjectDefinitionConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
+import com.liferay.object.constants.ObjectFieldSettingConstants;
 import com.liferay.object.constants.ObjectValidationRuleConstants;
 import com.liferay.object.exception.NoSuchObjectEntryException;
 import com.liferay.object.exception.ObjectDefinitionScopeException;
@@ -53,15 +54,13 @@ import com.liferay.object.service.ObjectStateLocalService;
 import com.liferay.object.service.ObjectStateTransitionLocalService;
 import com.liferay.object.service.ObjectValidationRuleLocalService;
 import com.liferay.object.service.test.util.ObjectDefinitionTestUtil;
-import com.liferay.petra.string.CharPool;
+import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.audit.AuditMessage;
 import com.liferay.portal.kernel.audit.AuditRouter;
 import com.liferay.portal.kernel.dao.jdbc.DataAccess;
-import com.liferay.portal.kernel.dao.orm.FinderCache;
 import com.liferay.portal.kernel.dao.orm.FinderCacheUtil;
-import com.liferay.portal.kernel.dao.orm.FinderPath;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.ModelListenerException;
 import com.liferay.portal.kernel.json.JSONFactory;
@@ -102,6 +101,7 @@ import com.liferay.portal.kernel.workflow.WorkflowTaskManager;
 import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LogEntry;
 import com.liferay.portal.test.log.LoggerTestUtil;
+import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
@@ -124,10 +124,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Queue;
-
-import org.hamcrest.CoreMatchers;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -145,6 +142,7 @@ import org.skyscreamer.jsonassert.JSONCompareMode;
  * @author Marco Leo
  * @author Brian Wing Shun Chan
  */
+@FeatureFlags("LPS-163716")
 @RunWith(Arquillian.class)
 public class ObjectEntryLocalServiceTest {
 
@@ -176,56 +174,43 @@ public class ObjectEntryLocalServiceTest {
 				null, TestPropsValues.getUserId(),
 				Collections.singletonMap(
 					LocaleUtil.getDefault(), RandomTestUtil.randomString()),
-				Collections.emptyList());
-
-		_listTypeEntryLocalService.addListTypeEntry(
-			null, TestPropsValues.getUserId(),
-			_listTypeDefinition.getListTypeDefinitionId(), "listTypeEntryKey1",
-			Collections.singletonMap(LocaleUtil.US, "List Type Entry Key 1"));
-		_listTypeEntryLocalService.addListTypeEntry(
-			null, TestPropsValues.getUserId(),
-			_listTypeDefinition.getListTypeDefinitionId(), "listTypeEntryKey2",
-			Collections.singletonMap(LocaleUtil.US, "List Type Entry Key 2"));
-		_listTypeEntryLocalService.addListTypeEntry(
-			null, TestPropsValues.getUserId(),
-			_listTypeDefinition.getListTypeDefinitionId(), "listTypeEntryKey3",
-			Collections.singletonMap(LocaleUtil.US, "List Type Entry Key 3"));
-		_listTypeEntryLocalService.addListTypeEntry(
-			null, TestPropsValues.getUserId(),
-			_listTypeDefinition.getListTypeDefinitionId(),
-			"multipleListTypeEntryKey1",
-			Collections.singletonMap(
-				LocaleUtil.US, "Multiple List Type Entry Key 1"));
-		_listTypeEntryLocalService.addListTypeEntry(
-			null, TestPropsValues.getUserId(),
-			_listTypeDefinition.getListTypeDefinitionId(),
-			"multipleListTypeEntryKey2",
-			Collections.singletonMap(
-				LocaleUtil.US, "Multiple List Type Entry Key 2"));
-		_listTypeEntryLocalService.addListTypeEntry(
-			null, TestPropsValues.getUserId(),
-			_listTypeDefinition.getListTypeDefinitionId(),
-			"multipleListTypeEntryKey3",
-			Collections.singletonMap(
-				LocaleUtil.US, "Multiple List Type Entry Key 3"));
-		_listTypeEntryLocalService.addListTypeEntry(
-			null, TestPropsValues.getUserId(),
-			_listTypeDefinition.getListTypeDefinitionId(),
-			"multipleListTypeEntryKey4",
-			Collections.singletonMap(
-				LocaleUtil.US, "Multiple List Type Entry Key 4"));
-		_listTypeEntryLocalService.addListTypeEntry(
-			null, TestPropsValues.getUserId(),
-			_listTypeDefinition.getListTypeDefinitionId(),
-			"multipleListTypeEntryKey5",
-			Collections.singletonMap(
-				LocaleUtil.US, "Multiple List Type Entry Key 5"));
-		_listTypeEntryLocalService.addListTypeEntry(
-			null, TestPropsValues.getUserId(),
-			_listTypeDefinition.getListTypeDefinitionId(),
-			"multipleListTypeEntryKey6",
-			Collections.singletonMap(
-				LocaleUtil.US, "Multiple List Type Entry Key 6"));
+				Arrays.asList(
+					ListTypeEntryUtil.createListTypeEntry(
+						"listTypeEntryKey1",
+						Collections.singletonMap(
+							LocaleUtil.US, "List Type Entry Key 1")),
+					ListTypeEntryUtil.createListTypeEntry(
+						"listTypeEntryKey2",
+						Collections.singletonMap(
+							LocaleUtil.US, "List Type Entry Key 1")),
+					ListTypeEntryUtil.createListTypeEntry(
+						"listTypeEntryKey3",
+						Collections.singletonMap(
+							LocaleUtil.US, "List Type Entry Key 3")),
+					ListTypeEntryUtil.createListTypeEntry(
+						"multipleListTypeEntryKey1",
+						Collections.singletonMap(
+							LocaleUtil.US, "Multiple List Type Entry Key 1")),
+					ListTypeEntryUtil.createListTypeEntry(
+						"multipleListTypeEntryKey2",
+						Collections.singletonMap(
+							LocaleUtil.US, "Multiple List Type Entry Key 2")),
+					ListTypeEntryUtil.createListTypeEntry(
+						"multipleListTypeEntryKey3",
+						Collections.singletonMap(
+							LocaleUtil.US, "Multiple List Type Entry Key 3")),
+					ListTypeEntryUtil.createListTypeEntry(
+						"multipleListTypeEntryKey4",
+						Collections.singletonMap(
+							LocaleUtil.US, "Multiple List Type Entry Key 4")),
+					ListTypeEntryUtil.createListTypeEntry(
+						"multipleListTypeEntryKey5",
+						Collections.singletonMap(
+							LocaleUtil.US, "Multiple List Type Entry Key 5")),
+					ListTypeEntryUtil.createListTypeEntry(
+						"multipleListTypeEntryKey6",
+						Collections.singletonMap(
+							LocaleUtil.US, "Multiple List Type Entry Key 6"))));
 
 		_objectDefinition = ObjectDefinitionTestUtil.addObjectDefinition(
 			_objectDefinitionLocalService,
@@ -305,23 +290,31 @@ public class ObjectEntryLocalServiceTest {
 			null, TestPropsValues.getUserId(), 0,
 			_objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_PRECISION_DECIMAL,
-			ObjectFieldConstants.DB_TYPE_BIG_DECIMAL, null, true, false, null,
-			LocalizedMapUtil.getLocalizedMap("Speed"), "speed", false, false,
-			Collections.emptyList());
+			ObjectFieldConstants.DB_TYPE_BIG_DECIMAL, true, false, null,
+			LocalizedMapUtil.getLocalizedMap("Speed"), false, "speed", false,
+			false, Collections.emptyList());
 		_objectFieldLocalService.addCustomObjectField(
 			null, TestPropsValues.getUserId(),
 			_listTypeDefinition.getListTypeDefinitionId(),
 			_objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_PICKLIST,
-			ObjectFieldConstants.DB_TYPE_STRING, "listTypeEntryKey1", false,
-			true, "", LocalizedMapUtil.getLocalizedMap("State"), "state", true,
-			true, Collections.emptyList());
+			ObjectFieldConstants.DB_TYPE_STRING, false, true, "",
+			LocalizedMapUtil.getLocalizedMap("State"), false, "state", true,
+			true,
+			Arrays.asList(
+				_createObjectFieldSetting(
+					ObjectFieldSettingConstants.NAME_DEFAULT_VALUE,
+					"listTypeEntryKey1"),
+				_createObjectFieldSetting(
+					ObjectFieldSettingConstants.NAME_DEFAULT_VALUE_TYPE,
+					ObjectFieldSettingConstants.VALUE_INPUT_AS_VALUE)));
 		_objectFieldLocalService.addCustomObjectField(
 			null, TestPropsValues.getUserId(), 0,
 			_objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
-			ObjectFieldConstants.DB_TYPE_LONG, null, true, false, null,
-			LocalizedMapUtil.getLocalizedMap("Upload"), "upload", false, false,
+			ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
+			LocalizedMapUtil.getLocalizedMap("Upload"), false, "upload", false,
+			false,
 			Arrays.asList(
 				_createObjectFieldSetting("acceptedFileExtensions", "txt"),
 				_createObjectFieldSetting("fileSource", "userComputer"),
@@ -330,9 +323,9 @@ public class ObjectEntryLocalServiceTest {
 			null, TestPropsValues.getUserId(), 0,
 			_objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_DECIMAL,
-			ObjectFieldConstants.DB_TYPE_DOUBLE, null, true, false, null,
-			LocalizedMapUtil.getLocalizedMap("Weight"), "weight", false, false,
-			Collections.emptyList());
+			ObjectFieldConstants.DB_TYPE_DOUBLE, true, false, null,
+			LocalizedMapUtil.getLocalizedMap("Weight"), false, "weight", false,
+			false, Collections.emptyList());
 	}
 
 	@After
@@ -393,253 +386,165 @@ public class ObjectEntryLocalServiceTest {
 
 		_assertCount(4);
 
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.ExceedsIntegerSize.class,
+			"Object entry value exceeds integer field allowed size",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"emailAddressRequired", "matthew@liferay.com"
 				).put(
 					"listTypeEntryKeyRequired", "listTypeEntryKey1"
 				).put(
 					"numberOfBooksWritten", "2147483648"
-				).build());
+				).build()));
 
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.ExceedsIntegerSize
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				"Object entry value exceeds integer field allowed size",
-				objectEntryValuesException.getMessage());
-		}
-
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.ExceedsIntegerSize.class,
+			"Object entry value exceeds integer field allowed size",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"emailAddressRequired", "matthew@liferay.com"
 				).put(
 					"listTypeEntryKeyRequired", "listTypeEntryKey1"
 				).put(
 					"numberOfBooksWritten", "-2147483649"
-				).build());
+				).build()));
 
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.ExceedsIntegerSize
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				"Object entry value exceeds integer field allowed size",
-				objectEntryValuesException.getMessage());
-		}
-
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.ExceedsLongMaxSize.class,
+			"Object entry value exceeds maximum long field allowed size",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"ageOfDeath", "9007199254740992"
 				).put(
 					"emailAddressRequired", "matthew@liferay.com"
 				).put(
 					"listTypeEntryKeyRequired", "listTypeEntryKey1"
-				).build());
+				).build()));
 
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.ExceedsLongMaxSize
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				"Object entry value exceeds maximum long field allowed size",
-				objectEntryValuesException.getMessage());
-		}
-
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.ExceedsLongMinSize.class,
+			"Object entry value falls below minimum long field allowed size",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"ageOfDeath", "-9007199254740992"
 				).put(
 					"emailAddressRequired", "matthew@liferay.com"
 				).put(
 					"listTypeEntryKeyRequired", "listTypeEntryKey1"
-				).build());
+				).build()));
 
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.ExceedsLongMinSize
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				"Object entry value falls below minimum long field allowed " +
-					"size",
-				objectEntryValuesException.getMessage());
-		}
-
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.ExceedsLongSize.class,
+			"Object entry value exceeds long field allowed size",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"ageOfDeath", "9223372036854775808"
 				).put(
 					"emailAddressRequired", "matthew@liferay.com"
 				).put(
 					"listTypeEntryKeyRequired", "listTypeEntryKey1"
-				).build());
+				).build()));
 
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.ExceedsLongSize
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				"Object entry value exceeds long field allowed size",
-				objectEntryValuesException.getMessage());
-		}
-
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.ExceedsLongSize.class,
+			"Object entry value exceeds long field allowed size",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"ageOfDeath", "-9223372036854775809"
 				).put(
 					"emailAddressRequired", "matthew@liferay.com"
 				).put(
 					"listTypeEntryKeyRequired", "listTypeEntryKey1"
-				).build());
+				).build()));
 
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.ExceedsLongSize
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				"Object entry value exceeds long field allowed size",
-				objectEntryValuesException.getMessage());
-		}
-
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.ExceedsTextMaxLength.class,
+			"Object entry value exceeds the maximum length of 280 characters " +
+				"for object field \"firstName\"",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"emailAddressRequired", "matthew@liferay.com"
 				).put(
 					"firstName", RandomTestUtil.randomString(281)
 				).put(
 					"listTypeEntryKeyRequired", "listTypeEntryKey1"
-				).build());
+				).build()));
 
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.ExceedsTextMaxLength
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				"Object entry value exceeds the maximum length of 280 " +
-					"characters for object field \"firstName\"",
-				objectEntryValuesException.getMessage());
-		}
-
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.ExceedsTextMaxLength.class,
+			"Object entry value exceeds the maximum length of 65000 " +
+				"characters for object field \"script\"",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"emailAddressRequired", "matthew@liferay.com"
 				).put(
 					"listTypeEntryKeyRequired", "listTypeEntryKey1"
 				).put(
 					"script", RandomTestUtil.randomString(65001)
-				).build());
+				).build()));
 
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.ExceedsTextMaxLength
-					objectEntryValuesException) {
+		_assertFailure(
+			ObjectEntryValuesException.InvalidFileExtension.class,
+			"The file extension txt is invalid for object field \"upload\"",
+			() -> {
+				ObjectField objectField =
+					_objectFieldLocalService.fetchObjectField(
+						_objectDefinition.getObjectDefinitionId(), "upload");
 
-			Assert.assertEquals(
-				"Object entry value exceeds the maximum length of 65000 " +
-					"characters for object field \"script\"",
-				objectEntryValuesException.getMessage());
-		}
+				ObjectFieldSetting objectFieldSetting =
+					_objectFieldSettingLocalService.fetchObjectFieldSetting(
+						objectField.getObjectFieldId(),
+						"acceptedFileExtensions");
 
-		try {
-			ObjectField objectField = _objectFieldLocalService.fetchObjectField(
-				_objectDefinition.getObjectDefinitionId(), "upload");
+				_objectFieldSettingLocalService.updateObjectFieldSetting(
+					objectFieldSetting.getObjectFieldSettingId(), "jpg, png");
 
-			ObjectFieldSetting objectFieldSetting =
-				_objectFieldSettingLocalService.fetchObjectFieldSetting(
-					objectField.getObjectFieldId(), "acceptedFileExtensions");
+				FileEntry fileEntry = _addTempFileEntry(
+					StringUtil.randomString());
 
-			_objectFieldSettingLocalService.updateObjectFieldSetting(
-				objectFieldSetting.getObjectFieldSettingId(), "jpg, png");
+				return _addObjectEntry(
+					HashMapBuilder.<String, Serializable>put(
+						"emailAddressRequired", "peter@liferay.com"
+					).put(
+						"listTypeEntryKeyRequired", "listTypeEntryKey1"
+					).put(
+						"upload", fileEntry.getFileEntryId()
+					).build());
+			});
 
-			FileEntry fileEntry = _addTempFileEntry(StringUtil.randomString());
-
-			_addObjectEntry(
-				HashMapBuilder.<String, Serializable>put(
-					"emailAddressRequired", "peter@liferay.com"
-				).put(
-					"listTypeEntryKeyRequired", "listTypeEntryKey1"
-				).put(
-					"upload", fileEntry.getFileEntryId()
-				).build());
-
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.InvalidFileExtension
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				"The file extension txt is invalid for object field \"upload\"",
-				objectEntryValuesException.getMessage());
-		}
-
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.ListTypeEntry.class,
+			"Object field name \"listTypeEntryKeyRequired\" is not mapped to " +
+				"a valid list type entry",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"emailAddressRequired", "john@liferay.com"
 				).put(
 					"listTypeEntryKeyRequired", RandomTestUtil.randomString()
-				).build());
+				).build()));
 
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.ListTypeEntry
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				"Object field name \"listTypeEntryKeyRequired\" is not " +
-					"mapped to a valid list type entry",
-				objectEntryValuesException.getMessage());
-		}
-
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.Required.class,
+			"No value was provided for required object field " +
+				"\"emailAddressRequired\"",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"firstName", "Judas"
 				).put(
 					"listTypeEntryKeyRequired", "listTypeEntryKey1"
-				).build());
+				).build()));
 
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.Required objectEntryValuesException) {
-			Assert.assertEquals(
-				"No value was provided for required object field " +
-					"\"emailAddressRequired\"",
-				objectEntryValuesException.getMessage());
-		}
-
-		try {
-			_addObjectEntry(
+		_assertFailure(
+			ObjectEntryValuesException.Required.class,
+			"No value was provided for required object field " +
+				"\"listTypeEntryKeyRequired\"",
+			() -> _addObjectEntry(
 				HashMapBuilder.<String, Serializable>put(
 					"emailAddressRequired", "john@liferay.com"
 				).put(
 					"firstName", "Judas"
-				).build());
-
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.Required objectEntryValuesException) {
-			Assert.assertEquals(
-				"No value was provided for required object field " +
-					"\"listTypeEntryKeyRequired\"",
-				objectEntryValuesException.getMessage());
-		}
+				).build()));
 	}
 
 	@Test
@@ -648,9 +553,9 @@ public class ObjectEntryLocalServiceTest {
 			null, TestPropsValues.getUserId(), 0,
 			_objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_FORMULA,
-			ObjectFieldConstants.DB_TYPE_STRING, null, false, false, null,
-			LocalizedMapUtil.getLocalizedMap("Overweight"), "overweight", false,
-			false,
+			ObjectFieldConstants.DB_TYPE_STRING, false, false, null,
+			LocalizedMapUtil.getLocalizedMap("Overweight"), false, "overweight",
+			false, false,
 			Arrays.asList(
 				_createObjectFieldSetting("script", "weight + 10"),
 				_createObjectFieldSetting(
@@ -1228,25 +1133,6 @@ public class ObjectEntryLocalServiceTest {
 	public void testGetExtensionDynamicObjectDefinitionTableValues()
 		throws Exception {
 
-		Queue<String> cacheKeyPrefixes = new LinkedList<>();
-
-		FinderCache finderCache = FinderCacheUtil.getFinderCache();
-
-		ReflectionTestUtil.setFieldValue(
-			FinderCacheUtil.class, "_finderCache",
-			ProxyUtil.newProxyInstance(
-				FinderCache.class.getClassLoader(),
-				new Class<?>[] {FinderCache.class},
-				(proxy, method, arguments) -> {
-					if (Objects.equals(method.getName(), "removeResult")) {
-						FinderPath finderPath = (FinderPath)arguments[0];
-
-						cacheKeyPrefixes.add(finderPath.getCacheKeyPrefix());
-					}
-
-					return method.invoke(finderCache, arguments);
-				}));
-
 		ObjectDefinition objectDefinition =
 			_objectDefinitionLocalService.fetchObjectDefinitionByClassName(
 				TestPropsValues.getCompanyId(), User.class.getName());
@@ -1255,20 +1141,18 @@ public class ObjectEntryLocalServiceTest {
 			null, TestPropsValues.getUserId(), 0,
 			objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_LONG_INTEGER,
-			ObjectFieldConstants.DB_TYPE_LONG, null,
-			RandomTestUtil.randomBoolean(), RandomTestUtil.randomBoolean(),
-			null,
+			ObjectFieldConstants.DB_TYPE_LONG, RandomTestUtil.randomBoolean(),
+			RandomTestUtil.randomBoolean(), null,
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-			"longField", false, false, Collections.emptyList());
+			false, "longField", false, false, Collections.emptyList());
 		_objectFieldLocalService.addCustomObjectField(
 			null, TestPropsValues.getUserId(), 0,
 			objectDefinition.getObjectDefinitionId(),
 			ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-			ObjectFieldConstants.DB_TYPE_STRING, null,
-			RandomTestUtil.randomBoolean(), RandomTestUtil.randomBoolean(),
-			null,
+			ObjectFieldConstants.DB_TYPE_STRING, RandomTestUtil.randomBoolean(),
+			RandomTestUtil.randomBoolean(), null,
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
-			"textField", true, false, Collections.emptyList());
+			false, "textField", true, false, Collections.emptyList());
 
 		User user = UserTestUtil.addUser();
 
@@ -1293,8 +1177,6 @@ public class ObjectEntryLocalServiceTest {
 				objectEntryValuesException.getMessage());
 		}
 
-		Assert.assertEquals(0, cacheKeyPrefixes.size());
-
 		Map<String, Serializable> values =
 			HashMapBuilder.<String, Serializable>put(
 				"longField", 10L
@@ -1306,9 +1188,6 @@ public class ObjectEntryLocalServiceTest {
 			addOrUpdateExtensionDynamicObjectDefinitionTableValues(
 				TestPropsValues.getUserId(), objectDefinition, user.getUserId(),
 				values, ServiceContextTestUtil.getServiceContext());
-
-		_assertCacheKeyPrefixes(
-			cacheKeyPrefixes, objectDefinition.getExtensionDBTableName());
 
 		Assert.assertEquals(
 			values,
@@ -1327,9 +1206,6 @@ public class ObjectEntryLocalServiceTest {
 				TestPropsValues.getUserId(), objectDefinition, user.getUserId(),
 				values, ServiceContextTestUtil.getServiceContext());
 
-		_assertCacheKeyPrefixes(
-			cacheKeyPrefixes, objectDefinition.getExtensionDBTableName());
-
 		Assert.assertEquals(
 			values,
 			_objectEntryLocalService.
@@ -1340,17 +1216,11 @@ public class ObjectEntryLocalServiceTest {
 			deleteExtensionDynamicObjectDefinitionTableValues(
 				objectDefinition, user.getUserId());
 
-		_assertCacheKeyPrefixes(
-			cacheKeyPrefixes, objectDefinition.getExtensionDBTableName());
-
 		Assert.assertTrue(
 			MapUtil.isEmpty(
 				_objectEntryLocalService.
 					getExtensionDynamicObjectDefinitionTableValues(
 						objectDefinition, user.getUserId())));
-
-		ReflectionTestUtil.setFieldValue(
-			FinderCacheUtil.class, "_finderCache", finderCache);
 	}
 
 	@Test
@@ -2073,6 +1943,15 @@ public class ObjectEntryLocalServiceTest {
 			values.get(_objectDefinition.getPKObjectFieldName()));
 		Assert.assertEquals(values.toString(), 20, values.size());
 
+		// LPS-180587 Partial updates should not delete existing files
+
+		_objectEntryLocalService.updateObjectEntry(
+			TestPropsValues.getUserId(), objectEntry.getObjectEntryId(),
+			HashMapBuilder.<String, Serializable>put(
+				"state", "listTypeEntryKey3"
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
+
 		long persistedFileEntryId = GetterUtil.getLong(values.get("upload"));
 
 		Assert.assertNotNull(
@@ -2341,22 +2220,6 @@ public class ObjectEntryLocalServiceTest {
 			ContentTypes.TEXT_PLAIN);
 	}
 
-	private void _assertCacheKeyPrefixes(
-		Queue<String> cacheKeyPrefixes, String extensionDBTableName) {
-
-		Assert.assertThat(
-			StringUtil.removeChar(cacheKeyPrefixes.poll(), CharPool.PERIOD),
-			CoreMatchers.containsString(
-				"select count(*) COUNT_VALUE from " + extensionDBTableName));
-		Assert.assertThat(
-			StringUtil.removeChar(cacheKeyPrefixes.poll(), CharPool.PERIOD),
-			CoreMatchers.containsString(
-				StringBundler.concat(
-					"select ", extensionDBTableName, "userId, ",
-					extensionDBTableName, "longField_, ", extensionDBTableName,
-					"textField_ from ", extensionDBTableName)));
-	}
-
 	private void _assertCount(int count) throws Exception {
 		Assert.assertEquals(
 			count,
@@ -2372,6 +2235,21 @@ public class ObjectEntryLocalServiceTest {
 			_objectEntryLocalService.getObjectEntriesCount(
 				0, _objectDefinition.getObjectDefinitionId()));
 		Assert.assertEquals(count, _count());
+	}
+
+	private void _assertFailure(
+		Class<?> clazz, String message,
+		UnsafeSupplier<Object, Exception> unsafeSupplier) {
+
+		try {
+			unsafeSupplier.get();
+
+			Assert.fail();
+		}
+		catch (Exception exception) {
+			Assert.assertTrue(clazz.isInstance(exception));
+			Assert.assertEquals(exception.getMessage(), message);
+		}
 	}
 
 	private void _assertKeywords(String keywords, int count) throws Exception {
@@ -2502,7 +2380,7 @@ public class ObjectEntryLocalServiceTest {
 
 		ObjectDefinition objectDefinition =
 			_objectDefinitionLocalService.addCustomObjectDefinition(
-				TestPropsValues.getUserId(), false,
+				TestPropsValues.getUserId(), false, false,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 				"A" + RandomTestUtil.randomString(), null, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
@@ -2716,26 +2594,21 @@ public class ObjectEntryLocalServiceTest {
 		ObjectState objectStateListTypeEntryKey2 = objectStates.get(1);
 		ObjectState objectStateListTypeEntryKey3 = objectStates.get(2);
 
-		try {
-			_objectEntryLocalService.updateObjectEntry(
-				TestPropsValues.getUserId(), objectEntry.getObjectEntryId(),
+		long objectEntryId = objectEntry.getObjectEntryId();
+
+		_assertFailure(
+			ObjectEntryValuesException.InvalidObjectStateTransition.class,
+			StringBundler.concat(
+				"Object state ID ",
+				objectStateListTypeEntryKey1.getObjectStateId(),
+				" cannot be transitioned to object state ID ",
+				objectStateListTypeEntryKey3.getObjectStateId()),
+			() -> _objectEntryLocalService.updateObjectEntry(
+				TestPropsValues.getUserId(), objectEntryId,
 				HashMapBuilder.<String, Serializable>put(
 					"state", "listTypeEntryKey3"
 				).build(),
-				ServiceContextTestUtil.getServiceContext());
-
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.InvalidObjectStateTransition
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				objectStateListTypeEntryKey1,
-				objectEntryValuesException.getSourceObjectState());
-			Assert.assertEquals(
-				objectStateListTypeEntryKey3,
-				objectEntryValuesException.getTargetObjectState());
-		}
+				ServiceContextTestUtil.getServiceContext()));
 
 		objectEntry = _objectEntryLocalService.updateObjectEntry(
 			TestPropsValues.getUserId(), objectEntry.getObjectEntryId(),
@@ -2744,26 +2617,19 @@ public class ObjectEntryLocalServiceTest {
 			).build(),
 			ServiceContextTestUtil.getServiceContext());
 
-		try {
-			_objectEntryLocalService.updateObjectEntry(
-				TestPropsValues.getUserId(), objectEntry.getObjectEntryId(),
+		_assertFailure(
+			ObjectEntryValuesException.InvalidObjectStateTransition.class,
+			StringBundler.concat(
+				"Object state ID ",
+				objectStateListTypeEntryKey2.getObjectStateId(),
+				" cannot be transitioned to object state ID ",
+				objectStateListTypeEntryKey3.getObjectStateId()),
+			() -> _objectEntryLocalService.updateObjectEntry(
+				TestPropsValues.getUserId(), objectEntryId,
 				HashMapBuilder.<String, Serializable>put(
 					"state", "listTypeEntryKey3"
 				).build(),
-				ServiceContextTestUtil.getServiceContext());
-
-			Assert.fail();
-		}
-		catch (ObjectEntryValuesException.InvalidObjectStateTransition
-					objectEntryValuesException) {
-
-			Assert.assertEquals(
-				objectStateListTypeEntryKey2,
-				objectEntryValuesException.getSourceObjectState());
-			Assert.assertEquals(
-				objectStateListTypeEntryKey3,
-				objectEntryValuesException.getTargetObjectState());
-		}
+				ServiceContextTestUtil.getServiceContext()));
 
 		_objectEntryLocalService.deleteObjectEntry(
 			objectEntry.getObjectEntryId());
@@ -2840,9 +2706,6 @@ public class ObjectEntryLocalServiceTest {
 
 	@Inject
 	private ListTypeDefinitionLocalService _listTypeDefinitionLocalService;
-
-	@Inject
-	private ListTypeEntryLocalService _listTypeEntryLocalService;
 
 	private final Queue<Message> _messages = new LinkedList<>();
 	private ObjectDefinition _objectDefinition;

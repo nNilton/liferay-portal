@@ -64,6 +64,8 @@ definition {
 			actionName = ${actionName},
 			active = ${active},
 			click = "save",
+			errorMessage = ${errorMessage},
+			fieldName = ${fieldName},
 			inputExpression = ${inputExpression},
 			inputMethod = ${inputMethod},
 			inputValue = ${inputValue},
@@ -108,11 +110,13 @@ definition {
 			fieldName = ${fieldName},
 			fieldType = ${fieldType},
 			fileSource = ${fileSource},
+			formulaScript = ${formulaScript},
 			indexed = ${indexed},
 			indexedAsKeyword = ${indexedAsKeyword},
 			indexedLanguageId = ${indexedLanguageId},
 			isRequired = ${isRequired},
 			objectName = ${objectName},
+			outputOption = ${outputOption},
 			picklistName = ${picklistName},
 			showFilesInDocumentsAndMedia = ${showFilesInDocumentsAndMedia},
 			userEmailAddress = ${userEmailAddress},
@@ -187,7 +191,7 @@ definition {
 				key_columnOption = ${fieldPicklist},
 				locator1 = "ObjectCustomViews#SELECT_AUTO_COMPLETE_OPTION");
 
-			if (${maskAsState} == "true") {
+			if (${markAsState} == "true") {
 				Check.checkToggleSwitch(locator1 = "ObjectField#MARK_AS_STATE_TOGGLE");
 
 				Click(locator1 = "ObjectField#LABEL_DEFAULT_VALUE");
@@ -196,6 +200,16 @@ definition {
 					key_dropdownItem = ${itemName},
 					locator1 = "ObjectAdmin#SELECT_DROPDOWN_ITEM_DEFAULT_VALUE");
 			}
+		}
+
+		if (isSet(formulaFieldOption)) {
+			Click(
+				key_filterLabel = "Output",
+				locator1 = "ObjectCustomViews#SELECT_FILTER_GENERIC");
+
+			Click(
+				key_dropdownItem = ${formulaFieldOption},
+				locator1 = "ObjectField#SELECT_FORMULA_FIELD_OPTION");
 		}
 
 		PortletEntry.save();
@@ -229,14 +243,22 @@ definition {
 		PortletEntry.save();
 	}
 
+	macro addObjectMultiPicklistFieldEntryViaUI {
+		LexiconEntry.gotoAdd();
+
+		Click(locator1 = "ObjectAdmin#ENTRY_CHOOSE_OPTIONS_MULTIPICKLIST");
+
+		for (var picklistOption : list ${picklistOptionList}) {
+			MenuItem.clickNoError(menuItem = ${picklistOption});
+		}
+	}
+
 	macro addObjectPicklistFieldEntryViaUI {
 		LexiconEntry.gotoAdd();
 
 		Click(locator1 = "ObjectAdmin#ENTRY_CHOOSE_OPTION");
 
-		Click(
-			key_picklistOption = ${picklistOption},
-			locator1 = "ObjectAdmin#ENTRY_PICKLIST_OPTION");
+		MenuItem.clickNoError(menuItem = ${picklistOption});
 
 		if (IsElementPresent(key_text = ${saveName}, locator1 = "Button#ANY")) {
 			Click(
@@ -302,12 +324,16 @@ definition {
 	}
 
 	macro addObjectSingleFieldEntryViaAPI {
-		JSONObject.addObjectSingleFieldEntry(
+		var objectEntryId = JSONObject.addObjectSingleFieldEntry(
 			fieldName = ${fieldName},
 			objectName = ${objectName},
 			userEmailAddress = ${userEmailAddress},
 			userPassword = ${userPassword},
 			value = ${value});
+
+		return ${objectEntryId};
+
+		echo(${objectEntryId});
 	}
 
 	macro addObjectStringFieldEntryViaUI {
@@ -499,12 +525,6 @@ definition {
 			locator1 = "ObjectAdmin#FIELDS_RADIO_OPTION");
 	}
 
-	macro assertNoResultsWereFound {
-		AssertTextEquals(
-			locator1 = "Message#EMPTY_STATE_INFO",
-			value1 = "No Results Found");
-	}
-
 	macro assertObjectActions {
 		AssertElementPresent(
 			key_actionLabel = ${actionLabel},
@@ -590,12 +610,6 @@ definition {
 		AssertElementNotPresent(locator1 = "ObjectAdmin#VIEW_OBJECT_LAYOUT_LABEL");
 	}
 
-	macro assertObjectRelationshipNotPresent {
-		AssertElementNotPresent(
-			key_label = ${relationshipLabel},
-			locator1 = "ObjectAdmin#RELATIONSHIP_LABEL");
-	}
-
 	macro assertObjectStatus {
 		var key_status = ${status};
 		var key_label = ${label};
@@ -608,12 +622,6 @@ definition {
 			key_type = ${type},
 			locator1 = "ObjectAdmin#RELATIONSHIPS_TYPE_DESCRIPTION",
 			value1 = ${description});
-	}
-
-	macro assertRequiredErrorPresent {
-		AssertTextEquals.assertPartialText(
-			locator1 = "TextInput#REQUIRED_ALERT",
-			value1 = "Required");
 	}
 
 	macro assertUpdateEntryModalIsNotPresent {
@@ -660,8 +668,6 @@ definition {
 		Click(
 			key_picklistOption = ${newPicklistOption},
 			locator1 = "ObjectAdmin#ENTRY_PICKLIST_OPTION");
-
-		PortletEntry.save();
 	}
 
 	macro changePluralLabelLanguage {
@@ -729,10 +735,36 @@ definition {
 		MenuItem.clickNoError(menuItem = "Delete");
 	}
 
+	macro deleteAllCommerceOrdersAndSitesViaAPI {
+		var ordersCount = CommerceJSONOrdersAPI._getCommerceOrdersCount();
+
+		if (${ordersCount} != 0) {
+			CommerceJSONOrdersAPI._deleteAllCommerceOrdersAndCheck();
+		}
+
+		CommerceJSONSitesAPI._deleteCommerceSites();
+	}
+
 	macro deleteAllCustomObjectsViaAPI {
+		ObjectAdmin.deleteAllRelationships();
+
 		JSONObject.deleteAllCustomObjects(
 			userEmailAddress = ${userEmailAddress},
 			userPassword = ${userPassword});
+	}
+
+	macro deleteAllRelationships {
+		var objectDefinitionIdList = JSONObject.getAllObjectDefinitionsId();
+
+		for (var objectDefinitionId : list ${objectDefinitionIdList}) {
+			var relationshipIdList = JSONObject.getObjectRelationships(objectDefinitionId = ${objectDefinitionId});
+
+			if (${relationshipIdList} != "") {
+				for (var relationshipId : list ${relationshipIdList}) {
+					JSONObject.deleteRelationship(objectRelationshipId = ${relationshipId});
+				}
+			}
+		}
 	}
 
 	macro deleteCategorizationViaUI {
@@ -797,8 +829,10 @@ definition {
 	macro deleteObjectViaAPI {
 		JSONObject.deleteObject(
 			objectName = ${objectName},
+			token = ${token},
 			userEmailAddress = ${userEmailAddress},
-			userPassword = ${userPassword});
+			userPassword = ${userPassword},
+			virtualHost = ${virtualHost});
 	}
 
 	macro deleteRelationshipViaUI {
@@ -901,6 +935,7 @@ definition {
 			actionName = ${actionName},
 			active = ${active},
 			click = "save",
+			fieldName = ${fieldName},
 			inputExpression = ${inputExpression},
 			inputExpressionValue = ${inputExpressionValue},
 			inputMethod = ${inputMethod},
@@ -910,6 +945,28 @@ definition {
 			thenAction = ${thenAction},
 			urlAction = ${urlAction},
 			whenAction = ${whenAction});
+	}
+
+	macro editObjectDeletionType {
+		ObjectAdmin.openObjectAdmin();
+
+		ObjectPortlet.selectCustomObject(label = ${label});
+
+		ObjectAdmin.gotoRelationshipsTab();
+
+		ObjectAdmin.goToRelationshipsDetails(labelName = ${labelName});
+
+		WaitForSPARefresh();
+
+		Click(
+			field = ${field},
+			locator1 = "ObjectRelationships#RELATIONSHIPS_FIELD");
+
+		ClickNoError.clickNoMouseOver(
+			key_type = ${deletionType},
+			locator1 = "ObjectAdmin#SELECT_RELATIONSHIPS_TYPE_OPTION");
+
+		Button.clickSave();
 	}
 
 	macro enableCondition {
@@ -970,12 +1027,52 @@ definition {
 					key_objectLabel = ${objectLabel},
 					locator1 = "ObjectAdmin#CHOOSE_OBJECT_LABEL");
 
-				if (${inputMethod} == "true") {
-					Click(locator1 = "ObjectAction#INPUT_METHOD");
+				if (isSet(fieldName)) {
+					Click(locator1 = "Button#PLUS");
 
+					SelectFrame(locator1 = "ObjectCustomViews#VIEW_MODAL_CONTENT");
+
+					Check.checkToggleSwitch(
+						checkboxName = ${fieldName},
+						locator1 = "Checkbox#ANY_CHECKBOX");
+
+					PortletEntry.save();
+
+					SelectFrame(locator1 = "ObjectAction#IFRAME_SIDE_PANEL");
+				}
+
+				if (${inputMethod} == "true") {
+					ObjectAdmin.inputMethodValue(inputValues = ${inputValue});
+				}
+				else if (${inputMethod} == "false") {
 					Type(
-						locator1 = "ObjectAction#INPUT_VALUE",
-						value1 = ${inputValue});
+						locator1 = "ObjectAction#INPUT_NEW_VALUE",
+						value1 = ${inputExpressionValue});
+				}
+
+				if (IsElementPresent(locator1 = "TextInput#ANY")) {
+					Type(
+						key_text = "Message",
+						locator1 = "TextInput#ANY",
+						value1 = ${errorMessage});
+				}
+			}
+
+			if (${thenAction} == "Update an Object Entry") {
+				Click(locator1 = "Button#PLUS");
+
+				SelectFrame(locator1 = "ObjectCustomViews#VIEW_MODAL_CONTENT");
+
+				Check.checkToggleSwitch(
+					checkboxName = ${fieldName},
+					locator1 = "Checkbox#ANY_CHECKBOX");
+
+				PortletEntry.save();
+
+				SelectFrame(locator1 = "ObjectAction#IFRAME_SIDE_PANEL");
+
+				if (${inputMethod} == "true") {
+					ObjectAdmin.inputMethodValue(inputValues = ${inputValue});
 				}
 				else if (${inputMethod} == "false") {
 					Type(
@@ -1017,6 +1114,12 @@ definition {
 				value1 = ${secretAction});
 		}
 
+		if (IsElementPresent(locator1 = "ObjectAction#ADD_ERROR_MESSAGE_VALIDATION")) {
+			Type(
+				locator1 = "ObjectAction#ADD_ERROR_MESSAGE_VALIDATION",
+				value1 = ${errorMessage});
+		}
+
 		if (isSet(click)) {
 			if ((${click} == "save") && (${notRefreshAttribute} == "true")) {
 				PortletEntry.save();
@@ -1041,6 +1144,16 @@ definition {
 			userEmailAddress = ${userEmailAddress},
 			userPassword = ${userPassword},
 			value = ${value});
+	}
+
+	macro getObjectSortedEntry {
+		var entrySort = JSONObject.getObjectSortedEntry(
+			objectName = ${objectName},
+			sortString = ${sortString});
+
+		var entrySortValue = JSONUtil.getWithJSONPath(${entrySort}, "$..items..${sortString}");
+
+		return ${entrySortValue};
 	}
 
 	macro goToActionDetails {
@@ -1099,9 +1212,18 @@ definition {
 	}
 
 	macro goToRelationshipsDetails {
-		Click(
-			key_name = ${fieldName},
-			locator1 = "CreateObject#SELECT_OBJECT_FIELD_IN_TABLE");
+		if (isSet(labelName)) {
+			Click(
+				key_name = ${labelName},
+				locator1 = "CreateObject#SELECT_ANY_OBJECT_FIELD_IN_TABLE");
+
+			MenuItem.clickNoError(menuItem = "View");
+		}
+		else {
+			Click(
+				key_name = ${fieldName},
+				locator1 = "CreateObject#SELECT_OBJECT_FIELD_IN_TABLE");
+		}
 
 		SelectFrame(locator1 = "IFrame#IFRAME");
 	}
@@ -1140,6 +1262,23 @@ definition {
 
 	macro goToValidationsTab {
 		Click(locator1 = "ObjectAdmin#OBJECT_VALIDATIONS_TAB");
+	}
+
+	macro inputMethodValue {
+		var rowNumber = 0;
+
+		for (var value : list ${inputValues}) {
+			var rowNumber = ${rowNumber} + 1;
+
+			Click(
+				key_rowNumber = ${rowNumber},
+				locator1 = "ObjectAction#INPUT_METHOD");
+
+			Type(
+				key_rowNumber = ${rowNumber},
+				locator1 = "ObjectAction#INPUT_VALUE",
+				value1 = ${value});
+		}
 	}
 
 	macro markLayoutAsDefault {
@@ -1182,7 +1321,7 @@ definition {
 	}
 
 	macro publishObjectViaUI {
-		Button.clickPublish();
+		PortletEntry.publish();
 
 		Alert.viewSuccessMessage();
 
@@ -1228,6 +1367,8 @@ definition {
 	}
 
 	macro selectKebabMenuOption {
+		WaitForElementPresent(locator1 = "ObjectAdmin#KEBAB_MENU");
+
 		Click(locator1 = "ObjectAdmin#KEBAB_MENU");
 
 		MenuItem.click(menuItem = ${kebabOption});
@@ -1265,6 +1406,10 @@ definition {
 		MenuItem.click(menuItem = ${kebabOption});
 	}
 
+	macro setAccountRestrictionViaAPI {
+		JSONObject.setAccountRestriction(objectName = ${objectName});
+	}
+
 	macro viewCategorizationInObjectEntry {
 		AssertVisible(locator1 = "ObjectAdmin#CATEGORIZATION_TITLE_INTO_OBJECT");
 
@@ -1275,13 +1420,6 @@ definition {
 				key_vocabularyName = ${vocabularyName},
 				locator1 = "AssetCategorization#CATEGORIES_FIELD");
 		}
-	}
-
-	macro viewCustomObject {
-		AssertElementPresent(
-			key_name = ${name},
-			key_system = "No",
-			locator1 = "ObjectAdmin#VIEW_OBJECT");
 	}
 
 	macro viewDescriptionForEachFieldType {
@@ -1332,12 +1470,6 @@ definition {
 		}
 	}
 
-	macro viewFieldValueDisabled {
-		AssertElementPresent(
-			key_fieldValue = ${fieldValue},
-			locator1 = "ObjectAdmin#VIEW_FIELD_VALUE_DISABLED");
-	}
-
 	macro viewObjectPresentOnSite {
 		ProductMenuHelper.openProductMenu();
 
@@ -1362,25 +1494,12 @@ definition {
 		}
 	}
 
-	macro viewPicklistOptionsOnFields {
-		AssertElementPresent(
-			key_optionName = ${optionName},
-			locator1 = "ObjectAdmin#VIEW_PICKLIST_OPTIONS");
-	}
-
 	macro viewSelectedTabOnObject {
 		Refresh();
 
 		AssertElementPresent(
 			key_selectedTab = ${selectedTab},
 			locator1 = "ObjectAdmin#VIEW_SELECTED_TAB_ON_OBJECT");
-	}
-
-	macro viewSystemObject {
-		AssertElementPresent(
-			key_name = ${name},
-			key_system = "Yes",
-			locator1 = "ObjectAdmin#VIEW_OBJECT");
 	}
 
 }

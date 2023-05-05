@@ -12,18 +12,10 @@
 import {Liferay} from '..';
 import useSWR from 'swr';
 
+import LiferayAccountBrief from '../../../interfaces/liferayAccountBrief';
+import Role from '../../../interfaces/role';
 import {LiferayAPIs} from '../common/enums/apis';
 import liferayFetcher from '../common/utils/fetcher';
-
-interface AccountBrief {
-	id: number;
-	name: string;
-}
-
-interface RoleBrief {
-	id: number;
-	name: string;
-}
 
 interface Telephone {
 	id: number;
@@ -35,21 +27,23 @@ interface UserAccountContactInformation {
 }
 
 interface UserAccount {
-	accountBriefs: AccountBrief[];
+	accountBriefs: LiferayAccountBrief[];
 	emailAddress: string;
 	familyName: string;
 	givenName: string;
 	id: number;
-	roleBriefs: RoleBrief[];
+	roleBriefs: Role[];
 	userAccountContactInformation: UserAccountContactInformation;
 }
 
-export default function useGetMyUserAccount() {
+export default function useGetMyUserAccount(skip?: boolean) {
 	return useSWR(
-		[
-			`/o/${LiferayAPIs.HEADERLESS_ADMIN_USER}/my-user-account`,
-			Liferay.authToken,
-		],
+		skip
+			? null
+			: [
+					`/o/${LiferayAPIs.HEADERLESS_ADMIN_USER}/my-user-account`,
+					Liferay.authToken,
+			  ],
 		(url, token) => liferayFetcher<UserAccount>(url, token)
 	);
 }

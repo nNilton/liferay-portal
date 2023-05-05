@@ -3,7 +3,7 @@ definition {
 
 	property portal.release = "true";
 	property portal.upstream = "true";
-	property testray.main.component.name = "Site Pages Administration";
+	property testray.main.component.name = "Page Administration";
 
 	setUp {
 		task ("Set up instance and sign in") {
@@ -13,7 +13,7 @@ definition {
 		}
 
 		task ("Add a site") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 	}
 
@@ -522,7 +522,7 @@ definition {
 
 				PageEditor.clickBack();
 
-				ControlMenu.viewHeaderTitle(headerTitle = "Test Collection Page Name *");
+				ControlMenu.viewHeaderDraftTitle(headerTitle = "Test Collection Page Name");
 
 				PagesFinder.viewPageNameInPagesFinder(pageName = "Test Collection Page Name*");
 			}
@@ -1021,7 +1021,7 @@ definition {
 
 			SelectWindow.selectPopUp(locator1 = "null");
 
-			ControlMenu.viewHeaderTitle(headerTitle = "Test Page Name *");
+			ControlMenu.viewHeaderDraftTitle(headerTitle = "Test Page Name");
 
 			ContentPages.viewFragmentText(
 				fragmentName = "heading",
@@ -1082,7 +1082,7 @@ definition {
 
 			SelectWindow.selectPopUp(locator1 = "null");
 
-			ControlMenu.viewHeaderTitle(headerTitle = "Test Public Page Name *");
+			ControlMenu.viewHeaderDraftTitle(headerTitle = "Test Public Page Name");
 
 			ContentPages.viewFragmentText(
 				fragmentName = "button",
@@ -1103,12 +1103,114 @@ definition {
 
 			SelectWindow.selectPopUp(locator1 = "null");
 
-			ControlMenu.viewHeaderTitle(headerTitle = "Test Private Page Name *");
+			ControlMenu.viewHeaderDraftTitle(headerTitle = "Test Private Page Name");
 
 			ContentPages.viewFragmentText(
 				fragmentName = "heading",
 				id = "element-text",
 				text = "Heading Example");
+		}
+	}
+
+	@description = "This is a test for LPS-172658. The page creator could preview page template during page creation."
+	@priority = 4
+	test PreviewPageTemplateDuringPageCreation {
+		property testray.component.names = "Echo Accessibility,Page Administration";
+
+		task ("Given a page creator has a page template") {
+			JSONLayoutpagetemplate.addLayoutPageTemplateCollection(
+				groupName = "Test Site Name",
+				layoutPageTemplateCollectionName = "Page Template Set");
+
+			JSONLayoutpagetemplate.addLayoutPageTemplateEntry(
+				groupName = "Test Site Name",
+				layoutPageTemplateCollectionName = "Page Template Set",
+				layoutPageTemplateEntryName = "Page Template Name",
+				layoutPageTemplateStatus = "Approved",
+				layoutPageTemplateType = "Widget Page Template");
+
+			PageTemplatesAdmin.openPageTemplatesAdmin(siteURLKey = "test-site-name");
+
+			PageTemplatesAdmin.gotoPageTemplateEllipsisItem(
+				item = "Edit",
+				pageTemplateName = "Page Template Name");
+
+			Portlet.addPG(portletName = "Web Content Display");
+		}
+
+		task ("When the page creator creates a page") {
+			PagesAdmin.openPagesAdmin(siteURLKey = "test-site-name");
+
+			LexiconEntry.gotoAddMenuItem(menuItem = "Page");
+
+			Navigator.gotoNavNested(navNested = "Page Template Set");
+		}
+
+		task ("Then the page creator could preview page template") {
+			MouseOver.javaScriptFocus(
+				key_cardTitle = "Page Template Name",
+				locator1 = "Icon#EYE_PREVIEW_SPECIFIC");
+
+			AssertVisible(
+				key_content = "Preview Page Template",
+				locator1 = "Tooltip#FLOATING_TOOLTIP_CONTENT");
+
+			PagesAdmin.previewPageTemplate(pageTemplateName = "Page Template Name");
+
+			Portlet.viewPG(
+				portletBody = "Configure this application and place it where desired on the page.",
+				portletName = "Web Content Display");
+
+			IFrame.closeFrame();
+		}
+
+		task ("When the page creator focuses on the eye icon via keyboard") {
+			KeyPress(
+				locator1 = "//*[contains(@class,'card-type-asset')][contains(.,'Page Template Name')]",
+				value1 = "\TAB");
+		}
+
+		task ("Then the page creator could open the preview page template modal via Enter key") {
+			KeyPress(
+				key_cardTitle = "Page Template Name",
+				locator1 = "Icon#EYE_PREVIEW_SPECIFIC",
+				value1 = "\ENTER");
+
+			AssertTextEquals(
+				locator1 = "Modal#HEADER",
+				value1 = "Preview Page Template");
+
+			SelectFrame(locator1 = "IFrame#MODAL_BODY");
+
+			Portlet.viewPG(
+				portletBody = "Configure this application and place it where desired on the page.",
+				portletName = "Web Content Display");
+
+			SelectFrameTop();
+		}
+
+		task ("When the page creator clicks the create page from this template") {
+			Button.click(button = "Create Page from This Template");
+
+			SelectFrame(locator1 = "IFrame#MODAL_BODY");
+
+			PortletEntry.inputName(name = "Test Page Name");
+
+			Button.click(button = "Add");
+
+			SelectFrameTop();
+
+			Alert.viewSuccessMessage();
+		}
+
+		task ("Then the page creator could create page based on selected template") {
+			Navigator.gotoSitePage(
+				pageName = "Test Page Name",
+				siteName = "Test Site Name");
+
+			Portlet.viewPG(
+				portletBody = "This application is not visible to users yet.",
+				portletName = "Web Content Display");
 		}
 	}
 
@@ -1338,6 +1440,92 @@ definition {
 			LexiconTable.clickTableEntryTitle(tableEntry = "Test Embedded Page Name");
 
 			ControlMenu.viewHeaderTitle(headerTitle = "Test Embedded Page Name");
+		}
+	}
+
+	@description = "This is a test for LPS-172658. The page creator could switch page templates on preview page template modal."
+	@priority = 4
+	test SwitchPageTemplatesOnPreviewPageTemplateModal {
+		property testray.component.names = "Echo Accessibility,Page Administration";
+
+		task ("Given a page creator has page templates") {
+			JSONLayoutpagetemplate.addLayoutPageTemplateCollection(
+				groupName = "Test Site Name",
+				layoutPageTemplateCollectionName = "Page Template Set");
+
+			JSONLayoutpagetemplate.addLayoutPageTemplateEntry(
+				groupName = "Test Site Name",
+				layoutPageTemplateCollectionName = "Page Template Set",
+				layoutPageTemplateEntryName = "Widget Page Template Name",
+				layoutPageTemplateStatus = "Approved",
+				layoutPageTemplateType = "Widget Page Template");
+
+			PageTemplatesAdmin.openPageTemplatesAdmin(siteURLKey = "test-site-name");
+
+			PageTemplatesAdmin.gotoPageTemplateEllipsisItem(
+				item = "Edit",
+				pageTemplateName = "Widget Page Template Name");
+
+			Portlet.addPG(portletName = "Web Content Display");
+
+			JSONLayoutpagetemplate.addLayoutPageTemplateEntry(
+				groupName = "Test Site Name",
+				layoutPageTemplateCollectionName = "Page Template Set",
+				layoutPageTemplateEntryName = "Content Page Template Name",
+				layoutPageTemplateStatus = "Draft",
+				layoutPageTemplateType = "Content Page Template");
+
+			PageTemplatesAdmin.openPageTemplatesAdmin(siteURLKey = "test-site-name");
+
+			PageTemplatesAdmin.gotoPageTemplate(pageTemplateName = "Content Page Template Name");
+
+			PageEditor.addFragment(
+				collectionName = "Basic Components",
+				fragmentName = "Heading");
+
+			PageEditor.publish();
+		}
+
+		task ("When the page creator opens the preview page template modal") {
+			PagesAdmin.openPagesAdmin(siteURLKey = "test-site-name");
+
+			LexiconEntry.gotoAddMenuItem(menuItem = "Page");
+
+			Navigator.gotoNavNested(navNested = "Page Template Set");
+
+			PagesAdmin.previewPageTemplate(pageTemplateName = "Widget Page Template Name");
+		}
+
+		task ("Then the page creator could switch page templates") {
+			Portlet.viewPG(
+				portletBody = "Configure this application and place it where desired on the page.",
+				portletName = "Web Content Display");
+
+			SelectFrameTop();
+
+			Click(
+				key_text = "angle-left",
+				locator1 = "Modal#MODAL_ICON");
+
+			SelectFrame.selectFrameNoLoading(locator1 = "IFrame#MODAL_BODY");
+
+			ContentPages.viewFragmentText(
+				fragmentName = "heading",
+				id = "element-text",
+				text = "Heading Example");
+
+			SelectFrameTop();
+
+			KeyPress(
+				key_text = "angle-left",
+				locator1 = "Modal#MODAL_ICON",
+				value1 = "\ENTER");
+
+			SelectFrame.selectFrameNoLoading(locator1 = "IFrame#MODAL_BODY");
+
+			Portlet.viewPG(
+				portletBody = "Configure this application and place it where desired on the page.",
+				portletName = "Web Content Display");
 		}
 	}
 
@@ -2005,7 +2193,7 @@ definition {
 		}
 
 		task ("View managment bar text is shown") {
-			ManagementBar.viewNumberOfSelectedItems(text = "1 of 2 Selected");
+			ManagementBar.viewNumberOfSelectedItems(text = "1 of 2 Items Selected");
 		}
 
 		task ("Select all pages via management bar") {
@@ -2015,7 +2203,7 @@ definition {
 		}
 
 		task ("View managment bar text is shown") {
-			ManagementBar.viewNumberOfSelectedItems(text = "All Selected");
+			ManagementBar.viewNumberOfSelectedItems(text = "All Selected (2 of 2 Items Selected)");
 		}
 
 		task ("View both pages are selected") {

@@ -1,6 +1,7 @@
 const options = input.attributes.options || [];
 const numberOfOptions = configuration.numberOfOptions;
 
+const button = fragmentElement.querySelector('.multiselect-list-button');
 const fieldSet = fragmentElement.querySelector('.multiselect-list-fieldset');
 
 const allInputs = Array.from(
@@ -11,9 +12,15 @@ if (layoutMode === 'edit') {
 	allInputs.forEach((input) => {
 		input.setAttribute('disabled', true);
 	});
+
+	button.setAttribute('disabled', true);
 }
 
-fieldSet.addEventListener('change', () => {
+const updateInputStatus = () => {
+	if (!input.required) {
+		return;
+	}
+
 	const someInputIsChecked = allInputs.some((input) => input.checked);
 
 	if (someInputIsChecked) {
@@ -22,11 +29,11 @@ fieldSet.addEventListener('change', () => {
 	else {
 		allInputs.forEach((input) => input.setAttribute('required', true));
 	}
-});
+};
+
+fieldSet.addEventListener('change', updateInputStatus);
 
 if (numberOfOptions < options.length) {
-	const button = fragmentElement.querySelector('.multiselect-list-button');
-
 	const missionOptions = options.slice(numberOfOptions);
 
 	const template = fragmentElement.querySelector(
@@ -58,9 +65,11 @@ if (numberOfOptions < options.length) {
 			text.textContent = option.label;
 
 			fieldSet.appendChild(node);
-			allInputs.push(node);
+			allInputs.push(input);
 		});
 
 		fieldSet.removeChild(button);
+
+		updateInputStatus();
 	});
 }

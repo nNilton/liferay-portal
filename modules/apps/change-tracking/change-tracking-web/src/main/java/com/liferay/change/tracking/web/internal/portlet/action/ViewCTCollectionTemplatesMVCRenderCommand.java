@@ -17,6 +17,7 @@ package com.liferay.change.tracking.web.internal.portlet.action;
 import com.liferay.change.tracking.constants.CTActionKeys;
 import com.liferay.change.tracking.constants.CTPortletKeys;
 import com.liferay.change.tracking.service.CTCollectionTemplateService;
+import com.liferay.change.tracking.web.internal.configuration.helper.CTSettingsConfigurationHelper;
 import com.liferay.change.tracking.web.internal.constants.CTWebKeys;
 import com.liferay.change.tracking.web.internal.display.context.ViewTemplatesDisplayContext;
 import com.liferay.change.tracking.web.internal.security.permission.resource.CTPermission;
@@ -37,7 +38,6 @@ import org.osgi.service.component.annotations.Reference;
  * @author David Truong
  */
 @Component(
-	immediate = true,
 	property = {
 		"javax.portlet.name=" + CTPortletKeys.PUBLICATIONS,
 		"mvc.command.name=/change_tracking/view_ct_collection_templates"
@@ -61,7 +61,7 @@ public class ViewCTCollectionTemplatesMVCRenderCommand
 
 		ViewTemplatesDisplayContext viewTemplatesDisplayContext =
 			new ViewTemplatesDisplayContext(
-				_ctCollectionTemplateService,
+				_ctCollectionTemplateService, _ctSettingsConfigurationHelper,
 				_portal.getHttpServletRequest(renderRequest), _language,
 				renderRequest, renderResponse);
 
@@ -74,6 +74,9 @@ public class ViewCTCollectionTemplatesMVCRenderCommand
 
 	@Reference
 	private CTCollectionTemplateService _ctCollectionTemplateService;
+
+	@Reference
+	private CTSettingsConfigurationHelper _ctSettingsConfigurationHelper;
 
 	@Reference
 	private Language _language;

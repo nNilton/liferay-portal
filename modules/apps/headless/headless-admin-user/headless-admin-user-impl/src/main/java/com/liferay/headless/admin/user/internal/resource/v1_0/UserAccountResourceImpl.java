@@ -22,7 +22,6 @@ import com.liferay.announcements.kernel.service.AnnouncementsDeliveryLocalServic
 import com.liferay.captcha.util.CaptchaUtil;
 import com.liferay.headless.admin.user.dto.v1_0.Account;
 import com.liferay.headless.admin.user.dto.v1_0.AccountBrief;
-import com.liferay.headless.admin.user.dto.v1_0.CustomField;
 import com.liferay.headless.admin.user.dto.v1_0.EmailAddress;
 import com.liferay.headless.admin.user.dto.v1_0.OrganizationBrief;
 import com.liferay.headless.admin.user.dto.v1_0.Phone;
@@ -97,6 +96,7 @@ import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 import com.liferay.portal.vulcan.fields.NestedField;
 import com.liferay.portal.vulcan.fields.NestedFieldSupport;
+import com.liferay.portal.vulcan.multipart.MultipartBody;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.portal.vulcan.util.SearchUtil;
@@ -114,6 +114,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -589,7 +590,7 @@ public class UserAccountResourceImpl
 				userAccount.getCustomFields(),
 				contextAcceptLanguage.getPreferredLocale()));
 
-		if (contextUser.isDefaultUser()) {
+		if (contextUser.isGuestUser()) {
 			if (_captchaSettings.isCreateAccountCaptchaEnabled()) {
 				CaptchaUtil.check(contextHttpServletRequest);
 			}
@@ -658,6 +659,19 @@ public class UserAccountResourceImpl
 		}
 
 		return _toUserAccount(user);
+	}
+
+	@Override
+	public Response postUserAccountImage(
+			Long userAccountId, MultipartBody multipartBody)
+		throws Exception {
+
+		_userService.updatePortrait(
+			userAccountId, multipartBody.getBinaryFileAsBytes("image"));
+
+		Response.ResponseBuilder responseBuilder = Response.noContent();
+
+		return responseBuilder.build();
 	}
 
 	@Override
@@ -807,12 +821,6 @@ public class UserAccountResourceImpl
 
 		if (accountBriefs != null) {
 			existingUserAccount.setAccountBriefs(accountBriefs);
-		}
-
-		CustomField[] customFields = userAccount.getCustomFields();
-
-		if (customFields != null) {
-			existingUserAccount.setCustomFields(customFields);
 		}
 
 		OrganizationBrief[] organizationBriefs =

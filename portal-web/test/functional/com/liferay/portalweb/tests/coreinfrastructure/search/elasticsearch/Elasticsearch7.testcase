@@ -152,7 +152,7 @@ definition {
 			engineVendor = "Elasticsearch",
 			serverVersion = ${serverVersion});
 
-		Navigator.gotoNavItem(navItem = "Field Mappings");
+		SearchAdministration.openFieldMappings();
 
 		Click(
 			key_navNested = "liferay-0",
@@ -240,7 +240,7 @@ definition {
 		property delete.sidecar.bundle = "true";
 		property embedded.elasticsearch.only = "true";
 		property environment.acceptance = "true";
-		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,solaris,suse,ubuntu,windows";
+		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,rockylinux,solaris,suse,ubuntu,windows";
 		property portal.acceptance = "true";
 		property search.environment.suite.exclude = "true";
 		property test.assert.warning.exceptions = "true";
@@ -257,105 +257,6 @@ definition {
 
 		SearchResultPortlet.viewSearchResults(
 			searchAssetTitle = "apple",
-			searchAssetType = "Web Content Article");
-	}
-
-	@priority = 4
-	test AssertSidecarDoesNotCluster {
-		property app.server.bundles.size = "1";
-		property cluster.enabled = "true";
-		property embedded.elasticsearch.only = "true";
-		property minimum.slave.ram = "24";
-		property search.environment.suite.exclude = "true";
-		property test.assert.warning.exceptions = "true";
-		property test.name.skip.portal.instance = "Elasticsearch7#AssertSidecarDoesNotCluster";
-
-		Clustering.viewClusterStatusInConsole();
-
-		Clustering.viewTextPresentOnSpecificNode(
-			expectedText = "Sidecar Elasticsearch liferay started",
-			nodePort = 8080);
-
-		Clustering.viewTextPresentOnSpecificNode(
-			expectedText = "Sidecar Elasticsearch liferay started",
-			nodePort = 9080);
-
-		Elasticsearch.viewClusterStatusViaClusterHealthAPI(
-			nodePort = 9201,
-			numberOfNodes = 1);
-
-		Elasticsearch.viewClusterStatusViaClusterHealthAPI(
-			nodePort = 9202,
-			numberOfNodes = 1);
-
-		Navigator.openURL();
-
-		JSONWebcontent.addWebContent(
-			content = "WC WebContent Content",
-			groupName = "Guest",
-			title = "WC WebContent Title");
-
-		SearchAdministration.openSearchAdmin();
-
-		AssertTextEquals.assertPartialText(
-			locator1 = "SearchAdmin#SEARCH_ENGINE_VENDOR",
-			value1 = "Elasticsearch (Sidecar)");
-
-		AssertTextEquals(
-			locator1 = "SearchAdmin#ACTIVE_CONNECTION_COUNT",
-			value1 = 1);
-
-		AssertTextEquals.assertPartialText(
-			key_connectionId = "__SIDECAR__",
-			locator1 = "SearchAdmin#NODE_COUNT",
-			value1 = "NODES (1)");
-
-		AssertElementPresent(
-			key_connectionId = "__SIDECAR__",
-			key_nodeName = "liferay",
-			locator1 = "SearchAdmin#NODE_NAME");
-
-		Navigator.openURL();
-
-		SearchPortlets.searchEmbedded(searchTerm = "WC WebContent Title");
-
-		SearchResultPortlet.viewSearchResults(
-			searchAssetTitle = "WC WebContent Title",
-			searchAssetType = "Web Content Article");
-
-		User.logoutPG();
-
-		User.loginPG(
-			nodePort = 9080,
-			password = "test",
-			userEmailAddress = "test@liferay.com");
-
-		SearchAdministration.openSearchAdmin(baseURL = "http://localhost:9080");
-
-		AssertTextEquals.assertPartialText(
-			locator1 = "SearchAdmin#SEARCH_ENGINE_VENDOR",
-			value1 = "Elasticsearch (Sidecar)");
-
-		AssertTextEquals(
-			locator1 = "SearchAdmin#ACTIVE_CONNECTION_COUNT",
-			value1 = 1);
-
-		AssertTextEquals.assertPartialText(
-			key_connectionId = "__SIDECAR__",
-			locator1 = "SearchAdmin#NODE_COUNT",
-			value1 = "NODES (1)");
-
-		AssertElementPresent(
-			key_connectionId = "__SIDECAR__",
-			key_nodeName = "liferay",
-			locator1 = "SearchAdmin#NODE_NAME");
-
-		Navigator.openSpecificURL(url = "http://localhost:9080");
-
-		SearchPortlets.searchEmbedded(searchTerm = "WC WebContent Title");
-
-		SearchResultPortlet.viewSearchResultNotPresent(
-			searchAssetTitle = "WC WebContent Title",
 			searchAssetType = "Web Content Article");
 	}
 

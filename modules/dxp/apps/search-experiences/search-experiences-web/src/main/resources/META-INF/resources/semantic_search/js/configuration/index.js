@@ -9,20 +9,28 @@
  * distribution rights of the Software.
  */
 
+import ClayAlert from '@clayui/alert';
+import ClayButton from '@clayui/button';
 import ClayForm, {ClayCheckbox} from '@clayui/form';
 import {useFormik} from 'formik';
-import React from 'react';
+import {fetch} from 'frontend-js-web';
+import React, {useMemo, useState} from 'react';
 
 import {LearnMessageWithoutContext} from '../../../sxp_blueprint_admin/js/shared/LearnMessage';
 import sub from '../../../sxp_blueprint_admin/js/utils/language/sub';
 import Input from './Input';
+import SubmitWarningModal from './SubmitWarningModal';
 import TestConfigurationButton from './TestConfigurationButton';
 import {TEXT_EMBEDDING_PROVIDER_TYPES} from './constants';
 
 const DEFAULT_TEXT_EMBEDDING_PROVIDER_CONFIGURATIONS = {
 	attributes: {
+		accessToken: '',
+		hostAddress: '',
 		maxCharacterCount: 500,
+		model: '',
 		modelTimeout: 25,
+		textTruncationStrategy: 'beginning',
 	},
 	embeddingVectorDimensions: 768,
 	languageIds: ['en_US'],
@@ -34,6 +42,31 @@ const DEFAULT_TEXT_EMBEDDING_PROVIDER_CONFIGURATIONS = {
 	],
 	providerName: TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_API,
 };
+
+/**
+ * Determines if two values are unequal. If one of the items is
+ * an integer, both are parsed to integers before comparison. If the
+ * items are arrays, their order is not considered.
+ *
+ * @param {Array|integer|string} item1
+ * @param {Array|integer|string} item2
+ * @returns {boolean}
+ */
+function isNotEqual(item1, item2) {
+	if (Number.isInteger(item1) || Number.isInteger(item2)) {
+		return parseInt(item1, 10) !== parseInt(item2, 10);
+	}
+
+	if (Array.isArray(item1) && Array.isArray(item2)) {
+		return (
+			item1.length !== item2.length ||
+			item1.some((str) => !item2.includes(str)) ||
+			item2.some((str) => !item1.includes(str))
+		);
+	}
+
+	return item1 !== item2;
+}
 
 function parseJSONString(jsonString) {
 	if (typeof jsonString === 'undefined' || jsonString === '') {
@@ -163,19 +196,129 @@ export default function ({
 	availableModelClassNames,
 	availableTextEmbeddingProviders,
 	availableTextTruncationStrategies,
+	formName,
 	initialTextEmbeddingCacheTimeout,
 	initialTextEmbeddingProviderConfigurationJSONs,
 	initialTextEmbeddingsEnabled,
 	learnMessages,
 	namespace = '',
+	redirectURL,
 }) {
-	const _handleFormikValidate = (values) => {
-		const errors = {
-			textEmbeddingProviderConfigurationJSONs: [{attributes: {}}],
-		}; // Sets empty values to avoid undefined errors when setting values.
+	const resolvedInitialTextEmbeddingProviderConfigurationJSONs = useMemo(
+		() =>
+			resolveInitialTextEmbeddingProviderConfigurationJSONs(
+				initialTextEmbeddingProviderConfigurationJSONs,
+				availableTextEmbeddingProviders
+			),
+		[
+			initialTextEmbeddingProviderConfigurationJSONs,
+			availableTextEmbeddingProviders,
+		]
+	);
 
-		values.textEmbeddingProviderConfigurationJSONs?.map(
-			(textEmbeddingProviderConfigurationJSON, index) => {
+	const [showSubmitWarningModal, setShowSubmitWarningModal] = useState(false);
+
+	const _handleFormikSubmit = async (values, actions) => {
+		const {
+			attributes = {},
+			languageIds,
+			modelClassNames,
+			providerName,
+			embeddingVectorDimensions,
+		} = values.textEmbeddingProviderConfigurationJSONs[0];
+
+		const {
+			accessToken,
+			basicAuthPassword,
+			basicAuthUsername,
+			hostAddress,
+			maxCharacterCount,
+			model,
+			modelTimeout,
+			textTruncationStrategy,
+		} = attributes;
+
+		const textEmbeddingProviderSettings =
+			providerName ===
+			TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_API
+				? {
+						accessToken,
+						model,
+						modelTimeout,
+				  }
+				: providerName ===
+				  TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_ENDPOINT
+				? {
+						accessToken,
+						hostAddress,
+				  }
+				: providerName === TEXT_EMBEDDING_PROVIDER_TYPES.TXTAI
+				? {
+						basicAuthPassword,
+						basicAuthUsername,
+						hostAddress,
+				  }
+				: {};
+
+		const responseData = await fetch(
+			'/o/search-experiences-rest/v1.0/text-embeddings/validate-provider-configuration',
+			{
+				body: JSON.stringify({
+					attributes: {
+						maxCharacterCount,
+						textTruncationStrategy,
+						...textEmbeddingProviderSettings,
+					},
+					embeddingVectorDimensions,
+					languageIds,
+					modelClassNames,
+					providerName,
+				}),
+				headers: new Headers({
+					'Accept': 'application/json',
+					'Accept-Language': Liferay.ThemeDisplay.getBCP47LanguageId(),
+					'Content-Type': 'application/json',
+				}),
+				method: 'POST',
+			}
+		)
+			.then((response) => {
+				actions.setSubmitting(false);
+
+				return response.json();
+			})
+			.catch((error) => {
+				actions.setSubmitting(false);
+
+				setShowSubmitWarningModal(true);
+
+				if (process.env.NODE_ENV === 'development') {
+					console.error(error);
+				}
+			});
+
+		if (
+			responseData.errorMessage ||
+			Number(responseData.expectedDimensions) === 0 ||
+			Number(responseData.expectedDimensions) !==
+				Number(embeddingVectorDimensions) ||
+			responseData.message
+		) {
+			setShowSubmitWarningModal(true);
+		}
+		else {
+			submitForm(document[formName]);
+		}
+	};
+
+	const _handleFormikValidate = (values) => {
+		const errors = {};
+
+		const textEmbeddingProviderConfigurationJSONsErrors = values.textEmbeddingProviderConfigurationJSONs?.map(
+			(textEmbeddingProviderConfigurationJSON) => {
+				const textEmbeddingProviderConfigurationJSONError = {
+					attributes: {}, // Sets empty values to avoid undefined errors when setting values.
+				};
 
 				// Validate "Types" field.
 
@@ -183,9 +326,7 @@ export default function ({
 					!textEmbeddingProviderConfigurationJSON.modelClassNames
 						?.length
 				) {
-					errors.textEmbeddingProviderConfigurationJSONs[
-						index
-					].modelClassNames = sub(
+					textEmbeddingProviderConfigurationJSONError.modelClassNames = sub(
 						Liferay.Language.get('the-x-field-is-required'),
 						[Liferay.Language.get('types')]
 					);
@@ -194,16 +335,21 @@ export default function ({
 				// Validate "Hugging Face Access Token" field.
 
 				if (
-					!textEmbeddingProviderConfigurationJSON.attributes
-						?.accessToken ||
-					textEmbeddingProviderConfigurationJSON.attributes
-						?.accessToken === ''
+					textEmbeddingProviderConfigurationJSON.providerName ===
+						TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_API ||
+					textEmbeddingProviderConfigurationJSON.providerName ===
+						TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_ENDPOINT
 				) {
-					errors.textEmbeddingProviderConfigurationJSONs[
-						index
-					].attributes.accessToken = Liferay.Language.get(
-						'this-field-is-required'
-					);
+					if (
+						!textEmbeddingProviderConfigurationJSON.attributes
+							?.accessToken ||
+						textEmbeddingProviderConfigurationJSON.attributes
+							?.accessToken === ''
+					) {
+						textEmbeddingProviderConfigurationJSONError.attributes.accessToken = Liferay.Language.get(
+							'this-field-is-required'
+						);
+					}
 				}
 
 				// Validate "Languages" field.
@@ -211,9 +357,7 @@ export default function ({
 				if (
 					!textEmbeddingProviderConfigurationJSON.languageIds?.length
 				) {
-					errors.textEmbeddingProviderConfigurationJSONs[
-						index
-					].languageIds = sub(
+					textEmbeddingProviderConfigurationJSONError.languageIds = sub(
 						Liferay.Language.get('the-x-field-is-required'),
 						[Liferay.Language.get('languages')]
 					);
@@ -225,9 +369,7 @@ export default function ({
 					!textEmbeddingProviderConfigurationJSON.attributes
 						?.maxCharacterCount === ''
 				) {
-					errors.textEmbeddingProviderConfigurationJSONs[
-						index
-					].attributes.maxCharacterCount = Liferay.Language.get(
+					textEmbeddingProviderConfigurationJSONError.attributes.maxCharacterCount = Liferay.Language.get(
 						'this-field-is-required'
 					);
 				}
@@ -236,9 +378,7 @@ export default function ({
 						textEmbeddingProviderConfigurationJSON.attributes
 							?.maxCharacterCount < 50
 					) {
-						errors.textEmbeddingProviderConfigurationJSONs[
-							index
-						].attributes.maxCharacterCount = sub(
+						textEmbeddingProviderConfigurationJSONError.attributes.maxCharacterCount = sub(
 							Liferay.Language.get(
 								'please-enter-a-value-greater-than-or-equal-to-x'
 							),
@@ -250,9 +390,7 @@ export default function ({
 						textEmbeddingProviderConfigurationJSON.attributes
 							?.maxCharacterCount > 10000
 					) {
-						errors.textEmbeddingProviderConfigurationJSONs[
-							index
-						].attributes.maxCharacterCount = sub(
+						textEmbeddingProviderConfigurationJSONError.attributes.maxCharacterCount = sub(
 							Liferay.Language.get(
 								'please-enter-a-value-less-than-or-equal-to-x'
 							),
@@ -261,82 +399,99 @@ export default function ({
 					}
 				}
 
-				// Validate "Model" field.
-
 				if (
-					!textEmbeddingProviderConfigurationJSON.attributes?.model ||
-					textEmbeddingProviderConfigurationJSON.attributes?.model ===
-						''
+					textEmbeddingProviderConfigurationJSON.providerName ===
+					TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_API
 				) {
-					errors.textEmbeddingProviderConfigurationJSONs[
-						index
-					].attributes.model = Liferay.Language.get(
-						'this-field-is-required'
-					);
-				}
 
-				// Validate "Model Timeout" field.
+					// Validate "Model" field.
 
-				if (
-					!textEmbeddingProviderConfigurationJSON.attributes
-						?.modelTimeout ||
-					(textEmbeddingProviderConfigurationJSON.attributes
-						?.modelTimeout === '' &&
-						textEmbeddingProviderConfigurationJSON?.providerName ===
-							TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_API)
-				) {
-					errors.textEmbeddingProviderConfigurationJSONs[
-						index
-					].attributes.modelTimeout = Liferay.Language.get(
-						'this-field-is-required'
-					);
-				}
-				else {
 					if (
+						!textEmbeddingProviderConfigurationJSON.attributes
+							?.model ||
 						textEmbeddingProviderConfigurationJSON.attributes
-							?.modelTimeout < 0
+							?.model === ''
 					) {
-						errors.textEmbeddingProviderConfigurationJSONs[
-							index
-						].attributes.modelTimeout = sub(
-							Liferay.Language.get(
-								'please-enter-a-value-greater-than-or-equal-to-x'
-							),
-							['0']
+						textEmbeddingProviderConfigurationJSONError.attributes.model = Liferay.Language.get(
+							'this-field-is-required'
 						);
 					}
 
+					// Validate "Model Timeout" field.
+
 					if (
+						!textEmbeddingProviderConfigurationJSON.attributes
+							?.modelTimeout ||
 						textEmbeddingProviderConfigurationJSON.attributes
-							?.modelTimeout > 60
+							?.modelTimeout === ''
 					) {
-						errors.textEmbeddingProviderConfigurationJSONs[
-							index
-						].attributes.modelTimeout = sub(
-							Liferay.Language.get(
-								'please-enter-a-value-less-than-or-equal-to-x'
-							),
-							['60']
+						textEmbeddingProviderConfigurationJSONError.attributes.modelTimeout = Liferay.Language.get(
+							'this-field-is-required'
 						);
+					}
+					else {
+						if (
+							textEmbeddingProviderConfigurationJSON.attributes
+								?.modelTimeout < 0
+						) {
+							textEmbeddingProviderConfigurationJSONError.attributes.modelTimeout = sub(
+								Liferay.Language.get(
+									'please-enter-a-value-greater-than-or-equal-to-x'
+								),
+								['0']
+							);
+						}
+
+						if (
+							textEmbeddingProviderConfigurationJSON.attributes
+								?.modelTimeout > 60
+						) {
+							textEmbeddingProviderConfigurationJSONError.attributes.modelTimeout = sub(
+								Liferay.Language.get(
+									'please-enter-a-value-less-than-or-equal-to-x'
+								),
+								['60']
+							);
+						}
 					}
 				}
 
 				// Validate "Host Address" field.
 
 				if (
-					!textEmbeddingProviderConfigurationJSON.attributes
-						?.hostAddress ||
-					textEmbeddingProviderConfigurationJSON.attributes
-						?.hostAddress === ''
+					textEmbeddingProviderConfigurationJSON.providerName ===
+						TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_ENDPOINT ||
+					textEmbeddingProviderConfigurationJSON.providerName ===
+						TEXT_EMBEDDING_PROVIDER_TYPES.TXTAI
 				) {
-					errors.textEmbeddingProviderConfigurationJSONs[
-						index
-					].attributes.hostAddress = Liferay.Language.get(
-						'this-field-is-required'
-					);
+					if (
+						!textEmbeddingProviderConfigurationJSON.attributes
+							?.hostAddress ||
+						textEmbeddingProviderConfigurationJSON.attributes
+							?.hostAddress === ''
+					) {
+						textEmbeddingProviderConfigurationJSONError.attributes.hostAddress = Liferay.Language.get(
+							'this-field-is-required'
+						);
+					}
 				}
+
+				return textEmbeddingProviderConfigurationJSONError;
 			}
 		);
+
+		// Update "errors.textEmbeddingProviderConfigurationJSONs" only if it has errors
+
+		if (
+			textEmbeddingProviderConfigurationJSONsErrors.some(
+				({attributes, languageIds, modelClassNames}) =>
+					!!Object.keys(attributes).length ||
+					languageIds ||
+					modelClassNames
+			)
+		) {
+			errors.textEmbeddingProviderConfigurationJSONs = textEmbeddingProviderConfigurationJSONsErrors;
+		}
 
 		// Validate "Text Embedding Cache Timeout" field.
 
@@ -360,12 +515,10 @@ export default function ({
 	const formik = useFormik({
 		initialValues: {
 			textEmbeddingCacheTimeout: initialTextEmbeddingCacheTimeout,
-			textEmbeddingProviderConfigurationJSONs: resolveInitialTextEmbeddingProviderConfigurationJSONs(
-				initialTextEmbeddingProviderConfigurationJSONs,
-				availableTextEmbeddingProviders
-			),
+			textEmbeddingProviderConfigurationJSONs: resolvedInitialTextEmbeddingProviderConfigurationJSONs,
 			textEmbeddingsEnabled: initialTextEmbeddingsEnabled,
 		},
+		onSubmit: _handleFormikSubmit,
 		validate: _handleFormikValidate,
 		validateOnMount: true,
 	});
@@ -381,6 +534,64 @@ export default function ({
 	const _handleInputChange = (name) => (val) => {
 		formik.setFieldValue(name, val);
 	};
+
+	const _handleSubmit = () => {
+		if (document[formName].checkValidity()) {
+			formik.handleSubmit();
+		}
+		else {
+			document[formName].reportValidity();
+		}
+	};
+
+	const _handleSubmitWarningModalClose = () => {
+		setShowSubmitWarningModal(false);
+	};
+
+	const _handleSubmitWarningModalSave = () => {
+		_handleSubmitWarningModalClose();
+
+		submitForm(document[formName]);
+	};
+
+	const _isProviderConfigurationDirty = () => {
+		return formik.values.textEmbeddingProviderConfigurationJSONs?.some(
+			(config, index) => {
+				return (
+					[
+						'embeddingVectorDimensions',
+						'providerName',
+						'modelClassNames',
+					].some((property) => {
+						return isNotEqual(
+							resolvedInitialTextEmbeddingProviderConfigurationJSONs[
+								index
+							][property],
+							config[property]
+						);
+					}) ||
+					[
+						'accessToken',
+						'basicAuthPassword',
+						'basicAuthUsername',
+						'hostAddress',
+						'model',
+						'modelTimeout',
+					].some((property) => {
+						return isNotEqual(
+							resolvedInitialTextEmbeddingProviderConfigurationJSONs[
+								index
+							].attributes[property],
+							config.attributes[property]
+						);
+					})
+				);
+			}
+		);
+	};
+
+	const _isTextEmbeddingsEnabledDirty = () =>
+		formik.values.textEmbeddingsEnabled !== initialTextEmbeddingsEnabled;
 
 	const _renderEmbeddingProviderConfigurationInputs = (index) => {
 		return (
@@ -398,6 +609,7 @@ export default function ({
 								'text-embeddings-enabled'
 							)}
 							checked={!!formik.values.textEmbeddingsEnabled}
+							disabled={formik.isSubmitting}
 							label={Liferay.Language.get(
 								'text-embeddings-enabled'
 							)}
@@ -410,6 +622,7 @@ export default function ({
 					</ClayForm.Group>
 
 					<Input
+						disabled={formik.isSubmitting}
 						error={
 							formik.errors
 								?.textEmbeddingProviderConfigurationJSONs?.[
@@ -442,7 +655,26 @@ export default function ({
 							<ClayForm.FeedbackGroup>
 								<ClayForm.Text>
 									{Liferay.Language.get(
-										'text-embedding-provider-hugging-face-help'
+										'text-embedding-provider-hugging-face-inference-api-help'
+									)}
+
+									<LearnMessageWithoutContext
+										className="ml-1"
+										learnMessages={learnMessages}
+										resourceKey="semantic-search"
+									/>
+								</ClayForm.Text>
+							</ClayForm.FeedbackGroup>
+						)}
+
+						{formik.values
+							.textEmbeddingProviderConfigurationJSONs?.[index]
+							?.providerName ===
+							TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_ENDPOINT && (
+							<ClayForm.FeedbackGroup>
+								<ClayForm.Text>
+									{Liferay.Language.get(
+										'text-embedding-provider-hugging-face-inference-endpoint-help'
 									)}
 
 									<LearnMessageWithoutContext
@@ -460,6 +692,7 @@ export default function ({
 					]?.providerName === TEXT_EMBEDDING_PROVIDER_TYPES.TXTAI && (
 						<>
 							<Input
+								disabled={formik.isSubmitting}
 								error={
 									formik.errors
 										.textEmbeddingProviderConfigurationJSONs?.[
@@ -493,6 +726,7 @@ export default function ({
 							/>
 
 							<Input
+								disabled={formik.isSubmitting}
 								error={
 									formik.errors
 										.textEmbeddingProviderConfigurationJSONs?.[
@@ -521,6 +755,7 @@ export default function ({
 							/>
 
 							<Input
+								disabled={formik.isSubmitting}
 								error={
 									formik.errors
 										.textEmbeddingProviderConfigurationJSONs?.[
@@ -557,6 +792,7 @@ export default function ({
 						TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_API && (
 						<>
 							<Input
+								disabled={formik.isSubmitting}
 								error={
 									formik.errors
 										.textEmbeddingProviderConfigurationJSONs?.[
@@ -587,6 +823,7 @@ export default function ({
 							/>
 
 							<Input
+								disabled={formik.isSubmitting}
 								error={
 									formik.errors
 										.textEmbeddingProviderConfigurationJSONs?.[
@@ -629,6 +866,7 @@ export default function ({
 							</Input>
 
 							<Input
+								disabled={formik.isSubmitting}
 								error={
 									formik.errors
 										.textEmbeddingProviderConfigurationJSONs?.[
@@ -671,6 +909,7 @@ export default function ({
 						TEXT_EMBEDDING_PROVIDER_TYPES.HUGGING_FACE_INFERENCE_ENDPOINT && (
 						<>
 							<Input
+								disabled={formik.isSubmitting}
 								error={
 									formik.errors
 										.textEmbeddingProviderConfigurationJSONs?.[
@@ -700,6 +939,7 @@ export default function ({
 								}
 							/>
 							<Input
+								disabled={formik.isSubmitting}
 								error={
 									formik.errors
 										.textEmbeddingProviderConfigurationJSONs?.[
@@ -735,6 +975,7 @@ export default function ({
 					)}
 
 					<Input
+						disabled={formik.isSubmitting}
 						error={
 							formik.errors
 								.textEmbeddingProviderConfigurationJSONs?.[
@@ -785,6 +1026,7 @@ export default function ({
 								.textEmbeddingProviderConfigurationJSONs[index]
 								?.attributes.basicAuthUsername
 						}
+						disabled={formik.isSubmitting}
 						embeddingVectorDimensions={
 							formik.values
 								.textEmbeddingProviderConfigurationJSONs[index]
@@ -851,6 +1093,7 @@ export default function ({
 					</h3>
 
 					<Input
+						disabled={formik.isSubmitting}
 						error={
 							formik.errors
 								.textEmbeddingProviderConfigurationJSONs?.[
@@ -886,6 +1129,7 @@ export default function ({
 					/>
 
 					<Input
+						disabled={formik.isSubmitting}
 						error={
 							formik.errors
 								.textEmbeddingProviderConfigurationJSONs?.[
@@ -916,6 +1160,7 @@ export default function ({
 					/>
 
 					<Input
+						disabled={formik.isSubmitting}
 						error={
 							formik.errors
 								.textEmbeddingProviderConfigurationJSONs?.[
@@ -953,6 +1198,7 @@ export default function ({
 					/>
 
 					<Input
+						disabled={formik.isSubmitting}
 						error={
 							formik.errors
 								.textEmbeddingProviderConfigurationJSONs?.[
@@ -996,6 +1242,7 @@ export default function ({
 					</h3>
 
 					<Input
+						disabled={formik.isSubmitting}
 						error={formik.errors.textEmbeddingCacheTimeout}
 						helpText={Liferay.Language.get(
 							'text-embedding-cache-timeout-help'
@@ -1023,6 +1270,15 @@ export default function ({
 		<div className="semantic-search-settings-root">
 			{_renderEmbeddingProviderConfigurationInputs(0)}
 
+			<SubmitWarningModal
+				message={Liferay.Language.get(
+					'unsuccessful-connection-warning'
+				)}
+				onClose={_handleSubmitWarningModalClose}
+				onSubmit={_handleSubmitWarningModalSave}
+				visible={showSubmitWarningModal}
+			/>
+
 			<input
 				name={`${namespace}textEmbeddingProviderConfigurationJSONs`}
 				type="hidden"
@@ -1032,6 +1288,36 @@ export default function ({
 					)
 					.join('|')}
 			/>
+
+			{formik.values.textEmbeddingsEnabled &&
+				(_isTextEmbeddingsEnabledDirty() ||
+					_isProviderConfigurationDirty()) && (
+					<ClayAlert displayType="info">
+						{Liferay.Language.get('reindex-required-alert')}
+					</ClayAlert>
+				)}
+
+			<ClayButton.Group spaced>
+				<ClayButton
+					disabled={formik.isSubmitting}
+					onClick={_handleSubmit}
+				>
+					{formik.isSubmitting && (
+						<span className="inline-item inline-item-before">
+							<span
+								aria-hidden="true"
+								className="loading-animation"
+							></span>
+						</span>
+					)}
+
+					{Liferay.Language.get('save')}
+				</ClayButton>
+
+				<a className="btn btn-cancel btn-secondary" href={redirectURL}>
+					{Liferay.Language.get('cancel')}
+				</a>
+			</ClayButton.Group>
 		</div>
 	);
 }

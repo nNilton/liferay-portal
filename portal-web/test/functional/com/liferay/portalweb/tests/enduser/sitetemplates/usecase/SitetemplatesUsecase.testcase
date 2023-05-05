@@ -118,9 +118,8 @@ definition {
 			SiteTemplatesNavigator.openSiteTemplatesAdmin();
 
 			SiteTemplates.addChildPageViaSiteTemplateCP(
-				childSitepageName = "true",
-				pageName = "Site Page Name",
-				siteChildPageName = "Site Child Page Name",
+				childPageName = "Site Child Page Name",
+				parentPageName = "Site Page Name",
 				siteTemplateName = "Site Template Name");
 		}
 
@@ -129,7 +128,8 @@ definition {
 
 			Site.addSiteTemplateCP(
 				siteName = "Site Name",
-				siteTemplateName = "Site Template Name");
+				siteTemplateName = "Site Template Name",
+				siteTemplateTab = "Custom Site Templates");
 		}
 
 		task ("And: Is not able to delete the child page on the Site which is connected to the Site template") {
@@ -208,7 +208,8 @@ definition {
 
 			Site.addSiteTemplateCP(
 				siteName = "Site Name",
-				siteTemplateName = "Site Template Name");
+				siteTemplateName = "Site Template Name",
+				siteTemplateTab = "Custom Site Templates");
 		}
 
 		task ("Then: The previously created site pages are visible both on the site and on the site template") {
@@ -222,6 +223,50 @@ definition {
 		}
 	}
 
+	@description = "This is a use case for LPS-180299. Change localization after Site Template is added in virtual instance."
+	@priority = 4
+	test ChangeLocalizationAfterSiteTemplateIsAddedInVirtualInstance {
+		property test.name.skip.portal.instance = "SitetemplatesUsecase#ChangeLocalizationAfterSiteTemplateIsAddedInVirtualInstance";
+
+		task ("Given: Add virtual instance able.com") {
+			HeadlessPortalInstanceAPI.addPortalInstance(
+				domain = "www.able.com",
+				portalInstanceId = "www.able.com",
+				virtualHost = "www.able.com");
+
+			User.firstLoginPG(
+				password = "test",
+				userEmailAddress = "test@www.able.com",
+				virtualHostsURL = "http://www.able.com:8080");
+		}
+
+		task ("And: Remove all the locales for the virtual instance except the default locale") {
+			PortalSettings.gotoConfiguration(
+				baseURL = "http://www.able.com:8080",
+				configurationCategory = "Localization",
+				configurationName = "Language",
+				configurationScope = "Virtual Instance Scope");
+
+			PortalSettings.configureCurrentLanguagesCP(currentPortalLanguages = "English (United States)");
+		}
+
+		task ("When: Create a site template") {
+			SiteTemplates.addCP(
+				baseURL = "http://www.able.com:8080",
+				siteTemplateName = "Site Template Name");
+		}
+
+		task ("Then: User is able to add new locale in virtual instance") {
+			PortalSettings.gotoConfiguration(
+				baseURL = "http://www.able.com:8080",
+				configurationCategory = "Localization",
+				configurationName = "Language",
+				configurationScope = "Virtual Instance Scope");
+
+			PortalSettings.configureCurrentLanguagesCP(currentPortalLanguages = "English (United States),Spanish (Spain)");
+		}
+	}
+
 	@description = "User can edit the permission of a page on site templates in the page admin menu."
 	@priority = 4
 	test EditSiteTemplateGuestPermissions {
@@ -232,7 +277,8 @@ definition {
 
 			Site.addSiteTemplateCP(
 				siteName = "Site Name",
-				siteTemplateName = "Site Template Name");
+				siteTemplateName = "Site Template Name",
+				siteTemplateTab = "Custom Site Templates");
 		}
 
 		task ("When: User navigate to the Permissions of the created site") {
@@ -320,7 +366,8 @@ definition {
 
 			Site.addSiteTemplateCP(
 				siteName = "Site Name",
-				siteTemplateName = "Site Template Name");
+				siteTemplateName = "Site Template Name",
+				siteTemplateTab = "Custom Site Templates");
 		}
 
 		task ("And: Remove the VIEW permission of Guest role on the created portlet on the site's page") {
@@ -571,28 +618,24 @@ definition {
 				pageName = "Page1 Name",
 				siteTemplateName = "Template Site");
 
-			Navigator.openURL();
-
 			SiteTemplates.addSitePageViaSiteTemplateCP(
 				pageName = "Page2 Name",
 				siteTemplateName = "Template Site");
 		}
 
 		task ("And: Copies the URL of the second site template page as external URL") {
-			SiteTemplatesNavigator.gotoSiteTemplatesPage(
-				pageName = "Page2 Name",
-				siteName = ${siteName},
-				siteTemplateName = "Template Site");
+			ProductMenu.gotoHomePage();
+
+			Navigator._gotoPage(pageName = "Page2 Name");
 
 			var page2URL = Navigator.getCurrentURL();
 
 			var entryExternalURL = StringUtil.replace(${page2URL}, "http://", "");
+			var webContentAdminURL = StringUtil.replace(${page2URL}, "page2-name", "");
 		}
 
 		task ("And: Create WC on the Site template and use the copied URL as external URL") {
-			ProductMenu.gotoPortlet(
-				category = "Content & Data",
-				portlet = "Web Content");
+			Navigator.openSpecificURL(url = "${webContentAdminURL}~/control_panel/manage?p_p_id=com_liferay_journal_web_portlet_JournalPortlet");
 
 			WebContentNavigator.gotoAddCP();
 
@@ -604,8 +647,6 @@ definition {
 				fieldLabel = "Content");
 
 			PortletEntry.publish();
-
-			Close.closeAndSelectWindow(locator1 = "Site Templates - ${siteName}");
 		}
 
 		task ("When: User add a new Site based on the Site Template") {
@@ -613,6 +654,7 @@ definition {
 
 			Site.addCP(
 				siteName = "Site Name",
+				siteTemplateTab = "Custom Site Templates",
 				siteType = "Template");
 		}
 
@@ -653,7 +695,7 @@ definition {
 		task ("Given: User add a new Site and 1 page to it, then verify that it has correct friendly URL") {
 			Site.openSitesAdmin();
 
-			JSONGroup.addGroup(groupName = "Export");
+			HeadlessSite.addSite(siteName = "Export");
 
 			JSONLayout.addPublicLayout(
 				groupName = "Export",
@@ -722,7 +764,8 @@ definition {
 
 			Site.addCP(
 				siteName = "New Site",
-				siteTemplateName = "New Site Template");
+				siteTemplateName = "New Site Template",
+				siteTemplateTab = "Custom Site Templates");
 
 			LAR.importSiteCP(
 				larFileName = ${larFileName},
@@ -752,7 +795,8 @@ definition {
 
 			Site.addSiteTemplateCP(
 				siteName = "Site A",
-				siteTemplateName = "Site Template Name");
+				siteTemplateName = "Site Template Name",
+				siteTemplateTab = "Custom Site Templates");
 
 			Navigator.gotoSitePage(
 				pageName = "Home",
@@ -791,7 +835,7 @@ definition {
 
 			SiteTemplates.viewCP(siteTemplateName = "Site Template Name");
 
-			JSONGroup.addGroup(groupName = "Site B");
+			HeadlessSite.addSite(siteName = "Site B");
 
 			LAR.importSiteCP(
 				larFileName = ${larFileName},
@@ -933,7 +977,8 @@ definition {
 
 			Site.addSiteTemplateCP(
 				siteName = "Site Name",
-				siteTemplateName = "Site Template Name");
+				siteTemplateName = "Site Template Name",
+				siteTemplateTab = "Custom Site Templates");
 		}
 
 		task ("Then: Navigation menus are inherited from the Site Template") {
@@ -995,7 +1040,8 @@ definition {
 
 			Site.addSiteTemplateCP(
 				siteName = "Site Name",
-				siteTemplateName = "Site Template Name");
+				siteTemplateName = "Site Template Name",
+				siteTemplateTab = "Custom Site Templates");
 		}
 
 		task ("Then: The portlet inherit the configuration from the Site template") {

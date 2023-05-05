@@ -133,8 +133,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.portlet.PortletConfig;
 import javax.portlet.PortletPreferences;
@@ -207,7 +205,7 @@ public class AssetPublisherDisplayContext {
 			portletDisplay.getPortletInstanceConfiguration(
 				AssetPublisherPortletInstanceConfiguration.class);
 
-		_httpServletRequest = _portal.getHttpServletRequest(portletRequest);
+		_httpServletRequest = portal.getHttpServletRequest(portletRequest);
 	}
 
 	public AssetListEntry fetchAssetListEntry() throws PortalException {
@@ -366,8 +364,9 @@ public class AssetPublisherDisplayContext {
 
 			if (assetListEntry != null) {
 				assetEntries = _assetListAssetEntryProvider.getAssetEntries(
-					assetListEntry, _getSegmentsEntryIds(assetListEntry),
-					_getSegmentsAnonymousUserId());
+					assetListEntry, _getSegmentsEntryIds(assetListEntry), null,
+					null, StringPool.BLANK, _getSegmentsAnonymousUserId(),
+					QueryUtil.ALL_POS, QueryUtil.ALL_POS);
 			}
 			else {
 				if (Validator.isNull(getInfoListProviderKey())) {
@@ -665,10 +664,7 @@ public class AssetPublisherDisplayContext {
 					items.add(keyword);
 				}
 
-				Stream<String> stream = items.stream();
-
-				queryValues = stream.collect(
-					Collectors.joining(StringPool.SPACE));
+				queryValues = StringUtil.merge(items, StringPool.SPACE);
 
 				ruleJSONObject.put("selectedItems", queryValues);
 			}
@@ -2293,8 +2289,6 @@ public class AssetPublisherDisplayContext {
 				scopeGroup, _themeDisplay.getScopeGroupId(),
 				_portletResponse.getNamespace() + "selectAsset",
 				assetEntryItemSelectorCriterion)
-		).setParameter(
-			"multipleSelection", true
 		).buildString();
 	}
 

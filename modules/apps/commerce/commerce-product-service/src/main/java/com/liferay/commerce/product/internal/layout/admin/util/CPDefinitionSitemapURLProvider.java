@@ -14,7 +14,7 @@
 
 package com.liferay.commerce.product.internal.layout.admin.util;
 
-import com.liferay.commerce.account.model.CommerceAccount;
+import com.liferay.account.model.AccountEntry;
 import com.liferay.commerce.account.util.CommerceAccountHelper;
 import com.liferay.commerce.product.catalog.CPCatalogEntry;
 import com.liferay.commerce.product.catalog.CPQuery;
@@ -30,8 +30,6 @@ import com.liferay.friendly.url.model.FriendlyURLEntry;
 import com.liferay.friendly.url.model.FriendlyURLEntryLocalization;
 import com.liferay.friendly.url.service.FriendlyURLEntryLocalService;
 import com.liferay.layout.admin.kernel.model.LayoutTypePortletConstants;
-import com.liferay.layout.admin.kernel.util.Sitemap;
-import com.liferay.layout.admin.kernel.util.SitemapURLProvider;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Layout;
@@ -47,6 +45,8 @@ import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.kernel.xml.Element;
+import com.liferay.site.util.Sitemap;
+import com.liferay.site.util.SitemapURLProvider;
 
 import java.io.Serializable;
 
@@ -90,9 +90,9 @@ public class CPDefinitionSitemapURLProvider implements SitemapURLProvider {
 					getCommerceChannelGroupIdBySiteGroupId(
 						layoutSet.getGroupId());
 
-			CommerceAccount commerceAccount =
-				_commerceAccountHelper.getCurrentCommerceAccount(
-					themeDisplay.getRequest());
+			AccountEntry accountEntry =
+				_commerceAccountHelper.getCurrentAccountEntry(
+					groupId, themeDisplay.getRequest());
 
 			SearchContext searchContext = new SearchContext();
 
@@ -102,7 +102,7 @@ public class CPDefinitionSitemapURLProvider implements SitemapURLProvider {
 				).put(
 					"commerceAccountGroupIds",
 					_commerceAccountHelper.getCommerceAccountGroupIds(
-						commerceAccount.getCommerceAccountId())
+						accountEntry.getAccountEntryId())
 				).put(
 					"commerceChannelGroupId", groupId
 				).build());

@@ -22,13 +22,10 @@ import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.LocaleUtil;
-import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.odata.entity.EntityField;
-import com.liferay.portal.util.PropsUtil;
 
 import java.util.Collections;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -44,11 +41,6 @@ public class ListTypeEntryResourceTest
 	@Before
 	@Override
 	public void setUp() throws Exception {
-		PropsUtil.addProperties(
-			UnicodePropertiesBuilder.setProperty(
-				"feature.flag.LPS-168886", "true"
-			).build());
-
 		super.setUp();
 
 		_listTypeDefinition =
@@ -58,14 +50,28 @@ public class ListTypeEntryResourceTest
 				Collections.emptyList());
 	}
 
-	@After
-	public void tearDown() throws Exception {
-		PropsUtil.addProperties(
-			UnicodePropertiesBuilder.setProperty(
-				"feature.flag.LPS-168886", "false"
-			).build());
+	@Override
+	@Test
+	public void testGetListTypeDefinitionByExternalReferenceCodeListTypeEntriesPageWithSortInteger()
+		throws Exception {
 
-		super.tearDown();
+		testGetListTypeDefinitionByExternalReferenceCodeListTypeEntriesPageWithSort(
+			EntityField.Type.INTEGER,
+			(entityField, listTypeEntry1, listTypeEntry2) -> {
+				if (BeanTestUtil.hasProperty(
+						listTypeEntry1, entityField.getName())) {
+
+					BeanTestUtil.setProperty(
+						listTypeEntry1, entityField.getName(), 0);
+				}
+
+				if (BeanTestUtil.hasProperty(
+						listTypeEntry2, entityField.getName())) {
+
+					BeanTestUtil.setProperty(
+						listTypeEntry2, entityField.getName(), 1);
+				}
+			});
 	}
 
 	@Override
@@ -101,18 +107,6 @@ public class ListTypeEntryResourceTest
 	@Ignore
 	@Override
 	@Test
-	public void testGraphQLGetListTypeEntryByExternalReferenceCode() {
-	}
-
-	@Ignore
-	@Override
-	@Test
-	public void testGraphQLGetListTypeEntryByExternalReferenceCodeNotFound() {
-	}
-
-	@Ignore
-	@Override
-	@Test
 	public void testGraphQLGetListTypeEntryNotFound() throws Exception {
 	}
 
@@ -134,6 +128,25 @@ public class ListTypeEntryResourceTest
 	}
 
 	@Override
+	protected ListTypeEntry
+			testGetListTypeDefinitionByExternalReferenceCodeListTypeEntriesPage_addListTypeEntry(
+				String externalReferenceCode, ListTypeEntry listTypeEntry)
+		throws Exception {
+
+		return listTypeEntryResource.
+			postListTypeDefinitionByExternalReferenceCodeListTypeEntry(
+				externalReferenceCode, listTypeEntry);
+	}
+
+	@Override
+	protected String
+			testGetListTypeDefinitionByExternalReferenceCodeListTypeEntriesPage_getExternalReferenceCode()
+		throws Exception {
+
+		return _listTypeDefinition.getExternalReferenceCode();
+	}
+
+	@Override
 	protected Long
 		testGetListTypeDefinitionListTypeEntriesPage_getListTypeDefinitionId() {
 
@@ -148,14 +161,6 @@ public class ListTypeEntryResourceTest
 	}
 
 	@Override
-	protected ListTypeEntry
-			testGetListTypeEntryByExternalReferenceCode_addListTypeEntry()
-		throws Exception {
-
-		return _addListTypeEntry();
-	}
-
-	@Override
 	protected ListTypeEntry testGraphQLListTypeEntry_addListTypeEntry()
 		throws Exception {
 
@@ -163,23 +168,18 @@ public class ListTypeEntryResourceTest
 	}
 
 	@Override
+	protected ListTypeEntry
+			testPostListTypeDefinitionByExternalReferenceCodeListTypeEntry_addListTypeEntry(
+				ListTypeEntry listTypeEntry)
+		throws Exception {
+
+		return listTypeEntryResource.
+			postListTypeDefinitionByExternalReferenceCodeListTypeEntry(
+				_listTypeDefinition.getExternalReferenceCode(), listTypeEntry);
+	}
+
+	@Override
 	protected ListTypeEntry testPutListTypeEntry_addListTypeEntry()
-		throws Exception {
-
-		return _addListTypeEntry();
-	}
-
-	@Override
-	protected ListTypeEntry
-			testPutListTypeEntryByExternalReferenceCode_addListTypeEntry()
-		throws Exception {
-
-		return _addListTypeEntry();
-	}
-
-	@Override
-	protected ListTypeEntry
-			testPutListTypeEntryByExternalReferenceCode_createListTypeEntry()
 		throws Exception {
 
 		return _addListTypeEntry();

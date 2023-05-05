@@ -38,6 +38,7 @@ import com.liferay.knowledge.base.web.internal.security.permission.resource.KBFo
 import com.liferay.knowledge.base.web.internal.security.permission.resource.KBTemplatePermission;
 import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
@@ -53,7 +54,6 @@ import com.liferay.portal.kernel.util.Constants;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.rss.util.RSSUtil;
@@ -119,7 +119,6 @@ public class KBDropdownItemsProvider {
 				dropdownGroupItem.setDropdownItems(
 					DropdownItemListBuilder.add(
 						() ->
-							_isExpirationEnabled() &&
 							_hasExpirationPermission(kbArticle) &&
 							!kbArticle.isExpired(),
 						_getExpireArticleActionConsumer(kbArticle)
@@ -737,6 +736,41 @@ public class KBDropdownItemsProvider {
 	private UnsafeConsumer<DropdownItem, Exception>
 		_getMoveActionUnsafeConsumer(KBArticle kbArticle) {
 
+		if (FeatureFlagManagerUtil.isEnabled("LPS-180292")) {
+			return dropdownItem -> {
+				dropdownItem.putData("action", "move");
+				dropdownItem.putData(
+					"itemClassNameId",
+					String.valueOf(kbArticle.getClassNameId()));
+				dropdownItem.putData(
+					"itemId", String.valueOf(kbArticle.getResourcePrimKey()));
+				dropdownItem.putData("itemType", "article");
+				dropdownItem.putData(
+					"moveKBItemActionURL",
+					PortletURLBuilder.createActionURL(
+						_liferayPortletResponse
+					).setActionName(
+						"/knowledge_base/move_kb_object"
+					).buildString());
+				dropdownItem.putData(
+					"moveKBItemModalURL",
+					PortletURLBuilder.createRenderURL(
+						_liferayPortletResponse
+					).setMVCPath(
+						"/admin/common/move_kb_object_modal.jsp"
+					).setParameter(
+						"itemToMoveId", kbArticle.getResourcePrimKey()
+					).setWindowState(
+						LiferayWindowState.POP_UP
+					).buildString());
+				dropdownItem.setIcon("move-folder");
+				dropdownItem.setLabel(
+					LanguageUtil.get(
+						_liferayPortletRequest.getHttpServletRequest(),
+						"move"));
+			};
+		}
+
 		return dropdownItem -> {
 			dropdownItem.setHref(
 				PortletURLBuilder.create(
@@ -768,6 +802,41 @@ public class KBDropdownItemsProvider {
 
 	private UnsafeConsumer<DropdownItem, Exception>
 		_getMoveActionUnsafeConsumer(KBFolder kbFolder) {
+
+		if (FeatureFlagManagerUtil.isEnabled("LPS-180292")) {
+			return dropdownItem -> {
+				dropdownItem.putData("action", "move");
+				dropdownItem.putData(
+					"itemClassNameId",
+					String.valueOf(kbFolder.getClassNameId()));
+				dropdownItem.putData(
+					"itemId", String.valueOf(kbFolder.getKbFolderId()));
+				dropdownItem.putData("itemType", "folder");
+				dropdownItem.putData(
+					"moveKBItemActionURL",
+					PortletURLBuilder.createActionURL(
+						_liferayPortletResponse
+					).setActionName(
+						"/knowledge_base/move_kb_object"
+					).buildString());
+				dropdownItem.putData(
+					"moveKBItemModalURL",
+					PortletURLBuilder.createRenderURL(
+						_liferayPortletResponse
+					).setMVCPath(
+						"/admin/common/move_kb_object_modal.jsp"
+					).setParameter(
+						"itemToMoveId", kbFolder.getKbFolderId()
+					).setWindowState(
+						LiferayWindowState.POP_UP
+					).buildString());
+				dropdownItem.setIcon("move-folder");
+				dropdownItem.setLabel(
+					LanguageUtil.get(
+						_liferayPortletRequest.getHttpServletRequest(),
+						"move"));
+			};
+		}
 
 		return dropdownItem -> {
 			dropdownItem.setHref(
@@ -1368,14 +1437,6 @@ public class KBDropdownItemsProvider {
 				_themeDisplay.getPermissionChecker(), kbTemplate,
 				KBActionKeys.VIEW)) {
 
-			return true;
-		}
-
-		return false;
-	}
-
-	private Boolean _isExpirationEnabled() {
-		if (GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-165476"))) {
 			return true;
 		}
 

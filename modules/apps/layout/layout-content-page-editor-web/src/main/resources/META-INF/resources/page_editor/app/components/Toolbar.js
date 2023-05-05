@@ -41,6 +41,7 @@ import PublishButton from './PublishButton';
 import Translation from './Translation';
 import UnsafeHTML from './UnsafeHTML';
 import ViewportSizeSelector from './ViewportSizeSelector';
+import ZoomAlert from './ZoomAlert';
 import Undo from './undo/Undo';
 
 const {Suspense, useCallback, useRef} = React;
@@ -194,7 +195,7 @@ function ToolbarBody({className}) {
 		publishButtonLabel = Liferay.Language.get('save-variant');
 	}
 	else if (config.workflowEnabled) {
-		publishButtonLabel = Liferay.Language.get('submit-for-publication');
+		publishButtonLabel = Liferay.Language.get('submit-for-workflow');
 	}
 
 	useEffect(() => {
@@ -218,6 +219,8 @@ function ToolbarBody({className}) {
 			onClick={deselectItem}
 			ref={dropClearRef}
 		>
+			<ZoomAlert />
+
 			<ul className="navbar-nav start" onClick={deselectItem}>
 				{config.toolbarPlugins.map(
 					({loadingPlaceholder, pluginEntryPoint}) => {

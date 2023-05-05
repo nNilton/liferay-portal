@@ -48,7 +48,7 @@ UnicodeProperties layoutTypeSettingsUnicodeProperties = selLayout.getTypeSetting
 <aui:form action="<%= editSEOURL %>" method="post" name="fm">
 	<clay:sheet>
 		<clay:sheet-header>
-			<h2 class="sheet-title"><liferay-ui:message key="seo" /></h2>
+			<h2 class="mb-4 text-7"><liferay-ui:message key="seo" /></h2>
 		</clay:sheet-header>
 
 		<clay:sheet-section>
@@ -57,9 +57,10 @@ UnicodeProperties layoutTypeSettingsUnicodeProperties = selLayout.getTypeSetting
 				value="seo"
 			/>
 
-			<h4><liferay-ui:message key="general-settings" /></h4>
+			<h3 class="mb-4"><liferay-ui:message key="settings" /></h3>
 
 			<clay:alert
+				cssClass="mb-4"
 				displayType="info"
 				message='<%= LanguageUtil.get(request, "add-multiple-fields-to-define-how-the-meta-tags-will-be-filled") %>'
 			/>
@@ -114,10 +115,10 @@ UnicodeProperties layoutTypeSettingsUnicodeProperties = selLayout.getTypeSetting
 						<c:when test="<%= selLayoutSEOEntry != null %>">
 							<aui:model-context bean="<%= selLayoutSEOEntry %>" model="<%= LayoutSEOEntry.class %>" />
 
-							<aui:input checked="<%= selLayoutSEOEntry.isCanonicalURLEnabled() %>" helpMessage="use-custom-canonical-url-help" label="use-custom-canonical-url" name="canonicalURLEnabled" type="checkbox" wrapperCssClass="mb-1" />
+							<aui:input checked="<%= selLayoutSEOEntry.isCanonicalURLEnabled() %>" helpMessage="use-custom-canonical-url-help" label="use-custom-canonical-url" name="canonicalURLEnabled" type="checkbox" wrapperCssClass="mb-2" />
 
 							<div id="<portlet:namespace />customCanonicalURLSettings">
-								<aui:input disabled="<%= !selLayoutSEOEntry.isCanonicalURLEnabled() %>" label="<%= StringPool.BLANK %>" name="canonicalURL" placeholder="<%= layoutsSEODisplayContext.getDefaultCanonicalURL() %>">
+								<aui:input disabled="<%= !selLayoutSEOEntry.isCanonicalURLEnabled() %>" label="canonical-url" name="canonicalURL" placeholder="<%= layoutsSEODisplayContext.getDefaultCanonicalURL() %>">
 									<aui:validator name="url" />
 								</aui:input>
 							</div>
@@ -129,10 +130,10 @@ UnicodeProperties layoutTypeSettingsUnicodeProperties = selLayout.getTypeSetting
 							<aui:model-context bean="<%= selLayout %>" model="<%= Layout.class %>" />
 						</c:when>
 						<c:otherwise>
-							<aui:input checked="<%= false %>" helpMessage="use-custom-canonical-url-help" label="use-custom-canonical-url" name="canonicalURLEnabled" type="checkbox" wrapperCssClass="mb-1" />
+							<aui:input checked="<%= false %>" helpMessage="use-custom-canonical-url-help" label="use-custom-canonical-url" name="canonicalURLEnabled" type="checkbox" wrapperCssClass="mb-2" />
 
 							<div id="<portlet:namespace />customCanonicalURLSettings">
-								<aui:input disabled="<%= true %>" label="<%= StringPool.BLANK %>" localized="<%= true %>" name="canonicalURL" placeholder="<%= layoutsSEODisplayContext.getDefaultCanonicalURL() %>" type="text">
+								<aui:input disabled="<%= true %>" label="canonical-url" localized="<%= true %>" name="canonicalURL" placeholder="<%= layoutsSEODisplayContext.getDefaultCanonicalURL() %>" type="text">
 									<aui:validator name="url" />
 								</aui:input>
 							</div>
@@ -193,9 +194,13 @@ UnicodeProperties layoutTypeSettingsUnicodeProperties = selLayout.getTypeSetting
 			</c:choose>
 
 			<aui:input name="robots" placeholder="robots" />
+		</clay:sheet-section>
 
-			<c:if test="<%= PortalUtil.isLayoutSitemapable(selLayout) %>">
-				<h4><liferay-ui:message key="sitemap" /></h4>
+		<c:if test="<%= PortalUtil.isLayoutSitemapable(selLayout) %>">
+			<hr class="mb-5 separator" />
+
+			<clay:sheet-section>
+				<h3 class="mb-4"><liferay-ui:message key="sitemap" /></h3>
 
 				<div class="alert alert-warning layout-prototype-info-message <%= selLayout.isLayoutPrototypeLinkActive() ? StringPool.BLANK : "hide" %>">
 					<liferay-ui:message arguments='<%= new String[] {"inherit-changes", "general"} %>' key="some-page-settings-are-unavailable-because-x-is-enabled" />
@@ -228,13 +233,23 @@ UnicodeProperties layoutTypeSettingsUnicodeProperties = selLayout.getTypeSetting
 					<aui:option label="yearly" />
 					<aui:option label="never" />
 				</aui:select>
-			</c:if>
-		</clay:sheet-section>
+			</clay:sheet-section>
+		</c:if>
 
 		<clay:sheet-footer>
-			<aui:button primary="<%= true %>" type="submit" />
+			<clay:button
+				cssClass="mr-3"
+				displayType="primary"
+				label='<%= LanguageUtil.get(request, "save") %>'
+				type="submit"
+			/>
 
-			<aui:button href="<%= backURL %>" type="cancel" />
+			<clay:button
+				displayType="secondary"
+				label='<%= LanguageUtil.get(request, "cancel") %>'
+				onClick='<%= "Liferay.Util.navigate('" + HtmlUtil.escape(backURL) + "')" %>'
+				type="button"
+			/>
 		</clay:sheet-footer>
 	</clay:sheet>
 </aui:form>

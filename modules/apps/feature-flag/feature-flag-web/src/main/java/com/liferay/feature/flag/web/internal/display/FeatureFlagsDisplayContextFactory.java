@@ -19,7 +19,7 @@ import com.liferay.feature.flag.web.internal.company.feature.flags.CompanyFeatur
 import com.liferay.feature.flag.web.internal.company.feature.flags.CompanyFeatureFlagsProvider;
 import com.liferay.feature.flag.web.internal.model.FeatureFlag;
 import com.liferay.feature.flag.web.internal.model.FeatureFlagDisplay;
-import com.liferay.feature.flag.web.internal.model.FeatureFlagStatus;
+import com.liferay.feature.flag.web.internal.model.FeatureFlagType;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.dao.search.SearchContainer;
 import com.liferay.portal.kernel.dao.search.SearchPaginationUtil;
@@ -55,7 +55,7 @@ import org.osgi.service.component.annotations.Reference;
 public class FeatureFlagsDisplayContextFactory {
 
 	public FeatureFlagsDisplayContext create(
-		FeatureFlagStatus featureFlagStatus,
+		FeatureFlagType featureFlagType,
 		HttpServletRequest httpServletRequest) {
 
 		FeatureFlagsDisplayContext featureFlagsDisplayContext =
@@ -64,7 +64,7 @@ public class FeatureFlagsDisplayContextFactory {
 		Locale locale = _portal.getLocale(httpServletRequest);
 
 		featureFlagsDisplayContext.setDescription(
-			featureFlagStatus.getDescription(locale));
+			featureFlagType.getDescription(locale));
 
 		PortletRequest portletRequest =
 			(PortletRequest)httpServletRequest.getAttribute(
@@ -89,7 +89,7 @@ public class FeatureFlagsDisplayContextFactory {
 				portletRequest,
 				PortletURLUtil.getCurrent(
 					liferayPortletRequest, liferayPortletResponse),
-				null, "no-feature-flags-found");
+				null, "no-feature-flags-were-found");
 
 		searchContainer.setId("accountEntryAccountGroupsSearchContainer");
 		searchContainer.setOrderByCol(
@@ -101,7 +101,7 @@ public class FeatureFlagsDisplayContextFactory {
 				portletRequest, ConfigurationAdminPortletKeys.INSTANCE_SETTINGS,
 				"order-by-type", "asc"));
 
-		Predicate<FeatureFlag> predicate = featureFlagStatus.getPredicate();
+		Predicate<FeatureFlag> predicate = featureFlagType.getPredicate();
 
 		String keywords = ParamUtil.getString(portletRequest, "keywords");
 
@@ -120,16 +120,10 @@ public class FeatureFlagsDisplayContextFactory {
 			predicate = predicate.and(filter.getPredicate(httpServletRequest));
 		}
 
-		// Do not allow turning this feature off in the UI since you'll have to
-		// remake the database in order to see it again
-
-		predicate = predicate.and(
-			featureFlag -> !Objects.equals("LPS-167698", featureFlag.getKey()));
-
 		Predicate<FeatureFlag> finalPredicate = predicate;
 
 		CompanyFeatureFlags companyFeatureFlags =
-			_companyFeatureFlagsProvider.getCompanyFeatureFlags(
+			_companyFeatureFlagsProvider.getOrCreateCompanyFeatureFlags(
 				_portal.getCompanyId(httpServletRequest));
 
 		List<FeatureFlagDisplay> featureFlagDisplays = TransformUtil.transform(
@@ -144,7 +138,7 @@ public class FeatureFlagsDisplayContextFactory {
 		Comparator<FeatureFlagDisplay> comparator = Comparator.comparing(
 			FeatureFlagDisplay::getTitle);
 
-		if (Objects.equals("desc", searchContainer.getOrderByType())) {
+		if (Objects.equals(searchContainer.getOrderByType(), "desc")) {
 			comparator = comparator.reversed();
 		}
 
@@ -168,7 +162,7 @@ public class FeatureFlagsDisplayContextFactory {
 			featureFlagsDisplayContext.setSearchResultCssClass("list-group");
 		}
 
-		featureFlagsDisplayContext.setTitle(featureFlagStatus.getTitle(locale));
+		featureFlagsDisplayContext.setTitle(featureFlagType.getTitle(locale));
 
 		return featureFlagsDisplayContext;
 	}

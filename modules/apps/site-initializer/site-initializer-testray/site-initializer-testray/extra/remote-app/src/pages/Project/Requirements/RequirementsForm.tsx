@@ -17,10 +17,12 @@ import {FocusEvent, useEffect, useMemo} from 'react';
 import {useForm} from 'react-hook-form';
 import {useOutletContext, useParams} from 'react-router-dom';
 import {KeyedMutator} from 'swr';
+import {withPagePermission} from '~/hoc/withPagePermission';
 
 import Form from '../../../components/Form';
 import Container from '../../../components/Layout/Container';
 import MarkdownPreview from '../../../components/Markdown';
+import SearchBuilder from '../../../core/SearchBuilder';
 import {useHeader} from '../../../hooks';
 import {useFetch} from '../../../hooks/useFetch';
 import useFormActions from '../../../hooks/useFormActions';
@@ -30,10 +32,8 @@ import {
 	APIResponse,
 	TestrayComponent,
 	TestrayRequirement,
-	createRequirement,
-	updateRequirement,
+	testrayRequirementsImpl,
 } from '../../../services/rest';
-import {SearchBuilder} from '../../../util/search';
 
 type RequirementsFormType = typeof yupSchema.requirement.__outputType;
 
@@ -95,8 +95,8 @@ const RequirementsForm = () => {
 		onSubmit(
 			{...form, projectId},
 			{
-				create: createRequirement,
-				update: updateRequirement,
+				create: (data) => testrayRequirementsImpl.create(data),
+				update: (data, id) => testrayRequirementsImpl.update(data, id),
 			}
 		)
 			.then(mutateTestrayRequirement)
@@ -202,4 +202,6 @@ const RequirementsForm = () => {
 	);
 };
 
-export default RequirementsForm;
+export default withPagePermission(RequirementsForm, {
+	restImpl: testrayRequirementsImpl,
+});

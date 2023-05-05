@@ -14,11 +14,10 @@
 
 import {InferType} from 'yup';
 
+import Rest from '../../core/Rest';
+import SearchBuilder from '../../core/SearchBuilder';
 import yupSchema from '../../schema/yup';
 import {getUniqueList} from '../../util';
-import {SearchBuilder} from '../../util/search';
-import Rest from './Rest';
-import {testrayTaskImpl} from './TestrayTask';
 import {APIResponse, TestrayTaskUser} from './types';
 
 type TaskToUser = InferType<typeof yupSchema.taskToUser>;
@@ -103,25 +102,6 @@ class TestrayTaskUsersImpl extends Rest<TaskToUser, TestrayTaskUser> {
 				}))
 			);
 		}
-
-		response = await this.getAll({
-			fields: 'id',
-			filter: SearchBuilder.eq('taskId', taskId),
-			pageSize: 100,
-		});
-
-		response = this.transformDataFromList(
-			response as APIResponse<TestrayTaskUser>
-		);
-
-		await testrayTaskImpl.update(taskId, {
-			assignedUsers: JSON.stringify(
-				response?.items.map(({user}) => ({
-					id: user?.id,
-					name: user?.givenName,
-				}))
-			),
-		});
 	}
 }
 

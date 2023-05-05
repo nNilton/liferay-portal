@@ -69,7 +69,7 @@ public class SegmentsExperienceSelectorDisplayContext {
 		_segmentsExperimentLocalService = segmentsExperimentLocalService;
 		_segmentsExperimentRelLocalService = segmentsExperimentRelLocalService;
 
-		_themeDisplay = (ThemeDisplay)_httpServletRequest.getAttribute(
+		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 	}
 
@@ -240,7 +240,9 @@ public class SegmentsExperienceSelectorDisplayContext {
 					segmentsExperience, segmentsExperiences));
 		}
 
-		return segmentsExperiencesJSONArray;
+		_segmentsExperiencesJSONArray = segmentsExperiencesJSONArray;
+
+		return _segmentsExperiencesJSONArray;
 	}
 
 	private String _getSelectedSegmentsExperienceName(

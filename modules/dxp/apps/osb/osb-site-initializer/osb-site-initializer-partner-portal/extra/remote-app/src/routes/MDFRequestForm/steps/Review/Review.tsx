@@ -12,7 +12,6 @@
 import Button from '@clayui/button';
 import ClayLoadingIndicator from '@clayui/loading-indicator';
 import {useFormikContext} from 'formik';
-import {useMemo} from 'react';
 
 import PRMFormikPageProps from '../../../../common/components/PRMFormik/interfaces/prmFormikPageProps';
 import ResumeCard from '../../../../common/components/ResumeCard';
@@ -20,8 +19,6 @@ import MDFRequest from '../../../../common/interfaces/mdfRequest';
 import MDFRequestActivity from '../../../../common/interfaces/mdfRequestActivity';
 import {Status} from '../../../../common/utils/constants/status';
 import getIntlNumberFormat from '../../../../common/utils/getIntlNumberFormat';
-import getTotalBudget from '../../../../common/utils/getTotalBudget';
-import getTotalMDFRequest from '../../../../common/utils/getTotalMDFRequest';
 import ActivityPanel from '../../components/ActivityPanel';
 import {StepType} from '../../enums/stepType';
 import MDFRequestStepProps from '../../interfaces/mdfRequestStepProps';
@@ -39,15 +36,6 @@ const Review = ({
 		MDFRequest
 	>();
 
-	const totalBudget = useMemo(() => getTotalBudget(values.activities), [
-		values.activities,
-	]);
-
-	const totalMDFRequest = useMemo(
-		() => getTotalMDFRequest(values.activities),
-		[values.activities]
-	);
-
 	return (
 		<div className="d-flex flex-column">
 			<Header />
@@ -59,8 +47,9 @@ const Review = ({
 			<Body name="Activities" title="Insurance Industry Lead Gen">
 				<div className="border mb-3"></div>
 
-				{values?.activities.map(
-					(activity: MDFRequestActivity, index: number) => (
+				{values?.activities
+					.filter((activity) => !activity.removed)
+					.map((activity: MDFRequestActivity, index: number) => (
 						<ActivityPanel
 							activity={activity}
 							detail
@@ -71,8 +60,7 @@ const Review = ({
 								mdfRequestActivity={activity}
 							/>
 						</ActivityPanel>
-					)
-				)}
+					))}
 			</Body>
 
 			<Body>
@@ -80,9 +68,9 @@ const Review = ({
 					<div className="my-3">
 						<ResumeCard
 							leftContent="Total Budget"
-							rightContent={getIntlNumberFormat().format(
-								totalBudget
-							)}
+							rightContent={getIntlNumberFormat(
+								values.currency
+							).format(values.totalCostOfExpense)}
 						/>
 
 						<ResumeCard
@@ -94,9 +82,9 @@ const Review = ({
 						<ResumeCard
 							className="mt-3"
 							leftContent="Total MDF Requested Amount"
-							rightContent={getIntlNumberFormat().format(
-								totalMDFRequest
-							)}
+							rightContent={getIntlNumberFormat(
+								values.currency
+							).format(values.totalMDFRequestAmount)}
 						/>
 					</div>
 

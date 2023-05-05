@@ -63,8 +63,6 @@ definition {
 
 		DMDocument.addMultipleCP(dmDocumentFileList = "Document_2.docx,Document_3.docx");
 
-		Navigator.openURL();
-
 		ProductMenu.gotoPortlet(
 			category = "Content & Data",
 			portlet = "Digital Signature");
@@ -171,6 +169,17 @@ definition {
 			value1 = ${digitalSignatureRsaPrivateKey});
 
 		SystemSettings.saveConfiguration();
+	}
+
+	macro goToDigitalSignatureSettings {
+		ApplicationsMenu.gotoPortlet(
+			category = "Configuration",
+			panel = "Control Panel",
+			portlet = "Instance Settings");
+
+		Click(
+			key_itemName = "Digital Signature",
+			locator1 = "ListGroupItem#ITEM_TEXT");
 	}
 
 }

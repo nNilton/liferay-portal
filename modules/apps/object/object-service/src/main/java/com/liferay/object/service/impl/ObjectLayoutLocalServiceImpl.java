@@ -16,7 +16,7 @@ package com.liferay.object.service.impl;
 
 import com.liferay.object.constants.ObjectLayoutBoxConstants;
 import com.liferay.object.exception.DefaultObjectLayoutException;
-import com.liferay.object.exception.NoSuchObjectDefinitionException;
+import com.liferay.object.exception.ObjectDefinitionModifiableException;
 import com.liferay.object.exception.ObjectLayoutBoxCategorizationTypeException;
 import com.liferay.object.exception.ObjectLayoutColumnSizeException;
 import com.liferay.object.model.ObjectDefinition;
@@ -78,12 +78,8 @@ public class ObjectLayoutLocalServiceImpl
 		ObjectDefinition objectDefinition =
 			_objectDefinitionPersistence.findByPrimaryKey(objectDefinitionId);
 
-		if (objectDefinition.isSystem()) {
-
-			// TODO Add test
-
-			throw new NoSuchObjectDefinitionException(
-				"Object layouts require a custom object definition");
+		if (objectDefinition.isUnmodifiableSystemObject()) {
+			throw new ObjectDefinitionModifiableException.MustBeModifiable();
 		}
 
 		_validate(0, objectDefinitionId, defaultObjectLayout, objectLayoutTabs);
@@ -605,7 +601,7 @@ public class ObjectLayoutLocalServiceImpl
 
 				if (!objectDefinition.isDefaultStorageType()) {
 					throw new ObjectLayoutBoxCategorizationTypeException(
-						"Categorization layout box only can be used in " +
+						"Categorization layout box can only be used in " +
 							"object definitions with a default storage type");
 				}
 

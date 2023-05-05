@@ -8,6 +8,8 @@ definition {
 	property release.feature.flags.disable.DISABLE_PRIVATE_LAYOUTS = "true";
 	property testray.main.component.name = "Site Initializer Testray";
 
+	var testSiteName = "Testray 2";
+
 	setUp {
 		TestCase.setUpPortalInstance();
 
@@ -19,7 +21,9 @@ definition {
 
 		Testray.tearDownCP();
 
-		ObjectAdmin.deleteAllCustomObjectsViaAPI();
+		ClientExtensionGeneral.goToRemoteAppsPortlet();
+
+		ClientExtensionGeneral.deleteRemoteApp(tableEntry = "Testray");
 
 		if (${testPortalInstance} == "true") {
 			PortalInstances.tearDownCP();
@@ -43,7 +47,7 @@ definition {
 				key_title = "Add Site",
 				locator1 = "IFrame#MODAL_ANY");
 
-			PortletEntry.inputName(name = "Testray 2");
+			PortletEntry.inputName(name = ${testSiteName});
 
 			Button.click(button = "Add");
 
@@ -53,7 +57,7 @@ definition {
 		task ("Go to Testray") {
 			Refresh();
 
-			ApplicationsMenu.gotoSite(site = "Testray 2");
+			ApplicationsMenu.gotoSite(site = ${testSiteName});
 		}
 	}
 
@@ -63,9 +67,7 @@ definition {
 		property solutions.acceptance = "true";
 
 		task ("Create Testray") {
-			Testray.addTestraySite();
-
-			Refresh();
+			Testray.addTestraySite(siteName = ${testSiteName});
 		}
 
 		task ("Go to Remote Apps Portlet") {
@@ -85,11 +87,11 @@ definition {
 		property solutions.acceptance = "true";
 
 		task ("Create and Go to Testray") {
-			Testray.addTestraySite();
+			Testray.addTestraySite(siteName = ${testSiteName});
 
 			Refresh();
 
-			ApplicationsMenu.gotoSite(site = "Testray 2");
+			ApplicationsMenu.gotoSite(site = ${testSiteName});
 		}
 
 		task ("Assert if style books were created") {

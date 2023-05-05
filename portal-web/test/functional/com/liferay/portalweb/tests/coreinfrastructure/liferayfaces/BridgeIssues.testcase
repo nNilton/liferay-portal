@@ -1,6 +1,7 @@
 @component-name = "core-infrastructure"
 definition {
 
+	property ci.retries.disabled = "true";
 	property liferay.faces = "true";
 	property portal.release = "true";
 	property portal.upstream = "true";
@@ -11,7 +12,7 @@ definition {
 
 		User.firstLoginPG();
 
-		JSONGroup.addGroup(groupName = "Bridge Issues");
+		HeadlessSite.addSite(siteName = "Bridge Issues");
 
 		PagesAdmin.openPagesAdmin(siteURLKey = "Bridge Issues");
 	}

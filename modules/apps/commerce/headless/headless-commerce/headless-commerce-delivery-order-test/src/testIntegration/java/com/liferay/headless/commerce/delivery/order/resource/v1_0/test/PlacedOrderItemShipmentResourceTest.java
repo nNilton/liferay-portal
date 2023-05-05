@@ -123,15 +123,13 @@ public class PlacedOrderItemShipmentResourceTest
 
 		_commerceOrderItem =
 			_commerceOrderItemLocalService.addCommerceOrderItem(
-				_commerceOrder.getCommerceOrderId(),
+				_user.getUserId(), _commerceOrder.getCommerceOrderId(),
 				_cpInstance.getCPInstanceId(), null,
 				RandomTestUtil.randomInt(1, 10),
 				RandomTestUtil.randomInt(1, 10),
 				new TestCommerceContext(
-					_commerceCurrency, _commerceChannel, _user, testGroup,
-					_commerceAccountLocalService.getCommerceAccount(
-						_accountEntry.getAccountEntryId()),
-					_commerceOrder),
+					_accountEntry, _commerceCurrency, _commerceChannel, _user,
+					testGroup, _commerceOrder),
 				_serviceContext);
 
 		_country = _countryLocalService.addCountry(

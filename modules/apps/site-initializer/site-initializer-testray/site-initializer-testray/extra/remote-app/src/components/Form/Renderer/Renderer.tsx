@@ -23,10 +23,10 @@ import React, {
 } from 'react';
 import {useParams} from 'react-router-dom';
 
+import {Operators} from '../../../core/SearchBuilder';
 import i18n from '../../../i18n';
 import fetcher from '../../../services/fetcher';
 import {safeJSONParse} from '../../../util';
-import {Operators} from '../../../util/search';
 import {AutoCompleteProps} from '../AutoComplete';
 
 type RenderedFieldOptions = string[] | {label: string; value: string}[];
@@ -37,6 +37,7 @@ export type RendererFields = {
 	name: string;
 	operator?: Operators;
 	options?: RenderedFieldOptions;
+	placeholder?: string;
 	removeQuoteMark?: boolean;
 	type:
 		| 'autocomplete'

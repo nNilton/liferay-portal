@@ -95,7 +95,7 @@ const getFieldDetails = ({
 		}
 	}
 
-	return fieldDetails.join('<br>');
+	return fieldDetails.length ? fieldDetails.join('<br>') : false;
 };
 
 const HideFieldProperty = () => {
@@ -183,6 +183,7 @@ export function FieldBase({
 	nestedFields,
 	onClick,
 	overMaximumRepetitionsLimit,
+	parentInstanceId,
 	readOnly,
 	repeatable,
 	required,
@@ -246,12 +247,21 @@ export function FieldBase({
 		type === 'text' ||
 		type === 'numeric' ||
 		type === 'image' ||
+		type === 'rich_text' ||
 		type === 'search_location' ||
 		type === 'select';
+	const readFieldDetails = !showFor || type === 'select';
+	const hasFieldDetails = accessible && fieldDetails && readFieldDetails;
 
-	const accessibleProps = {
-		...(accessible && fieldDetails && {'aria-labelledby': fieldDetailsId}),
-		...(showFor ? {htmlFor: id ?? name} : {tabIndex: 0}),
+	const accessiblePropsGroup = {
+		...(!renderLabel && {'aria-labelledby': fieldDetailsId, 'tabIndex': 0}),
+		...(type === 'fieldset' && {role: 'group'}),
+	};
+
+	const accessiblePropsFields = {
+		...(hasFieldDetails && {'aria-labelledby': fieldDetailsId}),
+		...(showFor && {htmlFor: id ?? name}),
+		...(readFieldDetails && {tabIndex: 0}),
 	};
 
 	const defaultRows = nestedFields?.map((field) => ({
@@ -264,10 +274,14 @@ export function FieldBase({
 		const visitor = new PagesVisitor(pages);
 
 		const newFieldName = fieldName ?? fieldReference;
+		const newParentInstanceId = parentInstanceId;
 
 		visitor.mapFields(
 			(field) => {
-				if (newFieldName === field.fieldName) {
+				if (
+					newFieldName === field.fieldName &&
+					newParentInstanceId === field.parentInstanceId
+				) {
 					repetitionsCounter++;
 				}
 			},
@@ -280,7 +294,7 @@ export function FieldBase({
 
 	return (
 		<ClayForm.Group
-			aria-labelledby={!renderLabel ? fieldDetailsId : null}
+			{...accessiblePropsGroup}
 			className={classNames({
 				'has-error': hasError,
 				'has-warning': warningMessage && !hasError,
@@ -290,7 +304,6 @@ export function FieldBase({
 			data-field-reference={fieldReference}
 			onClick={onClick}
 			style={style}
-			tabIndex={!renderLabel ? 0 : undefined}
 		>
 			{repeatable && (
 				<div className="lfr-ddm-form-field-repeatable-toolbar">
@@ -348,7 +361,7 @@ export function FieldBase({
 					{showLegend ? (
 						<fieldset>
 							<legend
-								{...accessibleProps}
+								{...accessiblePropsFields}
 								className="lfr-ddm-legend"
 							>
 								{showLabel && label}
@@ -368,7 +381,7 @@ export function FieldBase({
 					) : (
 						<>
 							<label
-								{...accessibleProps}
+								{...accessiblePropsFields}
 								className={classNames({
 									'ddm-empty': !showLabel && !required,
 									'ddm-label': showLabel || required,
@@ -420,13 +433,14 @@ export function FieldBase({
 			)}
 
 			<FieldFeedback
-				aria-hidden
+				aria-hidden={readFieldDetails}
 				errorMessage={hasError ? errorMessage : undefined}
 				helpMessage={typeof tip === 'string' ? tip : undefined}
+				name={id ?? name}
 				warningMessage={warningMessage}
 			/>
 
-			{accessible && fieldDetails && (
+			{hasFieldDetails && (
 				<span
 					className="sr-only"
 					dangerouslySetInnerHTML={{

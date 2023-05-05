@@ -39,7 +39,7 @@ public class ParallelExecutor<T> {
 
 		_executorService = executorService;
 
-		if (_executorService == null) {
+		if (executorService == null) {
 			_disposeExecutor = true;
 			_executorService = Executors.newSingleThreadExecutor();
 		}
@@ -90,7 +90,7 @@ public class ParallelExecutor<T> {
 		}
 
 		if (timeoutSeconds == null) {
-			timeoutSeconds = 60L * 5L;
+			timeoutSeconds = 60L * 60L * 2L;
 		}
 
 		try {

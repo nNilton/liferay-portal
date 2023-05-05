@@ -46,7 +46,9 @@ definition {
 	tearDown {
 		var testPortalInstance = PropsUtil.get("test.portal.instance");
 
-		ACUtils.tearDownAC();
+		// It is not possible to delete properties and data source after LRAC-13389. This functionality should return after LRAC-8040
+
+		//ACUtils.tearDownAC();
 
 		ACUtils.tearDownDXP();
 
@@ -149,7 +151,7 @@ definition {
 		// AC Refactor ticket: LRAC-9328
 		// AC Bug ticket: LRAC-9329
 
-		task ("Add a user custom field and sync the data") {
+		task ("Add a user custom field and sync") {
 			CustomFields.openCustomFieldAdmin();
 
 			CustomFields.addCP(
@@ -159,7 +161,9 @@ definition {
 				resourceName = "User",
 				startingValue = 21);
 
-			ACDXPSettings.syncNewUserData(fieldNameList = "Age");
+			ACDXPSettings.syncAttributes(
+				attributeCategory = "People",
+				attributeNameList = "Age");
 		}
 
 		task ("View AC Page as new user") {

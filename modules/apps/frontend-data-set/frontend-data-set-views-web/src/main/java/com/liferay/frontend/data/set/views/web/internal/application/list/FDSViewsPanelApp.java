@@ -19,11 +19,10 @@ import com.liferay.application.list.PanelApp;
 import com.liferay.application.list.constants.PanelCategoryKeys;
 import com.liferay.frontend.data.set.views.web.internal.constants.FDSViewsPortletKeys;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
-import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -41,6 +40,11 @@ import org.osgi.service.component.annotations.Reference;
 public class FDSViewsPanelApp extends BasePanelApp {
 
 	@Override
+	public Portlet getPortlet() {
+		return _portlet;
+	}
+
+	@Override
 	public String getPortletId() {
 		return FDSViewsPortletKeys.FDS_VIEWS;
 	}
@@ -49,20 +53,16 @@ public class FDSViewsPanelApp extends BasePanelApp {
 	public boolean isShow(PermissionChecker permissionChecker, Group group)
 		throws PortalException {
 
-		if (!GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-164563"))) {
+		if (!FeatureFlagManagerUtil.isEnabled("LPS-164563")) {
 			return false;
 		}
 
 		return super.isShow(permissionChecker, group);
 	}
 
-	@Override
 	@Reference(
-		target = "(javax.portlet.name=" + FDSViewsPortletKeys.FDS_VIEWS + ")",
-		unbind = "-"
+		target = "(javax.portlet.name=" + FDSViewsPortletKeys.FDS_VIEWS + ")"
 	)
-	public void setPortlet(Portlet portlet) {
-		super.setPortlet(portlet);
-	}
+	private Portlet _portlet;
 
 }

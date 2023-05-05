@@ -1,6 +1,7 @@
 @component-name = "portal-lima"
 definition {
 
+	property ci.retries.disabled = "true";
 	property portal.acceptance = "true";
 	property portal.release = "true";
 	property portal.upstream = "true";
@@ -878,6 +879,10 @@ definition {
 
 		Open.openInTheNewTab(locator1 = "http://localhost:8080");
 
+		takeScreenshot();
+
+		Refresh();
+
 		User._clickSignInLink();
 
 		SignIn.agreeToTermsOfUse();
@@ -910,7 +915,7 @@ definition {
 	test CanImportEntryWithImageBetweenDifferentSites {
 		property portal.acceptance = "false";
 
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 
 		var imageId = JSONBlog.uploadBlogImage(
 			groupName = "Guest",
@@ -988,6 +993,10 @@ definition {
 
 		Open.openInTheNewTab(locator1 = "http://localhost:8080");
 
+		takeScreenshot();
+
+		Refresh();
+
 		User._clickSignInLink();
 
 		SignIn.agreeToTermsOfUse();
@@ -1019,7 +1028,7 @@ definition {
 	test CanImportEntryWithSmallImageBetweenDifferentSites {
 		property portal.acceptance = "false";
 
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 
 		BlogsNavigator.openToAddEntry(
 			layoutName = "Blogs Page",

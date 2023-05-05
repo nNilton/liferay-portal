@@ -12,9 +12,15 @@
  * details.
  */
 
-import {Card, Input, InputLocalized} from '@liferay/object-js-components-web';
-import React, {useState} from 'react';
+import {
+	API,
+	Card,
+	Input,
+	InputLocalized,
+} from '@liferay/object-js-components-web';
+import React, {useEffect, useState} from 'react';
 
+import PicklistDefaultValueSelect from '../../../../components/ObjectField/DefaultValueFields/PicklistDefaultValueSelect';
 import {updateFieldSettings} from '../../../../utils/fieldSettings';
 import ObjectFieldFormBase, {
 	ObjectFieldErrors,
@@ -24,6 +30,7 @@ import {AttachmentProperties} from './AttachmentProperties';
 import {FormulaContainer} from './FormulaContainer';
 import {MaxLengthProperties} from './MaxLengthProperties';
 import {SearchableContainer} from './SearchableContainer';
+import {TranslationOptionsContainer} from './TranslationOptionsContainer';
 
 interface AggregationFilters {
 	defaultSort?: boolean;
@@ -41,6 +48,7 @@ interface AggregationFilters {
 }
 
 interface BasicInfoProps {
+	creationLanguageId: Liferay.Language.Locale;
 	errors: ObjectFieldErrors;
 	filterOperators: TFilterOperators;
 	handleChange: React.ChangeEventHandler<HTMLInputElement>;
@@ -57,6 +65,7 @@ interface BasicInfoProps {
 }
 
 export function BasicInfo({
+	creationLanguageId,
 	errors,
 	filterOperators,
 	handleChange,
@@ -71,6 +80,9 @@ export function BasicInfo({
 	values,
 	workflowStatusJSONArray,
 }: BasicInfoProps) {
+	const [objectDefinition, setObjectDefinition] = useState<
+		Partial<ObjectDefinition>
+	>({enableLocalization: false});
 	const [
 		objectDefinitionExternalReferenceCode2,
 		setObjectDefinitionExternalReferenceCode2,
@@ -96,6 +108,18 @@ export function BasicInfo({
 				{name, value}
 			),
 		});
+
+	useEffect(() => {
+		const makeFetch = async () => {
+			const objectDefinitionResponse = await API.getObjectDefinitionByExternalReferenceCode(
+				objectDefinitionExternalReferenceCode
+			);
+
+			setObjectDefinition(objectDefinitionResponse);
+		};
+
+		makeFetch();
+	}, [objectDefinitionExternalReferenceCode]);
 
 	return (
 		<>
@@ -141,8 +165,9 @@ export function BasicInfo({
 						/>
 					)}
 
-					{(values.businessType === 'Text' ||
-						values.businessType === 'LongText') && (
+					{(values.businessType === 'Encrypted' ||
+						values.businessType === 'LongText' ||
+						values.businessType === 'Text') && (
 						<MaxLengthProperties
 							disabled={values.system}
 							errors={errors}
@@ -155,6 +180,18 @@ export function BasicInfo({
 						/>
 					)}
 				</ObjectFieldFormBase>
+
+				{!Liferay.FeatureFlags['LPS-163716'] && values.state && (
+					<PicklistDefaultValueSelect
+						creationLanguageId={creationLanguageId}
+						defaultValue={values.defaultValue}
+						error={errors.defaultValue}
+						label={Liferay.Language.get('default-value')}
+						required
+						setValues={setValues}
+						values={values}
+					/>
+				)}
 			</Card>
 
 			{values.businessType === 'Aggregation' && (
@@ -190,6 +227,15 @@ export function BasicInfo({
 					objectField={values}
 					readOnly={readOnly}
 					setValues={setValues}
+				/>
+			)}
+
+			{Liferay.FeatureFlags['LPS-146755'] && (
+				<TranslationOptionsContainer
+					objectDefinition={objectDefinition}
+					published={isApproved}
+					setValues={setValues}
+					values={values}
 				/>
 			)}
 

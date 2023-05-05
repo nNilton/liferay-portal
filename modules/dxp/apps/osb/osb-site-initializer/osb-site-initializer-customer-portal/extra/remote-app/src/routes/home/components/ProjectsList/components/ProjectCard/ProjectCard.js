@@ -28,17 +28,15 @@ const statusReport = {
 };
 
 const ProjectCard = ({compressed, loading, onClick, ...koroneikiAccount}) => {
-	const hideSLAStatus =
-		!koroneikiAccount.hasSLAGoldPlatinum ||
-		koroneikiAccount.status === 'Expired';
+	const showSLAStatus = Boolean(
+		koroneikiAccount.slaCurrent ||
+			koroneikiAccount.slaExpired ||
+			koroneikiAccount.slaFuture
+	);
 
 	const SLAStatus = () => {
 		if (loading) {
 			return <Skeleton height={20} width={54} />;
-		}
-
-		if (hideSLAStatus) {
-			return null;
 		}
 
 		return <StatusTag currentStatus={koroneikiAccount.status} />;
@@ -49,9 +47,11 @@ const ProjectCard = ({compressed, loading, onClick, ...koroneikiAccount}) => {
 			return <Skeleton className="mt-1" height={20} width={100} />;
 		}
 
-		if (hideSLAStatus) {
-			return null;
-		}
+		const displayDate = {
+			[SLA_STATUS_TYPES.active]: koroneikiAccount.slaCurrentEndDate,
+			[SLA_STATUS_TYPES.future]: koroneikiAccount.slaFutureStartDate,
+			[SLA_STATUS_TYPES.expired]: koroneikiAccount.slaExpiredEndDate,
+		};
 
 		return (
 			<div className="text-neutral-5 text-paragraph-sm">
@@ -59,11 +59,25 @@ const ProjectCard = ({compressed, loading, onClick, ...koroneikiAccount}) => {
 
 				<span className="font-weight-bold ml-1 text-paragraph">
 					{getDateCustomFormat(
-						koroneikiAccount.status === SLA_STATUS_TYPES.future
-							? koroneikiAccount.slaFutureStartDate
-							: koroneikiAccount.slaCurrentEndDate,
+						displayDate[koroneikiAccount.status],
 						FORMAT_DATE_TYPES.day2DMonthSYearN
 					)}
+				</span>
+			</div>
+		);
+	};
+
+	const SupportRegion = () => {
+		if (loading) {
+			return <Skeleton className="mt-1" height={20} width={120} />;
+		}
+
+		return (
+			<div className="text-align-end text-neutral-5 text-paragraph-sm">
+				{i18n.translate('support-region')}
+
+				<span className="font-weight-bold ml-1">
+					{i18n.translate(getKebabCase(koroneikiAccount.region))}
 				</span>
 			</div>
 		);
@@ -129,30 +143,11 @@ const ProjectCard = ({compressed, loading, onClick, ...koroneikiAccount}) => {
 							'mt-6 pt-3': !compressed,
 						})}
 					>
-						<SLAStatus />
+						{showSLAStatus && <SLAStatus />}
 
-						<SLAStatusDate />
+						{showSLAStatus && <SLAStatusDate />}
 
-						{compressed &&
-							(loading ? (
-								<Skeleton
-									className="mt-1"
-									height={20}
-									width={120}
-								/>
-							) : (
-								<div className="text-align-end text-neutral-5 text-paragraph-sm">
-									{i18n.translate('support-region')}
-
-									<span className="font-weight-bold ml-1">
-										{i18n.translate(
-											getKebabCase(
-												koroneikiAccount.region
-											)
-										)}
-									</span>
-								</div>
-							))}
+						{compressed && <SupportRegion />}
 					</div>
 				</ClayCard.Row>
 			</ClayCard.Body>

@@ -14,7 +14,7 @@ definition {
 
 		task ("Add two sites") {
 			for (var i : list "1,2") {
-				JSONGroup.addGroup(groupName = "Test Site Name ${i}");
+				HeadlessSite.addSite(siteName = "Test Site Name ${i}");
 			}
 		}
 	}
@@ -37,7 +37,7 @@ definition {
 	@description = "Add site name translation in site settings."
 	@priority = 4
 	test AddSiteNameTranslations {
-		property testray.component.names = "Localization,Site Administration";
+		property testray.component.names = "Localization,Sites Administration";
 
 		task ("Add two localized site names") {
 			Site.openSiteSettingsAdmin(siteURLKey = "test-site-name-1");
@@ -133,6 +133,7 @@ definition {
 				siteName = "Test Site Name",
 				siteTemplateActive = "Yes",
 				siteTemplateName = "Site Template Name",
+				siteTemplateTab = "Custom Site Templates",
 				siteType = "Site Template",
 				uncheckPropagation = "true");
 		}

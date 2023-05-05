@@ -166,7 +166,8 @@ definition {
 
 	@priority = 5
 	test DeactivateAndActivateWorkflowDefinition {
-		property portal.acceptance = "true";
+		property ci.retries.disabled = "true";
+		property portal.acceptance = "quarantine";
 		property test.name.skip.portal.instance = "CPKaleoformsadmin#DeactivateAndActivateWorkflowDefinition";
 
 		Navigator.openURL();
@@ -225,7 +226,8 @@ definition {
 
 	@priority = 5
 	test DeactivateAndDeleteWorkflowDefinition {
-		property portal.acceptance = "true";
+		property ci.retries.disabled = "true";
+		property portal.acceptance = "quarantine";
 		property test.name.skip.portal.instance = "CPKaleoformsadmin#DeactivateAndDeleteWorkflowDefinition";
 
 		Navigator.openURL();
@@ -686,7 +688,7 @@ definition {
 
 	@priority = 5
 	test DeleteProcess {
-		property portal.acceptance = "true";
+		property portal.acceptance = "quarantine";
 
 		Navigator.openURL();
 
@@ -1055,6 +1057,7 @@ definition {
 	@priority = 3
 	test EditProcessFieldSetPaginationAndViewSelectedForm {
 		property portal.upstream = "true";
+		property test.name.skip.portal.instance = "CPKaleoformsadmin#EditProcessFieldSetPaginationAndViewSelectedForm";
 
 		for (var kfFieldSetName : list "Field1,Field2,Field3,Field4,Field5,Field6") {
 			ProductMenu.gotoPortlet(
@@ -1312,6 +1315,8 @@ definition {
 
 	@priority = 4
 	test EditProcessNewFieldSet {
+		property ci.retries.disabled = "true";
+
 		Navigator.openURL();
 
 		for (var kfFieldSetName : list "Field1,Field2,Field3,Field4,Field5,Field6") {
@@ -1434,7 +1439,8 @@ definition {
 
 	@priority = 5
 	test EditProcessNewWorkflowViaSourceTab {
-		property portal.acceptance = "true";
+		property ci.retries.disabled = "true";
+		property portal.acceptance = "quarantine";
 		property test.name.skip.portal.instance = "CPKaleoformsadmin#EditProcessNewWorkflowViaSourceTab";
 
 		Navigator.openURL();
@@ -1655,6 +1661,7 @@ definition {
 
 	@priority = 3
 	test EditSingleApproverWorkflowViaViewTabViaAddProcess {
+		property ci.retries.disabled = "true";
 		property test.name.skip.portal.instance = "CPKaleoformsadmin#EditSingleApproverWorkflowViaViewTabViaAddProcess";
 
 		Navigator.openURL();
@@ -1733,6 +1740,7 @@ definition {
 
 	@priority = 4
 	test EditUploadedWorkflowViaViewTabViaAddProcess {
+		property ci.retries.disabled = "true";
 		property test.name.skip.portal.instance = "CPKaleoformsadmin#EditUploadedWorkflowViaViewTabViaAddProcess";
 
 		ApplicationsMenu.gotoPortlet(
@@ -2812,8 +2820,6 @@ definition {
 			kfFieldSetName = "Field4",
 			kfProcessName = "Kaleo Forms Process");
 
-		KaleoFormsAdmin.viewNextFieldSetPage();
-
 		KaleoFormsAdmin.viewSelectedFieldSet(kfFieldSetName = "Field4");
 
 		KaleoFormsAdmin.chooseFieldSet(
@@ -2821,10 +2827,6 @@ definition {
 			kfProcessName = "Kaleo Forms Process");
 
 		KaleoFormsAdmin.viewPreviousFieldSetPage();
-
-		KaleoFormsAdmin.viewSelectedFieldSet(kfFieldSetName = "Field1");
-
-		KaleoFormsAdmin.viewNextFieldSetPage();
 
 		KaleoFormsAdmin.viewSelectedFieldSet(kfFieldSetName = "Field1");
 

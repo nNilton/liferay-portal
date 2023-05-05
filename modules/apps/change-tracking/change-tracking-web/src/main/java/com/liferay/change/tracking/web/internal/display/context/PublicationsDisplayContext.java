@@ -80,10 +80,10 @@ public class PublicationsDisplayContext extends BasePublicationsDisplayContext {
 		_ctEntryLocalService = ctEntryLocalService;
 		_httpServletRequest = httpServletRequest;
 		_language = language;
-
 		_renderRequest = renderRequest;
+		_renderResponse = renderResponse;
 
-		_themeDisplay = (ThemeDisplay)_renderRequest.getAttribute(
+		_themeDisplay = (ThemeDisplay)renderRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
 		CTPreferences ctPreferences =
@@ -96,8 +96,6 @@ public class PublicationsDisplayContext extends BasePublicationsDisplayContext {
 		else {
 			_ctCollectionId = ctPreferences.getCtCollectionId();
 		}
-
-		_renderResponse = renderResponse;
 	}
 
 	public Map<String, Object> getCollaboratorsReactData(
@@ -164,6 +162,18 @@ public class PublicationsDisplayContext extends BasePublicationsDisplayContext {
 					publicationTemplate) {
 
 					return false;
+				}
+
+				CTCollection ctCollection =
+					_ctCollectionLocalService.fetchCTCollection(ctCollectionId);
+
+				if ((ctCollection == null) ||
+					(ctCollection.getStatus() ==
+						WorkflowConstants.STATUS_APPROVED) ||
+					(ctCollection.getStatus() ==
+						WorkflowConstants.STATUS_EXPIRED)) {
+
+					return true;
 				}
 
 				return !CTCollectionPermission.contains(

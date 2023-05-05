@@ -63,7 +63,9 @@ definition {
 	tearDown {
 		var testPortalInstance = PropsUtil.get("test.portal.instance");
 
-		ACUtils.tearDownAC();
+		// It is not possible to delete properties and data source after LRAC-13389. This functionality should return after LRAC-8040
+
+		//ACUtils.tearDownAC();
 
 		ACUtils.tearDownDXP();
 
@@ -890,10 +892,10 @@ definition {
 			ACUtils.clickGenericHyperlink(hyperlinkText = "Access our documentation to learn more.");
 
 			task ("Switch to the documentation tab") {
-				SelectWindow(locator1 = "title=Events Analysis — Liferay Learn");
+				SelectWindow(locator1 = "title=Events Analysis - Liferay Learn");
 			}
 
-			ACUtils.viewGenericText(textValueList = "Documentation,Events Analysis");
+			ACUtils.viewGenericText(textValueList = "Events Analysis");
 		}
 	}
 

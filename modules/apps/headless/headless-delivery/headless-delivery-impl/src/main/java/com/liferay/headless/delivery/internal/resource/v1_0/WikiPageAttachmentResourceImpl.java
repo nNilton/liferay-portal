@@ -18,6 +18,7 @@ import com.liferay.document.library.util.DLURLHelper;
 import com.liferay.headless.delivery.dto.v1_0.WikiPageAttachment;
 import com.liferay.headless.delivery.dto.v1_0.util.ContentValueUtil;
 import com.liferay.headless.delivery.resource.v1_0.WikiPageAttachmentResource;
+import com.liferay.portal.kernel.change.tracking.CTAware;
 import com.liferay.portal.kernel.portletfilerepository.PortletFileRepository;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.Folder;
@@ -32,8 +33,6 @@ import com.liferay.wiki.constants.WikiConstants;
 import com.liferay.wiki.model.WikiPage;
 import com.liferay.wiki.service.WikiPageService;
 
-import java.util.Optional;
-
 import javax.ws.rs.BadRequestException;
 
 import org.osgi.service.component.annotations.Component;
@@ -47,6 +46,7 @@ import org.osgi.service.component.annotations.ServiceScope;
 	properties = "OSGI-INF/liferay/rest/v1_0/wiki-page-attachment.properties",
 	scope = ServiceScope.PROTOTYPE, service = WikiPageAttachmentResource.class
 )
+@CTAware
 public class WikiPageAttachmentResourceImpl
 	extends BaseWikiPageAttachmentResourceImpl {
 
@@ -157,7 +157,7 @@ public class WikiPageAttachmentResourceImpl
 				contextUser.getUserId(), WikiPage.class.getName(),
 				wikiPage.getResourcePrimKey(), WikiConstants.SERVICE_NAME,
 				folder.getFolderId(), binaryFile.getInputStream(),
-				binaryFile.getFileName(), binaryFile.getFileName(), false));
+				binaryFile.getFileName(), binaryFile.getContentType(), true));
 	}
 
 	private WikiPageAttachment _toWikiPageAttachment(FileEntry fileEntry)
@@ -165,12 +165,11 @@ public class WikiPageAttachmentResourceImpl
 
 		return new WikiPageAttachment() {
 			{
-				contentUrl = _dlURLHelper.getPreviewURL(
-					fileEntry, fileEntry.getFileVersion(), null, "", false,
-					false);
+				contentUrl = _portletFileRepository.getPortletFileEntryURL(
+					null, fileEntry, null);
 				contentValue = ContentValueUtil.toContentValue(
 					"contentValue", fileEntry::getContentStream,
-					Optional.of(contextUriInfo));
+					contextUriInfo);
 				encodingFormat = fileEntry.getMimeType();
 				externalReferenceCode = fileEntry.getExternalReferenceCode();
 				fileExtension = fileEntry.getExtension();

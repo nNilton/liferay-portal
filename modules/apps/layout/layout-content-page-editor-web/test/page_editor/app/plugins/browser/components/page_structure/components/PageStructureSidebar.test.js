@@ -64,6 +64,7 @@ const renderComponent = ({
 	hasUpdatePermissions = true,
 	lockedExperience = false,
 	masterRootItemChildren = ['11-container'],
+	restrictedItemIds = new Set(),
 	rootItemChildren = ['01-container'],
 	viewportSize = VIEWPORT_SIZES.desktop,
 } = {}) => {
@@ -128,7 +129,7 @@ const renderComponent = ({
 									children: ['02-row'],
 									config: {},
 									itemId: '01-container',
-									parentId: 'main',
+									parentId: '00-main',
 									type: LAYOUT_DATA_ITEM_TYPES.container,
 								},
 								'02-row': {
@@ -173,7 +174,7 @@ const renderComponent = ({
 										...formConfig,
 									},
 									itemId: '06-form',
-									parentId: LAYOUT_DATA_ITEM_TYPES.root,
+									parentId: '00-main',
 									type: LAYOUT_DATA_ITEM_TYPES.form,
 								},
 								'07-row': {
@@ -231,7 +232,10 @@ const renderComponent = ({
 									},
 								},
 
-								rootItems: {main: '10-main'},
+								rootItems: {
+									dropZone: '12-dropzone',
+									main: '10-main',
+								},
 								version: 1,
 							},
 							masterLayoutPlid: '0',
@@ -249,6 +253,8 @@ const renderComponent = ({
 							LOCKED_SEGMENTS_EXPERIMENT: lockedExperience,
 							UPDATE: hasUpdatePermissions,
 						},
+
+						restrictedItemIds,
 
 						selectedViewportSize: viewportSize,
 					})}
@@ -282,8 +288,7 @@ describe('PageStructureSidebar', () => {
 
 	it('uses fragments names as labels', () => {
 		renderComponent({
-			activeItemId: '11-container',
-			rootItemChildren: ['04-fragment'],
+			activeItemId: '04-fragment',
 		});
 
 		expect(screen.getByText('Fragment 1')).toBeInTheDocument();
@@ -291,7 +296,7 @@ describe('PageStructureSidebar', () => {
 
 	it('uses default labels for containers, columns, rows', () => {
 		renderComponent({
-			activeItemId: '11-container',
+			activeItemId: '03-column',
 			rootItemChildren: ['01-container', '02-row', '03-column'],
 		});
 
@@ -303,14 +308,13 @@ describe('PageStructureSidebar', () => {
 	});
 
 	it('sets activeItemId as selected item', () => {
-		renderComponent({
-			activeItemId: '11-container',
+		const {baseElement} = renderComponent({
+			activeItemId: '04-fragment',
 		});
 
-		expect(screen.getByLabelText('Collapse container')).toHaveAttribute(
-			'aria-expanded',
-			'true'
-		);
+		expect(
+			baseElement.querySelector('[aria-controls="04-fragment"]')
+		).toHaveAttribute('aria-expanded', 'true');
 	});
 
 	it('disables items that are in masterLayout', () => {
@@ -398,7 +402,7 @@ describe('PageStructureSidebar', () => {
 
 	it('render custom fragment names as labels', () => {
 		renderComponent({
-			activeItemId: '11-container',
+			activeItemId: '04-fragment',
 			rootItemChildren: ['04-fragment'],
 		});
 
@@ -407,7 +411,7 @@ describe('PageStructureSidebar', () => {
 
 	it('allow changing fragment name', () => {
 		const {baseElement} = renderComponent({
-			activeItemId: '11-container',
+			activeItemId: '04-fragment',
 			rootItemChildren: ['04-fragment'],
 		});
 
@@ -435,7 +439,7 @@ describe('PageStructureSidebar', () => {
 	describe('Form container without permissions', () => {
 		it('shows the form normally when it is mapped to an element with permissions', () => {
 			renderComponent({
-				activeItemId: '11-container',
+				activeItemId: '04-fragment',
 				rootItemChildren: ['06-form'],
 			});
 
@@ -449,7 +453,7 @@ describe('PageStructureSidebar', () => {
 
 		it('shows a permission restriction message when the form is mapped to an element without permissions and their children are not listed', () => {
 			const {baseElement} = renderComponent({
-				activeItemId: '11-container',
+				activeItemId: '06-form',
 				formConfig: {
 					classNameId: '22222',
 					classTypeId: '0',
@@ -458,14 +462,32 @@ describe('PageStructureSidebar', () => {
 			});
 
 			expect(screen.getByText('form-container')).toBeInTheDocument();
+
 			expect(
 				screen.getByText(
 					'this-content-cannot-be-displayed-due-to-permission-restrictions'
 				)
 			).toBeInTheDocument();
+
 			expect(
-				baseElement.querySelector('.lexicon-icon-plus')
+				baseElement.querySelector('[aria-controls="06-form"]')
 			).not.toBeInTheDocument();
+		});
+
+		it('shows a permission restriction message when the fragment is restricted', () => {
+			renderComponent({
+				activeItemId: '04-fragment',
+				restrictedItemIds: new Set(['04-fragment']),
+				rootItemChildren: ['04-fragment'],
+			});
+
+			expect(screen.getByText('Fragment 1')).toBeInTheDocument();
+
+			expect(
+				screen.getByText(
+					'this-content-cannot-be-displayed-due-to-permission-restrictions'
+				)
+			).toBeInTheDocument();
 		});
 	});
 });

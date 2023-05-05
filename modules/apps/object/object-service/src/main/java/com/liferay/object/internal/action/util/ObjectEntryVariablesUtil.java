@@ -17,30 +17,23 @@ package com.liferay.object.internal.action.util;
 import com.liferay.dynamic.data.mapping.expression.CreateExpressionRequest;
 import com.liferay.dynamic.data.mapping.expression.DDMExpression;
 import com.liferay.dynamic.data.mapping.expression.DDMExpressionFactory;
+import com.liferay.object.field.setting.util.ObjectFieldSettingUtil;
 import com.liferay.object.internal.dynamic.data.mapping.expression.ObjectEntryDDMExpressionParameterAccessor;
 import com.liferay.object.model.ObjectDefinition;
-import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.model.ObjectField;
-import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.ObjectFieldLocalServiceUtil;
+import com.liferay.object.service.ObjectFieldSettingLocalServiceUtil;
 import com.liferay.object.system.JaxRsApplicationDescriptor;
-import com.liferay.object.system.SystemObjectDefinitionMetadata;
-import com.liferay.object.system.SystemObjectDefinitionMetadataRegistry;
-import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.object.system.SystemObjectDefinitionManager;
+import com.liferay.object.system.SystemObjectDefinitionManagerRegistry;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
-import com.liferay.portal.kernel.model.BaseModel;
-import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.util.PropsValues;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
-import com.liferay.portal.vulcan.extension.EntityExtensionThreadLocal;
-import com.liferay.portal.vulcan.util.ObjectMapperUtil;
 
 import java.io.Serializable;
 
@@ -54,172 +47,6 @@ import java.util.Set;
  * @author Carolina Barbosa
  */
 public class ObjectEntryVariablesUtil {
-
-	public static Map<String, Object> getActionVariables(
-		DTOConverterRegistry dtoConverterRegistry,
-		ObjectDefinition objectDefinition, JSONObject payloadJSONObject,
-		SystemObjectDefinitionMetadataRegistry
-			systemObjectDefinitionMetadataRegistry) {
-
-		// TODO Remove all references to version 1 after March 2023
-
-		if (PropsValues.OBJECT_ENTRY_SCRIPT_VARIABLES_VERSION == 2) {
-			Map<String, Object> currentVariables = _getVariables(
-				dtoConverterRegistry, objectDefinition, false,
-				payloadJSONObject, systemObjectDefinitionMetadataRegistry);
-
-			return HashMapBuilder.<String, Object>put(
-				"baseModel", currentVariables
-			).put(
-				"originalBaseModel",
-				() -> {
-					String suffix = _getSuffix(
-						objectDefinition,
-						systemObjectDefinitionMetadataRegistry);
-
-					if (payloadJSONObject.has("original" + suffix)) {
-						return _getVariables(
-							dtoConverterRegistry, objectDefinition, true,
-							payloadJSONObject,
-							systemObjectDefinitionMetadataRegistry);
-					}
-
-					return _getDefaultVariables(
-						objectDefinition,
-						Collections.unmodifiableSet(currentVariables.keySet()));
-				}
-			).build();
-		}
-
-		if (objectDefinition.isSystem()) {
-			String contentType = _getContentType(
-				dtoConverterRegistry, objectDefinition,
-				systemObjectDefinitionMetadataRegistry);
-
-			Object object = payloadJSONObject.get("modelDTO" + contentType);
-
-			if (object == null) {
-				return payloadJSONObject.toMap();
-			}
-
-			return HashMapBuilder.<String, Object>put(
-				"baseModel",
-				() -> HashMapBuilder.<String, Object>putAll(
-					(Map<String, Object>)object
-				).putAll(
-					(Map<String, Object>)payloadJSONObject.get(
-						"extendedProperties")
-				).put(
-					"companyId", payloadJSONObject.getLong("companyId")
-				).put(
-					"creator", payloadJSONObject.get("userName")
-				).put(
-					"currentUserId", payloadJSONObject.getLong("userId")
-				).put(
-					"id", payloadJSONObject.getLong("classPK")
-				).put(
-					"objectDefinitionId",
-					payloadJSONObject.getLong("objectDefinitionId")
-				).put(
-					"status", payloadJSONObject.get("status")
-				).build()
-			).put(
-				"originalBaseModel", Collections.emptyMap()
-			).build();
-		}
-
-		return HashMapBuilder.<String, Object>put(
-			"baseModel",
-			() -> {
-				Map<String, Object> variables = new HashMap<>(
-					(Map)payloadJSONObject.get("objectEntry"));
-
-				Object values = variables.get("values");
-
-				if (values != null) {
-					variables.putAll((Map<String, Object>)values);
-
-					variables.remove("values");
-				}
-
-				variables.put("creator", variables.get("userName"));
-				variables.put(
-					"currentUserId", payloadJSONObject.getLong("userId"));
-				variables.put("id", payloadJSONObject.getLong("classPK"));
-
-				return variables;
-			}
-		).put(
-			"originalBaseModel", Collections.emptyMap()
-		).build();
-	}
-
-	public static Map<String, Object> getValidationRuleVariables(
-			BaseModel<?> baseModel, DTOConverterRegistry dtoConverterRegistry,
-			ObjectDefinition objectDefinition,
-			ObjectEntryLocalService objectEntryLocalService,
-			JSONObject payloadJSONObject,
-			SystemObjectDefinitionMetadataRegistry
-				systemObjectDefinitionMetadataRegistry)
-		throws PortalException {
-
-		if (PropsValues.OBJECT_ENTRY_SCRIPT_VARIABLES_VERSION == 2) {
-			Map<String, Object> currentVariables = _getVariables(
-				dtoConverterRegistry, objectDefinition, false,
-				payloadJSONObject, systemObjectDefinitionMetadataRegistry);
-
-			return HashMapBuilder.<String, Object>put(
-				"baseModel", currentVariables
-			).put(
-				"originalBaseModel",
-				() -> {
-					String suffix = _getSuffix(
-						objectDefinition,
-						systemObjectDefinitionMetadataRegistry);
-
-					if (payloadJSONObject.has("original" + suffix)) {
-						return _getVariables(
-							dtoConverterRegistry, objectDefinition, true,
-							payloadJSONObject,
-							systemObjectDefinitionMetadataRegistry);
-					}
-
-					return _getDefaultVariables(
-						objectDefinition,
-						Collections.unmodifiableSet(currentVariables.keySet()));
-				}
-			).build();
-		}
-
-		Map<String, Object> variables = HashMapBuilder.<String, Object>putAll(
-			baseModel.getModelAttributes()
-		).build();
-
-		if (baseModel instanceof ObjectEntry) {
-			variables.putAll(
-				objectEntryLocalService.getValues((ObjectEntry)baseModel));
-		}
-		else {
-			Map<String, Serializable> extendedProperties =
-				EntityExtensionThreadLocal.getExtendedProperties();
-
-			if (extendedProperties != null) {
-				variables.putAll(extendedProperties);
-			}
-		}
-
-		variables.putAll(
-			objectEntryLocalService.
-				getExtensionDynamicObjectDefinitionTableValues(
-					objectDefinition,
-					GetterUtil.getLong(baseModel.getPrimaryKeyObj())));
-
-		return HashMapBuilder.<String, Object>put(
-			"baseModel", variables
-		).put(
-			"originalBaseModel", Collections.emptyMap()
-		).build();
-	}
 
 	public static Map<String, Object> getValues(
 			DDMExpressionFactory ddmExpressionFactory,
@@ -264,18 +91,50 @@ public class ObjectEntryVariablesUtil {
 		return values;
 	}
 
+	public static Map<String, Object> getVariables(
+		DTOConverterRegistry dtoConverterRegistry,
+		ObjectDefinition objectDefinition, JSONObject payloadJSONObject,
+		SystemObjectDefinitionManagerRegistry
+			systemObjectDefinitionManagerRegistry) {
+
+		Map<String, Object> currentVariables = _getVariables(
+			dtoConverterRegistry, objectDefinition, false, payloadJSONObject,
+			systemObjectDefinitionManagerRegistry);
+
+		return HashMapBuilder.<String, Object>put(
+			"baseModel", currentVariables
+		).put(
+			"originalBaseModel",
+			() -> {
+				String suffix = _getSuffix(
+					objectDefinition, systemObjectDefinitionManagerRegistry);
+
+				if (payloadJSONObject.has("original" + suffix)) {
+					return _getVariables(
+						dtoConverterRegistry, objectDefinition, true,
+						payloadJSONObject,
+						systemObjectDefinitionManagerRegistry);
+				}
+
+				return _getDefaultVariables(
+					objectDefinition,
+					Collections.unmodifiableSet(currentVariables.keySet()));
+			}
+		).build();
+	}
+
 	private static String _getContentType(
 		DTOConverterRegistry dtoConverterRegistry,
 		ObjectDefinition objectDefinition,
-		SystemObjectDefinitionMetadataRegistry
-			systemObjectDefinitionMetadataRegistry) {
+		SystemObjectDefinitionManagerRegistry
+			systemObjectDefinitionManagerRegistry) {
 
-		SystemObjectDefinitionMetadata systemObjectDefinitionMetadata =
-			systemObjectDefinitionMetadataRegistry.
-				getSystemObjectDefinitionMetadata(objectDefinition.getName());
+		SystemObjectDefinitionManager systemObjectDefinitionManager =
+			systemObjectDefinitionManagerRegistry.
+				getSystemObjectDefinitionManager(objectDefinition.getName());
 
 		JaxRsApplicationDescriptor jaxRsApplicationDescriptor =
-			systemObjectDefinitionMetadata.getJaxRsApplicationDescriptor();
+			systemObjectDefinitionManager.getJaxRsApplicationDescriptor();
 
 		DTOConverter<?, ?> dtoConverter = dtoConverterRegistry.getDTOConverter(
 			jaxRsApplicationDescriptor.getApplicationName(),
@@ -283,8 +142,7 @@ public class ObjectEntryVariablesUtil {
 			jaxRsApplicationDescriptor.getVersion());
 
 		if (dtoConverter == null) {
-			Class<?> modelClass =
-				systemObjectDefinitionMetadata.getModelClass();
+			Class<?> modelClass = systemObjectDefinitionManager.getModelClass();
 
 			return modelClass.getSimpleName();
 		}
@@ -301,7 +159,10 @@ public class ObjectEntryVariablesUtil {
 				ObjectFieldLocalServiceUtil.getObjectFields(
 					objectDefinition.getObjectDefinitionId())) {
 
-			String defaultValue = objectField.getDefaultValue();
+			String defaultValue =
+				ObjectFieldSettingUtil.getDefaultValueAsString(
+					null, objectField.getObjectFieldId(),
+					ObjectFieldSettingLocalServiceUtil.getService(), null);
 
 			if (Validator.isNotNull(defaultValue) &&
 				keys.contains(objectField.getName())) {
@@ -315,18 +176,18 @@ public class ObjectEntryVariablesUtil {
 
 	private static String _getSuffix(
 		ObjectDefinition objectDefinition,
-		SystemObjectDefinitionMetadataRegistry
-			systemObjectDefinitionMetadataRegistry) {
+		SystemObjectDefinitionManagerRegistry
+			systemObjectDefinitionManagerRegistry) {
 
-		if (!objectDefinition.isSystem()) {
+		if (!objectDefinition.isUnmodifiableSystemObject()) {
 			return "ObjectEntry";
 		}
 
-		SystemObjectDefinitionMetadata systemObjectDefinitionMetadata =
-			systemObjectDefinitionMetadataRegistry.
-				getSystemObjectDefinitionMetadata(objectDefinition.getName());
+		SystemObjectDefinitionManager systemObjectDefinitionManager =
+			systemObjectDefinitionManagerRegistry.
+				getSystemObjectDefinitionManager(objectDefinition.getName());
 
-		Class<?> modelClass = systemObjectDefinitionMetadata.getModelClass();
+		Class<?> modelClass = systemObjectDefinitionManager.getModelClass();
 
 		return modelClass.getSimpleName();
 	}
@@ -335,8 +196,8 @@ public class ObjectEntryVariablesUtil {
 		DTOConverterRegistry dtoConverterRegistry,
 		ObjectDefinition objectDefinition, boolean oldValues,
 		JSONObject payloadJSONObject,
-		SystemObjectDefinitionMetadataRegistry
-			systemObjectDefinitionMetadataRegistry) {
+		SystemObjectDefinitionManagerRegistry
+			systemObjectDefinitionManagerRegistry) {
 
 		Map<String, Object> allowedVariables =
 			HashMapBuilder.<String, Object>put(
@@ -347,63 +208,20 @@ public class ObjectEntryVariablesUtil {
 
 		Map<String, Object> variables = new HashMap<>();
 
-		if (objectDefinition.isSystem()) {
-			Object object = payloadJSONObject.get(
-				"model" + objectDefinition.getName());
+		if (objectDefinition.isUnmodifiableSystemObject()) {
+			SystemObjectDefinitionManager systemObjectDefinitionManager =
+				systemObjectDefinitionManagerRegistry.
+					getSystemObjectDefinitionManager(
+						objectDefinition.getName());
 
-			if (oldValues) {
-				String suffix = _getSuffix(
-					objectDefinition, systemObjectDefinitionMetadataRegistry);
+			variables = systemObjectDefinitionManager.getVariables(
+				_getContentType(
+					dtoConverterRegistry, objectDefinition,
+					systemObjectDefinitionManagerRegistry),
+				objectDefinition, oldValues, payloadJSONObject);
 
-				object = payloadJSONObject.get("original" + suffix);
-			}
-
-			if (object == null) {
-				object = payloadJSONObject.get(
-					StringUtil.lowerCaseFirstLetter(
-						objectDefinition.getName()));
-			}
-
-			if (object == null) {
+			if (variables == null) {
 				return payloadJSONObject.toMap();
-			}
-
-			if (object instanceof JSONObject) {
-				Map<String, Object> map = ObjectMapperUtil.readValue(
-					Map.class, object);
-
-				Map<String, Object> jsonObjectMap =
-					(Map<String, Object>)map.get("_jsonObject");
-
-				variables.putAll((Map<String, Object>)jsonObjectMap.get("map"));
-			}
-			else if (object instanceof Map) {
-				variables.putAll((Map<String, Object>)object);
-			}
-
-			String contentType = _getContentType(
-				dtoConverterRegistry, objectDefinition,
-				systemObjectDefinitionMetadataRegistry);
-
-			Map<String, Object> map =
-				(Map<String, Object>)payloadJSONObject.get(
-					"modelDTO" + contentType);
-
-			if (oldValues) {
-				map = (Map<String, Object>)payloadJSONObject.get(
-					"originalDTO" + contentType);
-			}
-
-			if (map != null) {
-				variables.putAll(map);
-			}
-
-			Map<String, Object> extendedProperties =
-				(Map<String, Object>)payloadJSONObject.get(
-					"extendedProperties");
-
-			if (extendedProperties != null) {
-				variables.putAll(extendedProperties);
 			}
 		}
 		else {

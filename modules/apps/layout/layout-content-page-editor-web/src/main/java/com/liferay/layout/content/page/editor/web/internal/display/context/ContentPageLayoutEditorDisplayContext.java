@@ -37,6 +37,7 @@ import com.liferay.layout.content.page.editor.sidebar.panel.ContentPageEditorSid
 import com.liferay.layout.content.page.editor.web.internal.configuration.PageEditorConfiguration;
 import com.liferay.layout.content.page.editor.web.internal.constants.ContentPageEditorActionKeys;
 import com.liferay.layout.content.page.editor.web.internal.segments.SegmentsExperienceUtil;
+import com.liferay.layout.content.page.editor.web.internal.util.ContentManager;
 import com.liferay.layout.content.page.editor.web.internal.util.FragmentCollectionManager;
 import com.liferay.layout.content.page.editor.web.internal.util.FragmentEntryLinkManager;
 import com.liferay.layout.page.template.model.LayoutPageTemplateStructure;
@@ -111,6 +112,7 @@ public class ContentPageLayoutEditorDisplayContext
 	public ContentPageLayoutEditorDisplayContext(
 		AssetListEntryLocalService assetListEntryLocalService,
 		List<ContentPageEditorSidebarPanel> contentPageEditorSidebarPanels,
+		ContentManager contentManager,
 		FragmentCollectionManager fragmentCollectionManager,
 		FragmentEntryLinkManager fragmentEntryLinkManager,
 		FragmentEntryLinkLocalService fragmentEntryLinkLocalService,
@@ -144,15 +146,15 @@ public class ContentPageLayoutEditorDisplayContext
 		WorkflowDefinitionLinkLocalService workflowDefinitionLinkLocalService) {
 
 		super(
-			contentPageEditorSidebarPanels, fragmentCollectionManager,
-			fragmentEntryLinkManager, fragmentEntryLinkLocalService,
-			fragmentEntryLocalService, frontendTokenDefinitionRegistry,
-			httpServletRequest, infoItemServiceRegistry,
-			infoSearchClassMapperRegistry, itemSelector, jsonFactory, language,
-			layoutLocalService, layoutPageTemplateEntryLocalService,
-			layoutPageTemplateEntryService, layoutPermission,
-			layoutSetLocalService, pageEditorConfiguration, portal,
-			portletRequest, portletURLFactory, renderResponse,
+			contentPageEditorSidebarPanels, contentManager,
+			fragmentCollectionManager, fragmentEntryLinkManager,
+			fragmentEntryLinkLocalService, fragmentEntryLocalService,
+			frontendTokenDefinitionRegistry, httpServletRequest,
+			infoItemServiceRegistry, infoSearchClassMapperRegistry,
+			itemSelector, jsonFactory, language, layoutLocalService,
+			layoutPageTemplateEntryLocalService, layoutPageTemplateEntryService,
+			layoutPermission, layoutSetLocalService, pageEditorConfiguration,
+			portal, portletRequest, portletURLFactory, renderResponse,
 			segmentsConfigurationProvider, segmentsExperienceManager,
 			segmentsExperienceLocalService, segmentsExperimentRelLocalService,
 			staging, stagingGroupHelper, styleBookEntryLocalService,
@@ -375,7 +377,9 @@ public class ContentPageLayoutEditorDisplayContext
 
 		List<SegmentsEntry> segmentsEntries =
 			_segmentsEntryService.getSegmentsEntries(
-				_getStagingAwareGroupId(), true);
+				stagingGroupHelper.getStagedPortletGroupId(
+					getGroupId(), SegmentsPortletKeys.SEGMENTS),
+				true);
 
 		for (SegmentsEntry segmentsEntry : segmentsEntries) {
 			availableSegmentsEntries.put(
@@ -638,23 +642,6 @@ public class ContentPageLayoutEditorDisplayContext
 				"label", typeLabel
 			).build()
 		).build();
-	}
-
-	private long _getStagingAwareGroupId() {
-		long groupId = getGroupId();
-
-		if (stagingGroupHelper.isStagingGroup(groupId) &&
-			!stagingGroupHelper.isStagedPortlet(
-				groupId, SegmentsPortletKeys.SEGMENTS)) {
-
-			Group group = stagingGroupHelper.fetchLiveGroup(groupId);
-
-			if (group != null) {
-				groupId = group.getGroupId();
-			}
-		}
-
-		return groupId;
 	}
 
 	private boolean _hasEditSegmentsEntryPermission() throws Exception {

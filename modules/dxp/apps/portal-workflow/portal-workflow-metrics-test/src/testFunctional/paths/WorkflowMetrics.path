@@ -107,17 +107,17 @@
 </tr>
 <tr>
 	<td>PERFORMANCE_TOTAL_OVERDUE_ITEMS_VALUE</td>
-	<td>//div[@class='header'][span[contains(text(),'Overdue')]]/following-sibling::div</td>
+	<td>//div[@class='header'][span[contains(text(),'Overdue')]]//..//div[@class='body']</td>
 	<td></td>
 </tr>
 <tr>
 	<td>PERFORMANCE_TOTAL_ONTIME_ITEMS_VALUE</td>
-	<td>//div[@class='header'][span[contains(text(),'On Time')]]/following-sibling::div</td>
+	<td>//div[@class='header'][span[contains(text(),'On Time')]]//..//div[@class='body']</td>
 	<td></td>
 </tr>
 <tr>
 	<td>PERFORMANCE_TOTAL_UNTRACKED_ITEMS_VALUE</td>
-	<td>//div[@class='header'][span[contains(text(),'Untracked')]]/following-sibling::div</td>
+	<td>//div[@class='header'][span[contains(text(),'Untracked')]]//..//div[@class='body']</td>
 	<td></td>
 </tr>
 <tr>
@@ -338,11 +338,6 @@
 <tr>
 	<td>METRICS_PERFORMANCE_BY_ASSIGNEE_CARD_VIEW_ALL_ASSIGNEES_LINK_NEW_LANGUAGE</td>
 	<td>//a//span[contains(text(), '${key_newLangText} (${key_assigneesNumber})')]</td>
-	<td></td>
-</tr>
-<tr>
-	<td>METRICS_PERFORMANCE_BY_ASSIGNEE_CARD_NO_RESULTS</td>
-	<td>//span[contains(text(),'Performance by Assignee')]/ancestor::div[contains(@class, 'panel-header')]/following-sibling::div//p[contains(.,'No results were found.')]</td>
 	<td></td>
 </tr>
 <tr>

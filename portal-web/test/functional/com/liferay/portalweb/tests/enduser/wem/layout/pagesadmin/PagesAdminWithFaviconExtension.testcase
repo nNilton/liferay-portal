@@ -3,7 +3,7 @@ definition {
 
 	property portal.release = "true";
 	property portal.upstream = "true";
-	property testray.main.component.name = "Site Pages Administration";
+	property testray.main.component.name = "Page Administration";
 
 	setUp {
 		task ("Set up instance and sign in") {
@@ -13,7 +13,7 @@ definition {
 		}
 
 		task ("Add a site") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 
 		task ("Add two remote apps for favicon extension") {
@@ -72,17 +72,15 @@ definition {
 				menuItem = "Configure",
 				pageName = "Widget Page Name");
 
-			Navigator.gotoNavTab(navTab = "Look and Feel");
+			Navigator.gotoNavTab(navTab = "Design");
 
 			AssertTextEquals(
-				faviconName = "Favicon from Theme",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "Favicon from Theme");
 
 			PagesAdmin.selectFaviconExtension(extensionName = "Google Favicon");
 
 			AssertTextEquals(
-				faviconName = "Google Favicon",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "Google Favicon");
 
@@ -124,15 +122,15 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
+			Navigator.gotoNavTab(navTab = "Design");
+
 			AssertTextEquals(
-				faviconName = "Favicon from Theme",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "Favicon from Theme");
 
 			PagesAdmin.selectFaviconExtension(extensionName = "Google Favicon");
 
 			AssertTextEquals(
-				faviconName = "Google Favicon",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "Google Favicon");
 
@@ -158,15 +156,15 @@ definition {
 
 			DropdownMenuItem.click(menuItem = "Configuration");
 
+			Navigator.gotoNavTab(navTab = "Design");
+
 			AssertTextEquals(
-				faviconName = "Favicon from Theme",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "Favicon from Theme");
 
 			PagesAdmin.selectFaviconExtension(extensionName = "NBA Favicon");
 
 			AssertTextEquals(
-				faviconName = "NBA Favicon",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "NBA Favicon");
 
@@ -216,6 +214,8 @@ definition {
 
 			WaitForPageLoad();
 
+			Navigator.gotoNavTab(navTab = "Design");
+
 			PagesAdmin.selectFaviconExtension(extensionName = "Google Favicon");
 
 			PortletEntry.save();
@@ -235,16 +235,14 @@ definition {
 
 		task ("Then the site designer could clear the favicon extension selection") {
 			AssertTextEquals(
-				faviconName = "Google Favicon",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "Google Favicon");
 
 			Click(
-				buttonId = "clearFaviconButton",
-				locator1 = "Button#BUTTON_ID");
+				ariaLabel = "Clear Favicon",
+				locator1 = "Button#ANY_WITH_ARIA_LABEL");
 
 			AssertTextEquals(
-				faviconName = "Favicon from Theme",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "Favicon from Theme");
 
@@ -282,6 +280,8 @@ definition {
 
 			WaitForPageLoad();
 
+			Navigator.gotoNavTab(navTab = "Design");
+
 			PagesAdmin.selectFaviconExtension(extensionName = "Google Favicon");
 
 			PortletEntry.save();
@@ -306,8 +306,9 @@ definition {
 
 			WaitForPageLoad();
 
+			Navigator.gotoNavTab(navTab = "Design");
+
 			AssertTextEquals(
-				faviconName = "Favicon from Master",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "Favicon from Master");
 		}
@@ -316,7 +317,6 @@ definition {
 			PagesAdmin.selectFaviconExtension(extensionName = "NBA Favicon");
 
 			AssertTextEquals(
-				faviconName = "NBA Favicon",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "NBA Favicon");
 
@@ -356,6 +356,8 @@ definition {
 
 			WaitForPageLoad();
 
+			Navigator.gotoNavTab(navTab = "Design");
+
 			PagesAdmin.selectFaviconExtension(extensionName = "Google Favicon");
 
 			PortletEntry.save();
@@ -383,10 +385,11 @@ definition {
 		}
 
 		task ("Then the site designer could apply a new favicon extension") {
+			Navigator.gotoNavTab(navTab = "Design");
+
 			PagesAdmin.selectFaviconExtension(extensionName = "NBA Favicon");
 
 			AssertTextEquals(
-				faviconName = "NBA Favicon",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "NBA Favicon");
 
@@ -426,6 +429,8 @@ definition {
 
 			WaitForPageLoad();
 
+			Navigator.gotoNavTab(navTab = "Design");
+
 			PagesAdmin.selectFaviconExtension(extensionName = "Google Favicon");
 
 			PortletEntry.save();
@@ -458,7 +463,6 @@ definition {
 			WaitForPageLoad();
 
 			AssertTextEquals(
-				faviconName = "Google Favicon",
 				locator1 = "PagesAdmin#FAVICON_NAME",
 				value1 = "Google Favicon");
 		}

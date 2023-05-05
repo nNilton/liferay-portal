@@ -1,4 +1,4 @@
-@component-name = "portal-user-management-and-portal-configuration"
+@component-name = "portal-security"
 definition {
 
 	property portal.release = "true";
@@ -140,9 +140,7 @@ definition {
 
 			Portlet.gotoPortletOptions(portletOption = "Configuration");
 
-			Navigator.gotoNavTab(navTab = "Look and Feel");
-
-			Panel.expandPanel(panel = "Look and Feel");
+			Navigator.gotoNavTab(navTab = "Design");
 
 			Theme.changeCurrentTheme(themeName = "Dialect");
 

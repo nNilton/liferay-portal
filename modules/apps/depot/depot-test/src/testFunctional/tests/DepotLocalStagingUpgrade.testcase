@@ -1,6 +1,7 @@
 @component-name = "portal-upgrades"
 definition {
 
+	property ci.retries.disabled = "true";
 	property database.types = "db2,mariadb,mysql,oracle,postgresql,sqlserver,sybase";
 	property portal.release = "true";
 	property portal.upstream = "true";
@@ -23,6 +24,7 @@ definition {
 	test CanPublishBlogSmallImageAfterUpgradeFrom73101Archive {
 		property data.archive.type = "data-archive-depot-local-staging-with-image";
 		property portal.version = "7.3.10.1";
+		property test.assert.warning.exceptions = "false";
 		property test.name.skip.portal.instance = "DepotLocalStagingUpgrade#CanPublishBlogSmallImageAfterUpgradeFrom73101Archive";
 
 		DepotNavigator.openDepotDocumentsAndMediaAdminStaging(depotName = "Test Depot Name Local Staging");
@@ -70,6 +72,7 @@ definition {
 	test CanPublishImageInBlogContentFieldAfterUpgradeFrom73101Archive {
 		property data.archive.type = "data-archive-depot-local-staging-with-image";
 		property portal.version = "7.3.10.1";
+		property test.assert.warning.exceptions = "false";
 		property test.name.skip.portal.instance = "DepotLocalStagingUpgrade#CanPublishImageInBlogContentFieldAfterUpgradeFrom73101Archive";
 
 		DepotNavigator.openDepotDocumentsAndMediaAdminStaging(depotName = "Test Depot Name Local Staging");
@@ -120,6 +123,7 @@ definition {
 	test CanPublishImageInMGAfterUpgradeFrom73101Archive {
 		property data.archive.type = "data-archive-depot-local-staging-with-image";
 		property portal.version = "7.3.10.1";
+		property test.assert.warning.exceptions = "false";
 		property test.name.skip.portal.instance = "DepotLocalStagingUpgrade#CanPublishImageInMGAfterUpgradeFrom73101Archive";
 
 		DepotNavigator.openDepotDocumentsAndMediaAdminStaging(depotName = "Test Depot Name Local Staging");
@@ -164,13 +168,14 @@ definition {
 	test ViewDepotStagingArchive73101 {
 		property data.archive.type = "data-archive-depot-staging";
 		property portal.version = "7.3.10.1";
+		property test.assert.warning.exceptions = "false";
 		property test.name.skip.portal.instance = "DepotLocalStagingUpgrade#ViewDepotStagingArchive73101";
 
-		Upgrade.publishDMsInStagingDepot();
+		ValidateDepotUpgrade.publishDMsInStagingDepot();
 
-		Upgrade.publishWCsInStagingDepot();
+		ValidateDepotUpgrade.publishWCsInStagingDepot();
 
-		Upgrade.publishCollectionsInStagingDepot();
+		ValidateDepotUpgrade.publishCollectionsInStagingDepot();
 	}
 
 }

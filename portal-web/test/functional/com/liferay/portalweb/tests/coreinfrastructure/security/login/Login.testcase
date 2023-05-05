@@ -69,6 +69,7 @@ definition {
 			User.logoutPG();
 
 			User.loginUserWithFacebookSSOEnabledPG(
+				baseURL = "https://localhost:8443",
 				facebookEmail = ${facebookEmail},
 				facebookPassword = ${facebookPassword},
 				siteName = ${siteName});
@@ -125,7 +126,7 @@ definition {
 		property app.server.types = "jboss,tcserver,tomcat,weblogic,websphere,wildfly";
 		property database.types = "db2,hypersonic,mariadb,mysql,oracle,postgresql,sqlserver,sybase";
 		property environment.acceptance = "true";
-		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,solaris,suse,ubuntu,windows";
+		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,rockylinux,solaris,suse,ubuntu,windows";
 		property portal.acceptance = "true";
 		property test.name.skip.portal.instance = "Login#DefaultPortalLandingPageSetByProperty";
 
@@ -208,7 +209,7 @@ definition {
 			Navigator.openSpecificURL(url = "http://test.able.com:8080/openam");
 
 			AntCommand(
-				locator1 = "build-test-authentication.xml",
+				locator1 = "build-test-openam.xml",
 				value1 = "run-openam-tools");
 		}
 
@@ -330,7 +331,7 @@ definition {
 
 		task ("Run and command") {
 			AntCommand(
-				locator1 = "build-test-authentication.xml",
+				locator1 = "build-test-token-based-sso.xml",
 				value1 = "verify-token-based-login -Dportal.url=http://localhost:8080/web/guest -Duser.token=test@liferay.com");
 		}
 
@@ -367,7 +368,7 @@ definition {
 
 		task ("Run ant command") {
 			AntCommand(
-				locator1 = "build-test-authentication.xml",
+				locator1 = "build-test-token-based-sso.xml",
 				value1 = "verify-token-based-login -Dportal.url=http://www.able.com:8080/web/guest -Duser.token=test@www.able.com");
 		}
 	}

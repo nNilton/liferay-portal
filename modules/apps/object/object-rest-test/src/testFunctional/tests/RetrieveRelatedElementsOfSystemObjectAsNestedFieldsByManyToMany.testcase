@@ -1,7 +1,6 @@
 @component-name = "portal-headless"
 definition {
 
-	property custom.properties = "feature.flag.LPS-162964=true${line.separator}feature.flag.LPS-153324=true";
 	property portal.release = "true";
 	property portal.upstream = "true";
 	property testray.component.names = "Object";
@@ -66,15 +65,11 @@ definition {
 	}
 
 	tearDown {
-		for (var objectName : list "Foundation,SecondFoundation") {
-			ObjectAdmin.deleteObjectViaAPI(objectName = ${objectName});
-		}
-
-		for (var userId : list "${staticUserAccountId1},${staticUserAccountId2}") {
-			JSONUser.deleteUserByUserId(userId = ${userId});
-		}
-
 		var testPortalInstance = PropsUtil.get("test.portal.instance");
+
+		ObjectAdmin.deleteAllCustomObjectsViaAPI();
+
+		JSONUser.tearDownNonAdminUsersNoSelenium();
 
 		if (${testPortalInstance} == "true") {
 			PortalInstances.tearDownCPNoSelenium();
@@ -85,7 +80,6 @@ definition {
 	@priority = 3
 	test CanGetRelationshipDetailsInNestedFieldsWithoutRelatedEntries {
 		property portal.acceptance = "true";
-		property test.name.skip.portal.instance = "RetrieveRelatedElementsOfSystemObjectAsNestedFieldsByManyToMany#CanGetRelationshipDetailsInNestedFieldsWithoutRelatedEntries";
 
 		task ("When I call userAccount object GET endpoint with nestedFields=usersFoundations") {
 			var response = UserAccountAPI.getSystemObjectsWithNestedField(

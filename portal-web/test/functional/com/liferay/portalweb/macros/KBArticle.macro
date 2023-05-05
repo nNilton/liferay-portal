@@ -92,7 +92,7 @@ definition {
 		}
 		else if (isSet(kbDescription)) {
 			Type(
-				locator1 = "TextInput#DESCRIPTION",
+				locator1 = "TextArea#DESCRIPTION",
 				value1 = ${kbDescription});
 		}
 		else {
@@ -112,7 +112,13 @@ definition {
 			CKEditor.addContent(kbArticleContentEdit = ${kbArticleContent});
 		}
 		else {
-			CKEditor.addContent(content = ${kbArticleContent});
+			SelectFrame.selectFrameNoLoading(locator1 = "CKEditor#BODY_FIELD_IFRAME");
+
+			Type(
+				locator1 = "CKEditor#BODY",
+				value1 = ${kbArticleContent});
+
+			SelectFrame(value1 = "relative=top");
 		}
 
 		if (isSet(embedVideo)) {
@@ -171,12 +177,70 @@ definition {
 				vocabularyName = ${vocabularyName});
 		}
 
-		if (${kbWorkflowAction} == "Submit for Publication") {
+		if (${configureReviewDate} == "true") {
+			KBArticle.setReviewDate(
+				increaseMinutes = ${increaseMinutes},
+				uncheckNeverReview = ${uncheckNeverReview});
+		}
+
+		if (${enableExpirationDate} == "true") {
+			Panel.expandPanel(panel = "Expiration Date");
+
+			AssertChecked(
+				checkboxName = "Never Expire",
+				locator1 = "Checkbox#ANY_CHECKBOX");
+
+			Uncheck(
+				checkboxName = "Never Expire",
+				locator1 = "Checkbox#ANY_CHECKBOX");
+
+			if (isSet(notificationDate)) {
+				var expirationDate = DateUtil.getDateOffsetByDays(${notificationDate}, "MM/dd/yyyy");
+				var expirationDateFormatted = DateUtil.getFormattedDate("+0", "MMMM dd, yyyy");
+
+				echo("## * expirationDate: ${expirationDate}");
+
+				Type(
+					locator1 = "TextInput#EXPIRATION_DATE",
+					value1 = ${expirationDate});
+			}
+
+			if (isSet(extendedMinutes)) {
+				if (isSet(getExpirationDateByPortal)) {
+					var expirationDateHour = selenium.getAttribute("//input[contains(@id,'expirationDateHour')]@value");
+					var expirationDateAmpmValue = selenium.getAttribute("//input[contains(@id,'expirationDateAmPm')]@value");
+					var expirationDateMinute = selenium.getAttribute("//input[contains(@id,'expirationDateMinute')]@value");
+
+					if (${expirationDateAmpmValue} == 0) {
+						var expirationDateAmpm = "AM";
+					}
+
+					if (${expirationDateAmpmValue} == 1) {
+						var expirationDateAmpm = "PM";
+					}
+
+					var expirationDateMinuteFuture = ${expirationDateMinute} + ${extendedMinutes};
+
+					var expirationDateTime = "${expirationDateHour}:${expirationDateMinuteFuture} ${expirationDateAmpm}";
+				}
+				else {
+					var expirationDateTime = DateUtil.getDateOffsetByMinutes(${extendedMinutes}, "hh:mm a");
+				}
+
+				echo("## * expirationDateTime: ${expirationDateTime}");
+
+				Type(
+					locator1 = "TextInput#EXPIRATION_DATE_TIME",
+					value1 = ${expirationDateTime});
+			}
+		}
+
+		if (${kbWorkflowAction} == "Submit for Workflow") {
 			ProductMenuHelper.closeProductMenu();
 
 			AssertClick(
-				locator1 = "Button#SUBMIT_FOR_PUBLICATION",
-				value1 = "Submit for Publication");
+				locator1 = "Button#SUBMIT_FOR_WORKFLOW",
+				value1 = "Submit for Workflow");
 		}
 		else if (${saveAsDraft} == "true") {
 			Button.clickSaveAsDraft();
@@ -208,6 +272,18 @@ definition {
 		}
 		else {
 			Alert.viewSuccessMessage();
+		}
+
+		if (${viewExpirationTime} == "true") {
+			var expirationTime = StringUtil.add("${expirationDateFormatted} ", ${expirationDateTime}, "");
+
+			MouseOver(
+				locator1 = "KnowledgeBase#ARTICLE_TABLE_EXPIRATION_TIME",
+				value1 = ${expirationTime});
+
+			AssertVisible(
+				locator1 = "KnowledgeBase#ARTICLE_TABLE_EXPIRATION_TIME",
+				value1 = ${expirationTime});
 		}
 	}
 
@@ -489,9 +565,11 @@ definition {
 			}
 		}
 
-		AssertTextEquals(
-			locator1 = "Message#INFO",
-			value1 = "A new version is created automatically if this content is modified.");
+		if (!(isSet(enableExpirationDate))) {
+			AssertTextEquals(
+				locator1 = "Message#INFO",
+				value1 = "A new version is created automatically if this content is modified.");
+		}
 
 		AssertElementPresent(locator1 = "TextInput#TITLE");
 
@@ -549,6 +627,30 @@ definition {
 					depotName = ${depotName},
 					navTab = ${navTab},
 					videoShortcutTitle = ${videoShortcutTitle});
+			}
+		}
+
+		if (${enableExpirationDate} == "true") {
+			Panel.expandPanel(panel = "Expiration Date");
+
+			if (isSet(notificationDate)) {
+				var expirationDate = DateUtil.getDateOffsetByDays(${notificationDate}, "MM/dd/yyyy");
+
+				echo("## * expirationDate: ${expirationDate}");
+
+				Type(
+					locator1 = "TextInput#EXPIRATION_DATE",
+					value1 = ${expirationDate});
+			}
+
+			if (isSet(extendedMinutes)) {
+				var expirationDateTime = DateUtil.getDateOffsetByMinutes(${extendedMinutes}, "hh:mm a");
+
+				echo("## * expirationDateTime: ${expirationDateTime}");
+
+				Type(
+					locator1 = "TextInput#EXPIRATION_DATE_TIME",
+					value1 = ${expirationDateTime});
 			}
 		}
 
@@ -663,12 +765,6 @@ definition {
 		AssertClick(
 			locator1 = "KnowledgeBaseArticle#PREVIOUS",
 			value1 = ${kbDisplayPreviousArticle});
-	}
-
-	macro gotoSuggestionsNavigationCP {
-		AssertClick(
-			locator1 = "KnowledgeBase#ADMIN_TABS_SUGGESTIONS",
-			value1 = "Suggestions");
 	}
 
 	macro gotoViaKBAdminCP {
@@ -794,10 +890,6 @@ definition {
 			WaitForVisible(locator1 = "KnowledgeBase#PAGE_TREE_SUGGESTIONS");
 
 			Click(locator1 = "KnowledgeBase#PAGE_TREE_SUGGESTIONS");
-
-			if (IsElementNotPresent(key_header = ${section}, locator1 = "KnowledgeBase#PAGE_TREE_PANEL_HEADER")) {
-				Click.javaScriptClick(locator1 = "KnowledgeBase#PAGE_TREE_SUGGESTIONS");
-			}
 		}
 	}
 
@@ -893,15 +985,24 @@ definition {
 	macro searchForKB {
 		var key_knowledgeBaseName = ${knowledgeBaseName};
 
-		Click(locator1 = "KnowledgeBase#SEARCH_FIELD");
+		if (isSet(searchFromCenterPanel)) {
+			Type(
+				locator1 = "TextInput#SITE_SEARCH_KEYWORDS",
+				value1 = ${knowledgeBaseName});
 
-		Type(
-			locator1 = "KnowledgeBase#SEARCH_FIELD",
-			value1 = ${knowledgeBaseName});
+			KeyPress(
+				locator1 = "TextInput#SITE_SEARCH_KEYWORDS",
+				value1 = "\RETURN");
+		}
+		else {
+			Type(
+				locator1 = "KnowledgeBase#SEARCH_FIELD",
+				value1 = ${knowledgeBaseName});
 
-		KeyPress(
-			locator1 = "TextInput#SEARCH",
-			value1 = "\RETURN");
+			KeyPress(
+				locator1 = "KnowledgeBase#SEARCH_FIELD",
+				value1 = "\RETURN");
+		}
 	}
 
 	macro selectAllCP {
@@ -1025,6 +1126,36 @@ definition {
 		Alert.viewSuccessMessage();
 	}
 
+	macro setReviewDate {
+		Panel.expandPanel(panel = "Expiration Date");
+
+		if (isSet(uncheckNeverReview)) {
+			AssertChecked(
+				checkboxName = "Never Review",
+				locator1 = "Checkbox#ANY_CHECKBOX");
+
+			Uncheck(
+				checkboxName = "Never Review",
+				locator1 = "Checkbox#ANY_CHECKBOX");
+		}
+
+		var reviewDate = DateUtil.getFormattedCurrentDate("MM/dd/yyyy");
+
+		echo("## * reviewDate: ${reviewDate}");
+
+		var reviewDateTime = DateUtil.getDateOffsetByMinutes(${increaseMinutes}, "hh:mm a");
+
+		echo("## * reviewDateTime: ${reviewDateTime}");
+
+		Type(
+			locator1 = "TextInput#REVIEW_DATE",
+			value1 = ${reviewDate});
+
+		Type(
+			locator1 = "TextInput#REVIEW_DATE_TIME",
+			value1 = ${reviewDateTime});
+	}
+
 	macro subscribeCP {
 		if (isSet(subscribeActionToolbar)) {
 			Click(
@@ -1065,6 +1196,17 @@ definition {
 
 			Alert.viewSuccessMessage();
 		}
+	}
+
+	macro updateCheckInterval {
+		Navigator.openWithAppendToBaseURL(urlAppend = "group/control_panel/manage?p_p_id=com_liferay_configuration_admin_web_portlet_SystemSettingsPortlet&_com_liferay_configuration_admin_web_portlet_SystemSettingsPortlet_mvcRenderCommandName=%2Fconfiguration_admin%2Fview_configuration_screen&_com_liferay_configuration_admin_web_portlet_SystemSettingsPortlet_configurationScreenKey=knowledge-base-service");
+
+		Type(
+			key_text = "Check Interval",
+			locator1 = "TextInput#ANY",
+			value1 = ${fieldValue});
+
+		SystemSettings.saveConfiguration();
 	}
 
 	macro viewActionsDetailsToolbar {
@@ -1317,12 +1459,6 @@ definition {
 					value1 = ${kbArticleTitle});
 			}
 
-			if (isSet(kbStatus)) {
-				AssertTextEquals(
-					locator1 = "KnowledgeBase#ARTICLE_TABLE_ARTICLE_STATUS",
-					value1 = ${kbStatus});
-			}
-
 			AssertClick(
 				locator1 = "KnowledgeBase#DESCRIPTIVE_VIEW_ARTICLE_TITLE",
 				value1 = ${kbArticleTitle});
@@ -1339,15 +1475,22 @@ definition {
 			}
 
 			if (isSet(kbStatus)) {
-				AssertTextEquals(
-					key_kbArticleStatus = ${kbStatus},
-					locator1 = "WorkflowKnowledgeBaseArticle#ARTICLE_PREVIEW_ARTICLE_STATUS",
+				if (IsElementNotPresent(locator1 = "DocumentsAndMedia#SIDEBAR_INFO_ACTIVE")) {
+					ManagementBar.clickInfo();
+				}
+
+				AssertTextEquals.assertPartialText(
+					locator1 = "Message#WORKFLOW_STATUS",
 					value1 = ${kbStatus});
 			}
 
 			if (isSet(versionNumber)) {
-				AssertTextEquals(
-					locator1 = "KnowledgeBase#ARTICLE_PREVIEW_VERSION_NUMBER",
+				if (IsElementNotPresent(locator1 = "DocumentsAndMedia#SIDEBAR_INFO_ACTIVE")) {
+					ManagementBar.clickInfo();
+				}
+
+				AssertTextEquals.assertPartialText(
+					locator1 = "KnowledgeBase#ARTICLE_VERSION_NUMBER",
 					value1 = ${versionNumber});
 			}
 
@@ -1446,34 +1589,40 @@ definition {
 	}
 
 	macro viewDefaultCP {
-		if (isSet(featureFlag)) {
-			if (isSet(defaultHome)) {
-				AssertTextEquals(
-					locator1 = "Message#EMPTY_INFO_TAGLIB_TITLE",
-					value1 = "Knowledge base is empty.");
-			}
-			else if (isSet(suggestions)) {
-				AssertTextEquals.assertPartialText(
-					locator1 = "Message#EMPTY_INFO",
-					value1 = "There are no suggestions.");
-			}
-			else {
-				AssertTextEquals(
-					locator1 = "Message#EMPTY_INFO_TAGLIB_TITLE",
-					value1 = "This folder is empty.");
-			}
+		if (isSet(newFolder)) {
+			AssertTextEquals(
+				locator1 = "Message#EMPTY_INFO_TAGLIB_TITLE",
+				value1 = "This folder is empty.");
 		}
-		else {
+		else if (isSet(suggestions)) {
 			AssertTextEquals.assertPartialText(
 				locator1 = "Message#EMPTY_INFO",
-				value1 = "No articles were found.");
+				value1 = "There are no suggestions.");
+		}
+		else {
+			AssertTextEquals(
+				locator1 = "Message#EMPTY_INFO_TAGLIB_TITLE",
+				value1 = "Knowledge base is empty.");
+		}
 
-			if (isSet(disabledActionToolbar)) {
-				AssertElementPresent(locator1 = "TextInput#SEARCH_DISABLED");
-			}
+		if (isSet(disabledActionToolbar)) {
+			AssertElementPresent(locator1 = "TextInput#SEARCH_DISABLED");
 		}
 
 		AssertElementNotPresent(locator1 = "KnowledgeBase#ARTICLE_TABLE_KB_GENERIC");
+	}
+
+	macro viewExpirationStatus {
+		AssertTextEquals(
+			key_kbArticleTitle = ${kbArticleTitle},
+			locator1 = "KnowledgeBase#ARTICLE_TABLE_EXPIRATION_STATUS",
+			value1 = ${kbExpirationStatus});
+
+		if (isSet(expirationTime)) {
+			AssertTextEquals.assertPartialText(
+				locator1 = "Message#EMPTY_INFO",
+				value1 = "There are no suggestions.");
+		}
 	}
 
 	macro viewFieldRequiredAsterisk {
@@ -1630,6 +1779,12 @@ definition {
 		else if (${next} == "false") {
 			AssertElementNotPresent(locator1 = "KnowledgeBaseArticle#NEXT");
 		}
+	}
+
+	macro viewNoExpirationStatus {
+		AssertElementNotPresent(
+			key_kbArticleTitle = ${kbArticleTitle},
+			locator1 = "KnowledgeBase#ARTICLE_TABLE_EXPIRATION_STATUS");
 	}
 
 	macro viewNoHierarchyPG {

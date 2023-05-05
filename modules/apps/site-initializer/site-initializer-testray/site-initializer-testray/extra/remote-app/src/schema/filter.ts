@@ -13,6 +13,7 @@
  */
 
 import {RendererFields} from '../components/Form/Renderer';
+import SearchBuilder from '../core/SearchBuilder';
 import i18n from '../i18n';
 import {
 	TestrayCaseType,
@@ -24,8 +25,12 @@ import {
 	TestrayTeam,
 	UserAccount,
 } from '../services/rest';
-import {SearchBuilder} from '../util/search';
-import {CaseResultStatuses, TaskStatuses} from '../util/statuses';
+import {
+	BuildStatuses,
+	CaseResultStatuses,
+	SubTaskStatuses,
+	TaskStatuses,
+} from '../util/statuses';
 
 export type Filters = {
 	[key: string]: RendererFields[];
@@ -47,6 +52,7 @@ export type FilterSchema = {
 	fields: RendererFields[];
 	name?: string;
 	onApply?: (filterVariables: FilterVariables) => string;
+	placeholder?: string;
 };
 
 export type FilterSchemas = {
@@ -79,7 +85,7 @@ const baseFilters: Filter = {
 				transformData<UserAccount>(item),
 				(userAccount) => ({
 					label: `${userAccount.givenName} ${userAccount.additionalName}`,
-					value: userAccount.givenName,
+					value: userAccount.id,
 				})
 			);
 		},
@@ -156,7 +162,7 @@ const baseFilters: Filter = {
 	project: {
 		label: i18n.translate('project'),
 		name: 'projectId',
-		resource: '/projects?fields=id,name',
+		resource: '/projects?fields=id,name&pageSize=100',
 		transformData(item) {
 			return dataToOptions(transformData<TestrayProject>(item));
 		},
@@ -178,9 +184,12 @@ const baseFilters: Filter = {
 	run: {
 		label: i18n.translate('run'),
 		name: 'run',
-		resource: '/runs?fields=id,name',
+		resource: '/runs?fields=id,number',
 		transformData(item) {
-			return dataToOptions(transformData<TestrayRun>(item));
+			return dataToOptions(transformData<TestrayRun>(item), (run) => ({
+				label: run?.number?.toString().padStart(2, '0'),
+				value: run.number,
+			}));
 		},
 		type: 'select',
 	},
@@ -192,7 +201,6 @@ const baseFilters: Filter = {
 	team: {
 		label: i18n.translate('team'),
 		name: 'teamId',
-		options: [{label: 'Solutions', value: 'solutions'}],
 		resource: ({projectId}) =>
 			`/teams?fields=id,name&sort=name:asc&pageSize=100&filter=${SearchBuilder.eq(
 				'projectId',
@@ -203,6 +211,7 @@ const baseFilters: Filter = {
 		},
 		type: 'select',
 	},
+	user: {label: i18n.translate('name'), name: 'name', type: 'text'},
 };
 
 const overrides = (
@@ -219,10 +228,29 @@ const filterSchema = {
 	},
 	buildComponents: {
 		fields: [
-			baseFilters.priority,
-			overrides(baseFilters.caseType, {disabled: false}),
-			baseFilters.team,
-			baseFilters.run,
+			overrides(baseFilters.priority, {
+				name: 'componentToCases/priority',
+				removeQuoteMark: true,
+				type: 'select',
+			}),
+			overrides(baseFilters.caseType, {
+				name: 'componentToCases/caseTypeId',
+			}),
+			overrides(baseFilters.team, {
+				type: 'multiselect',
+			}),
+			overrides(baseFilters.run, {
+				name: 'componentToCaseResult/r_runToCaseResult_c_runId',
+				transformData(item) {
+					return dataToOptions(
+						transformData<TestrayRun>(item),
+						(run) => ({
+							label: run?.number?.toString().padStart(2, '0'),
+							value: run?.id,
+						})
+					);
+				},
+			}),
 		] as RendererFields[],
 	},
 	buildResults: {
@@ -250,7 +278,11 @@ const filterSchema = {
 				operator: 'contains',
 				type: 'text',
 			},
-			overrides(baseFilters.run, {name: 'runToCaseResult/id'}),
+			overrides(baseFilters.run, {
+				name: 'runToCaseResult/number',
+				removeQuoteMark: true,
+				type: 'select',
+			}),
 			{
 				label: i18n.translate('case-name'),
 				name: 'caseToCaseResult/name',
@@ -261,27 +293,27 @@ const filterSchema = {
 			overrides(baseFilters.dueStatus, {
 				options: [
 					{
-						label: 'Blocked',
+						label: i18n.translate('blocked'),
 						value: CaseResultStatuses.BLOCKED,
 					},
 					{
-						label: 'Failed',
+						label: i18n.translate('failed'),
 						value: CaseResultStatuses.FAILED,
 					},
 					{
-						label: 'In Progress',
+						label: i18n.translate('in-progress'),
 						value: CaseResultStatuses.IN_PROGRESS,
 					},
 					{
-						label: 'Passed',
+						label: i18n.translate('passed'),
 						value: CaseResultStatuses.PASSED,
 					},
 					{
-						label: 'Test Fix',
+						label: i18n.translate('test-fix'),
 						value: CaseResultStatuses.TEST_FIX,
 					},
 					{
-						label: 'Untested',
+						label: i18n.translate('untested'),
 						value: CaseResultStatuses.UNTESTED,
 					},
 				],
@@ -386,43 +418,104 @@ const filterSchema = {
 	},
 	buildTeams: {
 		fields: [
-			baseFilters.priority,
-			baseFilters.caseType,
-			baseFilters.team,
-			baseFilters.run,
+			overrides(baseFilters.priority, {disabled: true, type: 'select'}),
+			overrides(baseFilters.caseType, {disabled: true, type: 'select'}),
+			overrides(baseFilters.team, {name: 'id', type: 'multiselect'}),
+			overrides(baseFilters.run, {disabled: true}),
 		] as RendererFields[],
 	},
 	buildTemplates: {
 		fields: [
 			{
 				label: i18n.translate('template-name'),
-				name: 'template-name',
+				name: 'name',
+				operator: 'contains',
 				type: 'text',
 			},
-			{
-				label: i18n.translate('status'),
-				name: 'status',
+			overrides(baseFilters.dueStatus, {
+				options: [
+					{
+						label: i18n.translate('activated'),
+						value: BuildStatuses.ACTIVATED,
+					},
+					{
+						label: i18n.translate('deactivated'),
+						value: BuildStatuses.DEACTIVATED,
+					},
+				],
 				type: 'select',
-			},
+			}),
 		] as RendererFields[],
 	},
 	builds: {
 		fields: [
-			baseFilters.priority,
-			baseFilters.productVersion,
-			baseFilters.caseType,
+			overrides(baseFilters.priority, {
+				disabled: true,
+				type: 'select',
+			}),
+			overrides(baseFilters.productVersion, {
+				name: 'productVersionToBuilds/id',
+				type: 'select',
+			}),
+			overrides(baseFilters.caseType, {disabled: true, type: 'select'}),
 			{
 				label: i18n.translate('build-name'),
-				name: 'buildName',
+				name: 'name',
+				operator: 'contains',
 				type: 'text',
 			},
 			{
 				label: i18n.translate('status'),
-				name: 'status',
-				options: ['Open', 'Abandoned', 'Complete', 'In Analysis'],
+				name: 'buildToTasks/dueStatus',
+				options: [
+					{
+						label: i18n.translate('abandoned'),
+						value: TaskStatuses.ABANDONED,
+					},
+					{
+						label: i18n.translate('complete'),
+						value: TaskStatuses.COMPLETE,
+					},
+					{
+						label: i18n.translate('in-analysis'),
+						value: TaskStatuses.IN_ANALYSIS,
+					},
+					{
+						label: i18n.translate('open'),
+						value: TaskStatuses.OPEN,
+					},
+				],
 				type: 'checkbox',
 			},
-			baseFilters.team,
+			overrides(baseFilters.team, {disabled: true}),
+		] as RendererFields[],
+	},
+	caseRequirements: {
+		fields: [
+			{
+				label: i18n.translate('key'),
+				name: 'requiremenToRequirementsCases/key',
+				operator: 'contains',
+				type: 'text',
+			},
+			{
+				label: i18n.translate('link'),
+				name: 'requiremenToRequirementsCases/linkURL',
+				operator: 'contains',
+				type: 'text',
+			},
+			{
+				label: i18n.translate('jira-components'),
+				name: 'requiremenToRequirementsCases/components',
+				operator: 'contains',
+				type: 'text',
+			},
+			{
+				label: i18n.translate('summary'),
+				name: 'requiremenToRequirementsCases/summary',
+				operator: 'contains',
+				type: 'text',
+			},
 		] as RendererFields[],
 	},
 	cases: {
@@ -450,8 +543,105 @@ const filterSchema = {
 			}),
 			baseFilters.description,
 			baseFilters.steps,
-			baseFilters.issues,
+			overrides(baseFilters.issues, {disabled: true}),
 			baseFilters.hasRequirements,
+		] as RendererFields[],
+	},
+	compareRunsCases: {
+		fields: [
+			overrides(baseFilters.priority, {
+				name: 'priority',
+				removeQuoteMark: true,
+				type: 'select',
+			}),
+			overrides(baseFilters.team, {
+				disabled: true,
+				name: 'componentToCaseResult/r_teamToComponents_c_teamId',
+				type: 'multiselect',
+			}),
+			overrides(baseFilters.component, {
+				disabled: true,
+				name: 'componentToCaseResult/id',
+				type: 'multiselect',
+			}),
+			{
+				label: i18n.translate('case-name'),
+				name: 'name',
+				operator: 'contains',
+				type: 'text',
+			},
+			overrides(baseFilters.dueStatus, {
+				disabled: true,
+				label: i18n.sub('status-in-x', 'run-a'),
+				options: [
+					{
+						label: i18n.translate('blocked'),
+						value: CaseResultStatuses.BLOCKED,
+					},
+					{
+						label: i18n.translate('failed'),
+						value: CaseResultStatuses.FAILED,
+					},
+					{
+						label: i18n.translate('in-progress'),
+						value: CaseResultStatuses.IN_PROGRESS,
+					},
+					{
+						label: i18n.translate('passed'),
+						value: CaseResultStatuses.PASSED,
+					},
+					{
+						label: i18n.translate('test-fix'),
+						value: CaseResultStatuses.TEST_FIX,
+					},
+					{
+						label: i18n.translate('untested'),
+						value: CaseResultStatuses.UNTESTED,
+					},
+				],
+				type: 'select',
+			}),
+			overrides(baseFilters.dueStatus, {
+				disabled: true,
+				label: i18n.sub('status-in-x', 'run-b'),
+				options: [
+					{
+						label: i18n.translate('blocked'),
+						value: CaseResultStatuses.BLOCKED,
+					},
+					{
+						label: i18n.translate('failed'),
+						value: CaseResultStatuses.FAILED,
+					},
+					{
+						label: i18n.translate('in-progress'),
+						value: CaseResultStatuses.IN_PROGRESS,
+					},
+					{
+						label: i18n.translate('passed'),
+						value: CaseResultStatuses.PASSED,
+					},
+					{
+						label: i18n.translate('test-fix'),
+						value: CaseResultStatuses.TEST_FIX,
+					},
+					{
+						label: i18n.translate('untested'),
+						value: CaseResultStatuses.UNTESTED,
+					},
+				],
+				type: 'select',
+			}),
+		] as RendererFields[],
+	},
+	components: {
+		fields: [
+			{
+				label: i18n.translate('component-name'),
+				name: 'name',
+				operator: 'contains',
+				type: 'text',
+			},
 		] as RendererFields[],
 	},
 	requirementCases: {
@@ -481,7 +671,7 @@ const filterSchema = {
 			},
 			{
 				label: i18n.translate('link'),
-				name: 'linkURL',
+				name: 'linkTitle',
 				operator: 'contains',
 				type: 'text',
 			},
@@ -521,23 +711,41 @@ const filterSchema = {
 		fields: [
 			{
 				label: i18n.translate('subtask-name'),
-				name: 'subtaskName',
+				name: 'name',
+				operator: 'contains',
 				type: 'text',
 			},
 			{
 				label: i18n.translate('errors'),
 				name: 'errors',
+				operator: 'contains',
 				type: 'text',
 			},
-			baseFilters.assignee,
+			overrides(baseFilters.assignee, {name: 'userId'}),
 			{
 				label: i18n.translate('status'),
-				name: 'status',
-				options: ['Complete', 'In Analysis', 'Open'],
+				name: 'dueStatus',
+				options: [
+					{
+						label: i18n.translate('complete'),
+						value: SubTaskStatuses.COMPLETE,
+					},
+					{
+						label: i18n.translate('in-analysis'),
+						value: SubTaskStatuses.IN_ANALYSIS,
+					},
+					{
+						label: i18n.translate('open'),
+						value: SubTaskStatuses.OPEN,
+					},
+				],
 				type: 'checkbox',
 			},
-			baseFilters.team,
+			overrides(baseFilters.team, {
+				disabled: true,
+			}),
 			{
+				disabled: true,
 				label: i18n.translate('component'),
 				name: 'commponent',
 				type: 'text',
@@ -548,12 +756,9 @@ const filterSchema = {
 		fields: [
 			{
 				label: i18n.translate('suite-name'),
-				name: 'suiteName',
-				type: 'text',
-			},
-			{
-				label: i18n.translate('description'),
-				name: 'description',
+				name: 'name',
+				operator: 'contains',
+				placeholder: i18n.translate('search'),
 				type: 'text',
 			},
 		] as RendererFields[],
@@ -591,30 +796,32 @@ const filterSchema = {
 				label: i18n.translate('build-name'),
 				name: 'buildToTasks/name',
 				operator: 'contains',
-				removeQuoteMark: false,
 				type: 'text',
 			},
 			overrides(baseFilters.dueStatus, {
 				options: [
 					{
-						label: 'Abandoned',
+						label: i18n.translate('abandoned'),
 						value: TaskStatuses.ABANDONED,
 					},
 					{
-						label: 'Complete',
+						label: i18n.translate('complete'),
 						value: TaskStatuses.COMPLETE,
 					},
 					{
-						label: 'In Analysis',
+						label: i18n.translate('in-analysis'),
 						value: TaskStatuses.IN_ANALYSIS,
 					},
 				],
 			}),
 			overrides(baseFilters.assignee, {
-				operator: 'contains',
+				name: 'taskToTasksUsers/r_userToTasksUsers_userId',
 				type: 'select',
 			}),
 		] as RendererFields[],
+	},
+	user: {
+		fields: [overrides(baseFilters.user, {operator: 'contains'})],
 	},
 } as const;
 

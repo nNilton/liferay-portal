@@ -38,10 +38,12 @@ public class AccountGroupServiceUtil {
 	 * Never modify this class directly. Add custom service methods to <code>com.liferay.account.service.impl.AccountGroupServiceImpl</code> and rerun ServiceBuilder to regenerate this class.
 	 */
 	public static AccountGroup addAccountGroup(
-			long userId, String description, String name)
+			long userId, String description, String name,
+			com.liferay.portal.kernel.service.ServiceContext serviceContext)
 		throws PortalException {
 
-		return getService().addAccountGroup(userId, description, name);
+		return getService().addAccountGroup(
+			userId, description, name, serviceContext);
 	}
 
 	public static AccountGroup deleteAccountGroup(long accountGroupId)
@@ -54,6 +56,12 @@ public class AccountGroupServiceUtil {
 		throws PortalException {
 
 		getService().deleteAccountGroups(accountGroupIds);
+	}
+
+	public static AccountGroup getAccountGroup(long accountGroupId)
+		throws PortalException {
+
+		return getService().getAccountGroup(accountGroupId);
 	}
 
 	/**
@@ -76,11 +84,12 @@ public class AccountGroupServiceUtil {
 	}
 
 	public static AccountGroup updateAccountGroup(
-			long accountGroupId, String description, String name)
+			long accountGroupId, String description, String name,
+			com.liferay.portal.kernel.service.ServiceContext serviceContext)
 		throws PortalException {
 
 		return getService().updateAccountGroup(
-			accountGroupId, description, name);
+			accountGroupId, description, name, serviceContext);
 	}
 
 	public static AccountGroup updateExternalReferenceCode(

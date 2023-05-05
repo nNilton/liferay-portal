@@ -73,14 +73,14 @@ public class ConfigurationModel implements ExtendedObjectClassDefinition {
 
 		_configurationOverrideProperties =
 			ConfigurationOverridePropertiesUtil.getOverrideProperties(
-				_extendedObjectClassDefinition.getID());
+				extendedObjectClassDefinition.getID());
 
 		if (_configurationOverrideProperties == null) {
 			_configurationOverrideProperties = Collections.emptyMap();
 		}
 
 		_extensionAttributes =
-			_extendedObjectClassDefinition.getExtensionAttributes(
+			extendedObjectClassDefinition.getExtensionAttributes(
 				com.liferay.portal.configuration.metatype.annotations.
 					ExtendedObjectClassDefinition.XML_NAMESPACE);
 	}
@@ -280,7 +280,8 @@ public class ConfigurationModel implements ExtendedObjectClassDefinition {
 			return false;
 		}
 
-		Dictionary<String, Object> properties = _configuration.getProperties();
+		Dictionary<String, Object> properties =
+			_configuration.getProcessedProperties(null);
 
 		if (properties == null) {
 			return false;

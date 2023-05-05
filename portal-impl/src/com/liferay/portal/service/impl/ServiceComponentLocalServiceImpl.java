@@ -14,13 +14,12 @@
 
 package com.liferay.portal.service.impl;
 
+import com.liferay.petra.concurrent.DCLSingleton;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.bean.BeanReference;
 import com.liferay.portal.kernel.dao.db.DB;
-import com.liferay.portal.kernel.dao.db.DBContext;
 import com.liferay.portal.kernel.dao.db.DBManagerUtil;
-import com.liferay.portal.kernel.dao.db.DBProcessContext;
 import com.liferay.portal.kernel.exception.OldServiceComponentException;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
@@ -50,7 +49,6 @@ import com.liferay.portal.service.base.ServiceComponentLocalServiceBaseImpl;
 import com.liferay.portal.util.PropsValues;
 
 import java.io.IOException;
-import java.io.OutputStream;
 
 import java.lang.reflect.Field;
 
@@ -126,7 +124,8 @@ public class ServiceComponentLocalServiceImpl
 		ServiceComponent previousServiceComponent = null;
 
 		Map<String, ServiceComponent> serviceComponents =
-			_getServiceComponents();
+			_serviceComponentsDCLSingleton.getSingleton(
+				this::_createServiceComponents);
 
 		ServiceComponent serviceComponent = serviceComponents.get(
 			buildNamespace);
@@ -160,7 +159,7 @@ public class ServiceComponentLocalServiceImpl
 
 					previousBuildNumber = currentBuildNumber;
 
-					_serviceComponents.put(buildNamespace, serviceComponent);
+					serviceComponents.put(buildNamespace, serviceComponent);
 				}
 			}
 
@@ -276,20 +275,7 @@ public class ServiceComponentLocalServiceImpl
 			try {
 				UpgradeStep upgradeStep = upgradeStepHolder._upgradeStep;
 
-				upgradeStep.upgrade(
-					new DBProcessContext() {
-
-						@Override
-						public DBContext getDBContext() {
-							return new DBContext();
-						}
-
-						@Override
-						public OutputStream getOutputStream() {
-							return null;
-						}
-
-					});
+				upgradeStep.upgrade();
 
 				_releaseLocalService.updateRelease(
 					servletContextName, "0.0.1", "0.0.0");
@@ -493,39 +479,27 @@ public class ServiceComponentLocalServiceImpl
 		}
 	}
 
-	private Map<String, ServiceComponent> _getServiceComponents() {
-		if (_serviceComponents != null) {
-			return _serviceComponents;
+	private Map<String, ServiceComponent> _createServiceComponents() {
+		Map<String, ServiceComponent> serviceComponents =
+			new ConcurrentHashMap<>();
+
+		for (ServiceComponent serviceComponent :
+				serviceComponentPersistence.findAll()) {
+
+			String buildNamespace = serviceComponent.getBuildNamespace();
+
+			ServiceComponent previousServiceComponent = serviceComponents.get(
+				buildNamespace);
+
+			if ((previousServiceComponent == null) ||
+				(serviceComponent.getBuildNumber() >
+					previousServiceComponent.getBuildNumber())) {
+
+				serviceComponents.put(buildNamespace, serviceComponent);
+			}
 		}
 
-		synchronized (this) {
-			if (_serviceComponents != null) {
-				return _serviceComponents;
-			}
-
-			Map<String, ServiceComponent> serviceComponents =
-				new ConcurrentHashMap<>();
-
-			for (ServiceComponent serviceComponent :
-					serviceComponentPersistence.findAll()) {
-
-				String buildNamespace = serviceComponent.getBuildNamespace();
-
-				ServiceComponent previousServiceComponent =
-					serviceComponents.get(buildNamespace);
-
-				if ((previousServiceComponent == null) ||
-					(serviceComponent.getBuildNumber() >
-						previousServiceComponent.getBuildNumber())) {
-
-					serviceComponents.put(buildNamespace, serviceComponent);
-				}
-			}
-
-			_serviceComponents = serviceComponents;
-		}
-
-		return _serviceComponents;
+		return serviceComponents;
 	}
 
 	private void _upgradeDB(
@@ -601,7 +575,8 @@ public class ServiceComponentLocalServiceImpl
 	@BeanReference(type = ReleaseLocalService.class)
 	private ReleaseLocalService _releaseLocalService;
 
-	private volatile Map<String, ServiceComponent> _serviceComponents;
+	private final DCLSingleton<Map<String, ServiceComponent>>
+		_serviceComponentsDCLSingleton = new DCLSingleton<>();
 	private final ServiceTracker<UpgradeStep, UpgradeStepHolder>
 		_upgradeStepServiceTracker;
 

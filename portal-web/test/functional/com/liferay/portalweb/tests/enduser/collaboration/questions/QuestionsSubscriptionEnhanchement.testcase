@@ -192,6 +192,15 @@ definition {
 				categoryDescription = "Description",
 				categoryName = "Questions Test Topic",
 				userEmailAddress = "test@liferay.com");
+
+			Questions.openToQuestionsTopic(
+				layoutName = "questions-page",
+				siteURLKey = "guest",
+				topicName = "questions-test-topic");
+
+			Questions.addSubTopic(
+				subTopicDescription = "Topic Description",
+				subTopicName = "Questions Test Topic");
 		}
 
 		task ("Subcribe on a Topic") {
@@ -265,8 +274,8 @@ definition {
 				titleField = "Question1");
 		}
 
-		task ("Go to My Subscription") {
-			Questions.gotoTab(questionTabField = "My Subscriptions");
+		task ("Go to Subscriptions") {
+			Questions.gotoTab(questionTabField = "Subscriptions");
 		}
 
 		task ("Validate the subcribed question") {
@@ -301,8 +310,8 @@ definition {
 			Questions.subscribeFromTag();
 		}
 
-		task ("Go to My Subscription page") {
-			Questions.gotoTab(questionTabField = "My Subscriptions");
+		task ("Go to Subscription page") {
+			Questions.gotoTab(questionTabField = "Subscriptions");
 		}
 
 		task ("Validate the subcribed tag") {
@@ -326,11 +335,15 @@ definition {
 				siteURLKey = "guest",
 				topicName = "questions-test-topic");
 
+			Questions.addSubTopic(
+				subTopicDescription = "Topic Description",
+				subTopicName = "Questions Test Topic");
+
 			Questions.subscribeTopic();
 		}
 
 		task ("Validate the subcribed topic") {
-			Questions.gotoTab(questionTabField = "My Subscriptions");
+			Questions.gotoTab(questionTabField = "Subscriptions");
 
 			Questions.viewSubscribedTopic(subscribedTopic = "Questions Test Topic");
 		}
@@ -355,7 +368,7 @@ definition {
 		}
 
 		task ("Go to my subscription page") {
-			Questions.gotoTab(questionTabField = "My Subscriptions");
+			Questions.gotoTab(questionTabField = "Subscriptions");
 		}
 
 		task ("Validate the subcribed Question") {
@@ -378,7 +391,7 @@ definition {
 		}
 
 		task ("Validate the unsubcribed Question") {
-			Questions.gotoTab(questionTabField = "My Subscriptions");
+			Questions.gotoTab(questionTabField = "Subscriptions");
 
 			Questions.viewSubscribedQuestion(noSubscribedQuestion = "true");
 		}
@@ -411,8 +424,8 @@ definition {
 			Questions.subscribeFromTag();
 		}
 
-		task ("Go to My Subscription page") {
-			Questions.gotoTab(questionTabField = "My Subscriptions");
+		task ("Go to Subscription page") {
+			Questions.gotoTab(questionTabField = "Subscriptions");
 		}
 
 		task ("Validate the subcribed tag") {
@@ -427,8 +440,8 @@ definition {
 			Questions.unsubscribeFromTag();
 		}
 
-		task ("Go to My Subscription page") {
-			Questions.gotoTab(questionTabField = "My Subscriptions");
+		task ("Go to Subscription page") {
+			Questions.gotoTab(questionTabField = "Subscriptions");
 		}
 
 		task ("Validate the unsubcribed tag") {
@@ -451,6 +464,10 @@ definition {
 				layoutName = "questions-page",
 				siteURLKey = "guest",
 				topicName = "questions-test-topic");
+
+			Questions.addSubTopic(
+				subTopicDescription = "Topic Description",
+				subTopicName = "Questions Test Topic");
 		}
 
 		task ("Subcribe to the Topic") {
@@ -458,20 +475,16 @@ definition {
 		}
 
 		task ("Validate the subcribed topic") {
-			Questions.gotoTab(questionTabField = "My Subscriptions");
+			Questions.gotoTab(questionTabField = "Subscriptions");
 
 			Questions.viewSubscribedTopic(subscribedTopic = "Questions Test Topic");
 		}
 
 		task ("Unsubcribe to the Topic") {
-			Questions.gotoTab(questionTabField = "Questions");
-
 			Questions.unsubscribeFromTopic(topicName = "Questions Test Topic");
 		}
 
 		task ("Validate if the unsubcribed topic") {
-			Questions.gotoTab(questionTabField = "My Subscriptions");
-
 			Questions.viewSubscribedTopic(noSubscribedTopic = "true");
 		}
 	}

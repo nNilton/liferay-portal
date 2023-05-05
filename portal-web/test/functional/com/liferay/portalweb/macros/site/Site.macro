@@ -54,11 +54,21 @@ definition {
 				var siteTemplateName = "${siteType} Site";
 			}
 
+			if (isSet(siteTemplateTab)) {
+				Site.selectSiteTemplateTab(siteTemplateTab = ${siteTemplateTab});
+			}
+
 			LexiconCard.clickCard(card = ${siteTemplateName});
 
 			SelectFrame(locator1 = "IFrame#MODAL_BODY");
 
 			PortletEntry.inputName(name = ${siteName});
+
+			if (isSet(enablePrivatePage)) {
+				Check(
+					checkboxName = "Create default pages as private",
+					locator1 = "Checkbox#ANY_CHECKBOX");
+			}
 
 			Button.click(button = "Add");
 
@@ -198,13 +208,26 @@ definition {
 	}
 
 	macro addSiteTemplateCP {
-		Site.addCP(
-			membershipType = ${membershipType},
-			parentSiteName = ${parentSiteName},
-			siteName = ${siteName},
-			siteTemplateName = ${siteTemplateName},
-			siteType = "Site Template",
-			uncheckPropagation = ${uncheckPropagation});
+		if (isSet(siteTemplateTab)) {
+			Site.addCP(
+				enablePrivatePage = ${enablePrivatePage},
+				membershipType = ${membershipType},
+				parentSiteName = ${parentSiteName},
+				siteName = ${siteName},
+				siteTemplateName = ${siteTemplateName},
+				siteTemplateTab = ${siteTemplateTab},
+				siteType = "Site Template",
+				uncheckPropagation = ${uncheckPropagation});
+		}
+		else {
+			Site.addCP(
+				membershipType = ${membershipType},
+				parentSiteName = ${parentSiteName},
+				siteName = ${siteName},
+				siteTemplateName = ${siteTemplateName},
+				siteType = "Site Template",
+				uncheckPropagation = ${uncheckPropagation});
+		}
 	}
 
 	macro addVirtualHostsURLCP {
@@ -509,8 +532,6 @@ definition {
 				key_pageName = ${pageName},
 				locator1 = "Icon#COG_PAGE");
 		}
-
-		Panel.expandPanel(panel = "Logo");
 
 		PagesAdmin.uploadLogo(logoFile = ${logoFile});
 	}
@@ -1183,6 +1204,20 @@ definition {
 		Close(locator1 = "null");
 
 		SelectFrame(value1 = "relative=top");
+	}
+
+	macro selectSiteTemplateTab {
+		if (${siteTemplateTab} == "Custom Site Templates") {
+			Navigator.gotoNavTab(navTab = "Custom Site Templates");
+
+			Navigator.viewActivatedNavTab(navTab = "Custom Site Templates");
+		}
+
+		if (${siteTemplateTab} == "Provided by Liferay") {
+			Navigator.gotoNavTab(navTab = "Provided by Liferay");
+
+			Navigator.viewActivatedNavTab(navTab = "Provided by Liferay");
+		}
 	}
 
 	macro tearDownCP {

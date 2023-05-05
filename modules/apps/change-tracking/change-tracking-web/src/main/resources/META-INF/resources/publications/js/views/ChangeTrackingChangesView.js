@@ -22,6 +22,7 @@ import ClayIcon from '@clayui/icon';
 import ClayLabel from '@clayui/label';
 import ClayLayout from '@clayui/layout';
 import ClayLink from '@clayui/link';
+import ClayLoadingIndicator from '@clayui/loading-indicator';
 import ClayNavigationBar from '@clayui/navigation-bar';
 import {ClayPaginationBarWithBasicItems} from '@clayui/pagination-bar';
 import ClaySticker from '@clayui/sticker';
@@ -125,7 +126,6 @@ export default function ChangeTrackingChangesView({
 	publishURL,
 	rescheduleURL,
 	revertURL,
-	rootDisplayClasses,
 	scheduleURL,
 	showHideableFromURL,
 	siteNames,
@@ -133,6 +133,7 @@ export default function ChangeTrackingChangesView({
 	spritemap,
 	statusLabel,
 	statusStyle,
+	total,
 	typeNames,
 	typesFromURL,
 	unscheduleURL,
@@ -375,24 +376,6 @@ export default function ChangeTrackingChangesView({
 
 	if (contextView && contextViewRef.current === null) {
 		contextViewRef.current = JSON.parse(JSON.stringify(contextView));
-
-		for (let i = 0; i < rootDisplayClasses.length; i++) {
-			const className = rootDisplayClasses[i];
-
-			const rootClass = contextViewRef.current[className];
-
-			const keys = Object.keys(typesRef.current);
-
-			for (let j = 0; j < keys.length; j++) {
-				const type = typesRef.current[keys[j]];
-
-				if (type.name === className && type.hideable) {
-					rootClass.hideable = true;
-
-					break;
-				}
-			}
-		}
 	}
 
 	const getModels = useCallback((nodes) => {
@@ -569,6 +552,7 @@ export default function ChangeTrackingChangesView({
 		? true
 		: !!showHideableFromURL;
 
+	const [allChecked, setAllChecked] = useState(false);
 	const [ascendingState, setAscendingState] = useState(
 		orderByTypeFromURL !== ORDER_BY_TYPE_DESC
 	);
@@ -581,12 +565,12 @@ export default function ChangeTrackingChangesView({
 	const [dropdownActive, setDropdownActive] = useState(false);
 	const [entrySearchTerms, setEntrySearchTerms] = useState(keywordsFromURL);
 	const [filterSearchTerms, setFilterSearchTerms] = useState('');
+	const [loading, setLoading] = useState(false);
 	const [menu, setMenu] = useState(MENU_ROOT);
 	const [resultsKeywords, setResultsKeywords] = useState(keywordsFromURL);
 	const [searchMobile, setSearchMobile] = useState(false);
-	const [showComments, setShowComments] = useState(false);
-	const [allChecked, setAllChecked] = useState(false);
 	const [selectedChanges, setSelectedChanges] = useState([]);
+	const [showComments, setShowComments] = useState(false);
 
 	const getFilters = useCallback(
 		(changeTypes, sites, types, users) => {
@@ -751,7 +735,7 @@ export default function ChangeTrackingChangesView({
 		id: initialNode.nodeId,
 		nav:
 			!!ctMappingInfos.length &&
-			(!changes.length || navigationFromURL === NAVIGATION_RELATIONSHIPS)
+			(!total || navigationFromURL === NAVIGATION_RELATIONSHIPS)
 				? NAVIGATION_RELATIONSHIPS
 				: NAVIGATION_DATA,
 		node: initialNode,
@@ -1011,7 +995,7 @@ export default function ChangeTrackingChangesView({
 
 			if (
 				!!ctMappingInfos.length &&
-				(!changes.length || navigation === NAVIGATION_RELATIONSHIPS)
+				(!total || navigation === NAVIGATION_RELATIONSHIPS)
 			) {
 				navigation = NAVIGATION_RELATIONSHIPS;
 			}
@@ -1088,12 +1072,12 @@ export default function ChangeTrackingChangesView({
 			PARAM_SITES,
 			PARAM_TYPES,
 			PARAM_USERS,
-			changes,
 			ctMappingInfos,
 			filterNodes,
 			getFilters,
 			getNode,
 			isWithinApp,
+			total,
 		]
 	);
 
@@ -1940,6 +1924,12 @@ export default function ChangeTrackingChangesView({
 			parents: renderState.parents,
 			showHideable,
 		});
+
+		if (!showHideableFromURL) {
+			setLoading(true);
+
+			window.location.reload();
+		}
 	};
 
 	const renderExpiredBanner = () => {
@@ -1986,7 +1976,7 @@ export default function ChangeTrackingChangesView({
 						trigger={
 							<ClayButton
 								className="nav-link"
-								disabled={!changes.length}
+								disabled={!total}
 								displayType="unstyled"
 							>
 								<span className="navbar-breakpoint-down-d-none">
@@ -2113,7 +2103,7 @@ export default function ChangeTrackingChangesView({
 													'search'
 												)}
 												className="form-control input-group-inset input-group-inset-after"
-												disabled={!changes.length}
+												disabled={!total}
 												onChange={(event) =>
 													setEntrySearchTerms(
 														event.target.value
@@ -2132,7 +2122,7 @@ export default function ChangeTrackingChangesView({
 											>
 												<ClayButtonWithIcon
 													className="navbar-breakpoint-d-none"
-													disabled={!changes.length}
+													disabled={!total}
 													displayType="unstyled"
 													onClick={() =>
 														setSearchMobile(false)
@@ -2142,7 +2132,7 @@ export default function ChangeTrackingChangesView({
 												/>
 
 												<ClayButtonWithIcon
-													disabled={!changes.length}
+													disabled={!total}
 													displayType="unstyled"
 													spritemap={spritemap}
 													symbol="search"
@@ -2159,7 +2149,7 @@ export default function ChangeTrackingChangesView({
 									<ManagementToolbar.Item className="navbar-breakpoint-d-none">
 										<ClayButton
 											className="nav-link nav-link-monospaced"
-											disabled={!changes.length}
+											disabled={!total}
 											displayType="unstyled"
 											onClick={() =>
 												setSearchMobile(true)
@@ -2175,7 +2165,7 @@ export default function ChangeTrackingChangesView({
 
 								<ManagementToolbar.Item className="simple-toggle-switch-reverse">
 									<ClayToggle
-										disabled={!changes.length}
+										disabled={!total}
 										label={Liferay.Language.get(
 											'show-all-items'
 										)}
@@ -2209,12 +2199,10 @@ export default function ChangeTrackingChangesView({
 							>
 								<ClayLink
 									className={
-										!changes.length
-											? 'btn-link disabled'
-											: undefined
+										!total ? 'btn-link disabled' : undefined
 									}
 									onClick={
-										!changes.length
+										!total
 											? null
 											: () =>
 													handleNavigationUpdate(
@@ -2749,7 +2737,7 @@ export default function ChangeTrackingChangesView({
 	};
 
 	const renderMainContent = () => {
-		if (!changes.length && !ctMappingInfos.length) {
+		if (!total && !ctMappingInfos.length) {
 			return (
 				<div className="container-fluid container-fluid-max-xl">
 					{renderExpiredBanner()}
@@ -2846,8 +2834,7 @@ export default function ChangeTrackingChangesView({
 						'btn btn-' + displayType + ' btn-sm',
 						{
 							disabled:
-								(!changes.length && !ctMappingInfos.length) ||
-								expired,
+								(!total && !ctMappingInfos.length) || expired,
 						}
 					)}
 					href={setParameter(
@@ -2894,10 +2881,26 @@ export default function ChangeTrackingChangesView({
 							<ManageCollaborators {...collaboratorsData} />
 						</ClayToolbar.Item>
 
-						{Liferay.FeatureFlags['LPS-171364'] ? (
+						{Liferay.FeatureFlags['LPS-171364'] && publishURL ? (
 							<ClayToolbar.Item>
 								<MoveChangesModal
-									changes={selectedChanges}
+									changes={
+										renderState.node.modelClassNameId
+											? [
+													{
+														ctEntryId:
+															renderState.node
+																.ctEntryId,
+														modelClassNameId:
+															renderState.node
+																.modelClassNameId,
+														modelClassPK:
+															renderState.node
+																.modelClassPK,
+													},
+											  ]
+											: selectedChanges
+									}
 									ctCollectionId={ctCollectionId}
 									moveChangesURL={moveChangesURL}
 									namespace={namespace}
@@ -3056,7 +3059,7 @@ export default function ChangeTrackingChangesView({
 							: {}
 					}
 				>
-					{renderMainContent()}
+					{!loading ? renderMainContent() : <ClayLoadingIndicator />}
 				</div>
 			</div>
 		</>

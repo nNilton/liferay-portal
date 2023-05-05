@@ -11,7 +11,11 @@ definition {
 
 		User.firstLoginPG();
 
-		JSONGroup.addGroup(groupName = "Site Name");
+		HeadlessSite.addSite(siteName = "Site Name");
+
+		JSONLayoututilitypage.deleteLayoutUtilityPage(
+			groupName = "Site Name",
+			layoutUtilityPageName = "404 Error");
 
 		JSONLayout.addPublicLayout(
 			groupName = "Site Name",
@@ -70,6 +74,8 @@ definition {
 	@description = "This is a use case for LPS-98170"
 	@priority = 4
 	test AssertAssetPriorityNotBeResetAfterPublication {
+		property test.name.skip.portal.instance = "StagingUsecase#AssertAssetPriorityNotBeResetAfterPublication";
+
 		task ("Given: User add a page and an AP portlet to the default page") {
 			JSONLayout.addPublicLayout(
 				groupName = "Site Name (Staging)",
@@ -291,6 +297,8 @@ definition {
 	@description = "This is a use case for LPS-71786"
 	@priority = 3
 	test AssertDeletedAssetLinkRemovedFromLiveSite {
+		property test.name.skip.portal.instance = "StagingUsecase#AssertDeletedAssetLinkRemovedFromLiveSite";
+
 		task ("Given: User add a Blog portlet to the Staging site and 2 documents") {
 			JSONLayout.addWidgetToPublicLayout(
 				column = 1,
@@ -776,7 +784,7 @@ definition {
 	test ImportLARsOnStagedSite {
 		property portal.acceptance = "true";
 		property test.name.skip.portal.instance = "StagingUsecase#ImportLARsOnStagedSite";
-		property testray.component.names = "Site Pages Administration,Training,Web Content Administration";
+		property testray.component.names = "Page Administration,Training,Web Content Administration";
 
 		task ("Given: User import home page from LAR file on staging site") {
 			LAR.importSiteCP(
@@ -1287,6 +1295,8 @@ definition {
 
 	@priority = 3
 	test PublishWebContentFriendlyURLEncoding {
+		property test.name.skip.portal.instance = "StagingUsecase#PublishWebContentFriendlyURLEncoding";
+
 		task ("Given: User add 2 WC with friendly URL") {
 			WebContentNavigator.openWebContentAdmin(siteURLKey = "site-name-staging");
 
@@ -1900,9 +1910,9 @@ definition {
 		}
 
 		task ("When: User add a child site with a page and an AP widget on it") {
-			JSONGroup.addChildGroup(
-				groupName = "Child Site",
-				parentGroupName = "Site Name");
+			HeadlessSite.addSite(
+				parentSiteName = "Site Name",
+				siteName = "Child Site");
 
 			JSONLayout.addPublicLayout(
 				groupName = "Child Site",
@@ -1978,6 +1988,8 @@ definition {
 	@description = "This is a use case for LPS-91017, LPS-89646."
 	@priority = 4
 	test StagingPublishWCWithWebContentFieldViaAP {
+		property test.name.skip.portal.instance = "StagingUsecase#StagingPublishWCWithWebContentFieldViaAP";
+
 		task ("Given: User add a new AP widget and a WC to the staging site") {
 			JSONLayout.addWidgetToPublicLayout(
 				column = 1,
@@ -2131,7 +2143,7 @@ definition {
 	@priority = 3
 	test SubscribeWebContentWithStaging {
 		task ("Given: User add a new site and a new role") {
-			JSONGroup.addGroup(groupName = "Test Site");
+			HeadlessSite.addSite(siteName = "Test Site");
 
 			JSONRole.addRegularRole(
 				roleKey = "Web Content Subscriber Role",
@@ -2307,6 +2319,8 @@ definition {
 
 	@priority = 4
 	test ViewPublishDMWithModifiedTitle {
+		property test.name.skip.portal.instance = "StagingUsecase#ViewPublishDMWithModifiedTitle";
+
 		task ("Given: User add a new AP widget to the staging site") {
 			JSONLayout.addWidgetToPublicLayout(
 				column = 1,
@@ -2362,7 +2376,7 @@ definition {
 	@description = "This is a use case for LPS-96721."
 	@priority = 4
 	test ViewPublishedContentWithSpecialCharsInDocumentTitle {
-		property test.name.skip.portal.instance = "Staging#ViewPublishedContentWithSpecialCharsInDocumentTitle";
+		property test.name.skip.portal.instance = "StagingUsecase#ViewPublishedContentWithSpecialCharsInDocumentTitle";
 
 		task ("Given: User add a new file") {
 			JSONDocument.addFileWithUploadedFile(

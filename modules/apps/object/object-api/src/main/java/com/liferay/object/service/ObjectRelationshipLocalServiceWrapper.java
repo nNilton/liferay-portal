@@ -185,6 +185,15 @@ public class ObjectRelationshipLocalServiceWrapper
 			objectDefinitionId1);
 	}
 
+	@Override
+	public void deleteObjectRelationships(
+			long objectDefinitionId1, boolean reverse)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		_objectRelationshipLocalService.deleteObjectRelationships(
+			objectDefinitionId1, reverse);
+	}
+
 	/**
 	 * @throws PortalException
 	 */
@@ -507,6 +516,14 @@ public class ObjectRelationshipLocalServiceWrapper
 			objectDefinitionId1, deletionType, reverse);
 	}
 
+	@Override
+	public java.util.List<com.liferay.object.model.ObjectRelationship>
+		getObjectRelationshipsByObjectDefinitionId2(long objectDefinitionId2) {
+
+		return _objectRelationshipLocalService.
+			getObjectRelationshipsByObjectDefinitionId2(objectDefinitionId2);
+	}
+
 	/**
 	 * Returns the number of object relationships.
 	 *
@@ -536,6 +553,16 @@ public class ObjectRelationshipLocalServiceWrapper
 		throws com.liferay.portal.kernel.exception.PortalException {
 
 		return _objectRelationshipLocalService.getPersistedModel(primaryKeyObj);
+	}
+
+	@Override
+	public void registerObjectRelationshipsRelatedInfoCollectionProviders(
+		com.liferay.object.model.ObjectDefinition objectDefinition1,
+		ObjectDefinitionLocalService objectDefinitionLocalService) {
+
+		_objectRelationshipLocalService.
+			registerObjectRelationshipsRelatedInfoCollectionProviders(
+				objectDefinition1, objectDefinitionLocalService);
 	}
 
 	@Override

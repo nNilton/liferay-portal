@@ -27,7 +27,7 @@ definition {
 
 			Navigator.openURL();
 
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 
 			JSONLayout.addPublicLayout(
 				groupName = "Test Site Name",
@@ -92,10 +92,13 @@ definition {
 			JSONGroup.deleteGroupByName(groupName = "Test Site Name");
 		}
 
-		ACUtils.tearDownAC();
+		// It is not possible to delete properties and data source after LRAC-13389. This functionality should return after LRAC-8040
+
+		//ACUtils.tearDownAC();
+
 	}
 
-	@description = ""
+	@description = "LPS-96574 Given I have edit, delete and permission permissions for segments And I have connected my DXP instance with AC When I create an Individual Segment in AC and it shows in the DXP Segments administration Then I don't see the edit action"
 	@priority = 3
 	test CheckNotEditableSegmentFromACAtDXP {
 		property test.name.skip.portal.instance = "ACSegmentsInDXP#CheckNotEditableSegmentFromACAtDXP";
@@ -161,7 +164,7 @@ definition {
 
 			Click(locator1 = "AnalyticsCloudConnection#ANALYTICS_CLOUD_DXP_BUTTON");
 
-			AssertElementPresent(locator1 = "ACDXPSettings#CONNECT_DISCONNECT_BUTTON_DISABLED");
+			AssertElementPresent(locator1 = "ACDXPSettings#CONNECT_BUTTON_DISABLED");
 
 			Navigator.openSpecificURL(url = "http://www.able.com:8080");
 		}
@@ -186,7 +189,7 @@ definition {
 
 	}
 
-	@description = ""
+	@description = "LPS-96574 Given I have edit, delete and permission permissions for segments And I have connected my DXP instance with AC When I create an Individual Segment in AC and it shows in the DXP Segments administration And I delete the segment Then in the next sync time, the segment will appear again"
 	@priority = 4
 	test PersistSegmentFromACAtDXP {
 		property portal.acceptance = "true";

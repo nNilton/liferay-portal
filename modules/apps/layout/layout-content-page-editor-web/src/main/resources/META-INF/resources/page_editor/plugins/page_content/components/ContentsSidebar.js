@@ -22,7 +22,7 @@ import {selectPageContents} from '../../../app/selectors/selectPageContents';
 import isMapped from '../../../app/utils/editable_value/isMapped';
 import {getEditableLocalizedValue} from '../../../app/utils/getEditableLocalizedValue';
 import getFragmentItem from '../../../app/utils/getFragmentItem';
-import {hasRestrictedFormParent} from '../../../app/utils/hasRestrictedFormParent';
+import {hasRestrictedParent} from '../../../app/utils/hasRestrictedParent';
 import SidebarPanelHeader from '../../../common/components/SidebarPanelHeader';
 import NoPageContents from './NoPageContents';
 import PageContents from './PageContents';
@@ -38,7 +38,8 @@ const getEditableTitle = (editable, languageId) => {
 const getEditableValues = (
 	fragmentEntryLinks,
 	segmentsExperienceId,
-	layoutData
+	layoutData,
+	restrictedItemIds
 ) =>
 	Object.values(fragmentEntryLinks)
 		.filter((fragmentEntryLink) => {
@@ -48,7 +49,10 @@ const getEditableValues = (
 					fragmentEntryLink.fragmentEntryLinkId
 				);
 
-				if (item && hasRestrictedFormParent(item, layoutData)) {
+				if (
+					item &&
+					hasRestrictedParent(item, layoutData, restrictedItemIds)
+				) {
 					return;
 				}
 			}
@@ -112,6 +116,7 @@ export default function ContentsSidebar() {
 	const languageId = useSelector(selectLanguageId);
 	const layoutData = useSelector((state) => state.layoutData);
 	const pageContents = useSelector(selectPageContents);
+	const restrictedItemIds = useSelector((state) => state.restrictedItemIds);
 	const segmentsExperienceId = useSelector(
 		(state) => state.segmentsExperienceId
 	);
@@ -121,13 +126,20 @@ export default function ContentsSidebar() {
 			getEditableValues(
 				fragmentEntryLinks,
 				segmentsExperienceId,
-				layoutData
+				layoutData,
+				restrictedItemIds
 			)
 				.map((editable) =>
 					normalizeEditableValues(editable, languageId)
 				)
 				.filter((editable) => editable.title),
-		[fragmentEntryLinks, languageId, segmentsExperienceId, layoutData]
+		[
+			fragmentEntryLinks,
+			languageId,
+			restrictedItemIds,
+			segmentsExperienceId,
+			layoutData,
+		]
 	);
 
 	const contents = normalizePageContents(pageContents);

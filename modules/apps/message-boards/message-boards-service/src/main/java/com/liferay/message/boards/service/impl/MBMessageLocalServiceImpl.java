@@ -130,6 +130,8 @@ import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PortletKeys;
+import com.liferay.portal.kernel.util.PrefsPropsUtil;
+import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.SubscriptionSender;
 import com.liferay.portal.kernel.util.TempFileEntryUtil;
@@ -400,7 +402,7 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 		User user = _userLocalService.fetchUser(
 			_portal.getValidUserId(group.getCompanyId(), userId));
 
-		userName = user.isDefaultUser() ? userName : user.getFullName();
+		userName = user.isGuestUser() ? userName : user.getFullName();
 
 		subject = ModelHintsUtil.trimString(
 			MBMessage.class.getName(), "subject", subject);
@@ -411,7 +413,7 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 			format = "html";
 		}
 
-		if (anonymous || user.isDefaultUser()) {
+		if (anonymous || user.isGuestUser()) {
 			MBGroupServiceSettings mbGroupServiceSettings =
 				MBGroupServiceSettings.getInstance(groupId);
 
@@ -423,7 +425,7 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 			}
 		}
 
-		if (user.isDefaultUser()) {
+		if (user.isGuestUser()) {
 			anonymous = true;
 		}
 
@@ -556,7 +558,7 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 		}
 
 		if (!message.isDiscussion()) {
-			if (user.isDefaultUser()) {
+			if (user.isGuestUser()) {
 				addMessageResources(message, true, true);
 			}
 			else if (serviceContext.isAddGroupPermissions() ||
@@ -2429,7 +2431,11 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 
 		String replyToAddress = StringPool.BLANK;
 
-		if (PropsValues.POP_SERVER_NOTIFICATIONS_ENABLED) {
+		if (PrefsPropsUtil.getBoolean(
+				company.getCompanyId(),
+				PropsKeys.POP_SERVER_NOTIFICATIONS_ENABLED,
+				PropsValues.POP_SERVER_NOTIFICATIONS_ENABLED)) {
+
 			replyToAddress = MBMailUtil.getReplyToAddress(
 				message.getCategoryId(), message.getMessageId(),
 				company.getMx(), fromAddress);
@@ -2767,7 +2773,7 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 		JSONObject extraDataJSONObject = JSONUtil.put("title", title);
 
 		if (!message.isDiscussion()) {
-			if (!message.isAnonymous() && !user.isDefaultUser()) {
+			if (!message.isAnonymous() && !user.isGuestUser()) {
 				long receiverUserId = 0;
 
 				MBMessage parentMessage =

@@ -27,7 +27,6 @@ import com.liferay.object.deployer.ObjectDefinitionDeployer;
 import com.liferay.object.internal.info.collection.provider.ObjectEntrySingleFormVariationInfoCollectionProvider;
 import com.liferay.object.internal.notification.handler.ObjectDefinitionNotificationHandler;
 import com.liferay.object.internal.notification.term.contributor.ObjectDefinitionNotificationTermEvaluator;
-import com.liferay.object.internal.persistence.ObjectDefinitionTableArgumentsResolver;
 import com.liferay.object.internal.related.models.ObjectEntry1to1ObjectRelatedModelsProviderImpl;
 import com.liferay.object.internal.related.models.ObjectEntry1toMObjectRelatedModelsPredicateProviderImpl;
 import com.liferay.object.internal.related.models.ObjectEntry1toMObjectRelatedModelsProviderImpl;
@@ -60,7 +59,6 @@ import com.liferay.object.service.ObjectLayoutTabLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
 import com.liferay.object.service.ObjectViewLocalService;
 import com.liferay.petra.reflect.ReflectionUtil;
-import com.liferay.portal.kernel.dao.orm.ArgumentsResolver;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.security.permission.ResourceActions;
@@ -68,6 +66,7 @@ import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermi
 import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermission;
 import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermissionFactory;
 import com.liferay.portal.kernel.service.GroupLocalService;
+import com.liferay.portal.kernel.service.ListTypeLocalService;
 import com.liferay.portal.kernel.service.OrganizationLocalService;
 import com.liferay.portal.kernel.service.PersistedModelLocalServiceRegistry;
 import com.liferay.portal.kernel.service.PortletLocalService;
@@ -111,6 +110,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			dynamicQueryBatchIndexingActionableFactory,
 		GroupLocalService groupLocalService,
 		ListTypeEntryLocalService listTypeEntryLocalService,
+		ListTypeLocalService listTypeLocalService,
 		ModelSearchRegistrarHelper modelSearchRegistrarHelper,
 		ObjectActionLocalService objectActionLocalService,
 		ObjectDefinitionLocalService objectDefinitionLocalService,
@@ -143,6 +143,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			dynamicQueryBatchIndexingActionableFactory;
 		_groupLocalService = groupLocalService;
 		_listTypeEntryLocalService = listTypeEntryLocalService;
+		_listTypeLocalService = listTypeLocalService;
 		_modelSearchRegistrarHelper = modelSearchRegistrarHelper;
 		_objectActionLocalService = objectActionLocalService;
 		_objectDefinitionLocalService = objectDefinitionLocalService;
@@ -172,7 +173,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 	public List<ServiceRegistration<?>> deploy(
 		ObjectDefinition objectDefinition) {
 
-		if (objectDefinition.isSystem()) {
+		if (objectDefinition.isUnmodifiableSystemObject()) {
 			return Collections.emptyList();
 		}
 
@@ -204,16 +205,6 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 					_objectDefinitionLocalService, _organizationLocalService));
 
 		List<ServiceRegistration<?>> serviceRegistrations = ListUtil.fromArray(
-			_bundleContext.registerService(
-				ArgumentsResolver.class,
-				new ObjectDefinitionTableArgumentsResolver(
-					objectDefinition.getDBTableName()),
-				null),
-			_bundleContext.registerService(
-				ArgumentsResolver.class,
-				new ObjectDefinitionTableArgumentsResolver(
-					objectDefinition.getExtensionDBTableName()),
-				null),
 			_bundleContext.registerService(
 				KeywordQueryContributor.class,
 				new ObjectEntryKeywordQueryContributor(
@@ -270,7 +261,9 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			_bundleContext.registerService(
 				NotificationTermEvaluator.class,
 				new ObjectDefinitionNotificationTermEvaluator(
-					objectDefinition, _objectFieldLocalService,
+					_listTypeLocalService, objectDefinition,
+					_objectDefinitionLocalService, _objectEntryLocalService,
+					_objectFieldLocalService, _objectRelationshipLocalService,
 					_userLocalService),
 				HashMapDictionaryBuilder.<String, Object>put(
 					"class.name", objectDefinition.getClassName()
@@ -383,6 +376,10 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 					objectDefinition, objectLayout.getObjectLayoutTabs());
 		}
 
+		_objectRelationshipLocalService.
+			registerObjectRelationshipsRelatedInfoCollectionProviders(
+				objectDefinition, _objectDefinitionLocalService);
+
 		return serviceRegistrations;
 	}
 
@@ -411,6 +408,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		_dynamicQueryBatchIndexingActionableFactory;
 	private final GroupLocalService _groupLocalService;
 	private final ListTypeEntryLocalService _listTypeEntryLocalService;
+	private final ListTypeLocalService _listTypeLocalService;
 	private final ModelSearchRegistrarHelper _modelSearchRegistrarHelper;
 	private final ObjectActionLocalService _objectActionLocalService;
 	private final ObjectDefinitionLocalService _objectDefinitionLocalService;

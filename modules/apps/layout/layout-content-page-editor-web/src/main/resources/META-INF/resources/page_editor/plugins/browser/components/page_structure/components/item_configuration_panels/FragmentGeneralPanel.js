@@ -12,6 +12,7 @@
  * details.
  */
 
+import ClayAlert from '@clayui/alert';
 import PropTypes from 'prop-types';
 import React, {useCallback} from 'react';
 
@@ -34,6 +35,8 @@ import {FieldSet} from './FieldSet';
 
 export function FragmentGeneralPanel({item}) {
 	const dispatch = useDispatch();
+
+	const restrictedItemIds = useSelector((state) => state.restrictedItemIds);
 
 	const selectedViewportSize = useSelector(
 		(state) => state.selectedViewportSize
@@ -75,6 +78,19 @@ export function FragmentGeneralPanel({item}) {
 		},
 		[dispatch, fragmentEntryLink, languageId]
 	);
+
+	if (
+		Liferay.FeatureFlags['LPS-169923'] &&
+		restrictedItemIds.has(item.itemId)
+	) {
+		return (
+			<ClayAlert displayType="secondary" role={null}>
+				{Liferay.Language.get(
+					'this-content-cannot-be-displayed-due-to-permission-restrictions'
+				)}
+			</ClayAlert>
+		);
+	}
 
 	return (
 		<>

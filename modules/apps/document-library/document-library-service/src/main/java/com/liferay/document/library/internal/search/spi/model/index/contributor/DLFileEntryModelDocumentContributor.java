@@ -130,6 +130,7 @@ public class DLFileEntryModelDocumentContributor
 					dlFileEntry.getMimeType(), CharPool.FORWARD_SLASH,
 					CharPool.UNDERLINE));
 			document.addKeyword("readCount", dlFileEntry.getReadCount());
+			document.addDate("reviewDate", dlFileEntry.getReviewDate());
 			document.addNumber("size", dlFileEntry.getSize());
 			document.addNumber(
 				"versionCount", GetterUtil.getDouble(dlFileEntry.getVersion()));
@@ -288,8 +289,12 @@ public class DLFileEntryModelDocumentContributor
 		return text;
 	}
 
-	private String _getIndexVersionLabel(DLFileEntry dlFileEntry) {
-		return dlFileEntry.getVersion() + ".index";
+	private String _getIndexVersionLabel(DLFileEntry dlFileEntry)
+		throws PortalException {
+
+		DLFileVersion dlFileVersion = dlFileEntry.getFileVersion();
+
+		return dlFileVersion.getStoreFileName() + ".index";
 	}
 
 	private InputStream _getInputStream(DLFileEntry dlFileEntry) {

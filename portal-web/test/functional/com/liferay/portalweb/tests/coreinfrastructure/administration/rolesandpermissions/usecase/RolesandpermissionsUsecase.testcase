@@ -1,4 +1,4 @@
-@component-name = "portal-user-management-and-portal-configuration"
+@component-name = "portal-security"
 definition {
 
 	property portal.release = "true";
@@ -192,7 +192,7 @@ definition {
 		}
 
 		task ("Add the DM portlet with a file to a public page on a new site") {
-			JSONGroup.addGroup(groupName = "Site Name");
+			HeadlessSite.addSite(siteName = "Site Name");
 
 			JSONLayout.addPublicLayout(
 				groupName = "Site Name",
@@ -237,6 +237,8 @@ definition {
 
 	@priority = 4
 	test EditTeamPermissions {
+		property test.name.skip.portal.instance = "RolesandpermissionsUsecase#EditTeamPermissions";
+
 		Permissions.definePermissionViaJSONAPI(
 			resourceAction = "VIEW_CONTROL_PANEL",
 			resourceName = 90,
@@ -408,7 +410,7 @@ definition {
 	@description = "This is a use case for LPS-124190."
 	@priority = 3
 	test ExportRoleWithSiteAssignee {
-		JSONGroup.addGroup(groupName = "Site Name");
+		HeadlessSite.addSite(siteName = "Site Name");
 
 		JSONRole.addRegularRole(
 			roleKey = "Web Content Comment Reviewer",
@@ -1322,6 +1324,7 @@ definition {
 	@priority = 4
 	test ViewRegRolePermissionsDefaultView {
 		property release.feature.flags.disable.DISABLE_PRIVATE_LAYOUTS = "true";
+		property test.name.skip.portal.instance = "RolesandpermissionsUsecase#ViewRegRolePermissionsDefaultView";
 
 		JSONRole.addRegularRole(
 			roleKey = "Roles Regrole Name",

@@ -3,8 +3,12 @@
 		"pageElements": [
 			{
 				"definition": {
+					"fragmentStyle": {
+						"marginBottom": "8"
+					},
 					"indexed": true,
 					"layout": {
+						"marginBottom": 10,
 						"opacity": 100,
 						"widthType": "Fluid"
 					},
@@ -14,7 +18,7 @@
 					{
 						"definition": {
 							"fragment": {
-								"key": "home-welcome-banner",
+								"key": "evp-home-welcome-banner",
 								"siteKey": "[$GROUP_KEY$]"
 							},
 							"fragmentConfig": {
@@ -33,81 +37,111 @@
 							"fragmentStyle": {
 								"marginBottom": "5"
 							},
+							"gutters": true,
 							"indexed": true,
-							"layout": {
-								"marginBottom": 4,
-								"opacity": 100,
-								"widthType": "Fluid"
-							},
-							"name": "News Section"
+							"modulesPerRow": 2,
+							"numberOfColumns": 2,
+							"reverseOrder": false,
+							"rowViewports": [
+								{
+									"id": "landscapeMobile",
+									"rowViewportDefinition": {
+										"modulesPerRow": 1
+									}
+								},
+								{
+									"id": "portraitMobile",
+									"rowViewportDefinition": {
+									}
+								},
+								{
+									"id": "tablet",
+									"rowViewportDefinition": {
+									}
+								}
+							],
+							"verticalAlignment": "top"
 						},
 						"pageElements": [
 							{
 								"definition": {
-									"gutters": true,
-									"indexed": true,
-									"modulesPerRow": 2,
-									"numberOfColumns": 2,
-									"reverseOrder": false,
-									"rowViewports": [
+									"columnViewports": [
 										{
-											"id": "landscapeMobile",
-											"rowViewportDefinition": {
-												"modulesPerRow": 1
-											}
+											"columnViewportDefinition": {
+												"size": 12
+											},
+											"id": "landscapeMobile"
 										},
 										{
-											"id": "portraitMobile",
-											"rowViewportDefinition": {
-											}
+											"columnViewportDefinition": {
+											},
+											"id": "portraitMobile"
 										},
 										{
-											"id": "tablet",
-											"rowViewportDefinition": {
-											}
+											"columnViewportDefinition": {
+											},
+											"id": "tablet"
 										}
 									],
-									"verticalAlignment": "top"
+									"size": 8
 								},
 								"pageElements": [
 									{
 										"definition": {
-											"columnViewports": [
-												{
-													"columnViewportDefinition": {
-														"size": 12
-													},
-													"id": "landscapeMobile"
-												},
-												{
-													"columnViewportDefinition": {
-													},
-													"id": "portraitMobile"
-												},
-												{
-													"columnViewportDefinition": {
-													},
-													"id": "tablet"
-												}
-											],
-											"size": 8
+											"indexed": true,
+											"layout": {
+												"opacity": 100,
+												"widthType": "Fluid"
+											},
+											"name": "News Container"
 										},
 										"pageElements": [
 											{
 												"definition": {
+													"fragment": {
+														"key": "DIALECT-dialect-text"
+													},
+													"fragmentConfig": {
+														"textType": "h2",
+														"truncateText": false
+													},
+													"fragmentFields": [
+														{
+															"id": "element-text",
+															"value": {
+																"fragmentLink": {
+																},
+																"text": {
+																	"value_i18n": {
+																		"en_US": "News"
+																	}
+																}
+															}
+														}
+													],
+													"fragmentStyle": {
+														"marginBottom": "2"
+													},
+													"indexed": true
+												},
+												"type": "Fragment"
+											},
+											{
+												"definition": {
 													"indexed": true,
 													"layout": {
+														"align": "Center",
+														"contentDisplay": "FlexColumn",
 														"opacity": 100,
 														"widthType": "Fluid"
-													},
-													"name": "News Container"
+													}
 												},
 												"pageElements": [
 													{
 														"definition": {
 															"fragment": {
-																"key": "news",
-																"siteKey": "[$GROUP_ID$]"
+																"key": "evp-news",
+																"siteKey": "[$GROUP_KEY$]"
 															},
 															"fragmentConfig": {
 															},
@@ -120,6 +154,9 @@
 																	}
 																}
 															],
+															"fragmentStyle": {
+																"height": "320px"
+															},
 															"indexed": true,
 															"widgetInstances": [
 																{
@@ -127,7 +164,7 @@
 																		"abstractLength": "200",
 																		"anyAssetType": "[$CLASS_NAME_ID:com.liferay.journal.model.JournalArticle$]",
 																		"anyClassTypeDLFileEntryAssetRendererFactory": "true",
-																		"anyClassTypeJournalArticleAssetRendererFactory": "[$DDM_STRUCTURE_ID:ANNOUNCEMENT$]",
+																		"anyClassTypeJournalArticleAssetRendererFactory": "[$DDM_STRUCTURE_ID:NEWS$]",
 																		"assetLinkBehavior": "viewInPortlet",
 																		"assetVocabularyId": "",
 																		"classNameIds": "[$CLASS_NAME_ID:com.liferay.journal.model.JournalArticle$]",
@@ -215,16 +252,13 @@
 													},
 													{
 														"definition": {
-															"cssClasses": [
-																"mt-n2"
-															],
 															"fragment": {
 																"key": "DIALECT-dialect-button"
 															},
 															"fragmentConfig": {
 																"buttonSize": "",
 																"inverted": false,
-																"style": "primary",
+																"style": "neutral",
 																"type": "borderless",
 																"uppercase": false
 															},
@@ -259,18 +293,17 @@
 																		},
 																		"text": {
 																			"value_i18n": {
-																				"en_US": "View all News"
+																				"en_US": "All News"
 																			}
 																		}
 																	}
 																}
 															],
 															"fragmentStyle": {
-																"paddingBottom": "2",
-																"textAlign": "center"
+																"marginBottom": "1",
+																"marginTop": "1"
 															},
-															"indexed": true,
-															"name": "Button News"
+															"indexed": true
 														},
 														"type": "Fragment"
 													}
@@ -278,29 +311,41 @@
 												"type": "Section"
 											}
 										],
-										"type": "Column"
-									},
+										"type": "Section"
+									}
+								],
+								"type": "Column"
+							},
+							{
+								"definition": {
+									"columnViewports": [
+										{
+											"columnViewportDefinition": {
+												"size": 12
+											},
+											"id": "landscapeMobile"
+										},
+										{
+											"columnViewportDefinition": {
+											},
+											"id": "portraitMobile"
+										},
+										{
+											"columnViewportDefinition": {
+											},
+											"id": "tablet"
+										}
+									],
+									"size": 4
+								},
+								"pageElements": [
 									{
 										"definition": {
-											"columnViewports": [
-												{
-													"columnViewportDefinition": {
-														"size": 12
-													},
-													"id": "landscapeMobile"
-												},
-												{
-													"columnViewportDefinition": {
-													},
-													"id": "portraitMobile"
-												},
-												{
-													"columnViewportDefinition": {
-													},
-													"id": "tablet"
-												}
-											],
-											"size": 4
+											"indexed": true,
+											"layout": {
+												"opacity": 100,
+												"widthType": "Fluid"
+											}
 										},
 										"pageElements": [
 											{
@@ -309,7 +354,7 @@
 														"key": "DIALECT-dialect-text"
 													},
 													"fragmentConfig": {
-														"textType": "h3",
+														"textType": "h2",
 														"truncateText": false
 													},
 													"fragmentFields": [
@@ -327,112 +372,90 @@
 														}
 													],
 													"fragmentStyle": {
-														"fontWeight": "fontWeightBold",
-														"marginBottom": "3",
-														"textColor": "colorNeutral10"
+														"marginBottom": "3"
 													},
-													"indexed": true,
-													"name": "Gallery Title"
+													"indexed": true
 												},
 												"type": "Fragment"
 											},
 											{
 												"definition": {
-													"fragmentStyle": {
-														"height": "345px"
+													"fragment": {
+														"key": "evp-slider",
+														"siteKey": "[$GROUP_KEY$]"
 													},
-													"indexed": true,
-													"layout": {
-														"align": "Start",
-														"contentDisplay": "FlexColumn",
-														"justify": "Center",
-														"opacity": 100,
-														"widthType": "Fluid"
+													"fragmentConfig": {
+														"numberOfSlides": 3
 													},
-													"name": "Slider Container"
-												},
-												"pageElements": [
-													{
-														"definition": {
-															"fragment": {
-																"key": "evp-slider",
-																"siteKey": "[$GROUP_KEY$]"
-															},
-															"fragmentConfig": {
-																"numberOfSlides": 3
-															},
-															"fragmentFields": [
-																{
-																	"id": "01-image",
+													"fragmentFields": [
+														{
+															"id": "01-image",
+															"value": {
+																"fragmentLink": {
 																	"value": {
-																		"fragmentLink": {
-																			"value": {
-																				"href": {
-																					"value_i18n": {
-																						"en_US": ""
-																					}
-																				}
-																			}
-																		},
-																		"text": {
-																			"mapping": {
-																				"fieldKey": "FileEntry_previewImage",
-																				"itemReference": {
-																					"className": "com.liferay.portal.kernel.repository.model.FileEntry",
-																					"classPK": "[$DOCUMENT_FILE_ENTRY_ID:/site-initializer/documents/group/gallery/evp_photo1.jpg$]"
-																				}
+																		"href": {
+																			"value_i18n": {
+																				"en_US": ""
 																			}
 																		}
 																	}
 																},
-																{
-																	"id": "02-image",
-																	"value": {
-																		"fragmentLink": {
-																		},
-																		"text": {
-																			"mapping": {
-																				"fieldKey": "FileEntry_previewImage",
-																				"itemReference": {
-																					"className": "com.liferay.portal.kernel.repository.model.FileEntry",
-																					"classPK": "[$DOCUMENT_FILE_ENTRY_ID:/site-initializer/documents/group/gallery/evp_photo2.jpg$]"
-																				}
-																			}
-																		}
-																	}
-																},
-																{
-																	"id": "03-image",
-																	"value": {
-																		"fragmentLink": {
-																		},
-																		"text": {
-																			"mapping": {
-																				"fieldKey": "FileEntry_previewImage",
-																				"itemReference": {
-																					"className": "com.liferay.portal.kernel.repository.model.FileEntry",
-																					"classPK": "[$DOCUMENT_FILE_ENTRY_ID:/site-initializer/documents/group/gallery/evp_photo3.jpg$]"
-																				}
-																			}
+																"text": {
+																	"mapping": {
+																		"fieldKey": "FileEntry_previewImage",
+																		"itemReference": {
+																			"className": "com.liferay.portal.kernel.repository.model.FileEntry",
+																			"classPK": "[$DOCUMENT_FILE_ENTRY_ID:/site-initializer/documents/group/gallery/evp_photo1.jpg$]"
 																		}
 																	}
 																}
-															],
-															"indexed": true
+															}
 														},
-														"type": "Fragment"
-													}
-												],
-												"type": "Section"
+														{
+															"id": "02-image",
+															"value": {
+																"fragmentLink": {
+																},
+																"text": {
+																	"mapping": {
+																		"fieldKey": "FileEntry_previewImage",
+																		"itemReference": {
+																			"className": "com.liferay.portal.kernel.repository.model.FileEntry",
+																			"classPK": "[$DOCUMENT_FILE_ENTRY_ID:/site-initializer/documents/group/gallery/evp_photo2.jpg$]"
+																		}
+																	}
+																}
+															}
+														},
+														{
+															"id": "03-image",
+															"value": {
+																"fragmentLink": {
+																},
+																"text": {
+																	"mapping": {
+																		"fieldKey": "FileEntry_previewImage",
+																		"itemReference": {
+																			"className": "com.liferay.portal.kernel.repository.model.FileEntry",
+																			"classPK": "[$DOCUMENT_FILE_ENTRY_ID:/site-initializer/documents/group/gallery/evp_photo3.jpg$]"
+																		}
+																	}
+																}
+															}
+														}
+													],
+													"indexed": true
+												},
+												"type": "Fragment"
 											}
 										],
-										"type": "Column"
+										"type": "Section"
 									}
 								],
-								"type": "Row"
+								"type": "Column"
 							}
 						],
-						"type": "Section"
+						"type": "Row"
 					},
 					{
 						"definition": {
@@ -455,7 +478,7 @@
 										"key": "DIALECT-dialect-text"
 									},
 									"fragmentConfig": {
-										"textType": "h3",
+										"textType": "h2",
 										"truncateText": false
 									},
 									"fragmentFields": [
@@ -473,12 +496,9 @@
 										}
 									],
 									"fragmentStyle": {
-										"fontWeight": "fontWeightBold",
-										"marginBottom": "3",
-										"textColor": "colorNeutral10"
+										"marginBottom": "2"
 									},
-									"indexed": true,
-									"name": "Data Title"
+									"indexed": true
 								},
 								"type": "Fragment"
 							},
@@ -486,7 +506,7 @@
 								"definition": {
 									"collectionConfig": {
 										"collectionReference": {
-											"className": "com.liferay.object.internal.info.collection.provider.ObjectEntrySingleFormVariationInfoCollectionProvider_20097_C_EVPData"
+											"className": "com.liferay.object.internal.info.collection.provider.ObjectEntrySingleFormVariationInfoCollectionProvider_[$COMPANY_ID$]_C_EVPHomepageData"
 										},
 										"collectionType": "CollectionProvider"
 									},
@@ -499,6 +519,7 @@
 										},
 										{
 											"collectionViewportDefinition": {
+												"numberOfColumns": 1
 											},
 											"id": "portraitMobile"
 										},
@@ -532,6 +553,20 @@
 													"fragmentStyle": {
 														"borderWidth": "0"
 													},
+													"fragmentViewports": [
+														{
+															"fragmentViewportStyle": {
+																"overflow": "scroll"
+															},
+															"id": "portraitMobile"
+														},
+														{
+															"fragmentViewportStyle": {
+																"overflow": "auto"
+															},
+															"id": "tablet"
+														}
+													],
 													"indexed": true,
 													"layout": {
 														"align": "Center",
@@ -554,6 +589,17 @@
 																"paddingTop": "4",
 																"width": "208px"
 															},
+															"fragmentViewports": [
+																{
+																	"fragmentViewportStyle": {
+																		"height": "50em",
+																		"marginRight": "2",
+																		"maxWidth": "10rem",
+																		"width": "10rem"
+																	},
+																	"id": "portraitMobile"
+																}
+															],
 															"indexed": true,
 															"layout": {
 																"align": "Center",
@@ -603,8 +649,6 @@
 															},
 															{
 																"definition": {
-																	"fragmentStyle": {
-																	},
 																	"indexed": true,
 																	"layout": {
 																		"opacity": 100,
@@ -703,6 +747,14 @@
 																"paddingTop": "4",
 																"width": "208px"
 															},
+															"fragmentViewports": [
+																{
+																	"fragmentViewportStyle": {
+																		"marginRight": "2"
+																	},
+																	"id": "portraitMobile"
+																}
+															],
 															"indexed": true,
 															"layout": {
 																"align": "Center",
@@ -752,8 +804,6 @@
 															},
 															{
 																"definition": {
-																	"fragmentStyle": {
-																	},
 																	"indexed": true,
 																	"layout": {
 																		"opacity": 100,
@@ -844,6 +894,14 @@
 																"paddingTop": "4",
 																"width": "208px"
 															},
+															"fragmentViewports": [
+																{
+																	"fragmentViewportStyle": {
+																		"marginRight": "2"
+																	},
+																	"id": "portraitMobile"
+																}
+															],
 															"indexed": true,
 															"layout": {
 																"align": "Center",
@@ -893,8 +951,6 @@
 															},
 															{
 																"definition": {
-																	"fragmentStyle": {
-																	},
 																	"indexed": true,
 																	"layout": {
 																		"opacity": 100,
@@ -1042,6 +1098,14 @@
 																"paddingTop": "4",
 																"width": "208px"
 															},
+															"fragmentViewports": [
+																{
+																	"fragmentViewportStyle": {
+																		"marginRight": "2"
+																	},
+																	"id": "portraitMobile"
+																}
+															],
 															"indexed": true,
 															"layout": {
 																"align": "Center",
@@ -1091,8 +1155,6 @@
 															},
 															{
 																"definition": {
-																	"fragmentStyle": {
-																	},
 																	"indexed": true,
 																	"layout": {
 																		"opacity": 100,
@@ -1183,6 +1245,14 @@
 																"paddingTop": "4",
 																"width": "208px"
 															},
+															"fragmentViewports": [
+																{
+																	"fragmentViewportStyle": {
+																		"marginRight": "2"
+																	},
+																	"id": "portraitMobile"
+																}
+															],
 															"indexed": true,
 															"layout": {
 																"align": "Center",
@@ -1232,8 +1302,6 @@
 															},
 															{
 																"definition": {
-																	"fragmentStyle": {
-																	},
 																	"indexed": true,
 																	"layout": {
 																		"opacity": 100,
@@ -1545,7 +1613,7 @@
 																									"fields": [
 																										{
 																											"fieldName": "friendlyURL",
-																											"fieldValue": "/my-evp"
+																											"fieldValue": "/request"
 																										},
 																										{
 																											"fieldName": "privatePage",
@@ -1634,6 +1702,14 @@
 																		"height": "315",
 																		"width": "500px"
 																	},
+																	"fragmentViewports": [
+																		{
+																			"fragmentViewportStyle": {
+																				"paddingRight": "4"
+																			},
+																			"id": "tablet"
+																		}
+																	],
 																	"indexed": true
 																},
 																"type": "Fragment"
@@ -1672,6 +1748,20 @@
 										"pageElements": [
 											{
 												"definition": {
+													"fragmentViewports": [
+														{
+															"fragmentViewportStyle": {
+																"overflow": "scroll"
+															},
+															"id": "portraitMobile"
+														},
+														{
+															"fragmentViewportStyle": {
+																"overflow": "auto"
+															},
+															"id": "tablet"
+														}
+													],
 													"indexed": true,
 													"layout": {
 														"align": "Center",
@@ -1955,6 +2045,15 @@
 																	}
 																}
 															],
+															"fragmentViewports": [
+																{
+																	"fragmentViewportStyle": {
+																		"marginLeft": "6",
+																		"marginRight": "0"
+																	},
+																	"id": "portraitMobile"
+																}
+															],
 															"indexed": true
 														},
 														"type": "Fragment"
@@ -1974,7 +2073,7 @@
 					{
 						"definition": {
 							"fragment": {
-								"key": "evp-data-money",
+								"key": "evp-homepage-data-money",
 								"siteKey": "[$GROUP_KEY$]"
 							},
 							"fragmentConfig": {

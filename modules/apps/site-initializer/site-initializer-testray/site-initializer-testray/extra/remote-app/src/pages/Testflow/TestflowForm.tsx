@@ -19,9 +19,11 @@ import {useEffect, useMemo, useState} from 'react';
 import {useForm} from 'react-hook-form';
 import {useNavigate, useOutletContext, useParams} from 'react-router-dom';
 import {KeyedMutator} from 'swr';
+import {withPagePermission} from '~/hoc/withPagePermission';
 
 import Form from '../../components/Form';
 import Container from '../../components/Layout/Container';
+import SearchBuilder from '../../core/SearchBuilder';
 import {useHeader} from '../../hooks';
 import {useFetch} from '../../hooks/useFetch';
 import useFormActions from '../../hooks/useFormActions';
@@ -38,7 +40,6 @@ import {
 	testrayTaskImpl,
 	testrayTaskUsersImpl,
 } from '../../services/rest';
-import {SearchBuilder} from '../../util/search';
 import {TaskStatuses} from '../../util/statuses';
 import {UserListView} from '../Manage/User';
 import useTestFlowAssign from './TestflowFormAssignUserActions';
@@ -307,4 +308,6 @@ const TestflowForm = () => {
 	);
 };
 
-export default TestflowForm;
+export default withPagePermission(TestflowForm, {
+	restImpl: testrayTaskImpl,
+});

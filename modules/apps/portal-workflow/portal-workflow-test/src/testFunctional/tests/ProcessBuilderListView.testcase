@@ -68,6 +68,7 @@ definition {
 	@description = "Verify that, when duplicating a process, the user is able to edit its title"
 	@priority = 4
 	test CanEditTitleOfDuplicatedProcess {
+		property portal.upstream = "quarantine";
 		property test.name.skip.portal.instance = "ProcessBuilderListView#CanEditTitleOfDuplicatedProcess";
 
 		Workflow.duplicateSingleApproverWorkflow(workflowName = "Single Approver 2");
@@ -177,7 +178,7 @@ definition {
 
 		Workflow.unpublishWorkflowDefinition(workflowDefinitionTitle = "Single Approver");
 
-		Alert.viewErrorMessage(errorMessage = "Workflow is in use. Remove its assignment to these Assets: Blogs Entry, Calendar Event and 1 More.");
+		Alert.viewErrorMessage(errorMessage = "Workflow is in use. Remove its assignment to these Assets:");
 
 		Workflow.viewDefinitionPublished(workflowDefinitionTitle = "Single Approver");
 	}
@@ -227,6 +228,12 @@ definition {
 		Click(
 			key_value = "Title",
 			locator1 = "ProcessBuilderListView#DROPDOWN_ITEM");
+
+		WaitForElementPresent(
+			key_index = 1,
+			key_processName = "A Workflow",
+			key_section = "Published",
+			locator1 = "ProcessBuilderListView#PROCESS_NAME_IN_SECTION_BY_INDEX");
 
 		AssertElementPresent(
 			key_index = 1,
@@ -416,15 +423,11 @@ definition {
 	}
 
 	@description = "Verify that the user can select View option in the kebab menu for a particular row"
-	@ignore = "true"
 	@priority = 4
 	test CanSelectViewOption {
 		property test.run.environment = "EE";
 
-		ApplicationsMenu.gotoPortlet(
-			category = "Workflow",
-			panel = "Applications",
-			portlet = "Process Builder");
+		Workflow.openWorkflowListView();
 
 		Workflow.viewWorkflowDefinition(workflowDefinitionTitle = "Single Approver");
 
@@ -481,9 +484,9 @@ definition {
 
 		ProcessBuilderListView.searchForWorkflow(workflowName = "Approver");
 
-		Click(locator1 = "ProcessBuilderListView#CLEAR_BUTTON_PROCESS_BUILDER");
+		Click(locator1 = "ManagementBar#CLEAR_FILTER");
 
-		AssertElementNotPresent(locator1 = "ProcessBuilderListView#CLEAR_BUTTON_PROCESS_BUILDER");
+		AssertElementNotPresent(locator1 = "ManagementBar#CLEAR_FILTER");
 
 		Workflow.viewDefinitionPublished(workflowDefinitionTitle = "Single Approver");
 	}

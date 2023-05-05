@@ -24,6 +24,7 @@ import com.liferay.headless.delivery.dto.v1_0.BlogPostingImage;
 import com.liferay.headless.delivery.dto.v1_0.util.ContentValueUtil;
 import com.liferay.headless.delivery.internal.odata.entity.v1_0.BlogPostingImageEntityModel;
 import com.liferay.headless.delivery.resource.v1_0.BlogPostingImageResource;
+import com.liferay.portal.kernel.change.tracking.CTAware;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.Folder;
 import com.liferay.portal.kernel.search.Field;
@@ -40,8 +41,6 @@ import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.portal.vulcan.util.SearchUtil;
 
-import java.util.Optional;
-
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.MultivaluedMap;
 
@@ -56,6 +55,7 @@ import org.osgi.service.component.annotations.ServiceScope;
 	properties = "OSGI-INF/liferay/rest/v1_0/blog-posting-image.properties",
 	scope = ServiceScope.PROTOTYPE, service = BlogPostingImageResource.class
 )
+@CTAware
 public class BlogPostingImageResourceImpl
 	extends BaseBlogPostingImageResourceImpl {
 
@@ -178,7 +178,7 @@ public class BlogPostingImageResourceImpl
 					fileEntry, fileEntry.getFileVersion(), null, "");
 				contentValue = ContentValueUtil.toContentValue(
 					"contentValue", fileEntry::getContentStream,
-					Optional.of(contextUriInfo));
+					contextUriInfo);
 				encodingFormat = fileEntry.getMimeType();
 				fileExtension = fileEntry.getExtension();
 				id = fileEntry.getFileEntryId();

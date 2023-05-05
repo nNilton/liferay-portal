@@ -63,7 +63,7 @@ import org.osgi.service.component.annotations.Reference;
  */
 @Component(
 	property = "dto.class.name=com.liferay.blogs.model.BlogsEntry",
-	service = {BlogPostingDTOConverter.class, DTOConverter.class}
+	service = DTOConverter.class
 )
 public class BlogPostingDTOConverter
 	implements DTOConverter<BlogsEntry, BlogPosting> {
@@ -96,7 +96,7 @@ public class BlogPostingDTOConverter
 				alternativeHeadline = blogsEntry.getSubtitle();
 				articleBody = blogsEntry.getContent();
 				creator = CreatorUtil.toCreator(
-					_portal, dtoConverterContext.getUriInfoOptional(),
+					_portal, dtoConverterContext.getUriInfo(),
 					_userLocalService.fetchUser(blogsEntry.getUserId()));
 				customFields = CustomFieldsUtil.toCustomFields(
 					dtoConverterContext.isAcceptAllLanguages(),
@@ -179,7 +179,7 @@ public class BlogPostingDTOConverter
 					false);
 				contentValue = ContentValueUtil.toContentValue(
 					"image.contentValue", fileEntry::getContentStream,
-					dtoConverterContext.getUriInfoOptional());
+					dtoConverterContext.getUriInfo());
 				imageId = coverImageFileEntryId;
 			}
 		};

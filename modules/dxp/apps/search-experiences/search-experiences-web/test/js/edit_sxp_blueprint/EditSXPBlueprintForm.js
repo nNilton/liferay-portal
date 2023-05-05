@@ -58,15 +58,18 @@ afterAll(() => {
 });
 
 Liferay.ThemeDisplay.getDefaultLanguageId = () => 'en_US';
+Liferay.ThemeDisplay.getPathContext = () => '';
 
 function renderEditSXPBlueprintForm(props) {
 	return render(
 		<EditSXPBlueprintForm
 			entityJSON={ENTITY_JSON}
 			initialConfiguration={INITIAL_CONFIGURATION}
-			initialDescription={{}}
+			initialDescription=""
+			initialDescriptionI18n={{}}
 			initialSXPElementInstances={[]}
-			initialTitle={{
+			initialTitle="Test Title"
+			initialTitleI18n={{
 				'en-US': 'Test Title',
 			}}
 			sxpBlueprintId="0"

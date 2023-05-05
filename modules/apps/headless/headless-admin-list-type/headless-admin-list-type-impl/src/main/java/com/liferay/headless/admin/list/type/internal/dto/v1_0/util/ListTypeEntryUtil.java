@@ -16,8 +16,6 @@ package com.liferay.headless.admin.list.type.internal.dto.v1_0.util;
 
 import com.liferay.headless.admin.list.type.dto.v1_0.ListTypeEntry;
 import com.liferay.list.type.service.ListTypeEntryLocalService;
-import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.util.PropsUtil;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 
 import java.util.Locale;
@@ -52,14 +50,8 @@ public class ListTypeEntryUtil {
 			{
 				dateCreated = serviceBuilderListTypeEntry.getCreateDate();
 				dateModified = serviceBuilderListTypeEntry.getModifiedDate();
-
-				if (GetterUtil.getBoolean(
-						PropsUtil.get("feature.flag.LPS-168886"))) {
-
-					externalReferenceCode =
-						serviceBuilderListTypeEntry.getExternalReferenceCode();
-				}
-
+				externalReferenceCode =
+					serviceBuilderListTypeEntry.getExternalReferenceCode();
 				id = serviceBuilderListTypeEntry.getListTypeEntryId();
 				key = serviceBuilderListTypeEntry.getKey();
 				name = serviceBuilderListTypeEntry.getName(locale);

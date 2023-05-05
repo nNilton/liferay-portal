@@ -28,6 +28,7 @@ import cleanSuggestionsContributorConfiguration from '../utils/clean_suggestions
 export default function SearchBar({
 	destinationFriendlyURL,
 	emptySearchEnabled,
+	isDXP = true,
 	isSearchExperiencesSupported = true,
 	keywords = '',
 	keywordsParameterName = 'q',
@@ -42,6 +43,11 @@ export default function SearchBar({
 	suggestionsDisplayThreshold = '2',
 	suggestionsURL = '/o/portal-search-rest/v1.0/suggestions',
 }) {
+	const fetchURL = new URL(
+		`${Liferay.ThemeDisplay.getPathContext()}${suggestionsURL}`,
+		Liferay.ThemeDisplay.getPortalURL()
+	);
+
 	const [active, setActive] = useState(false);
 	const [autocompleteSearchValue, setAutocompleteSearchValue] = useState('');
 	const [inputValue, setInputValue] = useState(keywords);
@@ -67,6 +73,7 @@ export default function SearchBar({
 	const _getLowestSuggestionsDisplayThreshold = useCallback(() => {
 		const characterThresholdArray = cleanSuggestionsContributorConfiguration(
 			suggestionsContributorConfiguration,
+			isDXP,
 			isSearchExperiencesSupported
 		).map((config) =>
 			config.attributes?.characterThreshold
@@ -76,9 +83,10 @@ export default function SearchBar({
 
 		return Math.min(...characterThresholdArray);
 	}, [
+		isDXP,
+		isSearchExperiencesSupported,
 		suggestionsContributorConfiguration,
 		suggestionsDisplayThreshold,
-		isSearchExperiencesSupported,
 	]);
 
 	/**
@@ -90,10 +98,15 @@ export default function SearchBar({
 			JSON.stringify(
 				cleanSuggestionsContributorConfiguration(
 					suggestionsContributorConfiguration,
+					isDXP,
 					isSearchExperiencesSupported
 				)
 			),
-		[isSearchExperiencesSupported, suggestionsContributorConfiguration]
+		[
+			isDXP,
+			isSearchExperiencesSupported,
+			suggestionsContributorConfiguration,
+		]
 	);
 
 	const _fetchSuggestions = (searchValue, scopeValue) => {
@@ -105,11 +118,12 @@ export default function SearchBar({
 						? destinationFriendlyURL
 						: '/search',
 					groupId: Liferay.ThemeDisplay.getScopeGroupId(),
+					keywordsParameterName,
 					plid: Liferay.ThemeDisplay.getPlid(),
 					scope: scopeValue,
 					search: searchValue,
 				},
-				suggestionsURL
+				fetchURL.href
 			),
 			{
 				body: _getSuggestionsContributorConfiguration(),
@@ -257,12 +271,14 @@ export default function SearchBar({
 						/>
 
 						<ClayInput.GroupInsetItem after>
-							<ClayLoadingIndicator
-								className={getCN({
-									invisible: !loading,
-								})}
-								small
-							/>
+							<span className="c-mr-2 inline-item">
+								<ClayLoadingIndicator
+									className={getCN({
+										invisible: !loading,
+									})}
+									small
+								/>
+							</span>
 						</ClayInput.GroupInsetItem>
 					</ClayInput.Group>
 				</ClayInput.GroupItem>
@@ -289,7 +305,7 @@ export default function SearchBar({
 					</ClaySelect>
 				</ClayInput.GroupItem>
 
-				<ClayInput.GroupItem append className="mr-0" shrink>
+				<ClayInput.GroupItem append className="c-mr-0" shrink>
 					<ClayButton
 						aria-label={Liferay.Language.get('search')}
 						displayType="secondary"

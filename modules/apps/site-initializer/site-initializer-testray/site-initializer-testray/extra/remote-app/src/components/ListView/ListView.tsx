@@ -20,6 +20,7 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
+	useRef,
 } from 'react';
 import {KeyedMutator} from 'swr';
 
@@ -30,6 +31,7 @@ import ListViewContextProvider, {
 	ListViewContextProviderProps,
 	ListViewTypes,
 } from '../../context/ListViewContext';
+import SearchBuilder from '../../core/SearchBuilder';
 import {useFetch} from '../../hooks/useFetch';
 import i18n from '../../i18n';
 import {
@@ -39,7 +41,6 @@ import {
 import {APIResponse} from '../../services/rest';
 import {SortDirection} from '../../types';
 import {PAGINATION} from '../../util/constants';
-import {SearchBuilder} from '../../util/search';
 import EmptyState from '../EmptyState';
 import Loading from '../Loading';
 import ManagementToolbar, {ManagementToolbarProps} from '../ManagementToolbar';
@@ -101,9 +102,14 @@ const ListView: React.FC<ListViewProps> = ({
 	} = listViewContext;
 
 	const filterSchemaName = managementToolbarProps.filterSchema ?? '';
+
 	const filterSchema = (filterSchemas as any)[
 		filterSchemaName
 	] as FilterSchemaType;
+
+	const onContextChangeRef = useRef<
+		((context: ListViewContextState) => void) | undefined
+	>(onContextChange);
 
 	const onApplyFilterMemo = useMemo(
 		() => filterSchema?.onApply?.bind(filterSchema),
@@ -145,8 +151,16 @@ const ListView: React.FC<ListViewProps> = ({
 		transformData,
 	});
 
-	const {actions = {}, items = [], page, pageSize, totalCount = 0} =
-		response || {};
+	const {
+		actions = {},
+		items = [],
+		page = 1,
+		pageSize,
+		totalCount = 0,
+		lastPage = 1,
+	} = response || {};
+
+	const itemsMemoized = useMemo(() => items, [items]);
 
 	const columns = useMemo(
 		() =>
@@ -182,27 +196,40 @@ const ListView: React.FC<ListViewProps> = ({
 		[dispatch]
 	);
 
-	const contextString = JSON.stringify(listViewContext);
-
 	const onSelectAllRows = useCallback(() => {
-		onSelectRow(items.map(({id}) => id));
-	}, [items, onSelectRow]);
+		onSelectRow(itemsMemoized.map(({id}) => id));
+	}, [itemsMemoized, onSelectRow]);
 
 	useEffect(() => {
-		if (onContextChange) {
-			onContextChange(JSON.parse(contextString));
+		const shouldCurrentPageBeChanged =
+			!loading &&
+			!itemsMemoized.length &&
+			lastPage > 1 &&
+			page === lastPage;
+
+		if (shouldCurrentPageBeChanged) {
+			dispatch({payload: page - 1, type: ListViewTypes.SET_PAGE});
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [contextString]);
+	}, [dispatch, itemsMemoized.length, lastPage, loading, page]);
+
+	const listViewContextString = JSON.stringify(listViewContext);
+
+	useEffect(() => {
+		if (onContextChangeRef.current) {
+			onContextChangeRef.current(JSON.parse(listViewContextString));
+		}
+	}, [listViewContextString]);
 
 	useEffect(() => {
 		if (tableProps.rowSelectable) {
 			dispatch({
-				payload: items.every(({id}) => selectedRows.includes(id)),
+				payload: itemsMemoized.every(({id}) =>
+					selectedRows.includes(id)
+				),
 				type: ListViewTypes.SET_CHECKED_ALL_ROWS,
 			});
 		}
-	}, [items, tableProps, selectedRows, dispatch]);
+	}, [itemsMemoized, tableProps, selectedRows, dispatch]);
 
 	if (loading) {
 		return <Loading />;
@@ -237,11 +264,11 @@ const ListView: React.FC<ListViewProps> = ({
 					{...managementToolbarProps}
 					actions={actions}
 					tableProps={tableProps}
-					totalItems={items.length}
+					totalItems={itemsMemoized.length}
 				/>
 			)}
 
-			{!items.length && (
+			{!itemsMemoized.length && (
 				<EmptyState
 					description={error?.message}
 					type={error ? 'EMPTY_SEARCH' : 'EMPTY_STATE'}
@@ -265,7 +292,7 @@ const ListView: React.FC<ListViewProps> = ({
 						{...tableProps}
 						allRowsChecked={listViewContext.checkAll}
 						columns={columns}
-						items={items}
+						items={itemsMemoized}
 						mutate={mutate}
 						onSelectAllRows={onSelectAllRows}
 						onSelectRow={onSelectRow}

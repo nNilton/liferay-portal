@@ -17,7 +17,7 @@ definition {
 	}
 
 	@description = "This is a test for the story COMMERCE-9376, with the testplan COMMERCE-9534 and test ticket COMMERCE-9549"
-	@priority = 3
+	@priority = 5
 	test CanCheckProductVersionsWithProductVersioningDisabled {
 		property portal.acceptance = "false";
 		property test.name.skip.portal.instance = "CPCommerceProductVersioning#CanCheckProductVersionsWithProductVersioningDisabled";
@@ -51,9 +51,10 @@ definition {
 		}
 
 		task ("And click on 'Save as Draft'") {
-			ClickNoError(
+			AssertClickNoError(
 				key_text = "Save as Draft",
-				locator1 = "Button#ANY");
+				locator1 = "Button#ANY",
+				value1 = "Save as Draft");
 		}
 
 		task ("And the admin click on 'OK'") {
@@ -108,9 +109,9 @@ definition {
 	}
 
 	@description = "This is a test for the story COMMERCE-9376, with the testplan COMMERCE-9534 and test ticket COMMERCE-9553"
-	@priority = 3
+	@priority = 5
 	test CanCheckVersionableProductConvertToDraftStatus {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		task ("Given the admin has already created a new simple product and When the admin opens the product that was created before") {
 			CommerceNavigator.gotoPortlet(
@@ -204,7 +205,7 @@ definition {
 	}
 
 	@description = "This is a test for the story COMMERCE-9376, with the testplan COMMERCE-9534 and test ticket COMMERCE-9540"
-	@priority = 3
+	@priority = 5
 	test CanCheckVersionableProductVisibilityOnMiniumCatalogPage {
 		property portal.acceptance = "true";
 
@@ -332,7 +333,7 @@ definition {
 	}
 
 	@description = "This is a test for the story COMMERCE-9376, with the testplan COMMERCE-9534 and test ticket COMMERCE-9537"
-	@priority = 3
+	@priority = 5
 	test CanCreateNewVersionableProductDraftVersion {
 		property portal.acceptance = "true";
 
@@ -377,7 +378,7 @@ definition {
 	}
 
 	@description = "This is a test for the ticket COMMERCE-9941"
-	@priority = 3
+	@priority = 5
 	test CanDeleteVersionableProducts {
 		property portal.acceptance = "true";
 
@@ -505,9 +506,9 @@ definition {
 	}
 
 	@description = "This is a test for the ticket COMMERCE-9941"
-	@priority = 3
+	@priority = 5
 	test CanDuplicateVersionableProductsAndDelete {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		task ("Given the admin has already created a new simple product and When the admin opens the product that was created before") {
 			CommerceNavigator.gotoPortlet(
@@ -566,9 +567,9 @@ definition {
 	}
 
 	@description = "This is a test for the story COMMERCE-9376, with the testplan COMMERCE-9534 and test ticket COMMERCE-9539"
-	@priority = 3
+	@priority = 5
 	test CanOnlyHaveOneVersionableProductDraftVersion {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		task ("Given the admin has already created a new simple product") {
 			CommerceNavigator.gotoPortlet(

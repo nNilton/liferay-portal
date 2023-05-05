@@ -20,6 +20,7 @@ import com.liferay.object.constants.ObjectRelationshipConstants;
 import com.liferay.object.field.setting.util.ObjectFieldSettingUtil;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectField;
+import com.liferay.object.model.ObjectRelationship;
 import com.liferay.object.rest.dto.v1_0.FileEntry;
 import com.liferay.object.rest.dto.v1_0.ListEntry;
 import com.liferay.object.rest.internal.resource.v1_0.ObjectEntryRelatedObjectsResourceImpl;
@@ -27,11 +28,12 @@ import com.liferay.object.rest.internal.resource.v1_0.ObjectEntryResourceImpl;
 import com.liferay.object.rest.internal.resource.v1_0.OpenAPIResourceImpl;
 import com.liferay.object.rest.internal.vulcan.openapi.contributor.ObjectEntryOpenAPIContributor;
 import com.liferay.object.rest.openapi.v1_0.ObjectEntryOpenAPIResource;
+import com.liferay.object.rest.openapi.v1_0.ObjectEntryOpenAPIResourceProvider;
 import com.liferay.object.service.ObjectActionLocalService;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
-import com.liferay.object.system.SystemObjectDefinitionMetadataRegistry;
+import com.liferay.object.system.SystemObjectDefinitionManagerRegistry;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.TreeMapBuilder;
 import com.liferay.portal.vulcan.batch.engine.Field;
@@ -71,22 +73,25 @@ public class ObjectEntryOpenAPIResourceImpl
 		ObjectActionLocalService objectActionLocalService,
 		ObjectDefinition objectDefinition,
 		ObjectDefinitionLocalService objectDefinitionLocalService,
+		ObjectEntryOpenAPIResourceProvider objectEntryOpenAPIResourceProvider,
 		ObjectFieldLocalService objectFieldLocalService,
 		ObjectRelationshipLocalService objectRelationshipLocalService,
 		OpenAPIResource openAPIResource,
-		SystemObjectDefinitionMetadataRegistry
-			systemObjectDefinitionMetadataRegistry) {
+		SystemObjectDefinitionManagerRegistry
+			systemObjectDefinitionManagerRegistry) {
 
 		_bundleContext = bundleContext;
 		_dtoConverterRegistry = dtoConverterRegistry;
 		_objectActionLocalService = objectActionLocalService;
 		_objectDefinition = objectDefinition;
 		_objectDefinitionLocalService = objectDefinitionLocalService;
+		_objectEntryOpenAPIResourceProvider =
+			objectEntryOpenAPIResourceProvider;
 		_objectFieldLocalService = objectFieldLocalService;
 		_objectRelationshipLocalService = objectRelationshipLocalService;
 		_openAPIResource = openAPIResource;
-		_systemObjectDefinitionMetadataRegistry =
-			systemObjectDefinitionMetadataRegistry;
+		_systemObjectDefinitionManagerRegistry =
+			systemObjectDefinitionManagerRegistry;
 	}
 
 	@Override
@@ -215,8 +220,9 @@ public class ObjectEntryOpenAPIResourceImpl
 				addRelatedSchemas, _bundleContext, _dtoConverterRegistry,
 				_objectActionLocalService, _objectDefinition,
 				_objectDefinitionLocalService, this,
+				_objectEntryOpenAPIResourceProvider,
 				_objectRelationshipLocalService, _openAPIResource,
-				_systemObjectDefinitionMetadataRegistry),
+				_systemObjectDefinitionManagerRegistry),
 			_getOpenAPISchemaFilter(_objectDefinition),
 			new HashSet<Class<?>>() {
 				{
@@ -250,6 +256,22 @@ public class ObjectEntryOpenAPIResourceImpl
 			if (Objects.equals(
 					objectField.getRelationshipType(),
 					ObjectRelationshipConstants.TYPE_ONE_TO_MANY)) {
+
+				ObjectRelationship objectRelationship =
+					_objectRelationshipLocalService.
+						fetchObjectRelationshipByObjectFieldId2(
+							objectField.getObjectFieldId());
+
+				dtoProperties.add(
+					new DTOProperty(
+						Collections.singletonMap("x-parent-map", "properties"),
+						objectRelationship.getName(),
+						String.class.getSimpleName()) {
+
+						{
+							setRequired(objectField.isRequired());
+						}
+					});
 
 				dtoProperties.add(
 					new DTOProperty(
@@ -315,11 +337,13 @@ public class ObjectEntryOpenAPIResourceImpl
 	private final ObjectActionLocalService _objectActionLocalService;
 	private final ObjectDefinition _objectDefinition;
 	private final ObjectDefinitionLocalService _objectDefinitionLocalService;
+	private final ObjectEntryOpenAPIResourceProvider
+		_objectEntryOpenAPIResourceProvider;
 	private final ObjectFieldLocalService _objectFieldLocalService;
 	private final ObjectRelationshipLocalService
 		_objectRelationshipLocalService;
 	private final OpenAPIResource _openAPIResource;
-	private final SystemObjectDefinitionMetadataRegistry
-		_systemObjectDefinitionMetadataRegistry;
+	private final SystemObjectDefinitionManagerRegistry
+		_systemObjectDefinitionManagerRegistry;
 
 }

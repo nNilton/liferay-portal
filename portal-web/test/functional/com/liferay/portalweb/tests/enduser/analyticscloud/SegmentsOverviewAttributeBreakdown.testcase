@@ -23,7 +23,9 @@ definition {
 	tearDown {
 		var testPortalInstance = PropsUtil.get("test.portal.instance");
 
-		ACUtils.tearDownAC();
+		// It is not possible to delete properties and data source after LRAC-13389. This functionality should return after LRAC-8040
+
+		//ACUtils.tearDownAC();
 
 		ACUtils.tearDownDXP();
 
@@ -66,7 +68,11 @@ definition {
 		task ("Connect the DXP to AC") {
 			ACDXPSettings.connectDXPtoAnalyticsCloud(siteName = "Site Name");
 
-			ACDXPSettings.syncNewUserData(fieldNameList = "User Custom Field");
+			ACDXPSettings.navToSyncedAttributes();
+
+			ACDXPSettings.syncAttributes(
+				attributeCategory = "People",
+				attributeNameList = "User Custom Field");
 		}
 
 		task ("View AC Page as new user") {
@@ -250,7 +256,11 @@ definition {
 		task ("Connect the DXP to AC") {
 			ACDXPSettings.connectDXPtoAnalyticsCloud(siteName = "Site Name");
 
-			ACDXPSettings.syncNewUserData(fieldNameList = "Age");
+			ACDXPSettings.navToSyncedAttributes();
+
+			ACDXPSettings.syncAttributes(
+				attributeCategory = "People",
+				attributeNameList = "Age");
 		}
 
 		task ("View AC Page as new user") {

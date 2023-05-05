@@ -67,6 +67,10 @@ public class ServletDataImpl implements ServletData {
 
 	@Activate
 	public void activate(BundleContext bundleContext) {
+		Mutation.setChannelResourceComponentServiceObjects(
+			_channelResourceComponentServiceObjects);
+		Mutation.setSkuResourceComponentServiceObjects(
+			_skuResourceComponentServiceObjects);
 		Mutation.setWishListResourceComponentServiceObjects(
 			_wishListResourceComponentServiceObjects);
 		Mutation.setWishListItemResourceComponentServiceObjects(
@@ -134,6 +138,15 @@ public class ServletDataImpl implements ServletData {
 		_resourceMethodObjectValuePairs =
 			new HashMap<String, ObjectValuePair<Class<?>, String>>() {
 				{
+					put(
+						"mutation#createChannelsPageExportBatch",
+						new ObjectValuePair<>(
+							ChannelResourceImpl.class,
+							"postChannelsPageExportBatch"));
+					put(
+						"mutation#createChannelProductSku",
+						new ObjectValuePair<>(
+							SkuResourceImpl.class, "postChannelProductSku"));
 					put(
 						"mutation#createChannelWishList",
 						new ObjectValuePair<>(
@@ -248,8 +261,22 @@ public class ServletDataImpl implements ServletData {
 						new ObjectValuePair<>(
 							WishListItemResourceImpl.class,
 							"getWishListItemsPage"));
+
+					put(
+						"query#WishList.items",
+						new ObjectValuePair<>(
+							WishListItemResourceImpl.class,
+							"getWishListItemsPage"));
 				}
 			};
+
+	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
+	private ComponentServiceObjects<ChannelResource>
+		_channelResourceComponentServiceObjects;
+
+	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
+	private ComponentServiceObjects<SkuResource>
+		_skuResourceComponentServiceObjects;
 
 	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
 	private ComponentServiceObjects<WishListResource>
@@ -266,10 +293,6 @@ public class ServletDataImpl implements ServletData {
 	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
 	private ComponentServiceObjects<CategoryResource>
 		_categoryResourceComponentServiceObjects;
-
-	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
-	private ComponentServiceObjects<ChannelResource>
-		_channelResourceComponentServiceObjects;
 
 	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
 	private ComponentServiceObjects<LinkedProductResource>
@@ -298,9 +321,5 @@ public class ServletDataImpl implements ServletData {
 	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
 	private ComponentServiceObjects<RelatedProductResource>
 		_relatedProductResourceComponentServiceObjects;
-
-	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
-	private ComponentServiceObjects<SkuResource>
-		_skuResourceComponentServiceObjects;
 
 }

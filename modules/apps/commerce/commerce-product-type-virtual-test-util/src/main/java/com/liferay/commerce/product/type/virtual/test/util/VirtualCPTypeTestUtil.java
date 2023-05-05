@@ -104,11 +104,11 @@ public class VirtualCPTypeTestUtil {
 			PortalUtil.getClassNameId(JournalArticle.class));
 
 		return JournalArticleLocalServiceUtil.addArticle(
-			serviceContext.getUserId(), groupId,
+			null, serviceContext.getUserId(), groupId,
 			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
 			RandomTestUtil.randomLocaleStringMap(),
 			RandomTestUtil.randomLocaleStringMap(), content,
-			ddmStructure.getStructureKey(), ddmTemplate.getTemplateKey(),
+			ddmStructure.getStructureId(), ddmTemplate.getTemplateKey(),
 			serviceContext);
 	}
 

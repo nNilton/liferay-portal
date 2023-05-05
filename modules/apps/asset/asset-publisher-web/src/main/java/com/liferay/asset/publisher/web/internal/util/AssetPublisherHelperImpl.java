@@ -347,7 +347,8 @@ public class AssetPublisherHelperImpl implements AssetPublisherHelper {
 					SegmentsWebKeys.SEGMENTS_ANONYMOUS_USER_ID));
 
 			return _assetListAssetEntryProvider.getAssetEntries(
-				assetListEntry, segmentsEntryIds, acClientUserId);
+				assetListEntry, segmentsEntryIds, null, null, StringPool.BLANK,
+				acClientUserId, QueryUtil.ALL_POS, QueryUtil.ALL_POS);
 		}
 
 		List<AssetEntry> assetEntries = getAssetEntries(
@@ -1089,7 +1090,7 @@ public class AssetPublisherHelperImpl implements AssetPublisherHelper {
 
 		List<AssetEntry> assetEntries = baseModelSearchResult.getBaseModels();
 
-		if (!assetEntries.isEmpty() && (start < total)) {
+		if (!assetEntries.isEmpty()) {
 			assetEntryResults.add(new AssetEntryResult(assetEntries));
 		}
 

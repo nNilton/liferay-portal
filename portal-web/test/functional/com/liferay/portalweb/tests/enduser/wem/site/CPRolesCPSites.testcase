@@ -4,7 +4,7 @@ definition {
 	property portal.release = "true";
 	property portal.upstream = "true";
 	property testray.component.names = "Roles";
-	property testray.main.component.name = "Site Administration";
+	property testray.main.component.name = "Sites Administration";
 
 	setUp {
 		TestCase.setUpPortalInstance();
@@ -142,11 +142,11 @@ definition {
 		}
 
 		task ("Add a site and child site") {
-			JSONGroup.addGroup(groupName = "Parent Site Name");
+			HeadlessSite.addSite(siteName = "Parent Site Name");
 
-			JSONGroup.addChildGroup(
-				groupName = "Child SiteName",
-				parentGroupName = "Parent Site Name");
+			HeadlessSite.addSite(
+				parentSiteName = "Parent Site Name",
+				siteName = "Child SiteName");
 		}
 
 		task ("Assign user to parent site") {
@@ -254,9 +254,9 @@ definition {
 		}
 
 		task ("Add a child site and assign the user to it") {
-			JSONGroup.addChildGroup(
-				groupName = "Child SiteName1",
-				parentGroupName = "Site Name");
+			HeadlessSite.addSite(
+				parentSiteName = "Site Name",
+				siteName = "Child SiteName1");
 
 			JSONGroup.assignUserToGroup(
 				groupName = "Child SiteName1",
@@ -310,10 +310,9 @@ definition {
 		}
 
 		task ("Go to add a child site to the Site Name site") {
-			ApplicationsMenu.gotoPortlet(
-				category = "Sites",
-				panel = "Control Panel",
-				portlet = "Sites");
+			Site.openSitesAdmin();
+
+			WaitForPageLoad();
 
 			var key_siteName = "Site Name";
 
@@ -327,7 +326,7 @@ definition {
 
 			PortletEntry.inputName(name = "Child SiteName2");
 
-			Button.clickAdd();
+			Button.click(button = "Add");
 
 			SelectFrameTop();
 
@@ -335,10 +334,9 @@ definition {
 		}
 
 		task ("Go to add a child site to the Child SiteName1 site") {
-			ApplicationsMenu.gotoPortlet(
-				category = "Sites",
-				panel = "Control Panel",
-				portlet = "Sites");
+			Site.openSitesAdmin();
+
+			WaitForPageLoad();
 
 			var key_siteName = "Child SiteName1";
 
@@ -376,12 +374,9 @@ definition {
 				userLoginEmailAddress = "userea@liferay.com",
 				userLoginFullName = "userfn userln");
 
-			Navigator.openURL();
+			Site.openSitesAdmin();
 
-			ApplicationsMenu.gotoPortlet(
-				category = "Sites",
-				panel = "Control Panel",
-				portlet = "Sites");
+			WaitForPageLoad();
 
 			var key_site = "Child SiteName1";
 
@@ -393,12 +388,9 @@ definition {
 				locator1 = "Portlet#HEADER",
 				value1 = "Child SiteName1");
 
-			Navigator.openURL();
+			Site.openSitesAdmin();
 
-			ApplicationsMenu.gotoPortlet(
-				category = "Sites",
-				panel = "Control Panel",
-				portlet = "Sites");
+			WaitForPageLoad();
 
 			var key_site = "Child SiteName2";
 
@@ -424,12 +416,9 @@ definition {
 				userLoginEmailAddress = "userea@liferay.com",
 				userLoginFullName = "userfn userln");
 
-			Navigator.openURL();
+			Site.openSitesAdmin();
 
-			ApplicationsMenu.gotoPortlet(
-				category = "Sites",
-				panel = "Control Panel",
-				portlet = "Sites");
+			WaitForPageLoad();
 
 			var key_siteName = "Child SiteName1";
 
@@ -473,7 +462,7 @@ definition {
 		}
 
 		task ("Add a site and add a public widget page in it") {
-			JSONGroup.addGroup(groupName = "Site Name");
+			HeadlessSite.addSite(siteName = "Site Name");
 
 			JSONLayout.addPublicLayout(
 				groupName = "Site Name",

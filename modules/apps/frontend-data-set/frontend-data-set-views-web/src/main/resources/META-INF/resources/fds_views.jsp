@@ -16,15 +16,22 @@
 
 <%@ include file="/init.jsp" %>
 
-<portlet:renderURL var="addFDSViewURL">
-	<portlet:param name="mvcPath" value="/add_fds_view.jsp" />
-</portlet:renderURL>
+<%
+portletDisplay.setShowBackIcon(true);
+portletDisplay.setURLBack(fdsViewsDisplayContext.getFDSEntriesURL());
+
+renderResponse.setTitle(ParamUtil.getString(request, "fdsEntryLabel"));
+%>
 
 <react:component
 	module="js/FDSViews"
 	props='<%=
 		HashMapBuilder.<String, Object>put(
-			"addFDSViewURL", addFDSViewURL
+			"fdsEntryId", ParamUtil.getString(request, "fdsEntryId")
+		).put(
+			"fdsEntryLabel", ParamUtil.getString(request, "fdsEntryLabel")
+		).put(
+			"fdsViewURL", fdsViewsDisplayContext.getFDSViewURL()
 		).put(
 			"namespace", liferayPortletResponse.getNamespace()
 		).build()

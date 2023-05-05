@@ -1,0 +1,48 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`RoleRenderer should render 1`] = `
+<div>
+  <td>
+    <span>
+      Owner
+    </span>
+  </td>
+</div>
+`;
+
+exports[`RoleRenderer should render as being edited 1`] = `
+<div>
+  <td>
+    <span>
+      <div
+        aria-haspopup="true"
+        class="dropdown dropdown-root"
+      >
+        <button
+          class="button-root dropdown-toggle show-caret btn btn-sm btn-unstyled"
+          type="button"
+        >
+          <span
+            class="text-truncate"
+          >
+            Member
+          </span>
+          
+          <span
+            class="caret-root"
+          >
+            <svg
+              class="lexicon-icon lexicon-icon-caret-bottom icon-root"
+              role="presentation"
+            >
+              <use
+                xlink:href="#caret-bottom"
+              />
+            </svg>
+          </span>
+        </button>
+      </div>
+    </span>
+  </td>
+</div>
+`;

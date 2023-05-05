@@ -13,7 +13,7 @@ definition {
 		}
 
 		task ("Add a site via JSON") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 
 		task ("Add a content page") {
@@ -250,6 +250,8 @@ definition {
 			WaitForElementPresent(
 				key_deviceType = "Tablet",
 				locator1 = "PageEditor#DEVICE_TYPE_ACTIVE");
+
+			WaitForElementNotPresent(locator1 = "PageEditor#VIEWPORT_LOADING_ANIMATION");
 		}
 
 		task ("Take down the Width and File Size of image resolution in Tablet viewport") {
@@ -568,14 +570,14 @@ definition {
 			SelectFrameTop();
 
 			Click(
-				key_deviceType = "smartphone",
+				key_deviceType = "Mobile",
 				locator1 = "ControlMenuPreviewPanel#PREVIEW_DATA_DEVICE_BUTTON");
 
 			AssertElementPresent(
 				key_deviceType = "smartphone",
 				locator1 = "ControlMenuPreviewPanel#PREVIEW_DEVICE_IFRAME");
 
-			SelectFrame.selectFrameNoLoading(locator1 = "//iframe[@id='simulationDeviceIframe']");
+			SelectFrame.selectFrameNoLoading(locator1 = "ControlMenuPreviewPanel#PREVIEW_DEVICE_GENERAL_IFRAME");
 		}
 
 		task ("Assert the mapping image is shown in Preview modal") {
@@ -728,14 +730,14 @@ definition {
 			SelectFrameTop();
 
 			Click(
-				key_deviceType = "tablet",
+				key_deviceType = "Tablet",
 				locator1 = "ControlMenuPreviewPanel#PREVIEW_DATA_DEVICE_BUTTON");
 
 			AssertElementPresent(
 				key_deviceType = "tablet",
 				locator1 = "ControlMenuPreviewPanel#PREVIEW_DEVICE_IFRAME");
 
-			SelectFrame.selectFrameNoLoading(locator1 = "//iframe[@id='simulationDeviceIframe']");
+			SelectFrame.selectFrameNoLoading(locator1 = "ControlMenuPreviewPanel#PREVIEW_DEVICE_GENERAL_IFRAME");
 		}
 
 		task ("Assert the mapping image is shown in Preview modal") {
@@ -1101,7 +1103,7 @@ definition {
 		}
 
 		task ("Add an Image fragment to page") {
-			TestUtils.maximizeWindow();
+			SetWindowSize.maximizeWindow();
 
 			ContentPagesNavigator.openEditContentPage(
 				pageName = "Test Page Name",

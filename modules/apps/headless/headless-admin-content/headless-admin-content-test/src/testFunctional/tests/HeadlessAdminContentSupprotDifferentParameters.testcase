@@ -54,7 +54,7 @@ definition {
 		}
 
 		task ("Then in a response I receive a body with title field values only") {
-			var actualValue = HeadlessWebcontentAPI.getItemsDetail(responseToParse = ${response});
+			var actualValue = JSONUtil.getWithJSONPath(${response}, "$.items");
 
 			TestUtils.assertEquals(
 				actual = ${actualValue},
@@ -82,14 +82,13 @@ definition {
 
 		task ("Given a web content created") {
 			var ddmStructureId = WebContentStructures.getDdmStructureId(structureName = "content-structure");
-			var siteId = JSONGroupAPI._getSiteIdByGroupKey(groupName = "Test Site Name");
 
 			var responseFromCreate = HeadlessWebcontentAPI.createStructuredContent(
 				data = "<p>My content</p>",
 				ddmStructureId = ${ddmStructureId},
+				groupName = "Test Site Name",
 				label = "Text",
 				name = "Text",
-				siteId = ${siteId},
 				title = "WC WebContent Title");
 		}
 
@@ -163,14 +162,13 @@ definition {
 
 		task ("Given a web content created") {
 			var ddmStructureId = WebContentStructures.getDdmStructureId(structureName = "content-structure");
-			var siteId = JSONGroupAPI._getSiteIdByGroupKey(groupName = "Test Site Name");
 
 			var responseFromCreate = HeadlessWebcontentAPI.createStructuredContent(
 				data = "<p>My content</p>",
 				ddmStructureId = ${ddmStructureId},
+				groupName = "Test Site Name",
 				label = "Text",
 				name = "Text",
-				siteId = ${siteId},
 				title = "WC WebContent Title");
 		}
 
@@ -186,7 +184,7 @@ definition {
 		}
 
 		task ("Then in a response I receive a id values only") {
-			var actualValue = HeadlessWebcontentAPI.getItemsDetail(responseToParse = ${response});
+			var actualValue = JSONUtil.getWithJSONPath(${response}, "$.items");
 
 			TestUtils.assertEquals(
 				actual = ${actualValue},
@@ -214,14 +212,13 @@ definition {
 
 		task ("And Given web content created") {
 			var ddmStructureId = WebContentStructures.getDdmStructureId(structureName = "content-structure");
-			var siteId = JSONGroupAPI._getSiteIdByGroupKey(groupName = "Test Site Name");
 
 			var responseFromCreate = HeadlessWebcontentAPI.createStructuredContent(
 				data = "<p>My content</p>",
 				ddmStructureId = ${ddmStructureId},
+				groupName = "Test Site Name",
 				label = "Text",
 				name = "Text",
-				siteId = ${siteId},
 				title = "WC WebContent Title");
 		}
 
@@ -264,14 +261,13 @@ definition {
 
 		task ("And Given web content created") {
 			var ddmStructureId = WebContentStructures.getDdmStructureId(structureName = "content-structure");
-			var siteId = JSONGroupAPI._getSiteIdByGroupKey(groupName = "Test Site Name");
 
 			var responseFromCreate = HeadlessWebcontentAPI.createStructuredContent(
 				data = "<p>My content</p>",
 				ddmStructureId = ${ddmStructureId},
+				groupName = "Test Site Name",
 				label = "Text",
 				name = "Text",
-				siteId = ${siteId},
 				title = "WC WebContent Title");
 		}
 

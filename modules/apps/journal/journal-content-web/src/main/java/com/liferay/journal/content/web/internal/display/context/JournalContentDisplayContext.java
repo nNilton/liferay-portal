@@ -26,7 +26,6 @@ import com.liferay.dynamic.data.mapping.item.selector.DDMTemplateItemSelectorRet
 import com.liferay.dynamic.data.mapping.item.selector.criterion.DDMTemplateItemSelectorCriterion;
 import com.liferay.dynamic.data.mapping.model.DDMStructure;
 import com.liferay.dynamic.data.mapping.model.DDMTemplate;
-import com.liferay.dynamic.data.mapping.service.DDMStructureLocalServiceUtil;
 import com.liferay.dynamic.data.mapping.service.DDMTemplateLocalServiceUtil;
 import com.liferay.item.selector.ItemSelector;
 import com.liferay.item.selector.criteria.JournalArticleItemSelectorReturnType;
@@ -89,7 +88,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import javax.portlet.PortletMode;
 import javax.portlet.PortletPreferences;
@@ -351,16 +349,13 @@ public class JournalContentDisplayContext {
 			return _ddmTemplateKey;
 		}
 
-		List<DDMTemplate> ddmTemplates = getDDMTemplates();
-
-		Stream<DDMTemplate> stream = ddmTemplates.stream();
-
-		boolean hasTemplate = stream.anyMatch(
-			template -> _ddmTemplateKey.equals(template.getTemplateKey()));
-
-		if (!hasTemplate) {
-			_ddmTemplateKey = article.getDDMTemplateKey();
+		for (DDMTemplate ddmTemplate : getDDMTemplates()) {
+			if (_ddmTemplateKey.equals(ddmTemplate.getTemplateKey())) {
+				return _ddmTemplateKey;
+			}
 		}
+
+		_ddmTemplateKey = article.getDDMTemplateKey();
 
 		return _ddmTemplateKey;
 	}
@@ -377,16 +372,10 @@ public class JournalContentDisplayContext {
 		}
 
 		try {
-			DDMStructure ddmStructure =
-				DDMStructureLocalServiceUtil.fetchStructure(
-					article.getGroupId(),
-					PortalUtil.getClassNameId(JournalArticle.class),
-					article.getDDMStructureKey(), true);
-
 			_ddmTemplates = DDMTemplateLocalServiceUtil.getTemplates(
 				article.getGroupId(),
 				PortalUtil.getClassNameId(DDMStructure.class),
-				ddmStructure.getStructureId(), true);
+				article.getDDMStructureId(), true);
 		}
 		catch (PortalException portalException) {
 			_log.error(
@@ -410,21 +399,11 @@ public class JournalContentDisplayContext {
 	}
 
 	public long getGroupId() {
-		long groupId = _themeDisplay.getScopeGroupId();
-
 		StagingGroupHelper stagingGroupHelper =
 			StagingGroupHelperUtil.getStagingGroupHelper();
 
-		if (stagingGroupHelper.isLocalStagingGroup(groupId) &&
-			!stagingGroupHelper.isStagedPortlet(
-				groupId, JournalPortletKeys.JOURNAL)) {
-
-			Group scopeGroup = _themeDisplay.getScopeGroup();
-
-			groupId = scopeGroup.getLiveGroupId();
-		}
-
-		return groupId;
+		return stagingGroupHelper.getStagedPortletGroupId(
+			_themeDisplay.getScopeGroupId(), JournalPortletKeys.JOURNAL);
 	}
 
 	public PortletURL getItemSelectorURL() {
@@ -448,7 +427,8 @@ public class JournalContentDisplayContext {
 		itemSelectorCriterion.setStatus(WorkflowConstants.STATUS_ANY);
 
 		return _itemSelector.getItemSelectorURL(
-			requestBackedPortletURLFactory,
+			requestBackedPortletURLFactory, _getGroup(),
+			_themeDisplay.getScopeGroupId(),
 			liferayRenderResponse.getNamespace() + "selectedItem",
 			itemSelectorCriterion);
 	}
@@ -1045,6 +1025,14 @@ public class JournalContentDisplayContext {
 		return DDMTemplateLocalServiceUtil.fetchTemplate(
 			article.getGroupId(), _ddmStructureClassNameId, ddmTemplateKey,
 			true);
+	}
+
+	private Group _getGroup() {
+		StagingGroupHelper stagingGroupHelper =
+			StagingGroupHelperUtil.getStagingGroupHelper();
+
+		return stagingGroupHelper.getStagedPortletGroup(
+			_themeDisplay.getScopeGroup(), JournalPortletKeys.JOURNAL);
 	}
 
 	private static final boolean _STAGING_LIVE_GROUP_LOCKING_ENABLED =

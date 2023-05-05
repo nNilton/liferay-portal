@@ -30,26 +30,38 @@ definition {
 			key_title = "Add Site",
 			locator1 = "IFrame#MODAL_ANY");
 
-		PortletEntry.inputName(name = "Testray 2");
+		PortletEntry.inputName(name = ${siteName});
 
 		Button.click(button = "Add");
 
 		Site.openSitesAdmin();
 
-		while (IsElementNotPresent(key_siteName = "Testray 2", locator1 = "Sites#SITE_TABLE_NAME")) {
+		while (IsElementNotPresent(key_siteName = ${siteName}, locator1 = "Sites#SITE_TABLE_NAME")) {
 			Refresh();
 
 			WaitForPageLoad();
 		}
 	}
 
+	macro addTR2Site {
+		Site.openSitesAdmin();
+
+		Site.addSiteTemplateCP(
+			siteName = ${siteName},
+			siteTemplateName = "Liferay Site Initializer Testray");
+	}
+
 	macro assertItemName {
+		var key_name = ${text};
+
 		AssertElementPresent(
 			key_projectName = ${key_name},
 			locator1 = "Testray#ITEM_NAME");
 	}
 
 	macro assertItemNotPresent {
+		var key_name = ${text};
+
 		AssertElementNotPresent(
 			key_projectName = ${key_name},
 			locator1 = "Testray#ITEM_NAME");
@@ -109,6 +121,19 @@ definition {
 		Click(
 			key_value = ${valuePagination},
 			locator1 = "Testray#ITEMS_PER_PAGE_SELECT");
+	}
+
+	macro changeTeamToComponent {
+		TestrayContextMenu.clickContextMenuProjects(name = ${currentTeam});
+
+		TestrayContextMenu.selectItemFromProjectsContextMenu(item = "Edit");
+
+		Select(
+			key_fieldLabel = "Team",
+			locator1 = "Select#GENERIC_SELECT_FIELD",
+			value1 = ${newTeamName});
+
+		Button.clickSave();
 	}
 
 	macro checkSuccessAlertAppearsAndDisappears {
@@ -200,7 +225,7 @@ definition {
 			numberItems = 20,
 			valuePagination = 150);
 
-		TestrayContextMenu.clickContextMenuProjects(name = ${nameProject});
+		TestrayContextMenu.clickContextMenuProjects(name = ${projectName});
 
 		TestrayContextMenu.selectItemFromProjectsContextMenu(item = "Delete");
 	}
@@ -210,9 +235,11 @@ definition {
 
 		TestrayContextMenu.selectItemFromProjectsContextMenu(item = "Edit");
 
-		Type(
-			locator1 = "TestrayManage#NEW_OPTION_NAME",
-			value1 = ${newComponentName});
+		if (isSet(newComponentName)) {
+			Type(
+				locator1 = "TestrayManage#NEW_OPTION_NAME",
+				value1 = ${newComponentName});
+		}
 
 		if (isSet(newTeamName)) {
 			Select(
@@ -272,6 +299,18 @@ definition {
 			locator1 = "Testray#PROJECT_NAVIGATOR_TAB_BUTTON");
 	}
 
+	macro selectUsers {
+		Button.click(button = "Assign Users");
+
+		for (var userName : list ${listUserName}) {
+			Click.clickAtNotVisible(
+				key_checkboxOption = ${userName},
+				locator1 = "Checkbox#SPECIFIC_CHECKBOX_IN_TABLE");
+		}
+
+		Button.click(button = "Select Users");
+	}
+
 	macro signOutTestray {
 		Click(locator1 = "TestrayUser#USER_ICON_SIDEBAR");
 
@@ -299,6 +338,16 @@ definition {
 		Alert.viewSuccessMessage();
 	}
 
+	macro testrayApisTearDown {
+		Testray.tearDownCP();
+
+		ClientExtensionGeneral.goToRemoteAppsPortlet();
+
+		ClientExtensionGeneral.deleteRemoteApp(tableEntry = "Testray");
+
+		ObjectAdmin.deleteAllCustomObjectsViaAPI();
+	}
+
 	macro typeProjectsField {
 		SelectFrame(locator1 = "Testray#MODAL_BODY");
 
@@ -311,6 +360,12 @@ definition {
 			value1 = ${description});
 
 		Click(locator1 = "TestrayManage#SAVE_BUTTON");
+	}
+
+	macro viewAlert {
+		var key_alertText = ${alertText};
+
+		AssertVisible(locator1 = "CustomerPortalSite#ALERT_NOTIFICATIONS");
 	}
 
 	macro viewErrorMessage {

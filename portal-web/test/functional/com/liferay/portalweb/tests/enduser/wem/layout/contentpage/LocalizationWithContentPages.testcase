@@ -13,7 +13,7 @@ definition {
 		}
 
 		task ("Add a site") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 
 		task ("Add a content page") {
@@ -242,7 +242,7 @@ definition {
 
 			SelectWindow.selectPopUp(locator1 = "null");
 
-			ControlMenu.viewHeaderTitle(headerTitle = "Content Page Name *");
+			ControlMenu.viewHeaderDraftTitle(headerTitle = "Content Page Name");
 
 			ContentPages.viewFragmentText(
 				fragmentName = "button",

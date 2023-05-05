@@ -23,6 +23,7 @@ import com.liferay.object.action.trigger.ObjectActionTrigger;
 import com.liferay.object.action.trigger.ObjectActionTriggerRegistry;
 import com.liferay.object.admin.rest.dto.v1_0.util.ObjectActionUtil;
 import com.liferay.object.constants.ObjectActionTriggerConstants;
+import com.liferay.object.constants.ObjectFieldConstants;
 import com.liferay.object.constants.ObjectWebKeys;
 import com.liferay.object.model.ObjectAction;
 import com.liferay.object.model.ObjectDefinition;
@@ -104,8 +105,10 @@ public class ObjectDefinitionsActionsDisplayContext
 
 	public List<Map<String, Object>> getObjectActionCodeEditorElements() {
 		return ObjectCodeEditorUtil.getCodeEditorElements(
-			false, true, true, objectRequestHelper.getLocale(),
-			getObjectDefinitionId());
+			true, true, objectRequestHelper.getLocale(),
+			getObjectDefinitionId(),
+			objectField -> !objectField.compareBusinessType(
+				ObjectFieldConstants.BUSINESS_TYPE_AGGREGATION));
 	}
 
 	public ObjectActionExecutor getObjectActionExecutor() {
@@ -119,8 +122,12 @@ public class ObjectDefinitionsActionsDisplayContext
 		JSONArray objectActionExecutorsJSONArray =
 			_jsonFactory.createJSONArray();
 
+		ObjectDefinition objectDefinition = getObjectDefinition();
+
 		for (ObjectActionExecutor objectActionExecutor :
-				_objectActionExecutorRegistry.getObjectActionExecutors()) {
+				_objectActionExecutorRegistry.getObjectActionExecutors(
+					objectDefinition.getCompanyId(),
+					objectDefinition.getName())) {
 
 			objectActionExecutorsJSONArray.put(
 				JSONUtil.put(
@@ -196,7 +203,7 @@ public class ObjectDefinitionsActionsDisplayContext
 			if (Objects.equals(
 					objectActionTrigger.getKey(),
 					ObjectActionTriggerConstants.KEY_STANDALONE) &&
-				objectDefinition.isSystem()) {
+				objectDefinition.isUnmodifiableSystemObject()) {
 
 				continue;
 			}

@@ -362,7 +362,9 @@ definition {
 			}
 
 			for (var resourcePanel : list ${resourcePanels}) {
-				OAuth2.expandResourcePanel(resourcePanel = ${resourcePanel});
+				if (IsElementPresent(key_panel = ${resourcePanel}, locator1 = "OAuth2#ADMIN_RESOURCE_PANEL_COLLAPSED")) {
+					OAuth2.expandResourcePanel(resourcePanel = ${resourcePanel});
+				}
 			}
 
 			if (isSet(checkGlobalScopesViaModal)) {
@@ -439,7 +441,9 @@ definition {
 	}
 
 	macro getAccessToken {
-		var portalURL = PropsUtil.get("portal.url");
+		if (!(isSet(portalURL))) {
+			var portalURL = PropsUtil.get("portal.url");
+		}
 
 		if (${grantFlow} == "clientCredentials") {
 			var tokenCurl = '''

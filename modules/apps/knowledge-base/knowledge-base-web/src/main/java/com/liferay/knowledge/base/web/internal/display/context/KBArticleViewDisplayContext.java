@@ -15,17 +15,18 @@
 package com.liferay.knowledge.base.web.internal.display.context;
 
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItem;
+import com.liferay.knowledge.base.configuration.KBServiceConfigurationProvider;
 import com.liferay.knowledge.base.model.KBArticle;
 import com.liferay.knowledge.base.service.KBArticleServiceUtil;
-import com.liferay.knowledge.base.web.internal.configuration.KBServiceConfigurationProviderUtil;
+import com.liferay.knowledge.base.service.KBFolderServiceUtil;
 import com.liferay.knowledge.base.web.internal.util.KBDropdownItemsProvider;
+import com.liferay.osgi.util.service.Snapshot;
+import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.module.configuration.ConfigurationException;
 import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
-import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 
 import java.time.Instant;
@@ -90,6 +91,23 @@ public class KBArticleViewDisplayContext {
 		return _kbDropdownItemsProvider.getKBArticleDropdownItems(kbArticle);
 	}
 
+	public int getKBFolderKBArticlesCount(long groupId, long kbFolderId)
+		throws PortalException {
+
+		int foldersAndArticlesCount =
+			KBFolderServiceUtil.getKBFoldersAndKBArticlesCount(
+				groupId, kbFolderId, WorkflowConstants.STATUS_ANY);
+
+		return foldersAndArticlesCount -
+			KBFolderServiceUtil.getKBFoldersCount(groupId, kbFolderId);
+	}
+
+	public int getKBFoldersCount(long groupId, long kbFolderId)
+		throws PortalException {
+
+		return KBFolderServiceUtil.getKBFoldersCount(groupId, kbFolderId);
+	}
+
 	public String getModifiedDateDescription(KBArticle kbArticle) {
 		Date modifiedDate = kbArticle.getModifiedDate();
 
@@ -101,13 +119,11 @@ public class KBArticleViewDisplayContext {
 	public boolean isExpiringSoon(KBArticle kbArticle)
 		throws ConfigurationException {
 
-		if (!GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-165476"))) {
-			return false;
-		}
-
 		Date expirationDate = kbArticle.getExpirationDate();
 
-		if (kbArticle.isExpired() || (expirationDate == null)) {
+		if (kbArticle.isDraft() || kbArticle.isExpired() ||
+			(expirationDate == null)) {
+
 			return false;
 		}
 
@@ -120,9 +136,12 @@ public class KBArticleViewDisplayContext {
 
 		LocalDateTime nowLocalDateTime = LocalDateTime.now();
 
+		KBServiceConfigurationProvider kbServiceConfigurationProvider =
+			_kbServiceConfigurationProviderSnapshot.get();
+
 		if (nowLocalDateTime.isAfter(
 				expirationDateLocalDateTime.minusWeeks(
-					KBServiceConfigurationProviderUtil.
+					kbServiceConfigurationProvider.
 						getExpirationDateNotificationDateWeeks()))) {
 
 			return true;
@@ -130,6 +149,11 @@ public class KBArticleViewDisplayContext {
 
 		return false;
 	}
+
+	private static final Snapshot<KBServiceConfigurationProvider>
+		_kbServiceConfigurationProviderSnapshot = new Snapshot<>(
+			KBArticleViewDisplayContext.class,
+			KBServiceConfigurationProvider.class);
 
 	private final HttpServletRequest _httpServletRequest;
 	private final KBDropdownItemsProvider _kbDropdownItemsProvider;

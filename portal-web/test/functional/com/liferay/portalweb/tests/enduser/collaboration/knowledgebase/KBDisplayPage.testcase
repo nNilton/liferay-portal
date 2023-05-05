@@ -1,6 +1,7 @@
 @component-name = "portal-knowledge-base"
 definition {
 
+	property ci.retries.disabled = "true";
 	property portal.release = "true";
 	property portal.upstream = "true";
 	property testray.main.component.name = "Knowledge Base";
@@ -10,7 +11,7 @@ definition {
 
 		User.firstLoginPG();
 
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 	}
 
 	tearDown {
@@ -27,6 +28,8 @@ definition {
 	@description = "This test ensures that the Max Nesting settings can be configured in the KB navigation fragment for a display page."
 	@priority = 5
 	test CanUpdateMaxNestingForArticleNavigation {
+		property portal.acceptance = "true";
+
 		var portalURL = PropsUtil.get("portal.url");
 
 		JSONKnowledgeBase.addkBArticle(
@@ -84,6 +87,9 @@ definition {
 	@description = "This test ensures that when viewing a KB article in the navigation fragment, the corresponding KB article content is displayed in another fragment that selects to display KB content."
 	@priority = 5
 	test CanViewArticlesViaKBNavigation {
+		property custom.properties = "virtual.hosts.default.site.name=Guest";
+		property test.name.skip.portal.instance = "KBDisplayPage#CanViewArticlesViaKBNavigation";
+
 		var portalURL = PropsUtil.get("portal.url");
 
 		JSONKnowledgeBase.addkBArticle(

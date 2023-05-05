@@ -13,7 +13,7 @@ definition {
 		}
 
 		task ("Add a site via JSON") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 	}
 
@@ -220,20 +220,19 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
-			AssertElementPresent(
-				key_styleBookName = "Styles from Theme",
-				locator1 = "PagesAdmin#STYLE_BOOK_NAME");
+			AssertTextEquals(
+				locator1 = "PagesAdmin#STYLE_BOOK_NAME",
+				value1 = "Styles from Theme");
 
-			AssertClick(
-				key_text = "Change Style Book",
-				locator1 = "Button#ANY",
-				value1 = "Change Style Book");
+			Click(
+				ariaLabel = "Change Style Book",
+				locator1 = "Button#ANY_WITH_ARIA_LABEL");
 
 			StyleBooks.selectStyleBook(styleBookName = "Test Style Book Name");
 
-			AssertElementPresent(
-				key_styleBookName = "Test Style Book Name",
-				locator1 = "PagesAdmin#STYLE_BOOK_NAME");
+			AssertTextEquals(
+				locator1 = "PagesAdmin#STYLE_BOOK_NAME",
+				value1 = "Test Style Book Name");
 
 			Button.clickSave();
 
@@ -291,20 +290,19 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
-			AssertElementPresent(
-				key_styleBookName = "Test Style Book Name",
-				locator1 = "PagesAdmin#STYLE_BOOK_NAME");
+			AssertTextEquals(
+				locator1 = "PagesAdmin#STYLE_BOOK_NAME",
+				value1 = "Test Style Book Name");
 
-			AssertClick(
-				key_text = "Change Style Book",
-				locator1 = "Button#ANY",
-				value1 = "Change Style Book");
+			Click(
+				ariaLabel = "Change Style Book",
+				locator1 = "Button#ANY_WITH_ARIA_LABEL");
 
 			StyleBooks.selectStyleBook(styleBookName = "Styles from Theme");
 
-			AssertElementPresent(
-				key_styleBookName = "Styles from Theme",
-				locator1 = "PagesAdmin#STYLE_BOOK_NAME");
+			AssertTextEquals(
+				locator1 = "PagesAdmin#STYLE_BOOK_NAME",
+				value1 = "Styles from Theme");
 
 			Button.clickSave();
 
@@ -415,22 +413,21 @@ definition {
 
 			Click(locator1 = "ControlMenu#EDIT_COG");
 
-			Navigator.gotoNavTab(navTab = "Look and Feel");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			AssertElementPresent(
-				key_styleBookName = "Styles from Theme",
-				locator1 = "PagesAdmin#STYLE_BOOK_NAME");
+			AssertTextEquals(
+				locator1 = "PagesAdmin#STYLE_BOOK_NAME",
+				value1 = "Styles from Theme");
 
-			AssertClick(
-				key_text = "Change Style Book",
-				locator1 = "Button#ANY",
-				value1 = "Change Style Book");
+			Click(
+				ariaLabel = "Change Style Book",
+				locator1 = "Button#ANY_WITH_ARIA_LABEL");
 
 			StyleBooks.selectStyleBook(styleBookName = "Test Style Book Name");
 
-			AssertElementPresent(
-				key_styleBookName = "Test Style Book Name",
-				locator1 = "PagesAdmin#STYLE_BOOK_NAME");
+			AssertTextEquals(
+				locator1 = "PagesAdmin#STYLE_BOOK_NAME",
+				value1 = "Test Style Book Name");
 
 			Button.clickSave();
 
@@ -438,38 +435,35 @@ definition {
 
 			Navigator.gotoBack();
 
-			AssertCssValue(
-				key_text = "New Entry",
-				locator1 = "Button#ANY",
-				locator2 = "background-color",
-				value1 = "rgba(0, 255, 0, 1)");
+			Css.assertCssCustomPropertyValue(
+				attribute = "background-color",
+				element = "//a[contains(@class,'btn')][normalize-space()='New Entry']",
+				expected = "rgb(0, 255, 0)");
 
-			AssertCssValue(
-				key_text = "Subscribe",
-				locator1 = "Button#ANY",
-				locator2 = "color",
-				value1 = "rgba(255, 0, 0, 1)");
+			Css.assertCssCustomPropertyValue(
+				attribute = "color",
+				element = "//a[contains(@class,'btn')][normalize-space()='Subscribe']",
+				expected = "rgb(255, 0, 0)");
 		}
 
 		task ("Change to default style book via Look and Feel") {
 			Click(locator1 = "ControlMenu#EDIT_COG");
 
-			Navigator.gotoNavTab(navTab = "Look and Feel");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			AssertElementPresent(
-				key_styleBookName = "Test Style Book Name",
-				locator1 = "PagesAdmin#STYLE_BOOK_NAME");
+			AssertTextEquals(
+				locator1 = "PagesAdmin#STYLE_BOOK_NAME",
+				value1 = "Test Style Book Name");
 
-			AssertClick(
-				key_text = "Change Style Book",
-				locator1 = "Button#ANY",
-				value1 = "Change Style Book");
+			Click(
+				ariaLabel = "Change Style Book",
+				locator1 = "Button#ANY_WITH_ARIA_LABEL");
 
 			StyleBooks.selectStyleBook(styleBookName = "Styles from Theme");
 
-			AssertElementPresent(
-				key_styleBookName = "Styles from Theme",
-				locator1 = "PagesAdmin#STYLE_BOOK_NAME");
+			AssertTextEquals(
+				locator1 = "PagesAdmin#STYLE_BOOK_NAME",
+				value1 = "Styles from Theme");
 
 			Button.clickSave();
 
@@ -477,17 +471,15 @@ definition {
 
 			Navigator.gotoBack();
 
-			AssertCssValue(
-				key_text = "New Entry",
-				locator1 = "Button#ANY",
-				locator2 = "background-color",
-				value1 = "rgba(11, 95, 255, 1)");
+			Css.assertCssCustomPropertyValue(
+				attribute = "background-color",
+				element = "//a[contains(@class,'btn')][normalize-space()='New Entry']",
+				expected = "rgb(11, 95, 255)");
 
-			AssertCssValue(
-				key_text = "Subscribe",
-				locator1 = "Button#ANY",
-				locator2 = "color",
-				value1 = "rgba(107, 108, 126, 1)");
+			Css.assertCssCustomPropertyValue(
+				attribute = "color",
+				element = "//a[contains(@class,'btn')][normalize-space()='Subscribe']",
+				expected = "rgb(107, 108, 126)");
 		}
 	}
 

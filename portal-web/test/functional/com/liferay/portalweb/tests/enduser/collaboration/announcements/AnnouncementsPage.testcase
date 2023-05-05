@@ -1,6 +1,7 @@
 @component-name = "portal-lima"
 definition {
 
+	property ci.retries.disabled = "true";
 	property custom.properties = "default.layout.template.id=1_column";
 	property portal.release = "true";
 	property portal.upstream = "true";
@@ -213,7 +214,7 @@ definition {
 			announcementTitle = "Announcements Entry Title",
 			announcementURL = "http://www.liferay.com");
 
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 
 		JSONLayout.addPublicLayout(
 			groupName = "Test Site Name",
@@ -319,9 +320,7 @@ definition {
 				locator1 = "Announcements#CARD_VIEW_ENTRY_TITLE");
 		}
 
-		AssertClick(
-			locator1 = "Pagination#NEXT_LINK",
-			value1 = "Next Page");
+		Click(locator1 = "Pagination#NEXT_LINK");
 
 		for (var viewEntryCount : list "1,2,3") {
 			AnnouncementsEntry.viewPG(
@@ -336,9 +335,7 @@ definition {
 				locator1 = "Announcements#CARD_VIEW_ENTRY_TITLE");
 		}
 
-		AssertClick(
-			locator1 = "Pagination#PREVIOUS_LINK",
-			value1 = "Previous Page");
+		Click(locator1 = "Pagination#PREVIOUS_LINK");
 
 		for (var viewEntryCount : list "4,5,6,7") {
 			AnnouncementsEntry.viewPG(

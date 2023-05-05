@@ -17,13 +17,15 @@ package com.liferay.batch.engine.internal;
 import com.liferay.batch.engine.BatchEngineImportTaskExecutor;
 import com.liferay.batch.engine.BatchEngineTaskContentType;
 import com.liferay.batch.engine.BatchEngineTaskExecuteStatus;
+import com.liferay.batch.engine.BatchEngineTaskItemDelegateRegistry;
 import com.liferay.batch.engine.BatchEngineTaskOperation;
+import com.liferay.batch.engine.ItemClassRegistry;
 import com.liferay.batch.engine.configuration.BatchEngineTaskCompanyConfiguration;
 import com.liferay.batch.engine.constants.BatchEngineImportTaskConstants;
 import com.liferay.batch.engine.internal.item.BatchEngineTaskItemDelegateExecutor;
 import com.liferay.batch.engine.internal.item.BatchEngineTaskItemDelegateExecutorFactory;
 import com.liferay.batch.engine.internal.reader.BatchEngineImportTaskItemReader;
-import com.liferay.batch.engine.internal.reader.BatchEngineImportTaskItemReaderFactory;
+import com.liferay.batch.engine.internal.reader.BatchEngineImportTaskItemReaderBuilder;
 import com.liferay.batch.engine.internal.reader.BatchEngineImportTaskItemReaderUtil;
 import com.liferay.batch.engine.internal.strategy.BatchEngineImportStrategyFactory;
 import com.liferay.batch.engine.internal.task.progress.BatchEngineTaskProgress;
@@ -33,10 +35,8 @@ import com.liferay.batch.engine.model.BatchEngineImportTask;
 import com.liferay.batch.engine.service.BatchEngineImportTaskErrorLocalService;
 import com.liferay.batch.engine.service.BatchEngineImportTaskLocalService;
 import com.liferay.petra.lang.SafeCloseable;
-import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.module.configuration.ConfigurationException;
 import com.liferay.portal.kernel.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.service.CompanyLocalService;
@@ -44,11 +44,13 @@ import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.transaction.TransactionConfig;
 import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
-import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.ListUtil;
 
+import java.io.InputStream;
 import java.io.Serializable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -122,7 +124,7 @@ public class BatchEngineImportTaskExecutorImpl
 
 		_batchEngineTaskItemDelegateExecutorFactory =
 			new BatchEngineTaskItemDelegateExecutorFactory(
-				_batchEngineTaskMethodRegistry, null, null, null);
+				_batchEngineTaskItemDelegateRegistry, null, null, null);
 	}
 
 	private void _commitItems(
@@ -152,9 +154,38 @@ public class BatchEngineImportTaskExecutorImpl
 			});
 	}
 
-	private String _getCSVFileColumnDelimiter(long companyId)
-		throws ConfigurationException {
+	private BatchEngineImportTaskItemReader _getBatchEngineImportTaskItemReader(
+			BatchEngineImportTask batchEngineImportTask,
+			InputStream inputStream, Map<String, Serializable> parameters)
+		throws Exception {
 
+		BatchEngineImportTaskItemReaderBuilder
+			batchEngineImportTaskItemReaderBuilder =
+				new BatchEngineImportTaskItemReaderBuilder();
+
+		Map<String, Serializable> fieldNameMapping =
+			batchEngineImportTask.getFieldNameMapping();
+
+		if (fieldNameMapping == null) {
+			fieldNameMapping = Collections.emptyMap();
+		}
+
+		return batchEngineImportTaskItemReaderBuilder.
+			batchEngineTaskContentType(
+				BatchEngineTaskContentType.valueOf(
+					batchEngineImportTask.getContentType())
+			).csvFileColumnDelimiter(
+				_getCSVFileColumnDelimiter(batchEngineImportTask.getCompanyId())
+			).fieldNames(
+				ListUtil.fromCollection(fieldNameMapping.keySet())
+			).inputStream(
+				inputStream
+			).parameters(
+				parameters
+			).build();
+	}
+
+	private String _getCSVFileColumnDelimiter(long companyId) throws Exception {
 		BatchEngineTaskCompanyConfiguration
 			batchEngineTaskCompanyConfiguration =
 				_configurationProvider.getCompanyConfiguration(
@@ -205,16 +236,12 @@ public class BatchEngineImportTaskExecutorImpl
 			batchEngineImportTask);
 
 		try (BatchEngineImportTaskItemReader batchEngineImportTaskItemReader =
-				_batchEngineImportTaskItemReaderFactory.create(
-					BatchEngineTaskContentType.valueOf(
-						batchEngineImportTask.getContentType()),
-					GetterUtil.getString(
-						_getCSVFileColumnDelimiter(
-							batchEngineImportTask.getCompanyId()),
-						StringPool.COMMA),
+				_getBatchEngineImportTaskItemReader(
+					batchEngineImportTask,
 					_batchEngineImportTaskLocalService.openContentInputStream(
 						batchEngineImportTask.getBatchEngineImportTaskId()),
-					parameters);
+					parameters)) {
+
 			BatchEngineTaskItemDelegateExecutor
 				batchEngineTaskItemDelegateExecutor =
 					_batchEngineTaskItemDelegateExecutorFactory.create(
@@ -224,11 +251,11 @@ public class BatchEngineImportTaskExecutorImpl
 							batchEngineImportTask.getCompanyId()),
 						parameters,
 						_userLocalService.getUser(
-							batchEngineImportTask.getUserId()))) {
+							batchEngineImportTask.getUserId()));
 
 			List<Object> items = new ArrayList<>();
 
-			Class<?> itemClass = _batchEngineTaskMethodRegistry.getItemClass(
+			Class<?> itemClass = _itemClassRegistry.getItemClass(
 				batchEngineImportTask.getClassName());
 
 			int processedItemsCount = 0;
@@ -331,10 +358,6 @@ public class BatchEngineImportTaskExecutorImpl
 	private BatchEngineImportTaskErrorLocalService
 		_batchEngineImportTaskErrorLocalService;
 
-	private final BatchEngineImportTaskItemReaderFactory
-		_batchEngineImportTaskItemReaderFactory =
-			new BatchEngineImportTaskItemReaderFactory();
-
 	@Reference
 	private BatchEngineImportTaskLocalService
 		_batchEngineImportTaskLocalService;
@@ -343,7 +366,8 @@ public class BatchEngineImportTaskExecutorImpl
 		_batchEngineTaskItemDelegateExecutorFactory;
 
 	@Reference
-	private BatchEngineTaskMethodRegistry _batchEngineTaskMethodRegistry;
+	private BatchEngineTaskItemDelegateRegistry
+		_batchEngineTaskItemDelegateRegistry;
 
 	private final BatchEngineTaskProgressFactory
 		_batchEngineTaskProgressFactory = new BatchEngineTaskProgressFactory();
@@ -353,6 +377,9 @@ public class BatchEngineImportTaskExecutorImpl
 
 	@Reference
 	private ConfigurationProvider _configurationProvider;
+
+	@Reference
+	private ItemClassRegistry _itemClassRegistry;
 
 	@Reference
 	private UserLocalService _userLocalService;

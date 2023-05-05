@@ -32,7 +32,7 @@ List<Address> addresses = AddressServiceUtil.getAddresses(className, classPK);
 		<clay:content-col
 			expand="<%= true %>"
 		>
-			<span class="heading-text"><liferay-ui:message key="addresses" /></span>
+			<h2 class="heading-text"><liferay-ui:message key="addresses" /></h2>
 		</clay:content-col>
 
 		<clay:content-col>
@@ -98,14 +98,14 @@ List<Address> addresses = AddressServiceUtil.getAddresses(className, classPK);
 				<clay:content-col
 					expand="<%= true %>"
 				>
-					<h3>
+					<span class="h3">
 
 						<%
 						ListType listType = address.getListType();
 						%>
 
 						<liferay-ui:message key="<%= listType.getName() %>" />
-					</h3>
+					</span>
 
 					<div class="address-display-wrapper list-group-text">
 						<liferay-text-localizer:address-display

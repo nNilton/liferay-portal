@@ -18,6 +18,8 @@ definition {
 
 		if (contains(${typeSettings}, "column-${column}=")) {
 			var typeSettings = StringUtil.regexReplaceFirst(${typeSettings}, "(column-${column}=[^%]*)", "$1,${widget}");
+
+			var typeSettings = StringUtil.replace(${typeSettings}, ",,", ",");
 		}
 		else {
 			var typeSettings = '''${typeSettings}column-${column}''';
@@ -56,6 +58,12 @@ definition {
 		else if (${widgetName} == "Breadcrumb") {
 			var portletId = "com_liferay_site_navigation_breadcrumb_web_portlet_SiteNavigationBreadcrumbPortlet";
 		}
+		else if (${widgetName} == "Calendar") {
+			var portletId = "com_liferay_calendar_web_portlet_CalendarPortlet";
+		}
+		else if (${widgetName} == "Category Facet") {
+			var portletId = "com_liferay_portal_search_web_category_facet_portlet_CategoryFacetPortlet";
+		}
 		else if (${widgetName} == "Category Filter") {
 			var portletId = "com_liferay_asset_categories_navigation_web_portlet_AssetCategoriesNavigationPortlet";
 		}
@@ -77,6 +85,9 @@ definition {
 		else if (${widgetName} == "CSS Cadmin Sample") {
 			var portletId = "com_liferay_frontend_css_cadmin_sample_web_internal_portlet_CadminSampleWebPortlet";
 		}
+		else if (${widgetName} == "Custom Facet") {
+			var portletId = "com_liferay_portal_search_web_custom_facet_portlet_CustomFacetPortlet";
+		}
 		else if (${widgetName} == "Custom Filter") {
 			var portletId = "com_liferay_portal_search_web_internal_custom_filter_portlet_CustomFilterPortlet";
 		}
@@ -85,6 +96,9 @@ definition {
 		}
 		else if (${widgetName} == "Dynamic Data Lists Display") {
 			var portletId = "com_liferay_dynamic_data_lists_web_portlet_DDLDisplayPortlet";
+		}
+		else if (${widgetName} == "Folder Facet") {
+			var portletId = "com_liferay_portal_search_web_folder_facet_portlet_FolderFacetPortlet";
 		}
 		else if (${widgetName} == "Form") {
 			var portletId = "com_liferay_dynamic_data_mapping_form_web_portlet_DDMFormPortlet";
@@ -155,6 +169,9 @@ definition {
 		else if (${widgetName} == "Organization Management") {
 			var portletId = "com_liferay_commerce_organization_web_internal_portlet_CommerceOrganizationPortlet";
 		}
+		else if (${widgetName} == "Page Comments") {
+			var portletId = "com_liferay_comment_page_comments_web_portlet_PageCommentsPortlet";
+		}
 		else if (${widgetName} == "Profile") {
 			var portletId = "com_liferay_contacts_web_portlet_ProfilePortlet";
 		}
@@ -188,11 +205,17 @@ definition {
 		else if (${widgetName} == "Similar Results") {
 			var portletId = "com_liferay_portal_search_similar_results_web_portlet_SimilarResultsPortlet";
 		}
+		else if (${widgetName} == "Site Facet") {
+			var portletId = "com_liferay_portal_search_web_site_facet_portlet_SiteFacetPortlet";
+		}
 		else if (${widgetName} == "Site Map") {
 			var portletId = "com_liferay_site_navigation_site_map_web_portlet_SiteNavigationSiteMapPortlet";
 		}
 		else if (${widgetName} == "Sites Directory") {
 			var portletId = "com_liferay_site_navigation_directory_web_portlet_SitesDirectoryPortlet";
+		}
+		else if (${widgetName} == "Tag Facet") {
+			var portletId = "com_liferay_portal_search_web_tag_facet_portlet_TagFacetPortlet";
 		}
 		else if (${widgetName} == "Tag Filter") {
 			var portletId = "com_liferay_asset_tags_navigation_web_portlet_AssetTagsNavigationPortlet";
@@ -202,6 +225,9 @@ definition {
 		}
 		else if (${widgetName} == "Type Facet") {
 			var portletId = "com_liferay_portal_search_web_type_facet_portlet_TypeFacetPortlet";
+		}
+		else if (${widgetName} == "User Facet") {
+			var portletId = "com_liferay_portal_search_web_user_facet_portlet_UserFacetPortlet";
 		}
 		else if (${widgetName} == "User Statistics") {
 			var portletId = "com_liferay_social_user_statistics_web_portlet_SocialUserStatisticsPortlet";

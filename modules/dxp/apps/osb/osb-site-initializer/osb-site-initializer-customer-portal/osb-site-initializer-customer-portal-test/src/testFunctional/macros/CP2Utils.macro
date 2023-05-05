@@ -100,10 +100,11 @@ definition {
 			value1 = ${role});
 	}
 
-	macro clearCloudEntries {
-		CustomerPortal.clearActivationStatus(
-			position = ${position},
-			status = ${status});
+	@summary = "This macro clicks on the Manager Users button for LXC - SM and AC products "
+	macro clickAtButtonManagerUsers {
+		var key_product = ${product};
+
+		Click(locator1 = "CP2Utils#BUTTON_MANAGE_USERS");
 	}
 
 	macro clickAtFilterMenu {
@@ -161,7 +162,7 @@ definition {
 	}
 
 	macro deleteSpecificObjectEntry {
-		var key_status = ${email};
+		var key_status = ${entry};
 
 		ApplicationsMenu.gotoPortlet(
 			category = "Object",
@@ -169,7 +170,7 @@ definition {
 			portlet = ${portlet});
 
 		if (IsElementPresent(locator1 = "CustomerPortalSite#DND_TABLE_ELEMENT")) {
-			ObjectPortlet.deleteEntry(entry = ${email});
+			ObjectPortlet.deleteEntry(entry = ${entry});
 		}
 	}
 
@@ -196,11 +197,11 @@ definition {
 	}
 
 	macro onboardingFlow {
-		CustomerPortal.clickOnStartProjectSetup();
+		Button.click(button = "Start Project Setup");
 
-		CustomerPortal.clickOnSkipForNowButton();
+		Button.click(button = "Skip for now");
 
-		CustomerPortal.clickOnSkipForNowButton();
+		Button.click(button = "Skip for now");
 	}
 
 	macro onlySeeExportAllKeys {
@@ -266,6 +267,19 @@ definition {
 		}
 	}
 
+	@summary = "This macro deletes a list of entries"
+	macro tearDownForCloudEntries {
+		CustomerPortal.clearStatus();
+
+		CP2Utils.deleteSpecificObjectEntry(
+			entry = "ERC-001",
+			portlet = "DXP Cloud Environments");
+
+		CP2Utils.deleteSpecificObjectEntry(
+			entry = "test@liferay.com",
+			portlet = "Admins DXP Cloud");
+	}
+
 	macro typeSetupInfoFields {
 		if (!(isSet(position))) {
 			var position = 1;
@@ -286,6 +300,35 @@ definition {
 		Account.unassignUserRole(
 			accountRoleTitle = ${accountRoleTitle},
 			accountUserName = ${accountUserName});
+	}
+
+	// Workaround for LPS-149449
+
+	macro typeLinkForTheConsoleLiferayCloud {
+		ApplicationsMenu.gotoPortlet(
+			category = "Object",
+			panel = "Control Panel",
+			portlet = "Account Subscription Groups");
+
+		var key_status = ${status};
+
+		Search.searchCP(searchTerm = ${key_status});
+
+		if (IsElementPresent(key_accountName = ${key_status}, locator1 = "CP2Utils#ANY_ACCOUNT_ELLIPSIS_BUTTON")) {
+			Click(
+				key_accountName = ${key_status},
+				locator1 = "CP2Utils#ANY_ACCOUNT_ELLIPSIS_BUTTON");
+
+			MenuItem.click(menuItem = "View");
+
+			CP2DXPCloudSetup.typeSetupDXPCloudInfoFields(
+				label = "manageContactsURL",
+				value = "https://console.liferay.cloud");
+
+			Click(locator1 = "Button#SAVE");
+
+			Alert.viewSuccessMessage();
+		}
 	}
 
 }

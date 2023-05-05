@@ -73,7 +73,6 @@ import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
-import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.test.rule.Inject;
@@ -672,8 +671,6 @@ public class UpdateFormItemConfigMVCActionCommandTest {
 
 		if (infoFieldType instanceof TextInfoFieldType) {
 			if (GetterUtil.getBoolean(
-					PropsUtil.get("feature.flag.LPS-161631")) &&
-				GetterUtil.getBoolean(
 					infoField.getAttribute(TextInfoFieldType.MULTILINE))) {
 
 				return "INPUTS-textarea";

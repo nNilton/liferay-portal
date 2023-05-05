@@ -27,7 +27,45 @@ definition {
 
 			JSONUser.tearDownNonAdminUsers();
 
-			ObjectAdmin.deleteObjectViaAPI(objectName = "Coupon");
+			ObjectAdmin.deleteAllCustomObjectsViaAPI();
+		}
+	}
+
+	@priority = 4
+	test CanDownloadJsonTFormatFileAsJson {
+		property portal.acceptance = "true";
+
+		task ("Given in Import/Export center") {
+			BatchEngine.setUpGlobalIds();
+
+			ImportExport.openImportExportAdmin();
+		}
+
+		task ("When Exporting File with JSONT format") {
+			ImportExport.exportFile(
+				entityType = "Account (v1_0 - Liferay Headless Admin User)",
+				exportFields = "name",
+				exportFileFormat = "JSONT");
+		}
+
+		task ("Then the downloaded zip file contain *.json file") {
+			DownloadTempFile();
+
+			var filePath = TestCase.getDependenciesDirPath(fileName = "account_import_jsont.txt");
+
+			FileUtil.replaceStringInFile(${filePath}, 20096, ${staticCompanyId});
+
+			FileUtil.replaceStringInFile(${filePath}, 20123, ${staticUserId});
+
+			var originalFileDownloadName = TestCase.getDownloadedTempFileName(fileNamePattern = "*.zip");
+
+			AntCommand(
+				locator1 = "build-test.xml",
+				value1 = "unzip-temp-file -DfileName=${originalFileDownloadName}");
+
+			ImportExport.assertFileContent(
+				comparisonFileName = "account_import_jsont.txt",
+				fileName = "export.batch-engine-data.json");
 		}
 	}
 
@@ -103,6 +141,7 @@ definition {
 	@description = "Verify users can exclude fields from being exported in CSV format"
 	@priority = 3
 	test CanExcludeCSVFieldsFromExport {
+		property custom.properties = "feature.flag.LPS-173135=true";
 		property portal.acceptance = "true";
 
 		task ("Given several channels") {
@@ -260,6 +299,7 @@ definition {
 	@description = "Verify users can export entity data via CSV files"
 	@priority = 3
 	test CanExportCSVFiles {
+		property custom.properties = "feature.flag.LPS-173135=true";
 		property portal.acceptance = "true";
 
 		task ("Given several accounts") {
@@ -301,6 +341,7 @@ definition {
 	@description = "Verify users can export entity data via CSV files without headers"
 	@priority = 3
 	test CanExportCSVFileWithoutHeaders {
+		property custom.properties = "feature.flag.LPS-173135=true";
 		property portal.acceptance = "true";
 
 		task ("Given several accounts") {
@@ -425,6 +466,7 @@ definition {
 	@description = "Verify users can filter Import/Export executions by Action."
 	@priority = 3
 	test CanFilterExecutionsByAction {
+		property custom.properties = "feature.flag.LPS-173135=true";
 		property portal.acceptance = "true";
 
 		task ("Given an account import and export") {
@@ -724,6 +766,58 @@ definition {
 		}
 	}
 
+	@description = "Verify users can import JSON file with create strategy create only"
+	@priority = 3
+	test CanImportJSONFileWithCreateStrategyCreateOnly {
+		property portal.acceptance = "true";
+
+		task ("Given the user is importing a JSON file") {
+			ImportExport.openImportExportAdmin();
+
+			ImportExport.gotoImport();
+
+			UploadDependencyFile.uploadFile(fileName = "json_account_import.json");
+
+			ImportExport.selectEntity(entityType = "Account (v1_0 - Liferay Headless Admin User)");
+		}
+
+		task ("When choosing Only Add New Records as Import Strategy and importing the file") {
+			ImportExport.selectImportStrategy(strategyType = "Only Add New Records");
+
+			Button.click(button = "Next");
+
+			Button.click(button = "Start Import");
+		}
+
+		task ("Then the import process should complete successfully") {
+			WaitForElementPresent(locator1 = "ImportExport#EXECUTION_SUCCESS");
+
+			Account.openAccountsAdmin();
+
+			Account.viewAccountDetails(
+				accountDescription = "Test Business Account Description",
+				accountName = "Test Business Account",
+				accountType = "Business",
+				externalReferenceCode = 101);
+
+			Navigator.gotoBack();
+
+			Account.viewAccountDetails(
+				accountDescription = "Test Guest Account Description",
+				accountName = "Test Guest Account",
+				accountType = "Guest",
+				externalReferenceCode = 102);
+
+			Navigator.gotoBack();
+
+			Account.viewAccountDetails(
+				accountDescription = "Test Person Account Description",
+				accountName = "Test Person Account",
+				accountType = "Person",
+				externalReferenceCode = 103);
+		}
+	}
+
 	@description = "Verify users can import entities via JSONL files"
 	@priority = 3
 	test CanImportJSONLFiles {
@@ -808,9 +902,7 @@ definition {
 		}
 
 		task ("And Then the status of the imported objectDefinition is approved") {
-			var objectDefinitionId = ObjectDefinitionAPI.getObjectDefinitionIdByName(name = "Coupon");
-
-			var objectDefinitionStatus = ObjectDefinitionAPI._getObjectDefinitionStatusById(objectDefinitionId = ${objectDefinitionId});
+			var objectDefinitionStatus = ObjectDefinitionAPI.getObjectDefinitionStatusByName(name = "Coupon");
 
 			TestUtils.assertEquals(
 				actual = ${objectDefinitionStatus},
@@ -851,9 +943,7 @@ definition {
 		}
 
 		task ("And Then the status of the imported objectDefinition is Draft") {
-			var objectDefinitionId = ObjectDefinitionAPI.getObjectDefinitionIdByName(name = "Coupon");
-
-			var objectDefinitionStatus = ObjectDefinitionAPI._getObjectDefinitionStatusById(objectDefinitionId = ${objectDefinitionId});
+			var objectDefinitionStatus = ObjectDefinitionAPI.getObjectDefinitionStatusByName(name = "Coupon");
 
 			TestUtils.assertEquals(
 				actual = ${objectDefinitionStatus},
@@ -930,6 +1020,7 @@ definition {
 	@description = "Verify users can order Import/Export executions by Create Date."
 	@priority = 3
 	test CanOrderExecutionsByCreateDate {
+		property custom.properties = "feature.flag.LPS-173135=true";
 		property portal.acceptance = "true";
 
 		task ("Given an account import and export") {
@@ -1325,6 +1416,7 @@ definition {
 	@description = "Verify users can search Import/Exports templates by name and action."
 	@priority = 3
 	test CanSearchTemplates {
+		property custom.properties = "feature.flag.LPS-173135=true";
 		property portal.acceptance = "true";
 
 		task ("Given account import and export templates") {
@@ -1508,6 +1600,7 @@ definition {
 	@description = "Verify users receive a notification when an export is triggered."
 	@priority = 3
 	test CanViewExportNotifications {
+		property custom.properties = "feature.flag.LPS-173135=true";
 		property portal.acceptance = "true";
 
 		task ("Given a failed export") {
@@ -1776,7 +1869,7 @@ definition {
 		}
 
 		task ("Then I can see all available entity types to export") {
-			ImportExport.assertAvailabelEntityTypes(entityTypes = "Account (v1_0 - Liferay Headless Admin User) Account (v1_0 - Liferay Headless Commerce Admin Account) AccountGroup (v1_0 - Liferay Headless Commerce Admin Account) AccountRole (v1_0 - Liferay Headless Admin User) BlogPosting (v1_0 - Liferay Headless Delivery) BlogPostingImage (v1_0 - Liferay Headless Delivery) Calendar (v1_0 - Liferay Portal Workflow Metrics REST) Catalog (v1_0 - Liferay Headless Commerce Admin Catalog) Channel (v1_0 - Liferay Headless Commerce Admin Channel) Channel (v1_0 - Liferay Headless Commerce Delivery Catalog) Comment (v1_0 - Liferay Headless Delivery) ContentElement (v1_0 - Liferay Headless Delivery) ContentStructure (v1_0 - Liferay Headless Delivery) ContentTemplate (v1_0 - Liferay Headless Delivery) DSEnvelope (v1_0 - Liferay Digital Signature REST) DataDefinitionFieldLink (v2_0 - Liferay Data Engine REST) DataLayout (v2_0 - Liferay Data Engine REST) DataListView (v2_0 - Liferay Data Engine REST) DataRecord (v2_0 - Liferay Data Engine REST) DataRecordCollection (v2_0 - Liferay Data Engine REST) Discount (v1_0 - Liferay Headless Commerce Admin Pricing) Discount (v2_0 - Liferay Headless Commerce Admin Pricing) DispatchTrigger (v1_0 - Liferay Dispatch REST) Document (v1_0 - Liferay Headless Delivery) DocumentFolder (v1_0 - Liferay Headless Delivery) FieldMappingInfo (v1_0 - Liferay Search Experiences REST) Form (v1_0 - Liferay Headless Form) FormRecord (v1_0 - Liferay Headless Form) FormStructure (v1_0 - Liferay Headless Form) Instance (v1_0 - Liferay Portal Workflow Metrics REST) Keyword (v1_0 - Liferay Headless Admin Taxonomy) KeywordQueryContributor (v1_0 - Liferay Search Experiences REST) KnowledgeBaseArticle (v1_0 - Liferay Headless Delivery) KnowledgeBaseAttachment (v1_0 - Liferay Headless Delivery) KnowledgeBaseFolder (v1_0 - Liferay Headless Delivery) Language (v1_0 - Liferay Headless Delivery) ListTypeDefinition (v1_0 - Liferay Headless Admin List Type) MeasurementUnit (v1_0 - Liferay Headless Commerce Admin Site Setting) MessageBoardAttachment (v1_0 - Liferay Headless Delivery) MessageBoardMessage (v1_0 - Liferay Headless Delivery) MessageBoardSection (v1_0 - Liferay Headless Delivery) MessageBoardThread (v1_0 - Liferay Headless Delivery) ModelPrefilterContributor (v1_0 - Liferay Search Experiences REST) NavigationMenu (v1_0 - Liferay Headless Delivery) Node (v1_0 - Liferay Portal Workflow Metrics REST) NotificationTemplate (v1_0 - Liferay Notification REST) ObjectAction (v1_0 - Liferay Object Admin REST) ObjectDefinition (v1_0 - Liferay Object Admin REST) ObjectField (v1_0 - Liferay Object Admin REST) ObjectLayout (v1_0 - Liferay Object Admin REST) ObjectRelationship (v1_0 - Liferay Object Admin REST) ObjectValidationRule (v1_0 - Liferay Object Admin REST) ObjectView (v1_0 - Liferay Object Admin REST) Option (v1_0 - Liferay Headless Commerce Admin Catalog) Order (v1_0 - Liferay Headless Commerce Admin Order) OrderItem (v1_0 - Liferay Headless Commerce Admin Order) OrderRule (v1_0 - Liferay Headless Commerce Admin Order) OrderType (v1_0 - Liferay Headless Commerce Admin Order) Organization (v1_0 - Liferay Headless Admin User) PaymentMethod (v1_0 - Liferay Headless Commerce Delivery Cart) Phone (v1_0 - Liferay Headless Admin User) PlacedOrderComment (v1_0 - Liferay Headless Commerce Delivery Order) PlacedOrderItem (v1_0 - Liferay Headless Commerce Delivery Order) PlacedOrderItemShipment (v1_0 - Liferay Headless Commerce Delivery Order) PriceList (v1_0 - Liferay Headless Commerce Admin Pricing) PriceList (v2_0 - Liferay Headless Commerce Admin Pricing) ProcessMetric (v1_0 - Liferay Portal Workflow Metrics REST) ProcessVersion (v1_0 - Liferay Portal Workflow Metrics REST) Product (v1_0 - Liferay Headless Commerce Admin Catalog) ProductGroup (v1_0 - Liferay Headless Commerce Admin Catalog) QueryPrefilterContributor (v1_0 - Liferay Search Experiences REST) Region (v1_0 - Liferay Headless Admin Address) ReplenishmentItem (v1_0 - Liferay Headless Commerce Admin Inventory) Role (v1_0 - Liferay Headless Admin User) Role (v1_0 - Liferay Portal Workflow Metrics REST) SLA (v1_0 - Liferay Portal Workflow Metrics REST) SXPBlueprint (v1_0 - Liferay Search Experiences REST) SXPElement (v1_0 - Liferay Search Experiences REST) SXPParameterContributorDefinition (v1_0 - Liferay Search Experiences REST) SearchableAssetName (v1_0 - Liferay Search Experiences REST) Segment (v1_0 - Liferay Headless Admin User) Shipment (v1_0 - Liferay Headless Commerce Admin Shipment) ShippingMethod (v1_0 - Liferay Headless Commerce Admin Channel) ShippingMethod (v1_0 - Liferay Headless Commerce Delivery Cart) SitePage (v1_0 - Liferay Headless Delivery) Sku (v1_0 - Liferay Headless Commerce Admin Catalog) Specification (v1_0 - Liferay Headless Commerce Admin Catalog) StructuredContent (v1_0 - Liferay Headless Delivery) StructuredContentFolder (v1_0 - Liferay Headless Delivery) Task (v1_0 - Liferay Portal Workflow Metrics REST) Term (v1_0 - Liferay Headless Commerce Admin Order) TimeRange (v1_0 - Liferay Portal Workflow Metrics REST) UserAccount (v1_0 - Liferay Headless Admin User) UserGroup (v1_0 - Liferay Headless Admin User) Warehouse (v1_0 - Liferay Headless Commerce Admin Inventory) WebUrl (v1_0 - Liferay Headless Admin User) WikiNode (v1_0 - Liferay Headless Delivery) WikiPage (v1_0 - Liferay Headless Delivery) WikiPageAttachment (v1_0 - Liferay Headless Delivery) WorkflowDefinition (v1_0 - Liferay Headless Admin Workflow) WorkflowInstance (v1_0 - Liferay Headless Admin Workflow) WorkflowLog (v1_0 - Liferay Headless Admin Workflow) WorkflowTask (v1_0 - Liferay Headless Admin Workflow)");
+			ImportExport.assertAvailabelEntityTypes(entityTypes = "Account (v1_0 - Liferay Headless Admin User) Account (v1_0 - Liferay Headless Commerce Admin Account) AccountGroup (v1_0 - Liferay Headless Commerce Admin Account) AccountRole (v1_0 - Liferay Headless Admin User) BlogPosting (v1_0 - Liferay Headless Delivery) BlogPostingImage (v1_0 - Liferay Headless Delivery) Calendar (v1_0 - Liferay Portal Workflow Metrics REST) Catalog (v1_0 - Liferay Headless Commerce Admin Catalog) Channel (v1_0 - Liferay Headless Commerce Admin Channel) Channel (v1_0 - Liferay Headless Commerce Delivery Catalog) Comment (v1_0 - Liferay Headless Delivery) ContentElement (v1_0 - Liferay Headless Delivery) ContentStructure (v1_0 - Liferay Headless Delivery) ContentTemplate (v1_0 - Liferay Headless Delivery) Country (v1_0 - Liferay Headless Admin Address) DSEnvelope (v1_0 - Liferay Digital Signature REST) DataDefinitionFieldLink (v2_0 - Liferay Data Engine REST) DataLayout (v2_0 - Liferay Data Engine REST) DataListView (v2_0 - Liferay Data Engine REST) DataRecord (v2_0 - Liferay Data Engine REST) DataRecordCollection (v2_0 - Liferay Data Engine REST) Discount (v1_0 - Liferay Headless Commerce Admin Pricing) Discount (v2_0 - Liferay Headless Commerce Admin Pricing) DispatchTrigger (v1_0 - Liferay Dispatch REST) Document (v1_0 - Liferay Headless Delivery) DocumentFolder (v1_0 - Liferay Headless Delivery) EmailAddress (v1_0 - Liferay Headless Admin User) FieldMappingInfo (v1_0 - Liferay Search Experiences REST) Form (v1_0 - Liferay Headless Form) FormRecord (v1_0 - Liferay Headless Form) FormStructure (v1_0 - Liferay Headless Form) Index (v1_0 - Liferay Portal Workflow Metrics REST) Instance (v1_0 - Liferay Portal Workflow Metrics REST) Keyword (v1_0 - Liferay Headless Admin Taxonomy) KeywordQueryContributor (v1_0 - Liferay Search Experiences REST) KnowledgeBaseArticle (v1_0 - Liferay Headless Delivery) KnowledgeBaseAttachment (v1_0 - Liferay Headless Delivery) KnowledgeBaseFolder (v1_0 - Liferay Headless Delivery) Language (v1_0 - Liferay Headless Delivery) ListTypeDefinition (v1_0 - Liferay Headless Admin List Type) ListTypeEntry (v1_0 - Liferay Headless Admin List Type) LowStockAction (v1_0 - Liferay Headless Commerce Admin Catalog) MeasurementUnit (v1_0 - Liferay Headless Commerce Admin Site Setting) MessageBoardAttachment (v1_0 - Liferay Headless Delivery) MessageBoardMessage (v1_0 - Liferay Headless Delivery) MessageBoardSection (v1_0 - Liferay Headless Delivery) MessageBoardThread (v1_0 - Liferay Headless Delivery) ModelPrefilterContributor (v1_0 - Liferay Search Experiences REST) NavigationMenu (v1_0 - Liferay Headless Delivery) Node (v1_0 - Liferay Portal Workflow Metrics REST) NotificationQueueEntry (v1_0 - Liferay Notification REST) NotificationTemplate (v1_0 - Liferay Notification REST) ObjectAction (v1_0 - Liferay Object Admin REST) ObjectDefinition (v1_0 - Liferay Object Admin REST) ObjectField (v1_0 - Liferay Object Admin REST) ObjectLayout (v1_0 - Liferay Object Admin REST) ObjectRelationship (v1_0 - Liferay Object Admin REST) ObjectValidationRule (v1_0 - Liferay Object Admin REST) ObjectView (v1_0 - Liferay Object Admin REST) Option (v1_0 - Liferay Headless Commerce Admin Catalog) OptionCategory (v1_0 - Liferay Headless Commerce Admin Catalog) Order (v1_0 - Liferay Headless Commerce Admin Order) OrderItem (v1_0 - Liferay Headless Commerce Admin Order) OrderRule (v1_0 - Liferay Headless Commerce Admin Order) OrderType (v1_0 - Liferay Headless Commerce Admin Order) Organization (v1_0 - Liferay Headless Admin User) PaymentMethod (v1_0 - Liferay Headless Commerce Delivery Cart) Phone (v1_0 - Liferay Headless Admin User) PlacedOrderComment (v1_0 - Liferay Headless Commerce Delivery Order) PlacedOrderItem (v1_0 - Liferay Headless Commerce Delivery Order) PlacedOrderItemShipment (v1_0 - Liferay Headless Commerce Delivery Order) PostalAddress (v1_0 - Liferay Headless Admin User) PriceList (v1_0 - Liferay Headless Commerce Admin Pricing) PriceList (v2_0 - Liferay Headless Commerce Admin Pricing) ProcessMetric (v1_0 - Liferay Portal Workflow Metrics REST) ProcessVersion (v1_0 - Liferay Portal Workflow Metrics REST) Product (v1_0 - Liferay Headless Commerce Admin Catalog) ProductGroup (v1_0 - Liferay Headless Commerce Admin Catalog) QueryPrefilterContributor (v1_0 - Liferay Search Experiences REST) Region (v1_0 - Liferay Headless Admin Address) ReindexStatus (v1_0 - Liferay Portal Workflow Metrics REST) ReplenishmentItem (v1_0 - Liferay Headless Commerce Admin Inventory) Role (v1_0 - Liferay Headless Admin User) Role (v1_0 - Liferay Portal Workflow Metrics REST) SLA (v1_0 - Liferay Portal Workflow Metrics REST) SXPBlueprint (v1_0 - Liferay Search Experiences REST) SXPElement (v1_0 - Liferay Search Experiences REST) SXPParameterContributorDefinition (v1_0 - Liferay Search Experiences REST) SearchIndex (v1_0 - Liferay Search Experiences REST) SearchableAssetName (v1_0 - Liferay Search Experiences REST) Segment (v1_0 - Liferay Headless Admin User) Shipment (v1_0 - Liferay Headless Commerce Admin Shipment) ShippingMethod (v1_0 - Liferay Headless Commerce Admin Channel) ShippingMethod (v1_0 - Liferay Headless Commerce Delivery Cart) SitePage (v1_0 - Liferay Headless Delivery) Sku (v1_0 - Liferay Headless Commerce Admin Catalog) Specification (v1_0 - Liferay Headless Commerce Admin Catalog) StructuredContent (v1_0 - Liferay Headless Delivery) StructuredContentFolder (v1_0 - Liferay Headless Delivery) Task (v1_0 - Liferay Portal Workflow Metrics REST) TaxCategory (v1_0 - Liferay Headless Commerce Admin Channel) TaxonomyCategory (v1_0 - Liferay Headless Admin Taxonomy) TaxonomyVocabulary (v1_0 - Liferay Headless Admin Taxonomy) Term (v1_0 - Liferay Headless Commerce Admin Order) TimeRange (v1_0 - Liferay Portal Workflow Metrics REST) UserAccount (v1_0 - Liferay Headless Admin User) UserGroup (v1_0 - Liferay Headless Admin User) Warehouse (v1_0 - Liferay Headless Commerce Admin Inventory) WebUrl (v1_0 - Liferay Headless Admin User) WikiNode (v1_0 - Liferay Headless Delivery) WikiPage (v1_0 - Liferay Headless Delivery) WikiPageAttachment (v1_0 - Liferay Headless Delivery) WorkflowDefinition (v1_0 - Liferay Headless Admin Workflow) WorkflowInstance (v1_0 - Liferay Headless Admin Workflow) WorkflowLog (v1_0 - Liferay Headless Admin Workflow) WorkflowTask (v1_0 - Liferay Headless Admin Workflow)");
 		}
 	}
 
@@ -1793,7 +1886,7 @@ definition {
 		}
 
 		task ("Then I can see all available entity types to import") {
-			ImportExport.assertAvailabelEntityTypes(entityTypes = "Account (v1_0 - Liferay Headless Admin User) Account (v1_0 - Liferay Headless Commerce Admin Account) AccountGroup (v1_0 - Liferay Headless Commerce Admin Account) AccountRole (v1_0 - Liferay Headless Admin User) BlogPosting (v1_0 - Liferay Headless Delivery) BlogPostingImage (v1_0 - Liferay Headless Delivery) Catalog (v1_0 - Liferay Headless Commerce Admin Catalog) Channel (v1_0 - Liferay Headless Commerce Admin Channel) Comment (v1_0 - Liferay Headless Delivery) Country (v1_0 - Liferay Headless Admin Address) DSEnvelope (v1_0 - Liferay Digital Signature REST) DataLayout (v2_0 - Liferay Data Engine REST) DataListView (v2_0 - Liferay Data Engine REST) DataRecord (v2_0 - Liferay Data Engine REST) DataRecordCollection (v2_0 - Liferay Data Engine REST) Discount (v1_0 - Liferay Headless Commerce Admin Pricing) Discount (v2_0 - Liferay Headless Commerce Admin Pricing) DispatchTrigger (v1_0 - Liferay Dispatch REST) Document (v1_0 - Liferay Headless Delivery) DocumentFolder (v1_0 - Liferay Headless Delivery) FormRecord (v1_0 - Liferay Headless Form) Instance (v1_0 - Liferay Portal Workflow Metrics REST) Keyword (v1_0 - Liferay Headless Admin Taxonomy) KnowledgeBaseArticle (v1_0 - Liferay Headless Delivery) KnowledgeBaseAttachment (v1_0 - Liferay Headless Delivery) KnowledgeBaseFolder (v1_0 - Liferay Headless Delivery) ListTypeDefinition (v1_0 - Liferay Headless Admin List Type) ListTypeEntry (v1_0 - Liferay Headless Admin List Type) MeasurementUnit (v1_0 - Liferay Headless Commerce Admin Site Setting) MessageBoardAttachment (v1_0 - Liferay Headless Delivery) MessageBoardMessage (v1_0 - Liferay Headless Delivery) MessageBoardSection (v1_0 - Liferay Headless Delivery) MessageBoardThread (v1_0 - Liferay Headless Delivery) NavigationMenu (v1_0 - Liferay Headless Delivery) Node (v1_0 - Liferay Portal Workflow Metrics REST) NotificationTemplate (v1_0 - Liferay Notification REST) ObjectAction (v1_0 - Liferay Object Admin REST) ObjectDefinition (v1_0 - Liferay Object Admin REST) ObjectField (v1_0 - Liferay Object Admin REST) ObjectLayout (v1_0 - Liferay Object Admin REST) ObjectRelationship (v1_0 - Liferay Object Admin REST) ObjectValidationRule (v1_0 - Liferay Object Admin REST) ObjectView (v1_0 - Liferay Object Admin REST) Option (v1_0 - Liferay Headless Commerce Admin Catalog) OptionCategory (v1_0 - Liferay Headless Commerce Admin Catalog) Order (v1_0 - Liferay Headless Commerce Admin Order) OrderItem (v1_0 - Liferay Headless Commerce Admin Order) OrderRule (v1_0 - Liferay Headless Commerce Admin Order) OrderType (v1_0 - Liferay Headless Commerce Admin Order) Organization (v1_0 - Liferay Headless Admin User) PriceList (v1_0 - Liferay Headless Commerce Admin Pricing) PriceList (v2_0 - Liferay Headless Commerce Admin Pricing) Process (v1_0 - Liferay Portal Workflow Metrics REST) Product (v1_0 - Liferay Headless Commerce Admin Catalog) ProductGroup (v1_0 - Liferay Headless Commerce Admin Catalog) Region (v1_0 - Liferay Headless Admin Address) ReplenishmentItem (v1_0 - Liferay Headless Commerce Admin Inventory) SLA (v1_0 - Liferay Portal Workflow Metrics REST) SXPBlueprint (v1_0 - Liferay Search Experiences REST) SXPElement (v1_0 - Liferay Search Experiences REST) SamlProvider (v1_0 - Liferay SAML Admin REST) Shipment (v1_0 - Liferay Headless Commerce Admin Shipment) Specification (v1_0 - Liferay Headless Commerce Admin Catalog) Status (v1_0 - Liferay Segments Asah REST) StructuredContent (v1_0 - Liferay Headless Delivery) StructuredContentFolder (v1_0 - Liferay Headless Delivery) Task (v1_0 - Liferay Portal Workflow Metrics REST) TaxonomyCategory (v1_0 - Liferay Headless Admin Taxonomy) TaxonomyVocabulary (v1_0 - Liferay Headless Admin Taxonomy) Term (v1_0 - Liferay Headless Commerce Admin Order) UserAccount (v1_0 - Liferay Headless Admin User) UserGroup (v1_0 - Liferay Headless Admin User) Warehouse (v1_0 - Liferay Headless Commerce Admin Inventory) WikiNode (v1_0 - Liferay Headless Delivery) WikiPage (v1_0 - Liferay Headless Delivery) WikiPageAttachment (v1_0 - Liferay Headless Delivery) WorkflowDefinition (v1_0 - Liferay Headless Admin Workflow)");
+			ImportExport.assertAvailabelEntityTypes(entityTypes = "Account (v1_0 - Liferay Headless Admin User) Account (v1_0 - Liferay Headless Commerce Admin Account) AccountGroup (v1_0 - Liferay Headless Commerce Admin Account) AccountRole (v1_0 - Liferay Headless Admin User) BlogPosting (v1_0 - Liferay Headless Delivery) BlogPostingImage (v1_0 - Liferay Headless Delivery) Catalog (v1_0 - Liferay Headless Commerce Admin Catalog) Channel (v1_0 - Liferay Headless Commerce Admin Channel) Comment (v1_0 - Liferay Headless Delivery) Country (v1_0 - Liferay Headless Admin Address) DSEnvelope (v1_0 - Liferay Digital Signature REST) DataLayout (v2_0 - Liferay Data Engine REST) DataListView (v2_0 - Liferay Data Engine REST) DataRecord (v2_0 - Liferay Data Engine REST) DataRecordCollection (v2_0 - Liferay Data Engine REST) Discount (v1_0 - Liferay Headless Commerce Admin Pricing) Discount (v2_0 - Liferay Headless Commerce Admin Pricing) DispatchTrigger (v1_0 - Liferay Dispatch REST) Document (v1_0 - Liferay Headless Delivery) DocumentFolder (v1_0 - Liferay Headless Delivery) FormRecord (v1_0 - Liferay Headless Form) Instance (v1_0 - Liferay Portal Workflow Metrics REST) Keyword (v1_0 - Liferay Headless Admin Taxonomy) KnowledgeBaseArticle (v1_0 - Liferay Headless Delivery) KnowledgeBaseAttachment (v1_0 - Liferay Headless Delivery) KnowledgeBaseFolder (v1_0 - Liferay Headless Delivery) ListTypeDefinition (v1_0 - Liferay Headless Admin List Type) ListTypeEntry (v1_0 - Liferay Headless Admin List Type) MeasurementUnit (v1_0 - Liferay Headless Commerce Admin Site Setting) MessageBoardAttachment (v1_0 - Liferay Headless Delivery) MessageBoardMessage (v1_0 - Liferay Headless Delivery) MessageBoardSection (v1_0 - Liferay Headless Delivery) MessageBoardThread (v1_0 - Liferay Headless Delivery) NavigationMenu (v1_0 - Liferay Headless Delivery) Node (v1_0 - Liferay Portal Workflow Metrics REST) NotificationTemplate (v1_0 - Liferay Notification REST) ObjectAction (v1_0 - Liferay Object Admin REST) ObjectDefinition (v1_0 - Liferay Object Admin REST) ObjectField (v1_0 - Liferay Object Admin REST) ObjectLayout (v1_0 - Liferay Object Admin REST) ObjectRelationship (v1_0 - Liferay Object Admin REST) ObjectValidationRule (v1_0 - Liferay Object Admin REST) ObjectView (v1_0 - Liferay Object Admin REST) Option (v1_0 - Liferay Headless Commerce Admin Catalog) OptionCategory (v1_0 - Liferay Headless Commerce Admin Catalog) Order (v1_0 - Liferay Headless Commerce Admin Order) OrderItem (v1_0 - Liferay Headless Commerce Admin Order) OrderRule (v1_0 - Liferay Headless Commerce Admin Order) OrderType (v1_0 - Liferay Headless Commerce Admin Order) Organization (v1_0 - Liferay Headless Admin User) PriceList (v1_0 - Liferay Headless Commerce Admin Pricing) PriceList (v2_0 - Liferay Headless Commerce Admin Pricing) Process (v1_0 - Liferay Portal Workflow Metrics REST) Product (v1_0 - Liferay Headless Commerce Admin Catalog) ProductGroup (v1_0 - Liferay Headless Commerce Admin Catalog) Region (v1_0 - Liferay Headless Admin Address) ReplenishmentItem (v1_0 - Liferay Headless Commerce Admin Inventory) SLA (v1_0 - Liferay Portal Workflow Metrics REST) SXPBlueprint (v1_0 - Liferay Search Experiences REST) SXPElement (v1_0 - Liferay Search Experiences REST) SamlProvider (v1_0 - Liferay SAML Admin REST) Shipment (v1_0 - Liferay Headless Commerce Admin Shipment) SitePage (v1_0 - Liferay Headless Delivery) Specification (v1_0 - Liferay Headless Commerce Admin Catalog) Status (v1_0 - Liferay Segments Asah REST) StructuredContent (v1_0 - Liferay Headless Delivery) StructuredContentFolder (v1_0 - Liferay Headless Delivery) Task (v1_0 - Liferay Portal Workflow Metrics REST) TaxonomyCategory (v1_0 - Liferay Headless Admin Taxonomy) TaxonomyVocabulary (v1_0 - Liferay Headless Admin Taxonomy) Term (v1_0 - Liferay Headless Commerce Admin Order) UserAccount (v1_0 - Liferay Headless Admin User) UserGroup (v1_0 - Liferay Headless Admin User) Warehouse (v1_0 - Liferay Headless Commerce Admin Inventory) WikiNode (v1_0 - Liferay Headless Delivery) WikiPage (v1_0 - Liferay Headless Delivery) WikiPageAttachment (v1_0 - Liferay Headless Delivery) WorkflowDefinition (v1_0 - Liferay Headless Admin Workflow)");
 		}
 	}
 

@@ -14,19 +14,18 @@ definition {
 	tearDown {
 		var testPortalInstance = PropsUtil.get("test.portal.instance");
 
+		BlogPostingAPI.deleteAllBlogPostings();
+
+		var response = HeadlessWebcontentAPI.returnAllstructuredContentId();
+
+		HeadlessWebcontentAPI.deleteAllStructuredContent(structuredContentId = ${response});
+
+		JSONCategory.deleteVocabulary(
+			groupName = "Guest",
+			vocabularyName = "Vocabulary Name");
+
 		if (${testPortalInstance} == "true") {
-			PortalInstances.tearDownCP();
-		}
-		else {
-			BlogPostingAPI.deleteAllBlogPostings();
-
-			var response = HeadlessWebcontentAPI.returnAllstructuredContentId();
-
-			HeadlessWebcontentAPI.deleteAllStructuredContent(structuredContentId = ${response});
-
-			JSONCategory.deleteVocabulary(
-				groupName = "Guest",
-				vocabularyName = "Vocabulary Name");
+			PortalInstances.tearDownCPNoSelenium();
 		}
 	}
 
@@ -48,9 +47,7 @@ definition {
 		}
 
 		task ("When executing query structured content title") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
+			var siteId = JSONGroupSetter.setGroupId(groupName = "Guest");
 
 			APIExplorer.executeGraphqlQuery(query = "query {structuredContents(siteKey:\"${siteId}\"){items{title}}}");
 		}
@@ -79,9 +76,7 @@ definition {
 		}
 
 		task ("When executing query taxonomy vocabulary name") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
+			var siteId = JSONGroupSetter.setGroupId(groupName = "Guest");
 
 			APIExplorer.executeGraphqlQuery(query = "query{taxonomyVocabularies(siteKey:\"${siteId}\"){items{name}}}");
 		}
@@ -110,9 +105,7 @@ definition {
 		}
 
 		task ("When executing query blog headline") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
+			var siteId = JSONGroupSetter.setGroupId(groupName = "Guest");
 
 			APIExplorer.executeGraphqlQuery(query = "query{blogPostings(siteKey:\"${siteId}\"){items{headline}}}");
 		}
@@ -121,6 +114,28 @@ definition {
 			AssertTextEquals.assertPartialText(
 				locator1 = "OpenAPI#GRAPHQL_RESPONSE",
 				value1 = "\"headline\": \"headline of my blog posting\"");
+		}
+	}
+
+	@priority = 5
+	test CanLoadAPIExplorerFromCustomContext {
+		property portal.acceptance = "true";
+		property portal.context = "world";
+		property skip.clean-app-server-deploy-dir = "true";
+		property test.name.skip.portal.instance = "HeadlessDiscovery#CanLoadAPIExplorerFromCustomContext";
+
+		task ("When I navigate to localhost:8080/world/o/api") {
+			var portalURL = PropsUtil.get("portal.url");
+
+			APIExplorer.navigateToOpenAPI();
+		}
+
+		task ("Then Liferay API Explorer loads correctly") {
+			var api = "headless-delivery";
+
+			AssertTextEquals(
+				locator1 = "Select#HEADLESS_SERVERS",
+				value1 = "${portalURL}/o/${api}/");
 		}
 	}
 
@@ -203,10 +218,6 @@ definition {
 		}
 
 		task ("When executing getSiteBlogPosingPage with siteID as the parameter") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
-
 			APIExplorer.executeAPIMethodWithParameters(
 				method = "getSiteBlogPostingsPage",
 				parameter = "siteId",
@@ -232,10 +243,6 @@ definition {
 		}
 
 		task ("When executing getSiteKeywordsPage with siteID as the parameter") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
-
 			APIExplorer.executeAPIMethodWithParameters(
 				method = "getSiteKeywordsPage",
 				parameter = "siteId",
@@ -261,10 +268,6 @@ definition {
 		}
 
 		task ("When executing getSiteStructuredContentsPage with siteID as the parameter") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
-
 			APIExplorer.executeAPIMethodWithParameters(
 				method = "getSiteStructuredContentsPage",
 				parameter = "siteId",
@@ -296,9 +299,6 @@ definition {
 		}
 
 		task ("When executing postSiteTaxonomyVocabulary with siteID as the parameter") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
 			var requestBody = '''{"name": "Vocubulary Name"}''';
 
 			APIExplorer.executeAPIMethodWithParameters(
@@ -366,9 +366,6 @@ definition {
 		}
 
 		task ("When executing postSiteStructuredContentDraft with siteID as the parameter and structuredId in the body") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
 			var requestBody = '''
 				{
 					"contentStructureId": ${ddmStructureId},
@@ -441,9 +438,6 @@ definition {
 		}
 
 		task ("When executing postSiteStructuredContent with siteID as the parameter and structuredId in the body") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
 			var requestBody = '''
 				{
 					"contentStructureId": ${ddmStructureId},
@@ -507,10 +501,6 @@ definition {
 		}
 
 		task ("When executing getSiteStructuredContentsPage with siteID as the parameter") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
-
 			APIExplorer.executeAPIMethodWithParameters(
 				method = "getSiteStructuredContentsPage",
 				parameter = "siteId",
@@ -556,10 +546,6 @@ definition {
 		}
 
 		task ("When executing getSiteTaxonomyVocabulariesPage with siteID as the parameter") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
-
 			APIExplorer.executeAPIMethodWithParameters(
 				method = "getSiteTaxonomyVocabulariesPage",
 				parameter = "siteId",
@@ -606,10 +592,6 @@ definition {
 		}
 
 		task ("When executing getSiteStructuredContentsPage with siteID as the parameter") {
-			var siteId = JSONGroupAPI._getGroupIdByNameNoSelenium(
-				groupName = "Guest",
-				site = "true");
-
 			APIExplorer.executeAPIMethodWithParameters(
 				method = "getSiteStructuredContentsPage",
 				parameter = "siteId",

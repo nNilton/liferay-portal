@@ -1704,6 +1704,7 @@ public class VerifyProperties {
 		"com.liferay.portal.servlet.filters.doubleclick.DoubleClickFilter",
 		"com.liferay.portal.servlet.filters.charbufferpool." +
 			"CharBufferPoolFilter",
+		"com.liferay.portal.servlet.filters.i18n.I18nFilter",
 		"com.liferay.portal.servlet.filters.jsoncontenttype." +
 			"JSONContentTypeFilter",
 		"com.liferay.portal.servlet.filters.monitoring.MonitoringFilter",
@@ -1719,7 +1720,7 @@ public class VerifyProperties {
 		"control.panel.home.portlet.id",
 		"control.panel.navigation.max.organizations",
 		"control.panel.navigation.max.sites", "convert.processes",
-		"data.limit.max.dl.storage.size",
+		"counter.jdbc.prefix", "data.limit.max.dl.storage.size",
 		"data.limit.max.journal.article.count",
 		"data.limit.max.journal.folder.count",
 		"data.limit.max.mail.message.count",

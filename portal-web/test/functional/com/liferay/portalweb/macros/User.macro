@@ -806,7 +806,8 @@ definition {
 			value1 = "This user is not assigned any asset library roles.");
 
 		AssertClick(
-			locator1 = "UsersAndOrganizationsEditUser#DEPOT_ROLES_SELECT_LINK",
+			key_roleType = "DepotRole",
+			locator1 = "UsersAndOrganizationsEditUser#ROLES_SELECT_LINK",
 			value1 = "SELECT");
 
 		SelectFrame(locator1 = "IFrame#SELECT_DEPOT_ROLE");
@@ -1300,7 +1301,11 @@ definition {
 	}
 
 	macro deleteProfileImage {
-		Button.click(button = "Delete");
+		var key_text = "Delete";
+
+		if (!(IsElementPresent(locator1 = "CustomerPortalSite#ANY_DISABLED_BUTTON"))) {
+			Button.click(button = "Delete");
+		}
 
 		AssertVisible(
 			key_imageName = "user_portrait",
@@ -2574,8 +2579,8 @@ definition {
 		var key_regularRoleName = ${regularRoleName};
 
 		Click(
-			locator1 = "UsersAndOrganizationsEditUser#ROLES_REGULAR_ROLES_REMOVE_ROLE",
-			value1 = ${regularRoleName});
+			key_entryName = ${regularRoleName},
+			locator1 = "LexiconTable#TABLE_ENTRY_DELETE");
 
 		PortletEntry.save();
 

@@ -12,9 +12,9 @@
 			"indexed": true,
 			"indexedAsKeyword": false,
 			"label": {
-				"en_US": "Account External Reference Code SF"
+				"en_US": "Account External Reference Code"
 			},
-			"name": "accountExternalReferenceCodeSF",
+			"name": "accountExternalReferenceCode",
 			"required": false,
 			"type": "String"
 		},
@@ -251,12 +251,27 @@
 			"name": "primaryProspectDepartment",
 			"required": false,
 			"type": "String"
+		},
+		{
+			"DBType": "String",
+			"businessType": "Picklist",
+			"externalReferenceCode": "CurrencyIsoCode",
+			"indexed": true,
+			"indexedAsKeyword": false,
+			"label": {
+				"en_US": "Currency"
+			},
+			"listTypeDefinitionId": "[$LIST_TYPE_DEFINITION_ID:Currencies$]",
+			"name": "currency",
+			"required": false,
+			"type": "String"
 		}
 	],
 	"panelCategoryKey": "control_panel.object",
 	"pluralLabel": {
 		"en_US": "Leads SF"
 	},
+	"portlet": true,
 	"scope": "company",
 	"storageType": "salesforce"
 }

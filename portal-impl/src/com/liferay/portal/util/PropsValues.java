@@ -475,8 +475,8 @@ public class PropsValues {
 	public static final String DATABASE_MYSQL_ENGINE = PropsUtil.get(
 		PropsKeys.DATABASE_MYSQL_ENGINE);
 
-	public static final String DEFAULT_ADMIN_EMAIL_ADDRESS_PREFIX =
-		PropsUtil.get(PropsKeys.DEFAULT_ADMIN_EMAIL_ADDRESS_PREFIX);
+	public static String DEFAULT_ADMIN_EMAIL_ADDRESS_PREFIX = PropsUtil.get(
+		PropsKeys.DEFAULT_ADMIN_EMAIL_ADDRESS_PREFIX);
 
 	public static String DEFAULT_ADMIN_FIRST_NAME = PropsUtil.get(
 		PropsKeys.DEFAULT_ADMIN_FIRST_NAME);
@@ -1498,10 +1498,6 @@ public class PropsValues {
 	public static final int NOTIFICATIONS_MAX_EVENTS = GetterUtil.getInteger(
 		PropsUtil.get(PropsKeys.NOTIFICATIONS_MAX_EVENTS));
 
-	public static final int OBJECT_ENTRY_SCRIPT_VARIABLES_VERSION =
-		GetterUtil.getInteger(
-			PropsUtil.get(PropsKeys.OBJECT_ENTRY_SCRIPT_VARIABLES_VERSION));
-
 	public static final int OBJECT_NESTED_FIELDS_MAX_QUERY_DEPTH =
 		GetterUtil.getInteger(
 			PropsUtil.get(PropsKeys.OBJECT_NESTED_FIELDS_MAX_QUERY_DEPTH));
@@ -2381,9 +2377,7 @@ public class PropsValues {
 	public static final String UNICODE_TEXT_NORMALIZER_FORM = PropsUtil.get(
 		PropsKeys.UNICODE_TEXT_NORMALIZER_FORM);
 
-	public static final boolean UPGRADE_DATABASE_AUTO_RUN =
-		GetterUtil.getBoolean(
-			PropsUtil.get(PropsKeys.UPGRADE_DATABASE_AUTO_RUN));
+	public static final boolean UPGRADE_DATABASE_AUTO_RUN;
 
 	public static final boolean UPGRADE_DATABASE_TRANSACTIONS_DISABLED =
 		GetterUtil.getBoolean(
@@ -2392,6 +2386,10 @@ public class PropsValues {
 	public static final boolean UPGRADE_LOG_CONTEXT_ENABLED =
 		GetterUtil.getBoolean(
 			PropsUtil.get(PropsKeys.UPGRADE_LOG_CONTEXT_ENABLED));
+
+	public static final long UPGRADE_REPORT_DL_STORAGE_SIZE_TIMEOUT =
+		GetterUtil.getLong(
+			PropsUtil.get(PropsKeys.UPGRADE_REPORT_DL_STORAGE_SIZE_TIMEOUT));
 
 	public static final boolean UPGRADE_REPORT_ENABLED = GetterUtil.getBoolean(
 		PropsUtil.get(PropsKeys.UPGRADE_REPORT_ENABLED));
@@ -2619,6 +2617,14 @@ public class PropsValues {
 		for (int i = 0; i < LOGIN_FORM_NAVIGATION_PRE.length; i++) {
 			LOGIN_FORM_NAVIGATION_PRE[i] = TextFormatter.format(
 				LOGIN_FORM_NAVIGATION_PRE[i], TextFormatter.N);
+		}
+
+		if (JDBC_DEFAULT_DRIVER_CLASS_NAME.contains("hsql")) {
+			UPGRADE_DATABASE_AUTO_RUN = false;
+		}
+		else {
+			UPGRADE_DATABASE_AUTO_RUN = GetterUtil.getBoolean(
+				PropsUtil.get(PropsKeys.UPGRADE_DATABASE_AUTO_RUN));
 		}
 	}
 

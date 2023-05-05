@@ -24,8 +24,6 @@ import com.liferay.portal.kernel.portlet.configuration.icon.PortletConfiguration
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.permission.PortletPermission;
-import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
 
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
@@ -37,7 +35,6 @@ import org.osgi.service.component.annotations.Reference;
  * @author Samuel Trong Tran
  */
 @Component(
-	immediate = true,
 	property = "javax.portlet.name=" + CTPortletKeys.PUBLICATIONS,
 	service = PortletConfigurationIcon.class
 )
@@ -64,10 +61,6 @@ public class TemplatesPortletConfigurationIcon
 
 	@Override
 	public boolean isShow(PortletRequest portletRequest) {
-		if (!GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-161313"))) {
-			return false;
-		}
-
 		return CTPermission.contains(
 			PermissionThreadLocal.getPermissionChecker(),
 			CTActionKeys.ADD_TEMPLATE);

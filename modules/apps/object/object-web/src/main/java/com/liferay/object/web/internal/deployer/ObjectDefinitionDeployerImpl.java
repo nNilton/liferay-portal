@@ -17,6 +17,7 @@ package com.liferay.object.web.internal.deployer;
 import com.liferay.application.list.PanelApp;
 import com.liferay.asset.display.page.portlet.AssetDisplayPageFriendlyURLProvider;
 import com.liferay.asset.kernel.model.AssetRendererFactory;
+import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLAppService;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
 import com.liferay.document.library.util.DLURLHelper;
@@ -127,7 +128,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 	public List<ServiceRegistration<?>> deploy(
 		ObjectDefinition objectDefinition) {
 
-		if (objectDefinition.isSystem()) {
+		if (objectDefinition.isUnmodifiableSystemObject()) {
 			return Collections.emptyList();
 		}
 
@@ -202,12 +203,13 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			_bundleContext.registerService(
 				InfoItemFieldValuesProvider.class,
 				new ObjectEntryInfoItemFieldValuesProvider(
-					_assetDisplayPageFriendlyURLProvider,
-					_dlFileEntryLocalService,
+					_assetDisplayPageFriendlyURLProvider, _dlAppLocalService,
+					_dlFileEntryLocalService, _dlURLHelper,
 					_infoItemFieldReaderFieldSetProvider, _jsonFactory,
 					_listTypeEntryLocalService, objectDefinition,
-					_objectEntryLocalService, _objectEntryManagerRegistry,
-					_objectFieldLocalService, _objectRelationshipLocalService,
+					_objectDefinitionLocalService, _objectEntryLocalService,
+					_objectEntryManagerRegistry, _objectFieldLocalService,
+					_objectRelationshipLocalService,
 					_templateInfoItemFieldSetProvider, _userLocalService),
 				HashMapDictionaryBuilder.<String, Object>put(
 					"company.id", objectDefinition.getCompanyId()
@@ -286,8 +288,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 					_objectEntryLocalService,
 					_objectEntryManagerRegistry.getObjectEntryManager(
 						objectDefinition.getStorageType()),
-					_objectRelatedModelsProviderRegistry,
-					_objectScopeProviderRegistry, _portal),
+					_objectRelatedModelsProviderRegistry, _portal),
 				HashMapDictionaryBuilder.<String, Object>put(
 					"item.selector.view.order", 500
 				).build()),
@@ -396,7 +397,11 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 
 		serviceRegistrations.add(
 			_bundleContext.registerService(
-				PanelApp.class, new ObjectEntriesPanelApp(objectDefinition),
+				PanelApp.class,
+				new ObjectEntriesPanelApp(
+					objectDefinition,
+					() -> _portletLocalService.getPortletById(
+						objectDefinition.getPortletId())),
 				HashMapDictionaryBuilder.<String, Object>put(
 					"panel.app.order:Integer",
 					objectDefinition.getPanelAppOrder()
@@ -449,6 +454,9 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 
 	@Reference
 	private DisplayPageInfoItemCapability _displayPageInfoItemCapability;
+
+	@Reference
+	private DLAppLocalService _dlAppLocalService;
 
 	@Reference
 	private DLAppService _dlAppService;

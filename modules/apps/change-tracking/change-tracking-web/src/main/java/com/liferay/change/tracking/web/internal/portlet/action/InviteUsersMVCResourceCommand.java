@@ -21,13 +21,13 @@ import com.liferay.change.tracking.model.CTCollection;
 import com.liferay.change.tracking.service.CTCollectionLocalService;
 import com.liferay.change.tracking.web.internal.constants.PublicationRoleConstants;
 import com.liferay.change.tracking.web.internal.security.permission.resource.CTCollectionPermission;
-import com.liferay.portal.aop.AopService;
+import com.liferay.petra.lang.SafeCloseable;
+import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
-import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
@@ -38,11 +38,9 @@ import com.liferay.portal.kernel.notifications.NotificationEvent;
 import com.liferay.portal.kernel.notifications.UserNotificationDefinition;
 import com.liferay.portal.kernel.notifications.UserNotificationManagerUtil;
 import com.liferay.portal.kernel.portlet.JSONPortletResponseUtil;
-import com.liferay.portal.kernel.portlet.bridges.mvc.BaseMVCResourceCommand;
+import com.liferay.portal.kernel.portlet.bridges.mvc.BaseTransactionalMVCResourceCommand;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCResourceCommand;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
-import com.liferay.portal.kernel.security.permission.ResourceActions;
-import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
@@ -50,8 +48,6 @@ import com.liferay.portal.kernel.service.UserGroupRoleLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.UserNotificationEventLocalService;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
-import com.liferay.portal.kernel.transaction.Propagation;
-import com.liferay.portal.kernel.transaction.Transactional;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
@@ -71,7 +67,6 @@ import javax.portlet.ResourceResponse;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
@@ -83,49 +78,25 @@ import org.osgi.service.component.annotations.Reference;
 		"javax.portlet.name=" + CTPortletKeys.PUBLICATIONS,
 		"mvc.command.name=/change_tracking/invite_users"
 	},
-	service = AopService.class
+	service = MVCResourceCommand.class
 )
 public class InviteUsersMVCResourceCommand
-	extends BaseMVCResourceCommand implements AopService, MVCResourceCommand {
+	extends BaseTransactionalMVCResourceCommand {
 
 	@Override
-	@Transactional(
-		propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class
-	)
 	public boolean serveResource(
 			ResourceRequest resourceRequest, ResourceResponse resourceResponse)
 		throws PortletException {
 
-		return super.serveResource(resourceRequest, resourceResponse);
-	}
+		try (SafeCloseable safeCloseable =
+				CTCollectionThreadLocal.setProductionModeWithSafeCloseable()) {
 
-	@Activate
-	protected void activate() throws PortalException {
-		_companyLocalService.forEachCompanyId(
-			companyId -> {
-				Role role = _roleLocalService.getRole(
-					companyId, RoleConstants.PUBLICATIONS_USER);
-
-				_resourcePermissionLocalService.addResourcePermission(
-					role.getCompanyId(),
-					_resourceActions.getPortletRootModelResource(
-						CTPortletKeys.PUBLICATIONS),
-					ResourceConstants.SCOPE_COMPANY,
-					String.valueOf(role.getCompanyId()), role.getRoleId(),
-					CTActionKeys.ADD_PUBLICATION);
-				_resourcePermissionLocalService.addResourcePermission(
-					companyId, CTPortletKeys.PUBLICATIONS,
-					ResourceConstants.SCOPE_COMPANY, String.valueOf(companyId),
-					role.getRoleId(), ActionKeys.ACCESS_IN_CONTROL_PANEL);
-				_resourcePermissionLocalService.addResourcePermission(
-					companyId, CTPortletKeys.PUBLICATIONS,
-					ResourceConstants.SCOPE_COMPANY, String.valueOf(companyId),
-					role.getRoleId(), ActionKeys.VIEW);
-			});
+			return super.serveResource(resourceRequest, resourceResponse);
+		}
 	}
 
 	@Override
-	protected void doServeResource(
+	protected void doTransactionalCommand(
 			ResourceRequest resourceRequest, ResourceResponse resourceResponse)
 		throws IOException, PortalException {
 
@@ -192,7 +163,7 @@ public class InviteUsersMVCResourceCommand
 			Map<Locale, String> nameMap = null;
 
 			if (ctCollectionId == CTConstants.CT_COLLECTION_ID_PRODUCTION) {
-				userId = themeDisplay.getDefaultUserId();
+				userId = themeDisplay.getGuestUserId();
 				className = null;
 				classPK = 0;
 				nameMap = new HashMap<>();
@@ -306,7 +277,7 @@ public class InviteUsersMVCResourceCommand
 
 		if (role == null) {
 			role = _roleLocalService.addRole(
-				themeDisplay.getDefaultUserId(), null, 0, name, null, null,
+				themeDisplay.getGuestUserId(), null, 0, name, null, null,
 				RoleConstants.TYPE_PUBLICATIONS, null, null);
 
 			for (String actionId : _getModelResourceActions(roleValue)) {
@@ -354,9 +325,6 @@ public class InviteUsersMVCResourceCommand
 	}
 
 	@Reference
-	private CompanyLocalService _companyLocalService;
-
-	@Reference
 	private CTCollectionLocalService _ctCollectionLocalService;
 
 	@Reference
@@ -367,14 +335,6 @@ public class InviteUsersMVCResourceCommand
 
 	@Reference
 	private Portal _portal;
-
-	@Reference(
-		target = "(javax.portlet.name=" + CTPortletKeys.PUBLICATIONS + ")"
-	)
-	private Portlet _portlet;
-
-	@Reference
-	private ResourceActions _resourceActions;
 
 	@Reference
 	private ResourcePermissionLocalService _resourcePermissionLocalService;

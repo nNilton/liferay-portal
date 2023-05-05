@@ -12,55 +12,62 @@
  * details.
  */
 
-import {useEffect} from 'react';
-import {useParams} from 'react-router-dom';
-
-import Avatar from '../../../../components/Avatar';
-import AssignToMe from '../../../../components/Avatar/AssigneToMe';
-import Code from '../../../../components/Code';
-import Container from '../../../../components/Layout/Container';
-import ListViewRest from '../../../../components/ListView';
-import StatusBadge from '../../../../components/StatusBadge';
-import {StatusBadgeType} from '../../../../components/StatusBadge/StatusBadge';
-import useMutate from '../../../../hooks/useMutate';
-import useRuns from '../../../../hooks/useRuns';
-import useSearchBuilder from '../../../../hooks/useSearchBuilder';
-import i18n from '../../../../i18n';
+import {useMemo} from 'react';
+import {useParams, useSearchParams} from 'react-router-dom';
+import Avatar from '~/components/Avatar';
+import AssignToMe from '~/components/Avatar/AssignToMe/AssignToMe';
+import Code from '~/components/Code';
+import JiraLink from '~/components/JiraLink';
+import Container from '~/components/Layout/Container';
+import ListView from '~/components/ListView';
+import StatusBadge from '~/components/StatusBadge';
+import {StatusBadgeType} from '~/components/StatusBadge/StatusBadge';
+import useMutate from '~/hooks/useMutate';
+import useSearchBuilder from '~/hooks/useSearchBuilder';
+import i18n from '~/i18n';
 import {
 	PickList,
 	TestrayCaseResult,
+	TestrayCaseResultIssue,
 	testrayCaseResultImpl,
-} from '../../../../services/rest';
+} from '~/services/rest';
+
 import useBuildTestActions from './useBuildTestActions';
 
 const Build = () => {
+	const [searchParams] = useSearchParams();
+	const {actions, form} = useBuildTestActions();
 	const {buildId} = useParams();
 	const {updateItemFromList} = useMutate();
-	const {actions, form} = useBuildTestActions();
-	const {
-		compareRuns: {runId},
-		setRunId,
-	} = useRuns();
 
-	useEffect(() => {
-		return () => setRunId(null);
-	}, [setRunId]);
+	const runId = searchParams.get('runId');
+
+	const filterInitialContext = useMemo(
+		() => ({
+			entries: [
+				{
+					label: i18n.translate('run'),
+					name: 'runToCaseResult/number',
+					value: runId as string,
+				},
+			],
+			filter: {'runToCaseResult/id': runId as string},
+		}),
+		[runId]
+	);
 
 	const caseResultFilter = useSearchBuilder({useURIEncode: false});
 
 	const filter = runId
-		? caseResultFilter
-				.eq('buildId', buildId as string)
-				.and()
-				.eq('runId', runId)
-				.build()
+		? caseResultFilter.eq('buildId', buildId as string).build()
 		: caseResultFilter.eq('buildId', buildId as string).build();
 
 	return (
 		<Container className="mt-4">
-			<ListViewRest
+			<ListView
 				initialContext={{
 					columns: {environment: false},
+					filters: filterInitialContext,
 				}}
 				managementToolbarProps={{
 					filterSchema: 'buildResults',
@@ -127,6 +134,7 @@ const Build = () => {
 							render: (_, item: TestrayCaseResult) =>
 								item?.run?.name,
 							value: i18n.translate('environment'),
+							width: '250',
 						},
 						{
 							key: 'user',
@@ -140,10 +148,9 @@ const Build = () => {
 										<Avatar
 											className="text-capitalize"
 											displayName
-											name={`${caseResult.user.emailAddress
-												.split('@')[0]
-												.replace('.', ' ')}`}
+											name={caseResult.user.name}
 											size="sm"
+											url={caseResult.user.image}
 										/>
 									);
 								}
@@ -169,7 +176,9 @@ const Build = () => {
 									/>
 								);
 							},
+							truncate: false,
 							value: i18n.translate('assignee'),
+							width: '200',
 						},
 						{
 							key: 'dueStatus',
@@ -184,6 +193,13 @@ const Build = () => {
 						},
 						{
 							key: 'issues',
+							render: (issues: TestrayCaseResultIssue[]) =>
+								issues.map((caseResultIssue, index) => (
+									<JiraLink
+										issue={caseResultIssue}
+										key={index}
+									/>
+								)),
 							value: i18n.translate('issues'),
 						},
 						{

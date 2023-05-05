@@ -14,27 +14,21 @@
 
 package com.liferay.headless.admin.user.internal.resource.v1_0;
 
-import com.liferay.headless.admin.user.dto.v1_0.Role;
 import com.liferay.headless.admin.user.dto.v1_0.UserAccount;
 import com.liferay.headless.admin.user.resource.v1_0.UserAccountResource;
 import com.liferay.petra.function.UnsafeBiConsumer;
 import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.function.UnsafeFunction;
-import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.GroupedModel;
-import com.liferay.portal.kernel.model.ResourceAction;
-import com.liferay.portal.kernel.model.ResourceConstants;
-import com.liferay.portal.kernel.model.ResourcePermission;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
-import com.liferay.portal.kernel.service.ResourceLocalServiceUtil;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
-import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -47,23 +41,18 @@ import com.liferay.portal.odata.sort.SortParser;
 import com.liferay.portal.odata.sort.SortParserProvider;
 import com.liferay.portal.vulcan.accept.language.AcceptLanguage;
 import com.liferay.portal.vulcan.batch.engine.VulcanBatchEngineTaskItemDelegate;
+import com.liferay.portal.vulcan.batch.engine.resource.VulcanBatchEngineExportTaskResource;
 import com.liferay.portal.vulcan.batch.engine.resource.VulcanBatchEngineImportTaskResource;
+import com.liferay.portal.vulcan.multipart.MultipartBody;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
-import com.liferay.portal.vulcan.permission.Permission;
 import com.liferay.portal.vulcan.resource.EntityModelResource;
 import com.liferay.portal.vulcan.util.ActionUtil;
-import com.liferay.portal.vulcan.util.TransformUtil;
 
 import java.io.Serializable;
 
-import java.lang.reflect.Method;
-
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -486,6 +475,92 @@ public abstract class BaseUserAccountResourceImpl
 	/**
 	 * Invoke this method with the command line:
 	 *
+	 * curl -X 'POST' 'http://localhost:8080/o/headless-admin-user/v1.0/accounts/{accountId}/user-accounts/export-batch'  -u 'test@liferay.com:test'
+	 */
+	@io.swagger.v3.oas.annotations.Parameters(
+		value = {
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
+				name = "accountId"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "filter"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "search"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "sort"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "callbackURL"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "contentType"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "fieldNames"
+			)
+		}
+	)
+	@io.swagger.v3.oas.annotations.tags.Tags(
+		value = {@io.swagger.v3.oas.annotations.tags.Tag(name = "UserAccount")}
+	)
+	@javax.ws.rs.Consumes("application/json")
+	@javax.ws.rs.Path("/accounts/{accountId}/user-accounts/export-batch")
+	@javax.ws.rs.POST
+	@javax.ws.rs.Produces("application/json")
+	@Override
+	public Response postAccountUserAccountsPageExportBatch(
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.validation.constraints.NotNull
+			@javax.ws.rs.PathParam("accountId")
+			Long accountId,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("search")
+			String search,
+			@javax.ws.rs.core.Context Filter filter,
+			@javax.ws.rs.core.Context Sort[] sorts,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("callbackURL")
+			String callbackURL,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.DefaultValue("JSON")
+			@javax.ws.rs.QueryParam("contentType")
+			String contentType,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("fieldNames")
+			String fieldNames)
+		throws Exception {
+
+		vulcanBatchEngineExportTaskResource.setContextAcceptLanguage(
+			contextAcceptLanguage);
+		vulcanBatchEngineExportTaskResource.setContextCompany(contextCompany);
+		vulcanBatchEngineExportTaskResource.setContextHttpServletRequest(
+			contextHttpServletRequest);
+		vulcanBatchEngineExportTaskResource.setContextUriInfo(contextUriInfo);
+		vulcanBatchEngineExportTaskResource.setContextUser(contextUser);
+		vulcanBatchEngineExportTaskResource.setGroupLocalService(
+			groupLocalService);
+
+		Response.ResponseBuilder responseBuilder = Response.accepted();
+
+		return responseBuilder.entity(
+			vulcanBatchEngineExportTaskResource.postExportTask(
+				UserAccount.class.getName(), callbackURL, contentType,
+				fieldNames)
+		).build();
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
 	 * curl -X 'POST' 'http://localhost:8080/o/headless-admin-user/v1.0/accounts/{accountId}/user-accounts' -d $'{"additionalName": ___, "alternateName": ___, "birthDate": ___, "currentPassword": ___, "customFields": ___, "emailAddress": ___, "familyName": ___, "givenName": ___, "honorificPrefix": ___, "honorificSuffix": ___, "jobTitle": ___, "password": ___, "userAccountContactInformation": ___}' --header 'Content-Type: application/json' -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Operation(
@@ -810,6 +885,94 @@ public abstract class BaseUserAccountResourceImpl
 	/**
 	 * Invoke this method with the command line:
 	 *
+	 * curl -X 'POST' 'http://localhost:8080/o/headless-admin-user/v1.0/organizations/{organizationId}/user-accounts/export-batch'  -u 'test@liferay.com:test'
+	 */
+	@io.swagger.v3.oas.annotations.Parameters(
+		value = {
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
+				name = "organizationId"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "filter"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "search"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "sort"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "callbackURL"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "contentType"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "fieldNames"
+			)
+		}
+	)
+	@io.swagger.v3.oas.annotations.tags.Tags(
+		value = {@io.swagger.v3.oas.annotations.tags.Tag(name = "UserAccount")}
+	)
+	@javax.ws.rs.Consumes("application/json")
+	@javax.ws.rs.Path(
+		"/organizations/{organizationId}/user-accounts/export-batch"
+	)
+	@javax.ws.rs.POST
+	@javax.ws.rs.Produces("application/json")
+	@Override
+	public Response postOrganizationUserAccountsPageExportBatch(
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.validation.constraints.NotNull
+			@javax.ws.rs.PathParam("organizationId")
+			String organizationId,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("search")
+			String search,
+			@javax.ws.rs.core.Context Filter filter,
+			@javax.ws.rs.core.Context Sort[] sorts,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("callbackURL")
+			String callbackURL,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.DefaultValue("JSON")
+			@javax.ws.rs.QueryParam("contentType")
+			String contentType,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("fieldNames")
+			String fieldNames)
+		throws Exception {
+
+		vulcanBatchEngineExportTaskResource.setContextAcceptLanguage(
+			contextAcceptLanguage);
+		vulcanBatchEngineExportTaskResource.setContextCompany(contextCompany);
+		vulcanBatchEngineExportTaskResource.setContextHttpServletRequest(
+			contextHttpServletRequest);
+		vulcanBatchEngineExportTaskResource.setContextUriInfo(contextUriInfo);
+		vulcanBatchEngineExportTaskResource.setContextUser(contextUser);
+		vulcanBatchEngineExportTaskResource.setGroupLocalService(
+			groupLocalService);
+
+		Response.ResponseBuilder responseBuilder = Response.accepted();
+
+		return responseBuilder.entity(
+			vulcanBatchEngineExportTaskResource.postExportTask(
+				UserAccount.class.getName(), callbackURL, contentType,
+				fieldNames)
+		).build();
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
 	 * curl -X 'GET' 'http://localhost:8080/o/headless-admin-user/v1.0/sites/{siteId}/user-accounts'  -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Operation(
@@ -869,6 +1032,92 @@ public abstract class BaseUserAccountResourceImpl
 	/**
 	 * Invoke this method with the command line:
 	 *
+	 * curl -X 'POST' 'http://localhost:8080/o/headless-admin-user/v1.0/sites/{siteId}/user-accounts/export-batch'  -u 'test@liferay.com:test'
+	 */
+	@io.swagger.v3.oas.annotations.Parameters(
+		value = {
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
+				name = "siteId"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "filter"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "search"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "sort"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "callbackURL"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "contentType"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "fieldNames"
+			)
+		}
+	)
+	@io.swagger.v3.oas.annotations.tags.Tags(
+		value = {@io.swagger.v3.oas.annotations.tags.Tag(name = "UserAccount")}
+	)
+	@javax.ws.rs.Consumes("application/json")
+	@javax.ws.rs.Path("/sites/{siteId}/user-accounts/export-batch")
+	@javax.ws.rs.POST
+	@javax.ws.rs.Produces("application/json")
+	@Override
+	public Response postSiteUserAccountsPageExportBatch(
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.validation.constraints.NotNull
+			@javax.ws.rs.PathParam("siteId")
+			Long siteId,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("search")
+			String search,
+			@javax.ws.rs.core.Context Filter filter,
+			@javax.ws.rs.core.Context Sort[] sorts,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("callbackURL")
+			String callbackURL,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.DefaultValue("JSON")
+			@javax.ws.rs.QueryParam("contentType")
+			String contentType,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("fieldNames")
+			String fieldNames)
+		throws Exception {
+
+		vulcanBatchEngineExportTaskResource.setContextAcceptLanguage(
+			contextAcceptLanguage);
+		vulcanBatchEngineExportTaskResource.setContextCompany(contextCompany);
+		vulcanBatchEngineExportTaskResource.setContextHttpServletRequest(
+			contextHttpServletRequest);
+		vulcanBatchEngineExportTaskResource.setContextUriInfo(contextUriInfo);
+		vulcanBatchEngineExportTaskResource.setContextUser(contextUser);
+		vulcanBatchEngineExportTaskResource.setGroupLocalService(
+			groupLocalService);
+
+		Response.ResponseBuilder responseBuilder = Response.accepted();
+
+		return responseBuilder.entity(
+			vulcanBatchEngineExportTaskResource.postExportTask(
+				UserAccount.class.getName(), callbackURL, contentType,
+				fieldNames)
+		).build();
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
 	 * curl -X 'GET' 'http://localhost:8080/o/headless-admin-user/v1.0/user-accounts'  -u 'test@liferay.com:test'
 	 */
 	@io.swagger.v3.oas.annotations.Operation(
@@ -915,6 +1164,84 @@ public abstract class BaseUserAccountResourceImpl
 		throws Exception {
 
 		return Page.of(Collections.emptyList());
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
+	 * curl -X 'POST' 'http://localhost:8080/o/headless-admin-user/v1.0/user-accounts/export-batch'  -u 'test@liferay.com:test'
+	 */
+	@io.swagger.v3.oas.annotations.Parameters(
+		value = {
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "filter"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "search"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "sort"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "callbackURL"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "contentType"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "fieldNames"
+			)
+		}
+	)
+	@io.swagger.v3.oas.annotations.tags.Tags(
+		value = {@io.swagger.v3.oas.annotations.tags.Tag(name = "UserAccount")}
+	)
+	@javax.ws.rs.Consumes("application/json")
+	@javax.ws.rs.Path("/user-accounts/export-batch")
+	@javax.ws.rs.POST
+	@javax.ws.rs.Produces("application/json")
+	@Override
+	public Response postUserAccountsPageExportBatch(
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("search")
+			String search,
+			@javax.ws.rs.core.Context Filter filter,
+			@javax.ws.rs.core.Context Sort[] sorts,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("callbackURL")
+			String callbackURL,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.DefaultValue("JSON")
+			@javax.ws.rs.QueryParam("contentType")
+			String contentType,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.ws.rs.QueryParam("fieldNames")
+			String fieldNames)
+		throws Exception {
+
+		vulcanBatchEngineExportTaskResource.setContextAcceptLanguage(
+			contextAcceptLanguage);
+		vulcanBatchEngineExportTaskResource.setContextCompany(contextCompany);
+		vulcanBatchEngineExportTaskResource.setContextHttpServletRequest(
+			contextHttpServletRequest);
+		vulcanBatchEngineExportTaskResource.setContextUriInfo(contextUriInfo);
+		vulcanBatchEngineExportTaskResource.setContextUser(contextUser);
+		vulcanBatchEngineExportTaskResource.setGroupLocalService(
+			groupLocalService);
+
+		Response.ResponseBuilder responseBuilder = Response.accepted();
+
+		return responseBuilder.entity(
+			vulcanBatchEngineExportTaskResource.postExportTask(
+				UserAccount.class.getName(), callbackURL, contentType,
+				fieldNames)
+		).build();
 	}
 
 	/**
@@ -1221,10 +1548,6 @@ public abstract class BaseUserAccountResourceImpl
 
 		UserAccount existingUserAccount = getUserAccount(userAccountId);
 
-		if (userAccount.getActions() != null) {
-			existingUserAccount.setActions(userAccount.getActions());
-		}
-
 		if (userAccount.getAdditionalName() != null) {
 			existingUserAccount.setAdditionalName(
 				userAccount.getAdditionalName());
@@ -1244,25 +1567,10 @@ public abstract class BaseUserAccountResourceImpl
 				userAccount.getCurrentPassword());
 		}
 
-		if (userAccount.getDashboardURL() != null) {
-			existingUserAccount.setDashboardURL(userAccount.getDashboardURL());
-		}
-
-		if (userAccount.getDateCreated() != null) {
-			existingUserAccount.setDateCreated(userAccount.getDateCreated());
-		}
-
-		if (userAccount.getDateModified() != null) {
-			existingUserAccount.setDateModified(userAccount.getDateModified());
-		}
+		existingUserAccount.setCustomFields(userAccount.getCustomFields());
 
 		if (userAccount.getEmailAddress() != null) {
 			existingUserAccount.setEmailAddress(userAccount.getEmailAddress());
-		}
-
-		if (userAccount.getExternalReferenceCode() != null) {
-			existingUserAccount.setExternalReferenceCode(
-				userAccount.getExternalReferenceCode());
 		}
 
 		if (userAccount.getFamilyName() != null) {
@@ -1283,33 +1591,12 @@ public abstract class BaseUserAccountResourceImpl
 				userAccount.getHonorificSuffix());
 		}
 
-		if (userAccount.getImage() != null) {
-			existingUserAccount.setImage(userAccount.getImage());
-		}
-
 		if (userAccount.getJobTitle() != null) {
 			existingUserAccount.setJobTitle(userAccount.getJobTitle());
 		}
 
-		if (userAccount.getKeywords() != null) {
-			existingUserAccount.setKeywords(userAccount.getKeywords());
-		}
-
-		if (userAccount.getLastLoginDate() != null) {
-			existingUserAccount.setLastLoginDate(
-				userAccount.getLastLoginDate());
-		}
-
-		if (userAccount.getName() != null) {
-			existingUserAccount.setName(userAccount.getName());
-		}
-
 		if (userAccount.getPassword() != null) {
 			existingUserAccount.setPassword(userAccount.getPassword());
-		}
-
-		if (userAccount.getProfileURL() != null) {
-			existingUserAccount.setProfileURL(userAccount.getProfileURL());
 		}
 
 		preparePatch(userAccount, existingUserAccount);
@@ -1396,6 +1683,39 @@ public abstract class BaseUserAccountResourceImpl
 		).build();
 	}
 
+	/**
+	 * Invoke this method with the command line:
+	 *
+	 * curl -X 'POST' 'http://localhost:8080/o/headless-admin-user/v1.0/user-accounts/{userAccountId}/image'  -u 'test@liferay.com:test'
+	 */
+	@io.swagger.v3.oas.annotations.Parameters(
+		value = {
+			@io.swagger.v3.oas.annotations.Parameter(
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
+				name = "userAccountId"
+			)
+		}
+	)
+	@io.swagger.v3.oas.annotations.tags.Tags(
+		value = {@io.swagger.v3.oas.annotations.tags.Tag(name = "UserAccount")}
+	)
+	@javax.ws.rs.Consumes("multipart/form-data")
+	@javax.ws.rs.Path("/user-accounts/{userAccountId}/image")
+	@javax.ws.rs.POST
+	@Override
+	public Response postUserAccountImage(
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@javax.validation.constraints.NotNull
+			@javax.ws.rs.PathParam("userAccountId")
+			Long userAccountId,
+			MultipartBody multipartBody)
+		throws Exception {
+
+		Response.ResponseBuilder responseBuilder = Response.ok();
+
+		return responseBuilder.build();
+	}
+
 	@Override
 	@SuppressWarnings("PMD.UnusedLocalVariable")
 	public void create(
@@ -1415,7 +1735,7 @@ public abstract class BaseUserAccountResourceImpl
 			if (parameters.containsKey("accountId")) {
 				userAccountUnsafeConsumer =
 					userAccount -> postAccountUserAccount(
-						Long.parseLong((String)parameters.get("accountId")),
+						_parseLong((String)parameters.get("accountId")),
 						userAccount);
 			}
 		}
@@ -1494,8 +1814,8 @@ public abstract class BaseUserAccountResourceImpl
 		}
 		else if (parameters.containsKey("accountId")) {
 			return getAccountUserAccountsPage(
-				Long.parseLong((String)parameters.get("accountId")), search,
-				filter, pagination, sorts);
+				_parseLong((String)parameters.get("accountId")), search, filter,
+				pagination, sorts);
 		}
 		else if (parameters.containsKey("organizationId")) {
 			return getOrganizationUserAccountsPage(
@@ -1543,14 +1863,14 @@ public abstract class BaseUserAccountResourceImpl
 		if ("PARTIAL_UPDATE".equalsIgnoreCase(updateStrategy)) {
 			userAccountUnsafeConsumer = userAccount -> patchUserAccount(
 				userAccount.getId() != null ? userAccount.getId() :
-					Long.parseLong((String)parameters.get("userAccountId")),
+					_parseLong((String)parameters.get("userAccountId")),
 				userAccount);
 		}
 
 		if ("UPDATE".equalsIgnoreCase(updateStrategy)) {
 			userAccountUnsafeConsumer = userAccount -> putUserAccount(
 				userAccount.getId() != null ? userAccount.getId() :
-					Long.parseLong((String)parameters.get("userAccountId")),
+					_parseLong((String)parameters.get("userAccountId")),
 				userAccount);
 		}
 
@@ -1569,6 +1889,14 @@ public abstract class BaseUserAccountResourceImpl
 				userAccountUnsafeConsumer.accept(userAccount);
 			}
 		}
+	}
+
+	private Long _parseLong(String value) {
+		if (value != null) {
+			return Long.parseLong(value);
+		}
+
+		return null;
 	}
 
 	public void setContextAcceptLanguage(AcceptLanguage contextAcceptLanguage) {
@@ -1645,6 +1973,14 @@ public abstract class BaseUserAccountResourceImpl
 
 	public void setSortParserProvider(SortParserProvider sortParserProvider) {
 		this.sortParserProvider = sortParserProvider;
+	}
+
+	public void setVulcanBatchEngineExportTaskResource(
+		VulcanBatchEngineExportTaskResource
+			vulcanBatchEngineExportTaskResource) {
+
+		this.vulcanBatchEngineExportTaskResource =
+			vulcanBatchEngineExportTaskResource;
 	}
 
 	public void setVulcanBatchEngineImportTaskResource(
@@ -1784,6 +2120,12 @@ public abstract class BaseUserAccountResourceImpl
 		return TransformUtil.transformToList(array, unsafeFunction);
 	}
 
+	protected <T, R, E extends Throwable> long[] transformToLongArray(
+		Collection<T> collection, UnsafeFunction<T, R, E> unsafeFunction) {
+
+		return TransformUtil.transformToLongArray(collection, unsafeFunction);
+	}
+
 	protected <T, R, E extends Throwable> List<R> unsafeTransform(
 			Collection<T> collection, UnsafeFunction<T, R, E> unsafeFunction)
 		throws E {
@@ -1814,6 +2156,14 @@ public abstract class BaseUserAccountResourceImpl
 		return TransformUtil.unsafeTransformToList(array, unsafeFunction);
 	}
 
+	protected <T, R, E extends Throwable> long[] unsafeTransformToLongArray(
+			Collection<T> collection, UnsafeFunction<T, R, E> unsafeFunction)
+		throws E {
+
+		return TransformUtil.unsafeTransformToLongArray(
+			collection, unsafeFunction);
+	}
+
 	protected AcceptLanguage contextAcceptLanguage;
 	protected UnsafeBiConsumer
 		<Collection<UserAccount>, UnsafeConsumer<UserAccount, Exception>,
@@ -1831,114 +2181,10 @@ public abstract class BaseUserAccountResourceImpl
 	protected ResourcePermissionLocalService resourcePermissionLocalService;
 	protected RoleLocalService roleLocalService;
 	protected SortParserProvider sortParserProvider;
+	protected VulcanBatchEngineExportTaskResource
+		vulcanBatchEngineExportTaskResource;
 	protected VulcanBatchEngineImportTaskResource
 		vulcanBatchEngineImportTaskResource;
-
-	private void _checkResources(
-			long companyId, long resourceId, String resourceName)
-		throws PortalException {
-
-		int count = resourcePermissionLocalService.getResourcePermissionsCount(
-			companyId, resourceName, ResourceConstants.SCOPE_INDIVIDUAL,
-			String.valueOf(resourceId));
-
-		if (count == 0) {
-			ResourceLocalServiceUtil.addResources(
-				companyId, resourceId, 0, resourceName,
-				String.valueOf(resourceId), false, true, true);
-		}
-	}
-
-	private Collection<Permission> _getPermissions(
-			long companyId, List<ResourceAction> resourceActions,
-			long resourceId, String resourceName, String[] roleNames)
-		throws Exception {
-
-		_checkResources(companyId, resourceId, resourceName);
-
-		Map<String, Permission> permissions = new LinkedHashMap<>();
-
-		List<ResourcePermission> resourcePermissions = new ArrayList<>();
-
-		try {
-			Method method = ResourcePermissionLocalService.class.getMethod(
-				"getResourcePermissions", String.class);
-
-			resourcePermissions = (List<ResourcePermission>)method.invoke(
-				resourcePermissionLocalService, resourceName);
-		}
-		catch (NoSuchMethodException noSuchMethodException) {
-			resourcePermissions =
-				resourcePermissionLocalService.getResourcePermissions(
-					companyId, resourceName, ResourceConstants.SCOPE_INDIVIDUAL,
-					String.valueOf(resourceId));
-		}
-
-		for (ResourcePermission resourcePermission : resourcePermissions) {
-			if ((resourcePermission.getPrimKeyId() == 0) ||
-				(resourcePermission.getPrimKeyId() == resourceId)) {
-
-				com.liferay.portal.kernel.model.Role role =
-					roleLocalService.getRole(resourcePermission.getRoleId());
-
-				if ((roleNames == null) ||
-					((roleNames != null) &&
-					 ArrayUtil.contains(roleNames, role.getName()))) {
-
-					Permission permission = permissions.get(role.getName());
-
-					if (permission == null) {
-						permission = _toPermission(
-							resourceActions, resourcePermission, role);
-
-						permissions.put(role.getName(), permission);
-					}
-					else {
-						Set<String> actionsIdsSet = new HashSet<>();
-
-						Collections.addAll(
-							actionsIdsSet, permission.getActionIds());
-
-						Permission newPermission = _toPermission(
-							resourceActions, resourcePermission, role);
-
-						Collections.addAll(
-							actionsIdsSet, newPermission.getActionIds());
-
-						permission.setActionIds(
-							actionsIdsSet.toArray(new String[0]));
-					}
-				}
-			}
-		}
-
-		return permissions.values();
-	}
-
-	private Permission _toPermission(
-		List<ResourceAction> resourceActions,
-		ResourcePermission resourcePermission,
-		com.liferay.portal.kernel.model.Role role) {
-
-		Set<String> actionsIdsSet = new HashSet<>();
-
-		long actionIds = resourcePermission.getActionIds();
-
-		for (ResourceAction resourceAction : resourceActions) {
-			long bitwiseValue = resourceAction.getBitwiseValue();
-
-			if ((actionIds & bitwiseValue) == bitwiseValue) {
-				actionsIdsSet.add(resourceAction.getActionId());
-			}
-		}
-
-		return new Permission() {
-			{
-				actionIds = actionsIdsSet.toArray(new String[0]);
-				roleName = role.getName();
-			}
-		};
-	}
 
 	private static final com.liferay.portal.kernel.log.Log _log =
 		LogFactoryUtil.getLog(BaseUserAccountResourceImpl.class);

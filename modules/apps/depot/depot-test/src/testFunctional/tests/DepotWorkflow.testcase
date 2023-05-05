@@ -1,6 +1,7 @@
 @component-name = "portal-document-management"
 definition {
 
+	property ci.retries.disabled = "true";
 	property portal.release = "true";
 	property portal.upstream = "true";
 	property testray.main.component.name = "Depot";
@@ -14,7 +15,7 @@ definition {
 			depotDescription = "This is the description of a depot",
 			depotName = "Test Depot Name");
 
-		JSONGroup.addGroup(groupName = "Site Name");
+		HeadlessSite.addSite(siteName = "Site Name");
 
 		JSONDepot.connectSite(
 			depotName = "Test Depot Name",
@@ -118,6 +119,7 @@ definition {
 	@refactordone
 	test CanApproveWCArticle {
 		property portal.acceptance = "true";
+		property test.name.skip.portal.instance = "DepotWorkflow#CanApproveWCArticle";
 
 		ApplicationsMenu.gotoPortlet(
 			category = "Workflow",
@@ -206,7 +208,7 @@ definition {
 			webContentSelectWcFile = "Depot WebContent Title",
 			webContentTitle = "WC WebContent Title");
 
-		PortletEntry.submitForPublication();
+		PortletEntry.submitForWorkflow();
 	}
 
 	@description = "This test covers LPS-113392. It ensures that an asset library WC article can be approved by the content reviewer."
@@ -349,6 +351,8 @@ definition {
 	@priority = 5
 	@refactordone
 	test CanApproveWCInFolder {
+		property test.name.skip.portal.instance = "DepotWorkflow#CanApproveWCInFolder";
+
 		JSONWebcontent.addFolder(
 			folderName = "WC Folder Name",
 			groupName = "Test Depot Name",
@@ -452,6 +456,8 @@ definition {
 	@priority = 5
 	@refactordone
 	test CanRejectAndResubmitImage {
+		property test.name.skip.portal.instance = "DepotWorkflow#CanRejectAndResubmitImage";
+
 		JSONFolder.addFolder(
 			dmFolderDescription = "DM Folder Description",
 			dmFolderName = "DM Folder Name",
@@ -499,7 +505,7 @@ definition {
 			dmDocumentFile = "Document_2.jpg",
 			dmDocumentTitle = "Document_2.jpg");
 
-		Button.clickSubmitForPublication();
+		Button.clickSubmitForWorkflow();
 
 		UserBar.gotoDropdownItem(dropdownItem = "My Workflow Tasks");
 
@@ -568,6 +574,8 @@ definition {
 	@priority = 5
 	@refactordone
 	test CanRejectAndResubmitWC {
+		property test.name.skip.portal.instance = "DepotWorkflow#CanRejectAndResubmitWC";
+
 		ApplicationsMenu.gotoPortlet(
 			category = "Workflow",
 			panel = "Applications",
@@ -676,7 +684,7 @@ definition {
 			webContentSelectWcFile = "Depot WebContent Title Edit",
 			webContentTitle = "WC WebContent Title");
 
-		PortletEntry.submitForPublication();
+		PortletEntry.submitForWorkflow();
 	}
 
 	@description = "This ensures that the resubmitted web content can be approved in an asset library."

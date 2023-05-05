@@ -29,7 +29,9 @@ definition {
 	tearDown {
 		var testPortalInstance = PropsUtil.get("test.portal.instance");
 
-		ACUtils.tearDownAC();
+		// It is not possible to delete properties and data source after LRAC-13389. This functionality should return after LRAC-8040
+
+		//ACUtils.tearDownAC();
 
 		ACUtils.tearDownDXP();
 
@@ -408,8 +410,10 @@ definition {
 				userCustomFieldLabel = "Hobby");
 		}
 
-		task ("Sync the Contact Data") {
-			ACDXPSettings.syncNewUserData(fieldNameList = "hobby");
+		task ("Sync the Custom Field") {
+			ACDXPSettings.syncAttributes(
+				attributeCategory = "People",
+				attributeNameList = "hobby");
 		}
 
 		task ("Redefine the value of the custom field") {
@@ -519,16 +523,16 @@ definition {
 	}
 
 	@description = "Feature ID: Legacy | Automation ID: LRAC-8594 | Test Summary: Deleting a data source causes individuals to be removed from segment"
+	@ignore = "true"
 	@priority = 4
 	test DeleteDataSourceIndividualsRemovedSegment {
 		property portal.upstream = "quarantine";
 
 		// AC Quarantine Reason: Segment membership takes long time to load LRAC-10769
+		// It is not possible to delete properties and data source after LRAC-13389. This functionality should return after LRAC-8040
 
 		task ("Get site assigned property name") {
 			ACDXPSettings.connectDXPtoAnalyticsCloud(siteName = "Site Name");
-
-			var dataSource = StringUtil.replace(${assignedPropertyName}, " Combined Property", "");
 		}
 
 		task ("Add a new user in DXP") {
@@ -595,9 +599,9 @@ definition {
 			ACIndividualsDashboard.assertIndividualAttribute(individualAttribute = "New Segment Test");
 		}
 
-		task ("Delete the Data Source") {
-			ACSettings.deleteDataSource(dataSourceName = ${dataSource});
-		}
+		//task ("Delete the Data Source") {
+		//	ACSettings.deleteDataSource(dataSourceName = ${assignedPropertyName});
+		//}
 
 		task ("Exit Settings") {
 			ACNavigation.exitSettings();

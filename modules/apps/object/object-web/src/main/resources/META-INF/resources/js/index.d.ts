@@ -20,6 +20,7 @@ type NotificationTemplate = {
 	body: LocalizedValue<string>;
 	cc: string;
 	description: string;
+	externalReferenceCode: string;
 	from: string;
 	fromName: LocalizedValue<string>;
 	id: number;
@@ -48,6 +49,7 @@ interface ObjectAction {
 
 interface ObjectActionParameters {
 	lineCount?: number;
+	notificationTemplateExternalReferenceCode?: string;
 	notificationTemplateId?: number;
 	objectDefinitionExternalReferenceCode?: string;
 	objectDefinitionId?: number;
@@ -55,6 +57,7 @@ interface ObjectActionParameters {
 	relatedObjectEntries?: boolean;
 	script?: string;
 	secret?: string;
+	system?: boolean;
 	url?: string;
 }
 
@@ -63,6 +66,7 @@ type ObjectFieldBusinessType =
 	| 'Attachment'
 	| 'Date'
 	| 'Decimal'
+	| 'Encrypted'
 	| 'Formula'
 	| 'Integer'
 	| 'LongInteger'
@@ -71,6 +75,7 @@ type ObjectFieldBusinessType =
 	| 'Picklist'
 	| 'PrecisionDecimal'
 	| 'Relationship'
+	| 'RichText'
 	| 'Text'
 	| 'Workflow Status';
 interface ObjectFieldType {
@@ -91,6 +96,7 @@ interface ObjectField {
 	label: LocalizedValue<string>;
 	listTypeDefinitionExternalReferenceCode: string;
 	listTypeDefinitionId?: number;
+	localized: boolean;
 	name: string;
 	objectFieldSettings?: ObjectFieldSetting[];
 	relationshipId?: number;
@@ -118,10 +124,12 @@ interface ObjectDefinition {
 	defaultLanguageId: Liferay.Language.Locale;
 	enableCategorization: boolean;
 	enableComments: boolean;
+	enableLocalization: boolean;
 	enableObjectEntryHistory: boolean;
 	externalReferenceCode: string;
 	id: number;
 	label: LocalizedValue<string>;
+	modifiable?: boolean;
 	name: string;
 	objectActions: [];
 	objectFields: ObjectField[];
@@ -145,16 +153,19 @@ interface ObjectDefinition {
 	titleObjectFieldName: string;
 }
 
+type ObjectFieldSettingValue =
+	| LocalizedValue<string>
+	| NameValueObject[]
+	| ObjectFieldFilterSetting[]
+	| ObjectFieldPicklistSetting
+	| boolean
+	| number
+	| string;
+
 interface ObjectFieldSetting {
 	name: ObjectFieldSettingName;
 	objectFieldId?: number;
-	value:
-		| string
-		| number
-		| boolean
-		| NameValueObject[]
-		| ObjectFieldFilterSetting[]
-		| ObjectFieldPicklistSetting;
+	value: ObjectFieldSettingValue;
 }
 
 interface ObjectEntry {
@@ -226,6 +237,8 @@ type TFilterOperators = {
 
 type ObjectFieldSettingName =
 	| 'acceptedFileExtensions'
+	| 'defaultValue'
+	| 'defaultValueType'
 	| 'fileSource'
 	| 'filters'
 	| 'function'
@@ -241,7 +254,9 @@ type ObjectFieldSettingName =
 	| 'showCounter'
 	| 'showFilesInDocumentsAndMedia'
 	| 'stateFlow'
-	| 'storageDLFolderPath';
+	| 'storageDLFolderPath'
+	| 'uniqueValues'
+	| 'uniqueValuesErrorMessage';
 
 interface ObjectValidation {
 	active: boolean;
@@ -271,7 +286,7 @@ interface ObjectRelationship {
 	type: ObjectRelationshipType;
 }
 
-interface ObjectDefinitionsRelationship {
+interface AddObjectEntryDefinitions {
 	externalReferenceCode: string;
 	id: number;
 	label: string;
@@ -337,10 +352,11 @@ interface NameValueObject {
 	value: string;
 }
 
-interface ObjectDefinitionsRelationship {
+interface AddObjectEntryDefinitions {
 	id: number;
 	label: string;
 	related?: boolean;
+	system?: boolean;
 }
 
 interface ObjectState {

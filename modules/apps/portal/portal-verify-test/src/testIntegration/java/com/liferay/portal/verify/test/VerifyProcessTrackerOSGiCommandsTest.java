@@ -20,11 +20,11 @@ import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.portal.events.StartupHelperUtil;
 import com.liferay.portal.kernel.model.Release;
 import com.liferay.portal.kernel.service.ReleaseLocalService;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.upgrade.DummyUpgradeStep;
 import com.liferay.portal.kernel.upgrade.UpgradeStep;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
-import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.verify.VerifyProcess;
@@ -62,14 +62,14 @@ public class VerifyProcessTrackerOSGiCommandsTest {
 
 		_bundleContext = bundle.getBundleContext();
 
-		_upgrading = StartupHelperUtil.isUpgrading();
-
-		StartupHelperUtil.setUpgrading(false);
+		_upgrading = ReflectionTestUtil.getAndSetFieldValue(
+			StartupHelperUtil.class, "_upgrading", false);
 	}
 
 	@After
 	public void tearDown() {
-		StartupHelperUtil.setUpgrading(_upgrading);
+		ReflectionTestUtil.setFieldValue(
+			StartupHelperUtil.class, "_upgrading", _upgrading);
 
 		Release release = _releaseLocalService.fetchRelease(_symbolicName);
 
@@ -77,15 +77,62 @@ public class VerifyProcessTrackerOSGiCommandsTest {
 			_releaseLocalService.deleteRelease(release);
 		}
 
+		_forceFailure = false;
 		_verifyProcessRun = false;
+	}
+
+	@Test
+	public void testRegisterFailedVerifyProcess() {
+		_forceFailure = true;
+
+		try (SafeCloseable safeCloseable = _registerVerifyProcess(true, true)) {
+			_assertVerify(true);
+		}
+	}
+
+	@Test
+	public void testRegisterInitialDeploymentAndRunOnPortalUpgradeVerifyProcessAfterInitialDeploymentUpgradeProcess() {
+		try (SafeCloseable safeCloseable1 = _executeInitialUpgradeProcess();
+			SafeCloseable safeCloseable2 = _registerVerifyProcess(true, true)) {
+
+			_assertVerify(true);
+		}
+	}
+
+	@Test
+	public void testRegisterInitialDeploymentAndRunOnPortalUpgradeVerifyProcessAfterModuleUpgrade() {
+		_simulateUpgradeProcessExecution();
+
+		try (SafeCloseable safeCloseable2 = _registerVerifyProcess(
+				true, true)) {
+
+			_assertVerify(true);
+		}
+	}
+
+	@Test
+	public void testRegisterInitialDeploymentAndRunOnPortalUpgradeVerifyProcessDuringInitialDeployment() {
+		try (SafeCloseable safeCloseable = _registerVerifyProcess(true, true)) {
+			_assertVerify(true);
+		}
+	}
+
+	@Test
+	public void testRegisterInitialDeploymentAndRunOnPortalUpgradeVerifyProcessDuringPortalUpgrade() {
+		try (SafeCloseable safeCloseable1 = _upgradePortal();
+			SafeCloseable safeCloseable2 = _registerVerifyProcess(true, true)) {
+
+			_assertVerify(true);
+		}
 	}
 
 	@Test
 	public void testRegisterInitialDeploymentVerifyProcessAfterInitialDeploymentUpgradeProcess() {
 		try (SafeCloseable safeCloseable1 = _executeInitialUpgradeProcess();
-			SafeCloseable safeCloseable2 = _registerInitialVerifyProcess()) {
+			SafeCloseable safeCloseable2 = _registerVerifyProcess(
+				true, false)) {
 
-			Assert.assertTrue(_verifyProcessRun);
+			_assertVerify(true);
 		}
 	}
 
@@ -93,34 +140,39 @@ public class VerifyProcessTrackerOSGiCommandsTest {
 	public void testRegisterInitialDeploymentVerifyProcessAfterModuleUpgrade() {
 		_simulateUpgradeProcessExecution();
 
-		try (SafeCloseable safeCloseable2 = _registerInitialVerifyProcess()) {
-			Assert.assertTrue(_verifyProcessRun);
+		try (SafeCloseable safeCloseable2 = _registerVerifyProcess(
+				true, false)) {
+
+			_assertVerify(true);
 		}
 	}
 
 	@Test
 	public void testRegisterInitialDeploymentVerifyProcessDuringInitialDeployment() {
-		try (SafeCloseable safeCloseable = _registerInitialVerifyProcess()) {
-			Assert.assertTrue(_verifyProcessRun);
+		try (SafeCloseable safeCloseable = _registerVerifyProcess(
+				true, false)) {
+
+			_assertVerify(true);
 		}
 	}
 
 	@Test
 	public void testRegisterInitialDeploymentVerifyProcessDuringPortalUpgrade() {
 		try (SafeCloseable safeCloseable1 = _upgradePortal();
-			SafeCloseable safeCloseable2 = _registerInitialVerifyProcess()) {
+			SafeCloseable safeCloseable2 = _registerVerifyProcess(
+				true, false)) {
 
-			Assert.assertFalse(_verifyProcessRun);
+			_assertVerify(false);
 		}
 	}
 
 	@Test
 	public void testRegisterRunOnPortalUpgradeVerifyProcessAfterInitialDeploymentUpgradeProcess() {
 		try (SafeCloseable safeCloseable1 = _executeInitialUpgradeProcess();
-			SafeCloseable safeCloseable2 =
-				_registerRunOnPortalUpgradeVerifyProcess()) {
+			SafeCloseable safeCloseable2 = _registerVerifyProcess(
+				false, true)) {
 
-			Assert.assertFalse(_verifyProcessRun);
+			_assertVerify(false);
 		}
 	}
 
@@ -128,38 +180,39 @@ public class VerifyProcessTrackerOSGiCommandsTest {
 	public void testRegisterRunOnPortalUpgradeVerifyProcessAfterModuleUpgrade() {
 		_simulateUpgradeProcessExecution();
 
-		try (SafeCloseable safeCloseable2 =
-				_registerRunOnPortalUpgradeVerifyProcess()) {
+		try (SafeCloseable safeCloseable2 = _registerVerifyProcess(
+				false, true)) {
 
-			Assert.assertTrue(_verifyProcessRun);
+			_assertVerify(true);
 		}
 	}
 
 	@Test
 	public void testRegisterRunOnPortalUpgradeVerifyProcessDuringInitialDeployment() {
-		try (SafeCloseable safeCloseable =
-				_registerRunOnPortalUpgradeVerifyProcess()) {
+		try (SafeCloseable safeCloseable = _registerVerifyProcess(
+				false, true)) {
 
-			Assert.assertFalse(_verifyProcessRun);
+			_assertVerify(false);
 		}
 	}
 
 	@Test
 	public void testRegisterRunOnPortalUpgradeVerifyProcessDuringPortalUpgrade() {
 		try (SafeCloseable safeCloseable1 = _upgradePortal();
-			SafeCloseable safeCloseable2 =
-				_registerRunOnPortalUpgradeVerifyProcess()) {
+			SafeCloseable safeCloseable2 = _registerVerifyProcess(
+				false, true)) {
 
-			Assert.assertTrue(_verifyProcessRun);
+			_assertVerify(true);
 		}
 	}
 
 	@Test
 	public void testRegisterVerifyProcessAfterInitialDeploymentUpgradeProcess() {
 		try (SafeCloseable safeCloseable1 = _executeInitialUpgradeProcess();
-			SafeCloseable safeCloseable2 = _registerVerifyProcess()) {
+			SafeCloseable safeCloseable2 = _registerVerifyProcess(
+				false, false)) {
 
-			Assert.assertFalse(_verifyProcessRun);
+			_assertVerify(false);
 		}
 	}
 
@@ -167,24 +220,48 @@ public class VerifyProcessTrackerOSGiCommandsTest {
 	public void testRegisterVerifyProcessAfterModuleUpgrade() {
 		_simulateUpgradeProcessExecution();
 
-		try (SafeCloseable safeCloseable2 = _registerVerifyProcess()) {
-			Assert.assertTrue(_verifyProcessRun);
+		try (SafeCloseable safeCloseable2 = _registerVerifyProcess(
+				false, false)) {
+
+			_assertVerify(true);
 		}
 	}
 
 	@Test
 	public void testRegisterVerifyProcessDuringInitialDeployment() {
-		try (SafeCloseable safeCloseable = _registerVerifyProcess()) {
-			Assert.assertFalse(_verifyProcessRun);
+		try (SafeCloseable safeCloseable = _registerVerifyProcess(
+				false, false)) {
+
+			_assertVerify(false);
 		}
 	}
 
 	@Test
 	public void testRegisterVerifyProcessDuringUpgradePortal() {
 		try (SafeCloseable safeCloseable1 = _upgradePortal();
-			SafeCloseable safeCloseable2 = _registerVerifyProcess()) {
+			SafeCloseable safeCloseable2 = _registerVerifyProcess(
+				false, false)) {
 
-			Assert.assertFalse(_verifyProcessRun);
+			_assertVerify(false);
+		}
+	}
+
+	private void _assertVerify(boolean verifyProcessRun) {
+		Assert.assertEquals(verifyProcessRun, _verifyProcessRun);
+
+		if (!verifyProcessRun) {
+			return;
+		}
+
+		Release release = _releaseLocalService.fetchRelease(_symbolicName);
+
+		Assert.assertNotNull(release);
+
+		if (_forceFailure) {
+			Assert.assertFalse(release.isVerified());
+		}
+		else {
+			Assert.assertTrue(release.isVerified());
 		}
 	}
 
@@ -200,45 +277,22 @@ public class VerifyProcessTrackerOSGiCommandsTest {
 					"upgrade.to.schema.version", "1.0.0"
 				).build());
 
-		return () -> upgradeStepServiceRegistration.unregister();
+		return upgradeStepServiceRegistration::unregister;
 	}
 
-	private SafeCloseable _registerInitialVerifyProcess() {
-		ServiceRegistration<VerifyProcess>
-			initialDeploymentVerifyProcessRegistration =
-				_bundleContext.registerService(
-					VerifyProcess.class, _initialDeploymentVerifyProcess,
-					HashMapDictionaryBuilder.<String, Object>put(
-						"initial.deployment", true
-					).put(
-						"verify.process.name", _VERIFY_PROCESS_NAME
-					).build());
+	private SafeCloseable _registerVerifyProcess(
+		boolean initialDeployment, boolean runOnPortalUpgrade) {
 
-		return () -> initialDeploymentVerifyProcessRegistration.unregister();
-	}
-
-	private SafeCloseable _registerRunOnPortalUpgradeVerifyProcess() {
-		ServiceRegistration<VerifyProcess>
-			runOnPortalUpgradeVerifyProcessRegistration =
-				_bundleContext.registerService(
-					VerifyProcess.class, _runOnPortalUpgradeVerifyProcess,
-					HashMapDictionaryBuilder.<String, Object>put(
-						"run.on.portal.upgrade", true
-					).put(
-						"verify.process.name", "verify.process.name"
-					).build());
-
-		return () -> runOnPortalUpgradeVerifyProcessRegistration.unregister();
-	}
-
-	private SafeCloseable _registerVerifyProcess() {
-		ServiceRegistration<VerifyProcess> verifyProcessRegistration =
+		ServiceRegistration<VerifyProcess> verifyProcessServiceRegistration =
 			_bundleContext.registerService(
 				VerifyProcess.class, _verifyProcess,
-				MapUtil.singletonDictionary(
-					"verify.process.name", "verify.process.name"));
+				HashMapDictionaryBuilder.<String, Object>put(
+					"initial.deployment", initialDeployment
+				).put(
+					"run.on.portal.upgrade", runOnPortalUpgrade
+				).build());
 
-		return () -> verifyProcessRegistration.unregister();
+		return verifyProcessServiceRegistration::unregister;
 	}
 
 	private void _simulateUpgradeProcessExecution() {
@@ -262,12 +316,12 @@ public class VerifyProcessTrackerOSGiCommandsTest {
 
 		_releaseLocalService.updateRelease(release);
 
-		StartupHelperUtil.setUpgrading(true);
+		ReflectionTestUtil.setFieldValue(
+			StartupHelperUtil.class, "_upgrading", true);
 
-		return () -> StartupHelperUtil.setUpgrading(false);
+		return () -> ReflectionTestUtil.setFieldValue(
+			StartupHelperUtil.class, "_upgrading", false);
 	}
-
-	private static final String _VERIFY_PROCESS_NAME = "verify.process.name";
 
 	private static BundleContext _bundleContext;
 	private static String _symbolicName;
@@ -276,14 +330,11 @@ public class VerifyProcessTrackerOSGiCommandsTest {
 	@Inject
 	private CounterLocalService _counterLocalService;
 
-	private final VerifyProcessTest _initialDeploymentVerifyProcess =
-		new VerifyProcessTest();
+	private boolean _forceFailure;
 
 	@Inject
 	private ReleaseLocalService _releaseLocalService;
 
-	private final VerifyProcessTest _runOnPortalUpgradeVerifyProcess =
-		new VerifyProcessTest();
 	private final VerifyProcessTest _verifyProcess = new VerifyProcessTest();
 	private boolean _verifyProcessRun;
 
@@ -295,6 +346,10 @@ public class VerifyProcessTrackerOSGiCommandsTest {
 		@Override
 		protected void doVerify() throws Exception {
 			_verifyProcessRun = true;
+
+			if (_forceFailure) {
+				throw new Exception();
+			}
 		}
 
 	}

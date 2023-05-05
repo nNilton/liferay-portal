@@ -21,6 +21,8 @@ import {
 } from '@liferay/object-js-components-web';
 import React, {ChangeEventHandler, useState} from 'react';
 
+import {defaultLanguageId} from '../../utils/constants';
+
 interface ObjectDataContainerProps {
 	dbTableName: string;
 	errors: FormError<ObjectDefinition>;
@@ -30,8 +32,6 @@ interface ObjectDataContainerProps {
 	setValues: (values: Partial<ObjectDefinition>) => void;
 	values: Partial<ObjectDefinition>;
 }
-
-const defaultLanguageId = Liferay.ThemeDisplay.getDefaultLanguageId();
 
 export function ObjectDataContainer({
 	dbTableName,
@@ -45,6 +45,10 @@ export function ObjectDataContainer({
 	const [selectedLocale, setSelectedLocale] = useState<
 		Liferay.Language.Locale
 	>(defaultLanguageId);
+
+	const isReadOnly = Liferay.FeatureFlags['LPS-167253']
+		? !values.modifiable && values.system
+		: values.system;
 
 	return (
 		<ClayPanel
@@ -66,7 +70,7 @@ export function ObjectDataContainer({
 
 				<InputLocalized
 					disabled={
-						values.system || !hasUpdateObjectDefinitionPermission
+						isReadOnly || !hasUpdateObjectDefinitionPermission
 					}
 					error={errors.label}
 					label={Liferay.Language.get('label')}
@@ -79,7 +83,7 @@ export function ObjectDataContainer({
 
 				<InputLocalized
 					disabled={
-						values.system || !hasUpdateObjectDefinitionPermission
+						isReadOnly || !hasUpdateObjectDefinitionPermission
 					}
 					error={errors.pluralLabel}
 					label={Liferay.Language.get('plural-label')}
@@ -100,7 +104,7 @@ export function ObjectDataContainer({
 				<ClayToggle
 					disabled={
 						!isApproved ||
-						values.system ||
+						isReadOnly ||
 						!hasUpdateObjectDefinitionPermission
 					}
 					label={Liferay.Language.get('active')}

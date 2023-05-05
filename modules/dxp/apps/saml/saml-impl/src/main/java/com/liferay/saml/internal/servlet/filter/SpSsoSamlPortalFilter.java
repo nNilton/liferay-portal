@@ -28,7 +28,6 @@ import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.saml.constants.SamlWebKeys;
-import com.liferay.saml.persistence.model.SamlSpSession;
 import com.liferay.saml.runtime.configuration.SamlProviderConfiguration;
 import com.liferay.saml.runtime.configuration.SamlProviderConfigurationHelper;
 import com.liferay.saml.runtime.servlet.profile.SingleLogoutProfile;
@@ -91,29 +90,7 @@ public class SpSsoSamlPortalFilter extends BaseSamlPortalFilter {
 			return false;
 		}
 
-		try {
-			User user = _portal.getUser(httpServletRequest);
-
-			if (user != null) {
-				return true;
-			}
-		}
-		catch (Exception exception) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(exception);
-			}
-		}
-
-		String requestPath = _samlHttpRequestUtil.getRequestPath(
-			httpServletRequest);
-
-		if (requestPath.equals("/c/portal/login") ||
-			requestPath.equals("/c/portal/logout")) {
-
-			return true;
-		}
-
-		return false;
+		return true;
 	}
 
 	@Override
@@ -125,20 +102,7 @@ public class SpSsoSamlPortalFilter extends BaseSamlPortalFilter {
 		String requestPath = _samlHttpRequestUtil.getRequestPath(
 			httpServletRequest);
 
-		SamlSpSession samlSpSession = _singleLogoutProfile.getSamlSpSession(
-			httpServletRequest);
-
-		if ((samlSpSession != null) && samlSpSession.isTerminated()) {
-			_singleLogoutProfile.terminateSpSession(
-				httpServletRequest, httpServletResponse);
-
-			_singleLogoutProfile.logout(
-				httpServletRequest, httpServletResponse);
-
-			httpServletResponse.sendRedirect(
-				_portal.getCurrentCompleteURL(httpServletRequest));
-		}
-		else if (requestPath.equals("/c/portal/login")) {
+		if (requestPath.equals("/c/portal/login")) {
 			RequestDispatcher requestDispatcher =
 				_servletContext.getRequestDispatcher("/c/portal/saml/login");
 
@@ -189,8 +153,32 @@ public class SpSsoSamlPortalFilter extends BaseSamlPortalFilter {
 			}
 		}
 		else {
-			_webSsoProfile.updateSamlSpSession(
-				httpServletRequest, httpServletResponse);
+			User user = null;
+
+			try {
+				user = _portal.getUser(httpServletRequest);
+			}
+			catch (Exception exception) {
+				if (_log.isWarnEnabled()) {
+					_log.warn(exception);
+				}
+			}
+
+			if (user != null) {
+				_webSsoProfile.updateSamlSpSession(
+					httpServletRequest, httpServletResponse);
+			}
+			else {
+				HttpSession httpSession = httpServletRequest.getSession(false);
+
+				if ((httpSession != null) &&
+					(httpSession.getAttribute(SamlWebKeys.SAML_SSO_ERROR) !=
+						null)) {
+
+					httpServletRequest.setAttribute(
+						WebKeys.BLOCK_LOGIN_PROMPT, Boolean.TRUE);
+				}
+			}
 
 			filterChain.doFilter(httpServletRequest, httpServletResponse);
 		}

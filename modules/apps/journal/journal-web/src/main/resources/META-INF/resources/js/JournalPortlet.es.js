@@ -77,8 +77,11 @@ export default function _JournalPortlet({
 	const editingDefaultValues = classNameId && classNameId !== '0';
 
 	if (editingDefaultValues) {
+		const getInput = (inputName) =>
+			document.getElementById(`${namespace}${inputName}`);
+
 		const resetInput = (inputName) => {
-			const input = document.getElementById(`${namespace}${inputName}`);
+			const input = getInput(inputName);
 
 			if (input && !displayDate) {
 				input.value = '';
@@ -93,6 +96,18 @@ export default function _JournalPortlet({
 		resetInput('displayDateMonth');
 		resetInput('displayDateTime');
 		resetInput('displayDateYear');
+
+		const displayDateInput = getInput('displayDate');
+
+		if (displayDateInput) {
+			displayDateInput.addEventListener('change', (event) => {
+				if (!event.target.value) {
+					getInput('displayDateDay').value = '';
+					getInput('displayDateMonth').value = '';
+					getInput('displayDateYear').value = '';
+				}
+			});
+		}
 	}
 
 	const handleContextualSidebarButton = () => {
@@ -148,7 +163,7 @@ export default function _JournalPortlet({
 					Liferay.Language.get(
 						'please-enter-a-valid-title-for-the-default-language-x'
 					),
-					defaultLanguageId.replace('_', '-')
+					defaultLanguageId.replaceAll('_', '-')
 				)
 			);
 		}
@@ -202,7 +217,7 @@ export default function _JournalPortlet({
 						Liferay.Language.get(
 							'please-enter-a-valid-title-for-the-default-language-x'
 						),
-						defaultLanguageId.replace('_', '-')
+						defaultLanguageId.replaceAll('_', '-')
 					)
 				);
 			}

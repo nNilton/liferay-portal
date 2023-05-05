@@ -198,12 +198,12 @@ export async function getObjectDefinitionById(objectDefinitionId: number) {
 export async function getObjectDefinitions(parameters?: string) {
 	if (!parameters) {
 		return await getList<ObjectDefinition>(
-			'/o/object-admin/v1.0/object-definitions'
+			'/o/object-admin/v1.0/object-definitions?pageSize=-1'
 		);
 	}
 
 	return await getList<ObjectDefinition>(
-		`/o/object-admin/v1.0/object-definitions?${stringToURLParameterFormat(
+		`/o/object-admin/v1.0/object-definitions?pageSize=-1&${stringToURLParameterFormat(
 			parameters
 		)}`
 	);
@@ -251,7 +251,7 @@ export async function getPickList(pickListId: number): Promise<PickList> {
 
 export async function getPickListItems(pickListId: number) {
 	return await getList<PickListItem>(
-		`/o/headless-admin-list-type/v1.0/list-type-definitions/${pickListId}/list-type-entries`
+		`/o/headless-admin-list-type/v1.0/list-type-definitions/${pickListId}/list-type-entries?pageSize=-1`
 	);
 }
 

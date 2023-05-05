@@ -581,9 +581,11 @@ definition {
 
 		MenuItem.click(menuItem = ${validationArgument});
 
-		Type(
-			locator1 = "FormFields#VALIDATION_INPUT",
-			value1 = ${validationInput});
+		if (isSet(validationInput)) {
+			Type(
+				locator1 = "FormFields#VALIDATION_INPUT",
+				value1 = ${validationInput});
+		}
 
 		Type(
 			locator1 = "FormFields#VALIDATION_ERROR_MESSAGE",
@@ -2146,18 +2148,6 @@ definition {
 			key_fieldName = ${fieldName},
 			locator1 = "FormFields#TEXT_FIELD_DESCRIPTION",
 			value1 = ${fieldValue});
-	}
-
-	macro viewTransltaionNotDuplicated {
-		AssertElementPresent(
-			key_language = ${key_language1},
-			key_position = ${key_position1},
-			locator1 = "FormFields#TRANSLATION_LIST");
-
-		AssertElementNotPresent(
-			key_language = ${key_language2},
-			key_position = ${key_position2},
-			locator1 = "FormFields#TRANSLATION_LIST");
 	}
 
 	macro viewUploadField {

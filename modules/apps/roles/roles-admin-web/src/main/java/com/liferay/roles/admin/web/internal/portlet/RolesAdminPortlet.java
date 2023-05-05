@@ -22,9 +22,6 @@ import com.liferay.application.list.display.context.logic.PanelCategoryHelper;
 import com.liferay.application.list.display.context.logic.PersonalMenuEntryHelper;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.item.selector.ItemSelector;
-import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerList;
-import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerListFactory;
-import com.liferay.osgi.service.tracker.collections.map.PropertyServiceReferenceComparator;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.portal.kernel.exception.DataLimitExceededException;
 import com.liferay.portal.kernel.exception.DuplicateRoleException;
@@ -67,7 +64,7 @@ import com.liferay.portal.kernel.util.PortletKeys;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
-import com.liferay.product.navigation.personal.menu.PersonalMenuEntry;
+import com.liferay.product.navigation.personal.menu.PersonalMenuEntryRegistry;
 import com.liferay.roles.admin.constants.RolesAdminPortletKeys;
 import com.liferay.roles.admin.constants.RolesAdminWebKeys;
 import com.liferay.roles.admin.panel.category.role.type.mapper.PanelCategoryRoleTypeMapper;
@@ -79,7 +76,6 @@ import com.liferay.segments.service.SegmentsEntryRoleLocalService;
 import java.io.IOException;
 
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -98,11 +94,7 @@ import javax.portlet.RenderResponse;
 import javax.portlet.ResourceRequest;
 import javax.portlet.ResourceResponse;
 
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceReference;
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 
 /**
@@ -243,17 +235,20 @@ public class RolesAdminPortlet extends MVCPortlet {
 				roleTypeContributor.getClassName(), 0, name, titleMap,
 				descriptionMap, type, subtype, serviceContext);
 
-			String redirect = ParamUtil.getString(actionRequest, "redirect");
-
-			redirect = HttpComponentsUtil.setParameter(
-				redirect, actionResponse.getNamespace() + "roleId",
-				role.getRoleId());
-
-			actionRequest.setAttribute(WebKeys.REDIRECT, redirect);
+			String redirect = _portal.escapeRedirect(
+				ParamUtil.getString(actionRequest, "redirect"));
 
 			SessionMessages.add(actionRequest, "roleCreated");
 
-			actionResponse.sendRedirect(redirect);
+			if (Validator.isNotNull(redirect)) {
+				redirect = HttpComponentsUtil.setParameter(
+					redirect, actionResponse.getNamespace() + "roleId",
+					role.getRoleId());
+
+				actionRequest.setAttribute(WebKeys.REDIRECT, redirect);
+
+				actionResponse.sendRedirect(redirect);
+			}
 
 			return role;
 		}
@@ -344,10 +339,6 @@ public class RolesAdminPortlet extends MVCPortlet {
 					segmentsEntryId, roleId);
 			}
 		}
-	}
-
-	public List<PersonalMenuEntry> getPersonalMenuEntries() {
-		return _personalMenuEntryServiceTrackerList.toList();
 	}
 
 	@Override
@@ -498,22 +489,6 @@ public class RolesAdminPortlet extends MVCPortlet {
 		}
 	}
 
-	@Activate
-	protected void activate(BundleContext bundleContext) {
-		Comparator<ServiceReference<PersonalMenuEntry>> groupComparator =
-			new PropertyServiceReferenceComparator<>(
-				"product.navigation.personal.menu.group");
-
-		Comparator<ServiceReference<PersonalMenuEntry>> entryOrderComparator =
-			new PropertyServiceReferenceComparator<>(
-				"product.navigation.personal.menu.entry.order");
-
-		_personalMenuEntryServiceTrackerList = ServiceTrackerListFactory.open(
-			bundleContext, PersonalMenuEntry.class,
-			Collections.reverseOrder(
-				groupComparator.thenComparing(entryOrderComparator)));
-	}
-
 	@Override
 	protected void checkPermissions(PortletRequest portletRequest)
 		throws Exception {
@@ -532,11 +507,6 @@ public class RolesAdminPortlet extends MVCPortlet {
 		}
 
 		super.checkPermissions(portletRequest);
-	}
-
-	@Deactivate
-	protected void deactivate() {
-		_personalMenuEntryServiceTrackerList.close();
 	}
 
 	@Override
@@ -669,7 +639,8 @@ public class RolesAdminPortlet extends MVCPortlet {
 			_panelCategoryRegistry);
 
 		PersonalMenuEntryHelper personalMenuEntryHelper =
-			new PersonalMenuEntryHelper(getPersonalMenuEntries());
+			new PersonalMenuEntryHelper(
+				_personalMenuEntryRegistry.getPersonalMenuEntries());
 
 		portletRequest.setAttribute(
 			ApplicationListWebKeys.PERSONAL_MENU_ENTRY_HELPER,
@@ -855,8 +826,8 @@ public class RolesAdminPortlet extends MVCPortlet {
 	private PanelCategoryRoleTypeMapperRegistry
 		_panelCategoryRoleTypeMapperRegistry;
 
-	private ServiceTrackerList<PersonalMenuEntry>
-		_personalMenuEntryServiceTrackerList;
+	@Reference
+	private PersonalMenuEntryRegistry _personalMenuEntryRegistry;
 
 	@Reference
 	private Portal _portal;

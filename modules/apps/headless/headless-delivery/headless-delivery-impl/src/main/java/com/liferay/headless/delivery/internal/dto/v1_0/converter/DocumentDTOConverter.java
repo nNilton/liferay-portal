@@ -59,10 +59,13 @@ import com.liferay.journal.service.JournalArticleService;
 import com.liferay.layout.display.page.LayoutDisplayPageProviderRegistry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryService;
 import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.comment.CommentManager;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.FileVersion;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
@@ -80,7 +83,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.Set;
 
 import javax.ws.rs.core.UriInfo;
@@ -93,7 +95,7 @@ import org.osgi.service.component.annotations.Reference;
  */
 @Component(
 	property = "dto.class.name=com.liferay.document.library.kernel.model.DLFileEntry",
-	service = {DocumentDTOConverter.class, DTOConverter.class}
+	service = DTOConverter.class
 )
 public class DocumentDTOConverter
 	implements DTOConverter<DLFileEntry, Document> {
@@ -130,13 +132,11 @@ public class DocumentDTOConverter
 						DLFileEntry.class.getName(),
 						fileEntry.getFileEntryId()));
 				assetLibraryKey = GroupUtil.getAssetLibraryKey(group);
-				contentUrl = _dlURLHelper.getPreviewURL(
-					fileEntry, fileVersion, null, "");
 				contentValue = ContentValueUtil.toContentValue(
 					"contentValue", fileEntry::getContentStream,
-					dtoConverterContext.getUriInfoOptional());
+					dtoConverterContext.getUriInfo());
 				creator = CreatorUtil.toCreator(
-					_portal, dtoConverterContext.getUriInfoOptional(),
+					_portal, dtoConverterContext.getUriInfo(),
 					_userLocalService.fetchUser(fileEntry.getUserId()));
 				customFields = CustomFieldsUtil.toCustomFields(
 					dtoConverterContext.isAcceptAllLanguages(),
@@ -151,6 +151,7 @@ public class DocumentDTOConverter
 				encodingFormat = fileEntry.getMimeType();
 				externalReferenceCode = fileEntry.getExternalReferenceCode();
 				fileExtension = fileEntry.getExtension();
+				fileName = fileEntry.getFileName();
 				id = fileEntry.getFileEntryId();
 				keywords = ListUtil.toArray(
 					_assetTagLocalService.getTags(
@@ -176,6 +177,19 @@ public class DocumentDTOConverter
 					TaxonomyCategoryBrief.class);
 				title = fileEntry.getTitle();
 
+				setContentUrl(
+					() -> {
+						if ((fileVersion.getSize() == 0) ||
+							!fileEntry.containsPermission(
+								PermissionThreadLocal.getPermissionChecker(),
+								ActionKeys.DOWNLOAD)) {
+
+							return StringPool.BLANK;
+						}
+
+						return _dlURLHelper.getDownloadURL(
+							fileEntry, fileVersion, null, StringPool.BLANK);
+					});
 				setRenderedContents(
 					() -> DisplayPageRendererUtil.getRenderedContent(
 						BaseDocumentResourceImpl.class,
@@ -209,7 +223,7 @@ public class DocumentDTOConverter
 					AMImageQueryBuilder.ConfigurationStatus.ANY
 				).done()),
 			adaptiveMedia -> _toAdaptedImage(
-				adaptiveMedia, dtoConverterContext.getUriInfoOptional()),
+				adaptiveMedia, dtoConverterContext.getUriInfo()),
 			AdaptedImage.class);
 	}
 
@@ -262,17 +276,8 @@ public class DocumentDTOConverter
 		return ddmStructure.getStructureId();
 	}
 
-	private <T, S> T _getValue(
-		AdaptiveMedia<S> adaptiveMedia, AMAttribute<S, T> amAttribute) {
-
-		Optional<T> valueOptional = adaptiveMedia.getValueOptional(amAttribute);
-
-		return valueOptional.orElse(null);
-	}
-
 	private AdaptedImage _toAdaptedImage(
-			AdaptiveMedia<AMImageProcessor> adaptiveMedia,
-			Optional<UriInfo> uriInfoOptional)
+			AdaptiveMedia<AMImageProcessor> adaptiveMedia, UriInfo uriInfo)
 		throws Exception {
 
 		if (adaptiveMedia == null) {
@@ -284,16 +289,15 @@ public class DocumentDTOConverter
 				contentUrl = String.valueOf(adaptiveMedia.getURI());
 				contentValue = ContentValueUtil.toContentValue(
 					"adaptedImages.contentValue", adaptiveMedia::getInputStream,
-					uriInfoOptional);
-				height = _getValue(
-					adaptiveMedia, AMImageAttribute.AM_IMAGE_ATTRIBUTE_HEIGHT);
-				resolutionName = _getValue(
-					adaptiveMedia,
+					uriInfo);
+				height = adaptiveMedia.getValue(
+					AMImageAttribute.AM_IMAGE_ATTRIBUTE_HEIGHT);
+				resolutionName = adaptiveMedia.getValue(
 					AMAttribute.getConfigurationUuidAMAttribute());
-				sizeInBytes = _getValue(
-					adaptiveMedia, AMAttribute.getContentLengthAMAttribute());
-				width = _getValue(
-					adaptiveMedia, AMImageAttribute.AM_IMAGE_ATTRIBUTE_WIDTH);
+				sizeInBytes = adaptiveMedia.getValue(
+					AMAttribute.getContentLengthAMAttribute());
+				width = adaptiveMedia.getValue(
+					AMImageAttribute.AM_IMAGE_ATTRIBUTE_WIDTH);
 			}
 		};
 	}

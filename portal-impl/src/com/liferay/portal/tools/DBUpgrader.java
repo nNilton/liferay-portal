@@ -27,6 +27,7 @@ import com.liferay.portal.kernel.dao.db.DB;
 import com.liferay.portal.kernel.dao.db.DBManagerUtil;
 import com.liferay.portal.kernel.dao.jdbc.DataAccess;
 import com.liferay.portal.kernel.dependency.manager.DependencyManagerSyncUtil;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.ReleaseConstants;
@@ -34,7 +35,6 @@ import com.liferay.portal.kernel.module.framework.ModuleServiceLifecycle;
 import com.liferay.portal.kernel.module.util.ServiceLatch;
 import com.liferay.portal.kernel.module.util.SystemBundleUtil;
 import com.liferay.portal.kernel.service.ClassNameLocalServiceUtil;
-import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
@@ -127,29 +127,26 @@ public class DBUpgrader {
 		return _stopWatch.getTime();
 	}
 
+	public static boolean isUpgradeClient() {
+		return _upgradeClient;
+	}
+
 	public static void main(String[] args) {
 		String result = "Completed";
 
-		try {
-			_stopWatch = new StopWatch();
+		_upgradeClient = true;
 
-			_stopWatch.start();
+		try {
+			_initUpgradeStopwatch();
 
 			PortalClassPathUtil.initializeClassPaths(null);
 
 			InitUtil.initWithSpring(
 				ListUtil.fromArray(
 					PropsUtil.getArray(PropsKeys.SPRING_CONFIGS)),
-				true, false,
-				() -> {
-					if (PropsValues.UPGRADE_REPORT_ENABLED) {
-						_startUpgradeReportLogAppender();
-					}
-				});
+				true, false, () -> StartupHelperUtil.setUpgrading(true));
 
 			StartupHelperUtil.printPatchLevel();
-
-			StartupHelperUtil.setUpgrading(true);
 
 			upgradePortal();
 
@@ -172,19 +169,50 @@ public class DBUpgrader {
 			result = "Failed";
 		}
 		finally {
-			_stopWatch.stop();
+			StartupHelperUtil.setUpgrading(false);
 
 			System.out.println(
 				StringBundler.concat(
 					"\n", result, " Liferay upgrade process in ",
 					_stopWatch.getTime() / Time.SECOND, " seconds"));
-
-			if (PropsValues.UPGRADE_REPORT_ENABLED) {
-				_stopUpgradeReportLogAppender();
-			}
 		}
 
 		System.out.println("Exiting DBUpgrader#main(String[]).");
+	}
+
+	public static void startUpgradeLogAppender() {
+		if (_stopWatch == null) {
+			_initUpgradeStopwatch();
+		}
+
+		ServiceLatch serviceLatch = SystemBundleUtil.newServiceLatch();
+
+		serviceLatch.<Appender>waitFor(
+			StringBundler.concat(
+				"(&(appender.name=UpgradeLogAppender)(objectClass=",
+				Appender.class.getName(), "))"),
+			appender -> {
+				_appender = appender;
+
+				_appender.start();
+			});
+		serviceLatch.openOn(
+			() -> {
+			});
+	}
+
+	public static void stopUpgradeLogAppender() {
+		if (_appender != null) {
+			_stopWatch.stop();
+
+			_appender.stop();
+		}
+
+		if (_appenderServiceReference != null) {
+			BundleContext bundleContext = SystemBundleUtil.getBundleContext();
+
+			bundleContext.ungetService(_appenderServiceReference);
+		}
 	}
 
 	public static void upgradeModules() {
@@ -205,9 +233,7 @@ public class DBUpgrader {
 
 			VerifyProperties.verify();
 
-			if (GetterUtil.getBoolean(
-					PropsUtil.get("feature.flag.LPS-157670"))) {
-
+			if (FeatureFlagManagerUtil.isEnabled("LPS-157670")) {
 				checkRequiredBuildNumber(
 					ReleaseInfo.RELEASE_6_1_0_BUILD_NUMBER);
 			}
@@ -351,6 +377,12 @@ public class DBUpgrader {
 		}
 	}
 
+	private static void _initUpgradeStopwatch() {
+		_stopWatch = new StopWatch();
+
+		_stopWatch.start();
+	}
+
 	private static void _registerModuleServiceLifecycle(
 		String moduleServiceLifecycle) {
 
@@ -367,35 +399,6 @@ public class DBUpgrader {
 			).put(
 				"service.version", ReleaseInfo.getVersion()
 			).build());
-	}
-
-	private static void _startUpgradeReportLogAppender() {
-		ServiceLatch serviceLatch = SystemBundleUtil.newServiceLatch();
-
-		serviceLatch.<Appender>waitFor(
-			StringBundler.concat(
-				"(&(appender.name=UpgradeReportLogAppender)(objectClass=",
-				Appender.class.getName(), "))"),
-			appender -> {
-				_appender = appender;
-
-				_appender.start();
-			});
-		serviceLatch.openOn(
-			() -> {
-			});
-	}
-
-	private static void _stopUpgradeReportLogAppender() {
-		if (_appender != null) {
-			_appender.stop();
-		}
-
-		if (_appenderServiceReference != null) {
-			BundleContext bundleContext = SystemBundleUtil.getBundleContext();
-
-			bundleContext.ungetService(_appenderServiceReference);
-		}
 	}
 
 	private static void _updateCompanyKey() throws Exception {
@@ -444,5 +447,6 @@ public class DBUpgrader {
 	private static volatile ServiceReference<Appender>
 		_appenderServiceReference;
 	private static volatile StopWatch _stopWatch;
+	private static volatile boolean _upgradeClient;
 
 }

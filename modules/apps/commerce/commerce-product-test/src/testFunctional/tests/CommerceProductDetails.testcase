@@ -16,7 +16,7 @@ definition {
 	}
 
 	@description = "COMMERCE-6356. As a buyer, I want to be able to select the quantity of a product and add it to cart from Product details"
-	@priority = 3
+	@priority = 5
 	test AddProductToCartFromProductDetails {
 		property portal.acceptance = "true";
 
@@ -45,9 +45,9 @@ definition {
 	}
 
 	@description = "COMMERCE-6354. As a buyer, I want to be able to add a product to wish list from Product Details and if I refresh the page, I want to be able to see that the product is already added to wishlist"
-	@priority = 3
+	@priority = 5
 	test AddProductToWishListFromProductDetails {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		CommerceAccelerators.initializeNewSiteViaAccelerator(siteName = "Minium");
 
@@ -73,9 +73,9 @@ definition {
 	}
 
 	@description = "COMMERCE-6359. As a buyer, I want to be able to select only the allowed quantities of a product in Product Details, if set"
-	@priority = 3
+	@priority = 5
 	test AssertOnlyAllowedQuantitiesAreSelectableInProductDetails {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		// TODO Review
 
@@ -121,7 +121,7 @@ definition {
 	}
 
 	@description = "COMMERCE-6363. As a buyer, I want to be able to select the quantity of a product in Product Details by multiple value, if set"
-	@priority = 3
+	@priority = 5
 	test AssertOnlyMultipleValuesAreSelectableQuantitiesInProductDetails {
 		property portal.acceptance = "true";
 
@@ -271,9 +271,9 @@ definition {
 	}
 
 	@description = "COMMERCE-6367. As a buyer, I don't want to be able to add a product to the cart in Product Details if the product is not purchasable"
-	@priority = 3
+	@priority = 5
 	test AssertProductCannotBeAddedToCartFromProductDetailsIfProductIsNotPurchasable {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		// TODO Review
 
@@ -317,9 +317,9 @@ definition {
 	}
 
 	@description = "COMMERCE-6362. As a buyer, I want to be able to select the quantity of a product in Product Details up to a maximum quantity, if set"
-	@priority = 3
+	@priority = 5
 	test AssertQuantityInProductDetailsCanBeSelectedUpToAMaximumQuantitySet {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		// TODO Review
 
@@ -392,7 +392,7 @@ definition {
 	}
 
 	@description = "COMMERCE-6360. As a buyer, I want to be able to select the quantity of a product in Product Details starting from a minimum quantity, if set"
-	@priority = 3
+	@priority = 5
 	test AssertSelectableQuantitiesInProductDetailsStartFromMinimumQuantitySet {
 		property portal.acceptance = "true";
 
@@ -1347,7 +1347,7 @@ definition {
 	}
 
 	@description = "COMMERCE-10197. Users cannot view and download owner limited products' attachments"
-	@priority = 3
+	@priority = 5
 	test CanAssertOwnerLimitedFileAttacchmentNotVisibleForBuyer {
 		property portal.acceptance = "true";
 
@@ -1481,6 +1481,71 @@ definition {
 		}
 	}
 
+	@description = "COMMERCE-5312. Can view a product's subscription information on Speedwell's Product Detail page"
+	@priority = 3
+	test CanAssertSpeedwellProductSubscriptionInformation {
+		property portal.acceptance = "false";
+
+		task ("Given a Speedwell site") {
+			CommerceAccelerators.initializeNewSiteViaAccelerator(siteName = "Speedwell");
+		}
+
+		task ("And a user is created") {
+			JSONUser.addUser(
+				userEmailAddress = "buyer@liferay.com",
+				userFirstName = "Buyer",
+				userLastName = "User",
+				userScreenName = "buyeruser");
+
+			JSONUser.setFirstPassword(
+				agreeToTermsAndAnswerReminderQuery = "true",
+				requireReset = "false",
+				userEmailAddress = "buyer@liferay.com");
+
+			JSONUser.addUserToSite(
+				groupName = "Speedwell",
+				userEmailAddress = "buyer@liferay.com");
+		}
+
+		task ("And a product with subscription configurations enabled") {
+			CommerceProducts.openProductsAdmin();
+
+			CommerceProducts.searchAndGoToProductEntry(entryProductName = "U-Joint");
+
+			CommerceEntry.gotoMenuTab(menuTab = "Subscription");
+
+			CommerceProducts.configureSubscription(
+				subscriptionLength = 5,
+				subscriptionMode = "Order Date",
+				subscriptionName = "Delivery Subscription",
+				subscriptionType = "Month");
+
+			CommerceProducts.configureSubscription(
+				subscriptionLength = 5,
+				subscriptionMode = "Order Date",
+				subscriptionName = "Payment Subscription",
+				subscriptionType = "Year");
+		}
+
+		task ("When the user navigates to Speedwell -> U-Joint") {
+			User.logoutPG();
+
+			CommerceLogin.speedwellLogin(
+				password = "test",
+				urlAppend = "web/speedwell",
+				userEmailAddress = "buyer@liferay.com");
+
+			Navigator.openWithAppendToBaseURL(urlAppend = "web/speedwell/p/u-joint");
+		}
+
+		task ("Then the user can see the product's subscription information in the Detail page") {
+			FrontStore.assertProductDetails(
+				deliverySubscriptionPeriod = "Every 5 Month",
+				paymentSubscriptionPeriod = "Every 5 Year",
+				productName = "U-Joint");
+		}
+	}
+
 	@description = "COMMERCE-9675. Users can view and download a product's attachments"
 	@priority = 3
 	test CanDownloadProductAttachments {
@@ -1553,8 +1618,83 @@ definition {
 		}
 	}
 
-	@description = "COMMERCE-9674 | As a buyer, I want to be able to view the incoming dates/quantities for a multiple SKUs product"
+	@description = "This is a test for COMMERCE-10897. Users cannot view XSS with Availability Estimates in product details"
 	@priority = 3
+	test CannotExecuteXSSWithAvailabilityEstimatesInProductDetails {
+		property portal.acceptance = "false";
+
+		task ("Given a Minium site") {
+			CommerceAccelerators.initializeNewSiteViaAccelerator(siteName = "Minium");
+		}
+
+		task ("And a regular user with Minium site membership is created") {
+			JSONUser.addUser(
+				userEmailAddress = "testuser@liferay.com",
+				userFirstName = "Test",
+				userLastName = "User",
+				userScreenName = "testuser");
+
+			JSONUser.setFirstPassword(
+				agreeToTermsAndAnswerReminderQuery = "true",
+				requireReset = "false",
+				userEmailAddress = "testuser@liferay.com");
+
+			JSONUser.addUserToSite(
+				groupName = "Minium",
+				userEmailAddress = "testuser@liferay.com");
+		}
+
+		task ("And a new Availability Estimate is created using an XSS and the product 'ABS Sensor' is updated with this entry") {
+			CommerceNavigator.goToAvailabilityEstimatesAdmin();
+
+			Click(locator1 = "Button#PLUS");
+
+			CommerceEntry.addNewAvailabilityEstimatesEntry(entryName = "Approx <script>alert(123)</script> Days");
+
+			Button.clickSave();
+
+			AssertElementPresent(locator1 = "Message#SUCCESS");
+
+			CommerceProducts.openProductsAdmin();
+
+			CommerceNavigator.gotoEntry(entryName = "ABS Sensor");
+
+			CommerceEntry.gotoMenuTab(menuTab = "Configuration");
+
+			Select(
+				key_title = "Availability Estimate",
+				locator1 = "CommerceEntry#CATALOGS_FORM",
+				value1 = "Approx <script>alert(123)</script> Days");
+
+			Button.clickPublish();
+		}
+
+		task ("And the stock quantity of the product is set to 0") {
+			for (var warehouseName : list "Italy,United States - Northeast,United States - Southwest") {
+				CommerceJSONWarehousesAndInventoriesAPI._patchWarehouseItem(
+					productSku = "MIN93015",
+					quantity = 0,
+					warehouseName = ${warehouseName});
+			}
+		}
+
+		task ("When the user logs in and goes to the product details") {
+			User.logoutAndLoginPG(
+				userLoginEmailAddress = "testuser@liferay.com",
+				userLoginFullName = "Test User");
+
+			Navigator.openWithAppendToBaseURL(urlAppend = "web/minium");
+
+			CommerceAcceleratorsInitializer.gotoMiniumProductDetailsPage(productName = "ABS Sensor");
+		}
+
+		task ("Then the script is not executed") {
+			AssertAlertNotPresent();
+		}
+	}
+
+	@description = "COMMERCE-9674 | As a buyer, I want to be able to view the incoming dates/quantities for a multiple SKUs product"
+	@priority = 5
 	test CanViewMultipleSkusProductIncomingQuantity {
 		property portal.acceptance = "true";
 
@@ -1694,7 +1834,7 @@ definition {
 	}
 
 	@description = "COMMERCE-9676 | As a buyer, I want to be able to view a grouped product Detail page"
-	@priority = 3
+	@priority = 5
 	test CanViewSingleSkuGroupedProductDetailPage {
 		property portal.acceptance = "true";
 
@@ -1910,7 +2050,7 @@ definition {
 	}
 
 	@description = "COMMERCE-9677 | As a buyer, I want to be able to view a virtual product Detail page"
-	@priority = 3
+	@priority = 5
 	test CanViewSingleSkuVirtualProductDetailPage {
 		property portal.acceptance = "true";
 
@@ -2044,7 +2184,7 @@ definition {
 	@description = "COMMERCE-6355. As a buyer, I want to be able to remove a product from wish list from Product Details"
 	@priority = 3
 	test RemoveProductFromWishListFromProductDetails {
-		property portal.acceptance = "Intern Test";
+		property portal.acceptance = "false";
 
 		// TODO Review
 
@@ -2092,9 +2232,9 @@ definition {
 	}
 
 	@description = "COMMERCE-6370. As a buyer, I want to be able to select an option value, and add the product to cart in Product Details"
-	@priority = 3
+	@priority = 5
 	test SelectOptionValueAndAddProductToCart {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		CommerceAccelerators.initializeNewSiteViaAccelerator(siteName = "Minium");
 
@@ -2125,7 +2265,7 @@ definition {
 	}
 
 	@description = "COMMERCE-6658. As a buyer, I want to be able to select an option value(Bundled Product) and I want to see product details updating(Price, SKU and Availability)"
-	@priority = 3
+	@priority = 5
 	test SelectOptionValueAndAssertBundledProductDetailsAreUpdated {
 		property portal.acceptance = "true";
 
@@ -2372,7 +2512,7 @@ definition {
 	}
 
 	@description = "COMMERCE-6371. As a buyer, I want to be able to select an option value(SKU contributor) and I want to see product details updating(Price, SKU and Availability)"
-	@priority = 3
+	@priority = 5
 	test SelectOptionValueAndAssertProductPriceIsUpdated {
 		property portal.acceptance = "true";
 
@@ -2485,7 +2625,6 @@ definition {
 	@ignore = "true"
 	@priority = 3
 	test UseADTInProductDetailsWidget {
-		property portal.acceptance = "false";
 
 		// TODO COMMERCE-6659 UseADTInProductDetailsWidget pending implementation
 
@@ -2495,16 +2634,15 @@ definition {
 	@ignore = "true"
 	@priority = 3
 	test UseCustomRenderersInProductDetails {
-		property portal.acceptance = "false";
 
 		// TODO COMMERCE-6660 UseCustomRenderersInProductDetails pending implementation
 
 	}
 
 	@description = "COMMERCE-6364. As a buyer, I want the first selectable quantity of a product in Product Details to be the minimum multiple quantity if Minimum Order Quantity is higher than Multiple Order Quantity"
-	@priority = 3
+	@priority = 5
 	test ViewFirstSelectableQuantityInProductDetailsWhenMinimumOrderQuantityIsHigherThanMultipleOrderQuantity {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		// TODO Review
 
@@ -2593,9 +2731,9 @@ definition {
 	}
 
 	@description = "COMMERCE-6366. As a buyer, I want the first selectable quantity of a product in Product Details to be the minimum multiple quantity if Minimum Order Quantity is lower than Multiple Order Quantity"
-	@priority = 3
+	@priority = 5
 	test ViewFirstSelectableQuantityInProductDetailsWhenMinimumOrderQuantityIsLowerThanMultipleOrderQuantity {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		// TODO Review
 
@@ -2691,7 +2829,7 @@ definition {
 	}
 
 	@description = "COMMERCE-6358. As a buyer, I want to see the barred list price and a promo price of a product in Product Details, if a promotion is set"
-	@priority = 3
+	@priority = 5
 	test ViewProductDetailsPriceWithPromotion {
 		property portal.acceptance = "true";
 
@@ -2721,7 +2859,7 @@ definition {
 	}
 
 	@description = "COMMERCE-6353. As a buyer, I want to be able to see product details in Product Details page(Product Availability, Number of Items in Stock, Product Name, Product SKU, Product MPN, Product Description, List Price, Product Specifications, Product Images/Attachments(if set))"
-	@priority = 3
+	@priority = 5
 	test ViewProductDetailsWidget {
 		property portal.acceptance = "true";
 

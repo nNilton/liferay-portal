@@ -3,7 +3,7 @@ definition {
 
 	property portal.release = "true";
 	property portal.upstream = "true";
-	property testray.main.component.name = "Site Pages Administration";
+	property testray.main.component.name = "Page Administration";
 
 	setUp {
 		task ("Set up instance and sign in") {
@@ -13,7 +13,7 @@ definition {
 		}
 
 		task ("Add a site") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 
 		task ("Upload six JavaScript extension files to Documents and Media") {
@@ -139,14 +139,11 @@ definition {
 				menuItem = "Configure",
 				pageName = "Test Page Name");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
-			AssertTextEquals(
-				key_sectionTitle = "JavaScript Client Extensions",
-				locator1 = "PagesAdmin#SECTION_SUBTITLE",
-				value1 = "No JavaScript client extensions were loaded.");
+			AssertElementPresent(locator1 = "PagesAdmin#NO_JAVASCRIPT_EXTENSIONS_LOADED");
 		}
 
 		task ("Then the site designer could add a JavaScript Extension to widget page") {
@@ -195,14 +192,11 @@ definition {
 
 			WaitForPageLoad();
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
-			AssertTextEquals(
-				key_sectionTitle = "JavaScript Client Extensions",
-				locator1 = "PagesAdmin#SECTION_SUBTITLE",
-				value1 = "No JavaScript client extensions were loaded.");
+			AssertElementPresent(locator1 = "PagesAdmin#NO_JAVASCRIPT_EXTENSIONS_LOADED");
 		}
 
 		task ("Then the site designer could add a JavaScript Extension to widget page") {
@@ -232,14 +226,11 @@ definition {
 
 			WaitForPageLoad();
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
-			AssertTextEquals(
-				key_sectionTitle = "JavaScript Client Extensions",
-				locator1 = "PagesAdmin#SECTION_SUBTITLE",
-				value1 = "No JavaScript client extensions were loaded.");
+			AssertElementPresent(locator1 = "PagesAdmin#NO_JAVASCRIPT_EXTENSIONS_LOADED");
 		}
 
 		task ("Then the site designer could add a JavaScript Extension to Pages") {
@@ -264,7 +255,7 @@ definition {
 				menuItem = "Edit",
 				pageName = "Content Page Name");
 
-			ControlMenu.viewHeaderTitle(headerTitle = "Content Page Name *");
+			ControlMenu.viewHeaderDraftTitle(headerTitle = "Content Page Name");
 
 			AssertCssValue(
 				locator1 = "ControlMenu#HEADING",
@@ -305,9 +296,9 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			PagesAdmin.addJavaScriptExtensions(
 				extensionNameList = "FontFamily",
@@ -325,9 +316,9 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			PagesAdmin.addJavaScriptExtensions(
 				extensionNameList = "FontFamily",
@@ -384,9 +375,9 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			PagesAdmin.addJavaScriptExtensions(
 				extensionNameList = "InnerText",
@@ -419,9 +410,9 @@ definition {
 
 			WaitForPageLoad();
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			AssertVisible(
 				key_tableEntry = "InnerText",
@@ -450,9 +441,9 @@ definition {
 
 			WaitForPageLoad();
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			for (var extensionName : list "InnerText,TextColor") {
 				Click(
@@ -462,10 +453,7 @@ definition {
 				DropdownMenuItem.click(menuItem = "Delete");
 			}
 
-			AssertTextEquals(
-				key_sectionTitle = "JavaScript Client Extensions",
-				locator1 = "PagesAdmin#SECTION_SUBTITLE",
-				value1 = "No JavaScript client extensions were loaded.");
+			AssertElementPresent(locator1 = "PagesAdmin#NO_JAVASCRIPT_EXTENSIONS_LOADED");
 
 			PortletEntry.save();
 
@@ -473,7 +461,7 @@ definition {
 
 			PageEditor.assertFragmentSidebarLoaded();
 
-			ControlMenu.viewHeaderTitle(headerTitle = "Test Page Name *");
+			ControlMenu.viewHeaderDraftTitle(headerTitle = "Test Page Name");
 
 			AssertCssValue(
 				locator1 = "ControlMenu#HEADING",
@@ -499,9 +487,9 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			PagesAdmin.addJavaScriptExtensions(
 				extensionNameList = "InnerText",
@@ -525,6 +513,10 @@ definition {
 		}
 
 		task ("Then the site designer could clear the JavaScript extension selection") {
+			Navigator.gotoNavTab(navTab = "Design");
+
+			Navigator.gotoNavTab(navTab = "JavaScript");
+
 			Click(
 				key_tableEntry = "InnerText",
 				locator1 = "LexiconTable#TABLE_ENTRY_ELLIPSIS");
@@ -532,8 +524,8 @@ definition {
 			DropdownMenuItem.click(menuItem = "Delete");
 
 			AssertTextEquals(
-				key_sectionTitle = "JavaScript Client Extensions",
-				locator1 = "PagesAdmin#SECTION_SUBTITLE",
+				key_panel = "JavaScript Client Extensions",
+				locator1 = "PagesAdmin#PANEL",
 				value1 = "No JavaScript client extensions were loaded.");
 
 			PortletEntry.save();
@@ -542,7 +534,7 @@ definition {
 
 			PageEditor.assertFragmentSidebarLoaded();
 
-			ControlMenu.viewHeaderTitle(headerTitle = "Test Page Name *");
+			ControlMenu.viewHeaderDraftTitle(headerTitle = "Test Page Name");
 		}
 	}
 
@@ -564,9 +556,9 @@ definition {
 				menuItem = "Configure",
 				pageName = "Test Page Name");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			PagesAdmin.addJavaScriptExtensions(
 				extensionNameList = "FontSize",
@@ -598,9 +590,9 @@ definition {
 				menuItem = "Configure",
 				pageName = "Test Page Name");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			Select(
 				key_tableEntry = "FontSize",
@@ -644,9 +636,9 @@ definition {
 
 			WaitForPageLoad();
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			PagesAdmin.addJavaScriptExtensions(
 				extensionNameList = "FontSize",
@@ -676,9 +668,9 @@ definition {
 
 			WaitForPageLoad();
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			Select(
 				key_tableEntry = "FontSize",
@@ -712,7 +704,9 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
+
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			PagesAdmin.addJavaScriptExtensions(
 				extensionNameList = "FontSize",
@@ -740,7 +734,9 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
+
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			Select(
 				key_tableEntry = "FontSize",
@@ -770,11 +766,11 @@ definition {
 
 			WaitForPageLoad();
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 		}
 
 		task ("When the site designer adds a JavaScript extension to Pages") {
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			PagesAdmin.addJavaScriptExtensions(
 				extensionNameList = "FontSize",
@@ -788,6 +784,8 @@ definition {
 				value1 = "async");
 
 			PortletEntry.save();
+
+			Navigator.gotoBack();
 
 			ContentPages.addPage(pageName = "Content Page Name");
 
@@ -806,9 +804,9 @@ definition {
 
 			WaitForPageLoad();
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			Select(
 				key_tableEntry = "FontSize",
@@ -844,7 +842,9 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
+
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			PagesAdmin.addJavaScriptExtensions(
 				extensionNameList = "InnerText",
@@ -872,9 +872,9 @@ definition {
 
 			Click(locator1 = "PageEditor#MORE_LINK");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			AssertVisible(
 				key_groupHeader = "Page bottom JS client extensions",
@@ -906,9 +906,9 @@ definition {
 
 			WaitForPageLoad();
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			PagesAdmin.addJavaScriptExtensions(
 				extensionNameList = "FontFamily",
@@ -930,9 +930,9 @@ definition {
 				menuItem = "Configure",
 				pageName = "Test Page Name");
 
-			Navigator.gotoNavTab(navTab = "Advanced");
+			Navigator.gotoNavTab(navTab = "Design");
 
-			Panel.expandPanel(panel = "JavaScript");
+			Navigator.gotoNavTab(navTab = "JavaScript");
 
 			AssertVisible(
 				key_groupHeader = "Page Head JS Client Extensions",
@@ -965,9 +965,9 @@ definition {
 
 				WaitForPageLoad();
 
-				Navigator.gotoNavTab(navTab = "Advanced");
+				Navigator.gotoNavTab(navTab = "Design");
 
-				Panel.expandPanel(panel = "JavaScript");
+				Navigator.gotoNavTab(navTab = "JavaScript");
 
 				PagesAdmin.addJavaScriptExtensions(
 					extensionNameList = "FontFamily",
@@ -1000,7 +1000,9 @@ definition {
 
 				Click(locator1 = "PageEditor#MORE_LINK");
 
-				Navigator.gotoNavTab(navTab = "Advanced");
+				Navigator.gotoNavTab(navTab = "Design");
+
+				Navigator.gotoNavTab(navTab = "JavaScript");
 
 				PagesAdmin.addJavaScriptExtensions(
 					extensionNameList = "FontSize",
@@ -1035,9 +1037,9 @@ definition {
 
 				Click(locator1 = "PageEditor#MORE_LINK");
 
-				Navigator.gotoNavTab(navTab = "Advanced");
+				Navigator.gotoNavTab(navTab = "Design");
 
-				Panel.expandPanel(panel = "JavaScript");
+				Navigator.gotoNavTab(navTab = "JavaScript");
 
 				PagesAdmin.addJavaScriptExtensions(
 					extensionNameList = "FontWeight",

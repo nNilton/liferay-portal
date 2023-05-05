@@ -203,7 +203,7 @@ public class RoleLocalServiceImpl extends RoleLocalServiceBaseImpl {
 
 		long ownerId = userId;
 
-		if (user.isDefaultUser()) {
+		if (user.isGuestUser()) {
 			ownerId = 0;
 		}
 
@@ -211,7 +211,7 @@ public class RoleLocalServiceImpl extends RoleLocalServiceBaseImpl {
 			user.getCompanyId(), 0, ownerId, Role.class.getName(),
 			role.getRoleId(), false, false, false);
 
-		if (!user.isDefaultUser()) {
+		if (!user.isGuestUser()) {
 			_resourceLocalService.addResources(
 				user.getCompanyId(), 0, userId, Role.class.getName(),
 				role.getRoleId(), false, false, false);
@@ -767,23 +767,24 @@ public class RoleLocalServiceImpl extends RoleLocalServiceBaseImpl {
 
 	@Override
 	public List<Role> getGroupRolesAndTeamRoles(
-		long companyId, String keywords, List<String> excludedNames,
-		int[] types, long excludedTeamRoleId, long teamGroupId, int start,
-		int end) {
+		long companyId, String name, List<String> excludedNames, String title,
+		String description, int[] types, long excludedTeamRoleId,
+		long teamGroupId, int start, int end) {
 
 		return roleFinder.findByGroupRoleAndTeamRole(
-			companyId, keywords, excludedNames, types, excludedTeamRoleId,
-			teamGroupId, start, end);
+			companyId, name, excludedNames, title, description, types,
+			excludedTeamRoleId, teamGroupId, start, end);
 	}
 
 	@Override
 	public int getGroupRolesAndTeamRolesCount(
-		long companyId, String keywords, List<String> excludedNames,
-		int[] types, long excludedTeamRoleId, long teamGroupId) {
+		long companyId, String name, List<String> excludedNames, String title,
+		String description, int[] types, long excludedTeamRoleId,
+		long teamGroupId) {
 
 		return roleFinder.countByGroupRoleAndTeamRole(
-			companyId, keywords, excludedNames, types, excludedTeamRoleId,
-			teamGroupId);
+			companyId, name, excludedNames, title, description, types,
+			excludedTeamRoleId, teamGroupId);
 	}
 
 	/**
@@ -1411,9 +1412,9 @@ public class RoleLocalServiceImpl extends RoleLocalServiceBaseImpl {
 			throw new IllegalArgumentException(name + " is not a regular role");
 		}
 
-		long defaultUserId = _userLocalService.getDefaultUserId(companyId);
+		long guestUserId = _userLocalService.getGuestUserId(companyId);
 
-		if (userId == defaultUserId) {
+		if (userId == guestUserId) {
 			if (name.equals(RoleConstants.GUEST)) {
 				return true;
 			}
@@ -1937,7 +1938,7 @@ public class RoleLocalServiceImpl extends RoleLocalServiceBaseImpl {
 		}
 
 		if (role == null) {
-			User user = _userLocalService.getDefaultUser(companyId);
+			User user = _userLocalService.getGuestUser(companyId);
 
 			PermissionThreadLocal.setAddResource(false);
 

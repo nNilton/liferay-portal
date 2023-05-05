@@ -10,7 +10,7 @@ definition {
 
 		User.firstLoginPG();
 
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 
 		JSONLayout.addPublicLayout(
 			groupName = "Test Site Name",
@@ -47,6 +47,7 @@ definition {
 		property osgi.module.configurations = "promptEnabled=\"true\"";
 		property release.feature.flags.disable.DISABLE_PRIVATE_LAYOUTS = "true";
 		property test.name.skip.portal.instance = "AssetPublisherUseCase#AddAndEditWebContentViaAssetPublisherInOrganizationSiteWithVirtualHost";
+		property timeout.explicit.wait = "20";
 
 		task ("Add an organization with site") {
 			JSONOrganization.addOrganization(
@@ -187,6 +188,7 @@ definition {
 		property osgi.module.configuration.file.names = "com.liferay.login.web.internal.configuration.AuthLoginConfiguration.config";
 		property osgi.module.configurations = "promptEnabled=\"true\"";
 		property test.name.skip.portal.instance = "AssetPublisherUseCase#AddAndEditWebContentViaAssetPublisherInOrganizationSiteWithVirtualHost";
+		property timeout.explicit.wait = "20";
 
 		task ("Add an organization with site") {
 			JSONOrganization.addOrganization(
@@ -576,6 +578,7 @@ definition {
 	@priority = 5
 	test EditMessageBoardThreadReplyViaAP {
 		property portal.acceptance = "true";
+		property timeout.explicit.wait = "10";
 
 		task ("Add a Message Boards to page") {
 			JSONLayout.addWidgetToPublicLayout(
@@ -1435,6 +1438,8 @@ definition {
 	@description = "This is a use case for LPS-133629. The user can select folder by search when create web content based on custom structure via Asset Publisher."
 	@priority = 4
 	test SelectFolderBySearchWhenCreateWebContentBasedOnCustomStructureViaAssetPublisher {
+		property timeout.explicit.wait = "10";
+
 		task ("Add a web content folder") {
 			JSONWebcontent.addFolder(
 				folderDescription = "WC Folder Description",
@@ -1734,7 +1739,7 @@ definition {
 		property portal.acceptance = "true";
 
 		task ("Add a new site") {
-			JSONGroup.addGroup(groupName = "Site Name");
+			HeadlessSite.addSite(siteName = "Site Name");
 		}
 
 		task ("Add a widget page") {
@@ -2246,7 +2251,7 @@ import com.liferay.portal.kernel.module.util.SystemBundleUtil;
 try {
 	def bundleContext = SystemBundleUtil.getBundleContext();
 
-	def serviceReference = bundleContext.getServiceReference("com.liferay.asset.publisher.web.internal.messaging.helper.AssetEntriesCheckerHelper");
+	def serviceReference = bundleContext.getServiceReference("com.liferay.asset.publisher.web.internal.scheduler.helper.AssetEntriesCheckerHelper");
 
 	def assetEntriesCheckerHelper = bundleContext.getService(serviceReference);
 
@@ -2522,37 +2527,11 @@ catch (Exception e) {
 				roleTitle = "WC Author");
 		}
 
-		task ("Define permissions of the regular role") {
-			for (var resourceActionIndex : list "ADD_FOLDER,ADD_FEED,ADD_ARTICLE,VIEW,UPDATE,SUBSCRIBE,PERMISSIONS,ADD_TEMPLATE,ADD_STRUCTURE") {
-				Permissions.definePermissionViaJSONAPI(
-					resourceAction = ${resourceActionIndex},
-					resourceName = "com.liferay.journal",
-					roleTitle = "WC Author");
-			}
-
-			for (var resourceActionIndex : list "VIEW,UPDATE_DISCUSSION,UPDATE,SUBSCRIBE,PERMISSIONS,EXPIRE,DELETE_DISCUSSION,DELETE,ADD_DISCUSSION") {
-				Permissions.definePermissionViaJSONAPI(
-					resourceAction = ${resourceActionIndex},
-					resourceName = "com.liferay.journal.model.JournalArticle",
-					roleTitle = "WC Author");
-			}
-
-			Permissions.definePermissionViaJSONAPI(
-				resourceAction = "VIEW_SITE_ADMINISTRATION",
-				resourceName = "com.liferay.portal.kernel.model.Group",
-				roleTitle = "WC Author");
-
-			Permissions.definePermissionViaJSONAPI(
-				resourceAction = "VIEW",
-				resourceName = "com.liferay.dynamic.data.mapping.model.DDMStructure-com.liferay.journal.model.JournalArticle",
-				roleTitle = "WC Author");
-
-			for (var resourceActionIndex : list "VIEW,PREFERENCES,PERMISSIONS,CONFIGURATION,ACCESS_IN_CONTROL_PANEL") {
-				Permissions.definePermissionViaJSONAPI(
-					resourceAction = ${resourceActionIndex},
-					resourceName = "com_liferay_journal_web_portlet_JournalPortlet",
-					roleTitle = "WC Author");
-			}
+		task ("Define the permissions of regular role") {
+			Permissions.definePermissionsViaJSONAPI(
+				resourceNameActionList = "com.liferay.journal,ADD_FOLDER,ADD_FEED,ADD_ARTICLE,VIEW,UPDATE,SUBSCRIBE,PERMISSIONS,ADD_TEMPLATE,ADD_STRUCTURE:com.liferay.journal.model.JournalArticle,VIEW,UPDATE_DISCUSSION,UPDATE,SUBSCRIBE,PERMISSIONS,EXPIRE,DELETE_DISCUSSION,DELETE,ADD_DISCUSSION:com.liferay.portal.kernel.model.Group,VIEW_SITE_ADMINISTRATION:com.liferay.dynamic.data.mapping.model.DDMStructure-com.liferay.journal.model.JournalArticle,VIEW:com_liferay_journal_web_portlet_JournalPortlet,VIEW,PREFERENCES,PERMISSIONS,CONFIGURATION,ACCESS_IN_CONTROL_PANEL",
+				roleTitle = "WC Author",
+				roleType = "regular");
 		}
 
 		task ("Assign the regular roles to two new users") {
@@ -2639,6 +2618,8 @@ catch (Exception e) {
 	@description = "This is a test for LPS-129012. View web content in associated public content page."
 	@priority = 4
 	test ViewWebContentInAssociatedPublicContentPage {
+		property timeout.explicit.wait = "10";
+
 		task ("Add a content page") {
 			JSONLayout.addPublicLayout(
 				groupName = "Test Site Name",
@@ -2719,6 +2700,8 @@ catch (Exception e) {
 	@description = "View web content in associated public page."
 	@priority = 4
 	test ViewWebContentInAssociatedPublicPage {
+		property timeout.explicit.wait = "10";
+
 		task ("Set the Asset Publisher as default for page") {
 			Navigator.gotoSitePage(
 				pageName = "Asset Publisher Page",

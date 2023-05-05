@@ -21,13 +21,13 @@ import {useNavigate} from 'react-router-dom';
 import {KeyedMutator} from 'swr';
 
 import {Sort} from '../../context/ListViewContext';
+import Permission from '../../core/Permission';
 import useContextMenu from '../../hooks/useContextMenu';
 import {APIResponse} from '../../services/rest';
 import {Action, SortDirection, SortOption} from '../../types';
-import {Permission} from '../../util/permission';
 import ContextMenu from '../ContextMenu';
 
-type Column<T = any> = {
+export type Column<T = any> = {
 	clickable?: boolean;
 	key: string;
 	render?: (
@@ -39,6 +39,7 @@ type Column<T = any> = {
 	sorteable?: boolean;
 	truncate?: boolean;
 	value: string;
+	width?: '50' | '75' | '100' | '200' | '250' | '300' | '350' | '400';
 };
 
 export type TableProps<T = any> = {
@@ -123,7 +124,7 @@ const Table: React.FC<TableProps> = ({
 		<>
 			<ClayTable
 				borderless
-				className="testray-table"
+				className="tr-table"
 				hover
 				responsive={responsive}
 				tableVerticalAlignment={bodyVerticalAlignment}
@@ -143,19 +144,26 @@ const Table: React.FC<TableProps> = ({
 
 						{columns.map((column, index) => (
 							<ClayTable.Cell headingTitle key={index}>
-								<>
-									{column.value}
+								<div className="d-flex justify-content-between">
+									<span
+										className={classNames({
+											'cursor-pointer': column.sorteable,
+										})}
+										onClick={() => changeSort(column.key)}
+									>
+										{column.value}
+									</span>
 
 									{column.sorteable && (
 										<ClayIcon
-											className="cursor-pointer ml-1"
+											className="cursor-pointer"
 											onClick={() =>
 												changeSort(column.key)
 											}
 											symbol={getSortSymbol(column.key)}
 										/>
 									)}
-								</>
+								</div>
 							</ClayTable.Cell>
 						))}
 					</ClayTable.Row>
@@ -168,10 +176,11 @@ const Table: React.FC<TableProps> = ({
 								rowIndex === contextMenuState.rowIndex &&
 								contextMenuState.visible
 							}
-							className={classNames('table-row', {
-								'highligth-bar': highlight && highlight(item),
+							className={classNames('tr-table__row', {
 								'text-nowrap': !rowWrap,
 								'text-wrap': rowWrap,
+								'tr-table__row--highligth':
+									highlight && highlight(item),
 							})}
 							key={rowIndex}
 							onContextMenu={(event) => {
@@ -198,6 +207,7 @@ const Table: React.FC<TableProps> = ({
 								<ClayTable.Cell
 									className={classNames('text-dark', {
 										'cursor-pointer': column.clickable,
+										[`table-cell-minw-${column.width}`]: column.width,
 										'table-cell-expand':
 											column.size === 'sm',
 										'table-cell-expand-small':

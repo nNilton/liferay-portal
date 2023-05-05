@@ -3,7 +3,7 @@ definition {
 
 	property portal.release = "true";
 	property portal.upstream = "true";
-	property testray.main.component.name = "Site Pages Administration";
+	property testray.main.component.name = "Page Administration";
 
 	setUp {
 		task ("Set up instance and sign in") {
@@ -25,11 +25,10 @@ definition {
 	@priority = 3
 	test EditFriendlyURLOfPageSetInStagingSite {
 		task ("Given a page admin has a page set with child pages") {
-			Site.openSitesAdmin();
-
-			Site.addCustomCP(
+			HeadlessSite.addSite(
 				siteName = "Site Name",
-				siteTemplateName = "Welcome");
+				templateName = "Welcome",
+				templateType = "Site Initializer");
 
 			PagesAdmin.openPagesAdmin(siteURLKey = "site-name");
 

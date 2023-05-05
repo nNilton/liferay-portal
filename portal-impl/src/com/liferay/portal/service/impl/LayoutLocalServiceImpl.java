@@ -709,6 +709,44 @@ public class LayoutLocalServiceImpl extends LayoutLocalServiceBaseImpl {
 			description, type, hidden, false, friendlyURL, serviceContext);
 	}
 
+	public Layout copyLayout(
+			long userId, long groupId, boolean privateLayout,
+			Map<Locale, String> nameMap, boolean hidden, boolean system,
+			boolean copyPermissions, long sourcePlid,
+			ServiceContext serviceContext)
+		throws PortalException {
+
+		Layout sourceLayout = layoutLocalService.getLayout(sourcePlid);
+
+		UnicodeProperties sourceUnicodeProperties =
+			sourceLayout.getTypeSettingsProperties();
+
+		Layout targetLayout = layoutLocalService.addLayout(
+			userId, groupId, privateLayout, sourceLayout.getParentLayoutId(),
+			sourceLayout.getClassNameId(), sourceLayout.getClassPK(), nameMap,
+			sourceLayout.getTitleMap(), sourceLayout.getDescriptionMap(),
+			sourceLayout.getKeywordsMap(), sourceLayout.getRobotsMap(),
+			sourceLayout.getType(), sourceUnicodeProperties.toString(), hidden,
+			system, new HashMap<>(), sourceLayout.getMasterLayoutPlid(),
+			serviceContext);
+
+		if (copyPermissions) {
+			_resourceLocalService.deleteResource(
+				targetLayout.getCompanyId(), Layout.class.getName(),
+				ResourceConstants.SCOPE_INDIVIDUAL, targetLayout.getPlid());
+			_resourceLocalService.copyModelResources(
+				sourceLayout.getCompanyId(), Layout.class.getName(),
+				sourceLayout.getPlid(), targetLayout.getPlid());
+		}
+
+		UnicodeProperties targetUnicodeProperties =
+			targetLayout.getTypeSettingsProperties();
+
+		targetUnicodeProperties.put("published", Boolean.FALSE.toString());
+
+		return layoutLocalService.updateLayout(targetLayout);
+	}
+
 	/**
 	 * Deletes the layout, its child layouts, and its associated resources.
 	 *
@@ -952,12 +990,8 @@ public class LayoutLocalServiceImpl extends LayoutLocalServiceBaseImpl {
 	@Override
 	public Layout fetchDefaultLayout(long groupId, boolean privateLayout) {
 		if (groupId > 0) {
-			List<Layout> layouts = layoutPersistence.findByG_P(
-				groupId, privateLayout, 0, 1);
-
-			if (!layouts.isEmpty()) {
-				return layouts.get(0);
-			}
+			return layoutPersistence.fetchByG_P_First(
+				groupId, privateLayout, null);
 		}
 
 		return null;
@@ -1125,12 +1159,10 @@ public class LayoutLocalServiceImpl extends LayoutLocalServiceBaseImpl {
 	@Override
 	public long getDefaultPlid(long groupId) {
 		if (groupId > 0) {
-			List<Layout> layouts = layoutPersistence.findByGroupId(
-				groupId, 0, 1);
+			Layout layout = layoutPersistence.fetchByGroupId_First(
+				groupId, null);
 
-			if (!layouts.isEmpty()) {
-				Layout layout = layouts.get(0);
-
+			if (layout != null) {
 				return layout.getPlid();
 			}
 		}
@@ -1980,6 +2012,14 @@ public class LayoutLocalServiceImpl extends LayoutLocalServiceBaseImpl {
 
 	@Override
 	public int getLayoutsCount(
+		long groupId, boolean privateLayout, long parentLayoutId) {
+
+		return layoutPersistence.countByG_P_P(
+			groupId, privateLayout, parentLayoutId);
+	}
+
+	@Override
+	public int getLayoutsCount(
 			long groupId, long userId, boolean privateLayout, String keywords,
 			String[] types)
 		throws PortalException {
@@ -2102,12 +2142,10 @@ public class LayoutLocalServiceImpl extends LayoutLocalServiceBaseImpl {
 			getCounterName(groupId, privateLayout));
 
 		if (nextLayoutId == 1) {
-			List<Layout> layouts = layoutPersistence.findByG_P(
-				groupId, privateLayout, 0, 1, new LayoutComparator());
+			Layout layout = layoutPersistence.fetchByG_P_First(
+				groupId, privateLayout, new LayoutComparator());
 
-			if (!layouts.isEmpty()) {
-				Layout layout = layouts.get(0);
-
+			if (layout != null) {
 				nextLayoutId = layout.getLayoutId() + 1;
 
 				counterLocalService.reset(

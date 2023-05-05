@@ -11,7 +11,7 @@ definition {
 
 		User.firstLoginPG();
 
-		JSONGroup.addGroup(groupName = "Site Name");
+		HeadlessSite.addSite(siteName = "Site Name");
 
 		JSONLayout.addPublicLayout(
 			groupName = "Site Name",
@@ -22,7 +22,7 @@ definition {
 		DMNavigator.openDocumentsAndMediaAdmin(siteURLKey = "site-name-staging");
 	}
 
-	@description = "This ensures that the document using custom document type can be deleted and republished."
+	@description = "This ensures that the document using custom document type can be deleted and republished. Skip the instance for performance improvement."
 	@priority = 5
 	@refactordone
 	test CanDeleteDocumentWithCustomType {
@@ -906,7 +906,7 @@ definition {
 	@description = "This is a test for LPS-136826. It checks that a shortcut can be published using the normal publication process."
 	@priority = 3
 	test CanPublishShortcut {
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 
 		JSONDocument.addFileWithUploadedFile(
 			dmDocumentDescription = "DM Document Description",
@@ -941,7 +941,7 @@ definition {
 	test CanPublishShortcutViaSAP {
 		property portal.acceptance = "true";
 
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 
 		JSONDocument.addFileWithUploadedFile(
 			dmDocumentDescription = "DM Document Description",
@@ -1028,8 +1028,6 @@ definition {
 	@description = "This is a test for LPS-136822. It checks that a document type can be updated and published using the normal publication process."
 	@priority = 3
 	test CanPublishUpdatedDocumentType {
-		property osgi.modules.includes = "document-library-google-docs";
-
 		JSONLayout.addWidgetToPublicLayout(
 			column = 1,
 			groupName = "Site Name (Staging)",
@@ -1043,6 +1041,13 @@ definition {
 			groupName = "Site Name-staging",
 			mimeType = "image/jpeg",
 			sourceFileName = "Document_1.jpeg");
+
+		DMNavigator.openDocumentTypesAdmin(siteURLKey = "site-name-staging");
+
+		DMDocumentType.add(
+			dmDocumentTypeDescription = "DM Document Type Description",
+			dmDocumentTypeFieldNames = "Text",
+			dmDocumentTypeName = "DM Document Type Name");
 
 		Navigator.gotoStagedSitePage(
 			pageName = "Staging DM Page",
@@ -1066,7 +1071,7 @@ definition {
 
 		DMDocument.editCP(
 			dmDocumentTitle = "Document_1.jpeg",
-			dmDocumentTypeEdit = "Google Drive Shortcut");
+			dmDocumentTypeEdit = "DM Document Type Name");
 
 		Navigator.gotoStagedSitePage(
 			pageName = "Staging DM Page",
@@ -1082,13 +1087,13 @@ definition {
 
 		DMDocument.viewCP(
 			dmDocumentTitle = "Document_1.jpeg",
-			dmDocumentType = "Google Drive Shortcut");
+			dmDocumentType = "DM Document Type Name");
 	}
 
 	@description = "This is a test for LPS-136830. It checks that a shortcut can be updated and published."
 	@priority = 3
 	test CanPublishUpdatedShortcut {
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 
 		for (var entryCount : list "1,2") {
 			JSONDocument.addFileWithUploadedFile(
@@ -1471,6 +1476,8 @@ definition {
 	@description = "This test covers LPS-154413. It checks that an image with a custom friendlyURL added to a dynamic collection displayed in an Asset Publisher can be rendered properly on a site after its friendlyURL is edited and republished."
 	@priority = 4
 	test CanViewImageInDynamicCollectionViaAPAfterFriendlyURLIsUpdated {
+		property test.name.skip.portal.instance = "DMLocalStaging#CanViewImageInDynamicCollectionViaAPAfterFriendlyURLIsUpdated";
+
 		JSONDepot.addDepot(
 			depotDescription = "This is the description of a depot",
 			depotName = "Test Depot Name");

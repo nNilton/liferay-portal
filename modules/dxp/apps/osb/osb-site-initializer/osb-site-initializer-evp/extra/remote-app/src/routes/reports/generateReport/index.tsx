@@ -17,6 +17,7 @@ import {SubmitHandler, useForm} from 'react-hook-form';
 import Form from '../../../common/components/Form';
 import LoadingIndicator from '../../../common/components/Form/LoadingIndicator';
 import yupSchema, {yupResolver} from '../../../common/schema/yup';
+import {Liferay} from '../../../common/services/liferay/liferay';
 import {getPicklistByName} from '../../../common/services/picklist';
 import {getRequestsByFilter} from '../../../common/services/request';
 import {
@@ -35,9 +36,12 @@ const GenerateReport = () => {
 	const [branches, setBranches] = useState<any>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
+	const redirect = `${Liferay.ThemeDisplay.getPortalURL()}/web/evp/reports`;
+
 	const {
 		clearErrors,
 		formState: {errors},
+		getValues,
 		handleSubmit,
 		register,
 		setError,
@@ -45,6 +49,8 @@ const GenerateReport = () => {
 		watch,
 	} = useForm<generateReportsType>({
 		defaultValues: {
+			finalRequestDate: '',
+			initialRequestDate: '',
 			liferayBranch: [],
 			requestStatus: [],
 		},
@@ -56,7 +62,7 @@ const GenerateReport = () => {
 
 		if (dateInitial && dateFinal) {
 			if (dateInitial > dateFinal) {
-				setError('initialRequestDate', {
+				setError(FIELDSREPORT.INITIALREQUESTDATE, {
 					message:
 						'Initial Request Date cannot be greater than Final Request Date',
 					type: 'custom',
@@ -89,7 +95,7 @@ const GenerateReport = () => {
 		return true;
 	};
 
-	const constructionFieldsCsv = (fields: RequestType) => {
+	const constructionFieldsCsv = (fields: RequestType[]) => {
 		let fieldsCsv = '';
 
 		const headers = [
@@ -113,8 +119,7 @@ const GenerateReport = () => {
 			const body = [
 				field?.r_organization_c_evpOrganizationId,
 				field?.r_organization_c_evpOrganization?.organizationName,
-				field?.r_organization_c_evpOrganization
-					?.taxIdentificationNumber,
+				field?.r_organization_c_evpOrganization?.taxId,
 				field?.fullName,
 				dayjs(field?.dateCreated).format('MM-DD-YYYY'),
 				field?.requestDescription,
@@ -146,6 +151,8 @@ const GenerateReport = () => {
 		);
 
 		if (dateCheck === false) {
+			setIsLoading(false);
+
 			return;
 		}
 
@@ -167,10 +174,14 @@ const GenerateReport = () => {
 	};
 
 	const loadPickLists = async () => {
-		const statusList = await getPicklistByName('Request: Request Status');
+		const statusList = await getPicklistByName(
+			'EVP Request: Request Status'
+		);
 		setStatuses(statusList);
 
-		const branchList = await getPicklistByName('Request: Liferay Branch');
+		const branchList = await getPicklistByName(
+			'EVP Request: Liferay Branch'
+		);
 		setBranches(branchList);
 	};
 
@@ -207,31 +218,35 @@ const GenerateReport = () => {
 			{isLoading ? (
 				<LoadingIndicator />
 			) : (
-				<ClayForm>
+				<ClayForm className="mb-9">
 					<div className="row">
 						<div className="col">
 							<Form.DatePicker
 								clearErrors={clearErrors}
-								errors={errors}
+								errors={formProps.errors}
 								id="initialRequestDate"
 								label="Initial Request Date"
 								{...register('initialRequestDate')}
 								name="initialRequestDate"
 								placeholder="YYYY-MM-DD"
 								setValue={setValue}
+								value={
+									getValues('initialRequestDate') as string
+								}
 							/>
 						</div>
 
 						<div className="col">
 							<Form.DatePicker
 								clearErrors={clearErrors}
-								errors={errors}
+								errors={formProps.errors}
 								id="finalRequestDate"
 								label="Final Request Date"
 								{...register('finalRequestDate')}
 								name="finalRequestDate"
 								placeholder="YYYY-MM-DD"
 								setValue={setValue}
+								value={getValues('finalRequestDate') as string}
 							/>
 						</div>
 					</div>
@@ -332,15 +347,31 @@ const GenerateReport = () => {
 						</div>
 					</div>
 
-					<div className="mt-4 row">
-						<div className="col d-flex justify-content-end">
-							<Form.Button
-								className="px-4"
-								displayType="primary"
-								onClick={handleSubmit(onSubmit)}
-							>
-								Generate
-							</Form.Button>
+					<div className="mt-5 row">
+						<div className="col">
+							<div className="col d-flex justify-content-start p-0">
+								<Form.Button
+									className="px-4"
+									displayType="secondary"
+									onClick={() => {
+										window.location.href = redirect;
+									}}
+								>
+									Back
+								</Form.Button>
+							</div>
+						</div>
+
+						<div className="col">
+							<div className="col d-flex justify-content-end">
+								<Form.Button
+									className="px-4"
+									displayType="primary"
+									onClick={handleSubmit(onSubmit)}
+								>
+									Generate
+								</Form.Button>
+							</div>
 						</div>
 					</div>
 				</ClayForm>

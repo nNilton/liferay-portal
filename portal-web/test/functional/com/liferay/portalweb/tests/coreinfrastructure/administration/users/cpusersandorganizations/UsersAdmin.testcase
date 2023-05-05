@@ -1,4 +1,4 @@
-@component-name = "portal-user-management-and-portal-configuration"
+@component-name = "portal-security"
 definition {
 
 	property portal.release = "true";
@@ -69,7 +69,7 @@ definition {
 	@description = "This is a use case for LPS-95340."
 	@priority = 4
 	test AddUserAfterPublishContentPageWithAP {
-		JSONGroup.addGroup(groupName = "Test Site Name");
+		HeadlessSite.addSite(siteName = "Test Site Name");
 
 		PagesAdmin.openPagesAdmin(siteURLKey = "test-site-name");
 
@@ -1533,7 +1533,7 @@ definition {
 		property app.server.types = "jboss,tcserver,tomcat,weblogic,websphere,wildfly";
 		property database.types = "db2,hypersonic,mariadb,mysql,oracle,postgresql,sqlserver,sybase";
 		property environment.acceptance = "true";
-		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,solaris,suse,ubuntu,windows";
+		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,rockylinux,solaris,suse,ubuntu,windows";
 		property portal.acceptance = "true";
 
 		JSONUser.addUser(
@@ -1542,7 +1542,7 @@ definition {
 			userLastName = "userln",
 			userScreenName = "usersn");
 
-		JSONGroup.addGroup(groupName = "Site Name");
+		HeadlessSite.addSite(siteName = "Site Name");
 
 		User.openUsersAdmin();
 
@@ -1655,6 +1655,8 @@ definition {
 
 	@priority = 4
 	test ImpersonatingAdministratorandOwner {
+		property test.name.skip.portal.instance = "UsersAdmin#ImpersonatingAdministratorandOwner";
+
 		var siteName = TestCase.getSiteName(siteName = ${siteName});
 
 		JSONRole.addRegularRole(roleTitle = "Impersonating Role Name");
@@ -2365,6 +2367,8 @@ definition {
 
 	@priority = 4
 	test ValidateRegExPasswordPolicyCP {
+		property test.name.skip.portal.instance = "UsersAdmin#ValidateRegExPasswordPolicyCP";
+
 		JSONUser.addUser(
 			userEmailAddress = "test1@liferay.com",
 			userFirstName = "test1",
@@ -2822,7 +2826,7 @@ definition {
 			emailAddress = "test@liferay.com",
 			emailSenderName = "Joe Bloggs");
 
-		JSONGroup.addGroup(groupName = "My Site");
+		HeadlessSite.addSite(siteName = "My Site");
 
 		JSONLayout.addPublicLayout(
 			groupName = "My Site",

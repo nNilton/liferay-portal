@@ -25,10 +25,9 @@ import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectValidationRule;
 import com.liferay.object.scripting.exception.ObjectScriptingException;
 import com.liferay.object.scripting.validator.ObjectScriptingValidator;
-import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.base.ObjectValidationRuleLocalServiceBaseImpl;
 import com.liferay.object.service.persistence.ObjectDefinitionPersistence;
-import com.liferay.object.system.SystemObjectDefinitionMetadataRegistry;
+import com.liferay.object.system.SystemObjectDefinitionManagerRegistry;
 import com.liferay.object.validation.rule.ObjectValidationRuleEngine;
 import com.liferay.object.validation.rule.ObjectValidationRuleEngineRegistry;
 import com.liferay.portal.aop.AopService;
@@ -209,11 +208,9 @@ public class ObjectValidationRuleLocalServiceImpl
 		ObjectDefinition objectDefinition =
 			_objectDefinitionPersistence.fetchByPrimaryKey(objectDefinitionId);
 
-		Map<String, Object> variables =
-			ObjectEntryVariablesUtil.getValidationRuleVariables(
-				baseModel, _dtoConverterRegistry, objectDefinition,
-				_objectEntryLocalService, payloadJSONObject,
-				_systemObjectDefinitionMetadataRegistry);
+		Map<String, Object> variables = ObjectEntryVariablesUtil.getVariables(
+			_dtoConverterRegistry, objectDefinition, payloadJSONObject,
+			_systemObjectDefinitionManagerRegistry);
 
 		for (ObjectValidationRule objectValidationRule :
 				objectValidationRules) {
@@ -238,21 +235,21 @@ public class ObjectValidationRuleLocalServiceImpl
 					objectValidationRule.getScript());
 			}
 
-			if (GetterUtil.getBoolean(results.get("invalidScript"))) {
-				throw new ObjectValidationRuleEngineException();
-			}
-
 			if (GetterUtil.getBoolean(results.get("invalidFields"))) {
-				throw new ObjectValidationRuleEngineException(
+				throw new ObjectValidationRuleEngineException.InvalidFields(
 					objectValidationRule.getErrorLabel(
 						LocaleUtil.getMostRelevantLocale()));
+			}
+
+			if (GetterUtil.getBoolean(results.get("invalidScript"))) {
+				throw new ObjectValidationRuleEngineException.InvalidScript();
 			}
 		}
 	}
 
 	private void _validateEngine(String engine) throws PortalException {
 		if (Validator.isNull(engine)) {
-			throw new ObjectValidationRuleEngineException("Engine is null");
+			throw new ObjectValidationRuleEngineException.MustNotBeNull();
 		}
 
 		ObjectValidationRuleEngine objectValidationRuleEngine =
@@ -260,8 +257,7 @@ public class ObjectValidationRuleLocalServiceImpl
 				engine);
 
 		if (objectValidationRuleEngine == null) {
-			throw new ObjectValidationRuleEngineException(
-				"Engine \"" + engine + "\" does not exist");
+			throw new ObjectValidationRuleEngineException.NoSuchEngine(engine);
 		}
 	}
 
@@ -329,9 +325,6 @@ public class ObjectValidationRuleLocalServiceImpl
 	private ObjectDefinitionPersistence _objectDefinitionPersistence;
 
 	@Reference
-	private ObjectEntryLocalService _objectEntryLocalService;
-
-	@Reference
 	private ObjectScriptingValidator _objectScriptingValidator;
 
 	@Reference
@@ -339,8 +332,8 @@ public class ObjectValidationRuleLocalServiceImpl
 		_objectValidationRuleEngineRegistry;
 
 	@Reference
-	private SystemObjectDefinitionMetadataRegistry
-		_systemObjectDefinitionMetadataRegistry;
+	private SystemObjectDefinitionManagerRegistry
+		_systemObjectDefinitionManagerRegistry;
 
 	@Reference
 	private UserLocalService _userLocalService;

@@ -16,7 +16,7 @@ definition {
 		}
 
 		task ("Add a site") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 
 		task ("Add a new user") {
@@ -195,7 +195,7 @@ definition {
 
 				WebContent.addCP(webContentContent = "Where does it come from?");
 
-				PortletEntry.submitForPublication();
+				PortletEntry.submitForWorkflow();
 			}
 		}
 

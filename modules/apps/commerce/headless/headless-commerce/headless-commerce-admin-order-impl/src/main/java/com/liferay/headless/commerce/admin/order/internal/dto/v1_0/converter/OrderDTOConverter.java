@@ -14,8 +14,9 @@
 
 package com.liferay.headless.commerce.admin.order.internal.dto.v1_0.converter;
 
-import com.liferay.commerce.account.model.CommerceAccount;
+import com.liferay.account.model.AccountEntry;
 import com.liferay.commerce.constants.CommerceOrderConstants;
+import com.liferay.commerce.constants.CommerceOrderPaymentConstants;
 import com.liferay.commerce.currency.model.CommerceCurrency;
 import com.liferay.commerce.currency.model.CommerceMoney;
 import com.liferay.commerce.currency.util.CommercePriceFormatter;
@@ -57,7 +58,7 @@ import org.osgi.service.component.annotations.Reference;
 		"dto.class.name=com.liferay.commerce.model.CommerceOrder",
 		"version=v1.0"
 	},
-	service = {DTOConverter.class, OrderDTOConverter.class}
+	service = DTOConverter.class
 )
 public class OrderDTOConverter implements DTOConverter<CommerceOrder, Order> {
 
@@ -121,12 +122,13 @@ public class OrderDTOConverter implements DTOConverter<CommerceOrder, Order> {
 				paymentStatus = commerceOrder.getPaymentStatus();
 				paymentStatusInfo = _getPaymentStatusInfo(
 					commerceOrder.getPaymentStatus(),
-					CommerceOrderConstants.getPaymentStatusLabel(
+					CommerceOrderPaymentConstants.getOrderPaymentStatusLabel(
 						commerceOrder.getPaymentStatus()),
 					_language.get(
 						resourceBundle,
-						CommerceOrderConstants.getPaymentStatusLabel(
-							commerceOrder.getPaymentStatus())));
+						CommerceOrderPaymentConstants.
+							getOrderPaymentStatusLabel(
+								commerceOrder.getPaymentStatus())));
 				paymentTermDescription =
 					commerceOrder.getPaymentCommerceTermEntryDescription();
 				paymentTermId = commerceOrder.getPaymentCommerceTermEntryId();
@@ -151,10 +153,10 @@ public class OrderDTOConverter implements DTOConverter<CommerceOrder, Order> {
 
 				setAccountExternalReferenceCode(
 					() -> {
-						CommerceAccount commerceAccount =
-							commerceOrder.getCommerceAccount();
+						AccountEntry accountEntry =
+							commerceOrder.getAccountEntry();
 
-						return commerceAccount.getExternalReferenceCode();
+						return accountEntry.getExternalReferenceCode();
 					});
 				setCreatorEmailAddress(
 					() -> {

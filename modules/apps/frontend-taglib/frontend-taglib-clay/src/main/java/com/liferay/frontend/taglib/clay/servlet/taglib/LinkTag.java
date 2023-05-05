@@ -95,6 +95,10 @@ public class LinkTag extends BaseContainerTag {
 		return _icon;
 	}
 
+	public String getIconAfter() {
+		return _iconAfter;
+	}
+
 	public String getLabel() {
 		return _label;
 	}
@@ -109,6 +113,10 @@ public class LinkTag extends BaseContainerTag {
 
 	public boolean getSmall() {
 		return _small;
+	}
+
+	public boolean getTranslated() {
+		return _translated;
 	}
 
 	public String getType() {
@@ -151,6 +159,10 @@ public class LinkTag extends BaseContainerTag {
 		_icon = icon;
 	}
 
+	public void setIconAfter(String iconAfter) {
+		_iconAfter = iconAfter;
+	}
+
 	public void setLabel(String label) {
 		_label = label;
 	}
@@ -165,6 +177,10 @@ public class LinkTag extends BaseContainerTag {
 
 	public void setSmall(boolean small) {
 		_small = small;
+	}
+
+	public void setTranslated(boolean translated) {
+		_translated = translated;
 	}
 
 	public void setType(String type) {
@@ -187,10 +203,12 @@ public class LinkTag extends BaseContainerTag {
 		_fontSize = null;
 		_href = null;
 		_icon = null;
+		_iconAfter = null;
 		_label = null;
 		_monospaced = false;
 		_outline = false;
 		_small = false;
+		_translated = true;
 		_type = "link";
 		_weight = null;
 	}
@@ -213,6 +231,7 @@ public class LinkTag extends BaseContainerTag {
 		props.put("displayType", _displayType);
 		props.put("fontSize", _fontSize);
 		props.put("icon", _icon);
+		props.put("iconAfter", _iconAfter);
 		props.put("weight", _weight);
 
 		if (Validator.isNotNull(_label)) {
@@ -284,7 +303,9 @@ public class LinkTag extends BaseContainerTag {
 	protected int processStartTag() throws Exception {
 		super.processStartTag();
 
-		if (Validator.isNotNull(_icon) || Validator.isNotNull(_label)) {
+		if (Validator.isNotNull(_icon) || Validator.isNotNull(_iconAfter) ||
+			Validator.isNotNull(_label)) {
+
 			JspWriter jspWriter = pageContext.getOut();
 
 			if (Validator.isNotNull(_icon)) {
@@ -300,11 +321,27 @@ public class LinkTag extends BaseContainerTag {
 			}
 
 			if (Validator.isNotNull(_label)) {
-				String label = LanguageUtil.get(
-					TagResourceBundleUtil.getResourceBundle(pageContext),
-					_label);
+				String label = getLabel();
+
+				if (_translated) {
+					label = LanguageUtil.get(
+						TagResourceBundleUtil.getResourceBundle(pageContext),
+						_label);
+				}
 
 				jspWriter.write(HtmlUtil.escape(label));
+			}
+
+			if (Validator.isNotNull(_iconAfter)) {
+				IconTag iconAfterTag = new IconTag();
+
+				if (Validator.isNotNull(_label)) {
+					iconAfterTag.setCssClass("inline-item inline-item-after");
+				}
+
+				iconAfterTag.setSymbol(_iconAfter);
+
+				iconAfterTag.doTag(pageContext);
 			}
 
 			return SKIP_BODY;
@@ -323,10 +360,12 @@ public class LinkTag extends BaseContainerTag {
 	private String _fontSize;
 	private String _href;
 	private String _icon;
+	private String _iconAfter;
 	private String _label;
 	private boolean _monospaced;
 	private boolean _outline;
 	private boolean _small;
+	private boolean _translated = true;
 	private String _type = "link";
 	private String _weight;
 

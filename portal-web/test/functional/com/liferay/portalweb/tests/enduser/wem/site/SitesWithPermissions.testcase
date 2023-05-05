@@ -3,7 +3,7 @@ definition {
 
 	property portal.release = "true";
 	property portal.upstream = "true";
-	property testray.main.component.name = "Site Administration";
+	property testray.main.component.name = "Sites Administration";
 
 	setUp {
 		TestCase.setUpPortalInstance();
@@ -29,7 +29,7 @@ definition {
 	@description = "This is for LPS-121422. The elements are still shown in edit mode after executing reset changes."
 	@priority = 3
 	test SitesTemplatePermissionPersistence {
-		property testray.component.names = "Permissions,Site Administration";
+		property testray.component.names = "Permissions,Sites Administration";
 
 		task ("Add a new site template") {
 			SiteTemplates.addCP(siteTemplateName = "Site Template Name");
@@ -71,23 +71,25 @@ definition {
 		}
 
 		task ("Add a new site based on the new site template") {
+			HeadlessSite.addSite(
+				siteName = "Site Name",
+				templateName = "Site Template Name",
+				templateType = "Site Template");
+		}
+
+		task ("Assert permissions of each widgets in Home page") {
 			ApplicationsMenu.gotoPortlet(
 				category = "Sites",
 				panel = "Control Panel",
 				portlet = "Sites");
 
-			Site.addCP(
-				siteName = "Site Name",
-				siteTemplateName = "Site Template Name",
-				siteType = "Site Template");
-		}
+			LexiconTable.clickEllipsisItem(
+				item = "Go to Pages",
+				tableEntry = "Site Name");
 
-		task ("Assert permissions of each widgets in Home page") {
-			ContentPagesNavigator.openEditContentPage(
-				pageName = "Home",
-				siteName = "Site Name");
+			SelectWindow.selectPopUp(locator1 = "null");
 
-			PageEditor.assertFragmentSidebarLoaded();
+			ContentPages.gotoPageEditor();
 
 			PermissionsInline.gotoConfigurationPG(portletName = "Message Boards");
 

@@ -31,6 +31,18 @@ public interface CommerceMediaResolver {
 			long commerceAccountId, long cpAttachmentFileEntryId)
 		throws PortalException;
 
+	public String getDownloadVirtualOrderItemURL(
+			long commerceVirtualOrderItemId)
+		throws PortalException;
+
+	public String getDownloadVirtualProductSampleURL(
+			long commerceAccountId, long cpDefinitionId, long fileEntryId)
+		throws PortalException;
+
+	public String getDownloadVirtualProductURL(
+			long commerceAccountId, long cpDefinitionId, long fileEntryId)
+		throws PortalException;
+
 	public String getThumbnailURL(
 			long commerceAccountId, long cpAttachmentFileEntryId)
 		throws PortalException;

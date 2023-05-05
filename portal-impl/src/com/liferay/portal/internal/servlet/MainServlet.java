@@ -82,7 +82,6 @@ import com.liferay.portal.service.impl.LayoutTemplateLocalServiceImpl;
 import com.liferay.portal.servlet.EncryptedServletRequest;
 import com.liferay.portal.servlet.I18nServlet;
 import com.liferay.portal.servlet.filters.absoluteredirects.AbsoluteRedirectsResponse;
-import com.liferay.portal.servlet.filters.i18n.I18nFilter;
 import com.liferay.portal.setup.SetupWizardSampleDataUtil;
 import com.liferay.portal.struts.Action;
 import com.liferay.portal.struts.PortalRequestProcessor;
@@ -241,8 +240,8 @@ public class MainServlet extends HttpServlet {
 
 			String timeZoneID = timeZone.getID();
 
-			if (!Objects.equals("UTC", timeZoneID) &&
-				!Objects.equals("GMT", timeZoneID)) {
+			if (!Objects.equals(timeZoneID, "UTC") &&
+				!Objects.equals(timeZoneID, "GMT")) {
 
 				_log.warn(
 					StringBundler.concat(
@@ -403,13 +402,13 @@ public class MainServlet extends HttpServlet {
 		_registerPortalInitialized();
 
 		if ((_releaseManager != null) && _log.isWarnEnabled()) {
-			String message = _releaseManager.getStatusMessage(true);
+			String message = _releaseManager.getShortStatusMessage(true);
 
 			if (Validator.isNotNull(message)) {
 				_log.warn(message);
 			}
 			else if (_log.isInfoEnabled()) {
-				message = _releaseManager.getStatusMessage(false);
+				message = _releaseManager.getShortStatusMessage(false);
 
 				if (Validator.isNotNull(message)) {
 					_log.info(message);
@@ -621,8 +620,6 @@ public class MainServlet extends HttpServlet {
 		Document document = UnsecureSAXReaderUtil.read(xml);
 
 		I18nServlet.setLanguageIds(document.getRootElement());
-
-		I18nFilter.setLanguageIds(I18nServlet.getLanguageIds());
 	}
 
 	private void _checkWebXml(String xml) throws DocumentException {
@@ -977,7 +974,7 @@ public class MainServlet extends HttpServlet {
 
 		User user = UserLocalServiceUtil.getUserById(userId);
 
-		if (!user.isDefaultUser()) {
+		if (!user.isGuestUser()) {
 			EventsProcessorUtil.process(
 				PropsKeys.LOGIN_EVENTS_PRE, PropsValues.LOGIN_EVENTS_PRE,
 				httpServletRequest, httpServletResponse);
@@ -1004,7 +1001,7 @@ public class MainServlet extends HttpServlet {
 
 		httpSession.removeAttribute("j_remoteuser");
 
-		if (!user.isDefaultUser()) {
+		if (!user.isGuestUser()) {
 			EventsProcessorUtil.process(
 				PropsKeys.LOGIN_EVENTS_POST, PropsValues.LOGIN_EVENTS_POST,
 				httpServletRequest, httpServletResponse);
@@ -1148,7 +1145,10 @@ public class MainServlet extends HttpServlet {
 			HttpServletResponse httpServletResponse)
 		throws IOException, ServletException {
 
-		if ((userId > 0) ||
+		boolean blockLoginPrompt = GetterUtil.getBoolean(
+			httpServletRequest.getAttribute(WebKeys.BLOCK_LOGIN_PROMPT));
+
+		if (blockLoginPrompt || (userId > 0) ||
 			(ParamUtil.getInteger(httpServletRequest, "p_p_lifecycle") == 2)) {
 
 			PortalUtil.sendError(

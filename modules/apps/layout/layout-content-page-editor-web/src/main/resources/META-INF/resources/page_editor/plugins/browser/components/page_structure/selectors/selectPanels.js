@@ -313,6 +313,15 @@ export function selectPanels(activeItemId, activeItemType, state) {
 				fragmentEntryType === FRAGMENT_ENTRY_TYPES.input &&
 				state.selectedViewportSize === VIEWPORT_SIZES.desktop,
 		};
+
+		if (
+			Liferay.FeatureFlags['LPS-169923'] &&
+			state.restrictedItemIds.has(activeItem.itemId)
+		) {
+			panelsIds = {
+				[PANEL_IDS.fragmentGeneral]: true,
+			};
+		}
 	}
 	else if (activeItem.type === LAYOUT_DATA_ITEM_TYPES.row) {
 		panelsIds = {

@@ -39,7 +39,6 @@ import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.LayoutSetLocalService;
 import com.liferay.portal.kernel.service.ResourceLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
-import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
 import com.liferay.portal.kernel.service.ThemeLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.systemevent.SystemEvent;
@@ -75,7 +74,8 @@ public class LayoutUtilityPageEntryLocalServiceImpl
 	public LayoutUtilityPageEntry addLayoutUtilityPageEntry(
 			String externalReferenceCode, long userId, long groupId, long plid,
 			long previewFileEntryId, boolean defaultLayoutUtilityPageEntry,
-			String name, String type, long masterLayoutPlid)
+			String name, String type, long masterLayoutPlid,
+			ServiceContext serviceContext)
 		throws PortalException {
 
 		_validateName(groupId, 0, name, type);
@@ -83,6 +83,8 @@ public class LayoutUtilityPageEntryLocalServiceImpl
 		LayoutUtilityPageEntry layoutUtilityPageEntry =
 			layoutUtilityPageEntryPersistence.create(
 				counterLocalService.increment());
+
+		layoutUtilityPageEntry.setUuid(serviceContext.getUuid());
 
 		if (Validator.isNotNull(externalReferenceCode)) {
 			layoutUtilityPageEntry.setExternalReferenceCode(
@@ -103,8 +105,7 @@ public class LayoutUtilityPageEntryLocalServiceImpl
 
 		if (plid == 0) {
 			Layout layout = _addLayout(
-				userId, groupId, name, masterLayoutPlid,
-				ServiceContextThreadLocal.getServiceContext());
+				userId, groupId, name, masterLayoutPlid, serviceContext);
 
 			if (layout != null) {
 				plid = layout.getPlid();
@@ -114,13 +115,16 @@ public class LayoutUtilityPageEntryLocalServiceImpl
 		layoutUtilityPageEntry.setPlid(plid);
 
 		layoutUtilityPageEntry.setPreviewFileEntryId(previewFileEntryId);
-		layoutUtilityPageEntry.setDefaultLayoutUtilityPageEntry(
-			defaultLayoutUtilityPageEntry);
 		layoutUtilityPageEntry.setName(name);
 		layoutUtilityPageEntry.setType(type);
 
 		layoutUtilityPageEntry = layoutUtilityPageEntryPersistence.update(
 			layoutUtilityPageEntry);
+
+		if (defaultLayoutUtilityPageEntry) {
+			layoutUtilityPageEntry = setDefaultLayoutUtilityPageEntry(
+				layoutUtilityPageEntry.getLayoutUtilityPageEntryId());
+		}
 
 		_resourceLocalService.addResources(
 			layoutUtilityPageEntry.getCompanyId(),
@@ -159,7 +163,8 @@ public class LayoutUtilityPageEntryLocalServiceImpl
 		LayoutUtilityPageEntry layoutUtilityPageEntry =
 			addLayoutUtilityPageEntry(
 				null, userId, serviceContext.getScopeGroupId(), 0, 0, false,
-				name, sourceLayoutUtilityPageEntry.getType(), masterLayoutPlid);
+				name, sourceLayoutUtilityPageEntry.getType(), masterLayoutPlid,
+				serviceContext);
 
 		long previewFileEntryId = _copyPreviewFileEntryId(
 			layoutUtilityPageEntry.getLayoutUtilityPageEntryId(),
@@ -243,6 +248,11 @@ public class LayoutUtilityPageEntryLocalServiceImpl
 
 		return layoutUtilityPageEntryPersistence.fetchByG_N_T(
 			groupId, name, type);
+	}
+
+	@Override
+	public LayoutUtilityPageEntry fetchLayoutUtilityPageEntryByPlid(long plid) {
+		return layoutUtilityPageEntryPersistence.fetchByPlid(plid);
 	}
 
 	@Override

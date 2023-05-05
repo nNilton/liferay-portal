@@ -21,6 +21,7 @@ interface ObjectDefinition {
 	externalReferenceCode: string;
 	id: number;
 	label: LocalizedValue<string>;
+	modifiable?: boolean;
 	name: string;
 	objectActions: [];
 	objectFields: ObjectField[];
@@ -52,6 +53,7 @@ interface ObjectField {
 	indexedLanguageId: Liferay.Language.Locale | null;
 	label: LocalizedValue<string>;
 	listTypeDefinitionId: number;
+	localized: boolean;
 	name: string;
 	objectFieldSettings?: ObjectFieldSetting[];
 	relationshipType?: unknown;
@@ -59,7 +61,7 @@ interface ObjectField {
 	state: boolean;
 	system?: boolean;
 }
-
+type LabelValueObject = {label: string; value: string};
 type ObjectFieldBusinessType =
 	| 'Attachment'
 	| 'LongText'

@@ -27,10 +27,8 @@ import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.search.Indexable;
 import com.liferay.portal.kernel.search.IndexableType;
 import com.liferay.portal.kernel.service.UserLocalService;
-import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.util.PropsUtil;
 
 import java.util.List;
 import java.util.Locale;
@@ -101,14 +99,6 @@ public class ListTypeEntryLocalServiceImpl
 
 	@Override
 	public ListTypeEntry fetchListTypeEntryByExternalReferenceCode(
-		String externalReferenceCode, long companyId) {
-
-		return listTypeEntryPersistence.fetchByERC_C(
-			externalReferenceCode, companyId);
-	}
-
-	@Override
-	public ListTypeEntry fetchListTypeEntryByExternalReferenceCode(
 		String externalReferenceCode, long companyId,
 		long listTypeDefinitionId) {
 
@@ -145,11 +135,12 @@ public class ListTypeEntryLocalServiceImpl
 
 	@Override
 	public ListTypeEntry getListTypeEntryByExternalReferenceCode(
-			String externalReferenceCode, long companyId)
+			String externalReferenceCode, long companyId,
+			long listTypeDefinitionId)
 		throws PortalException {
 
-		return listTypeEntryPersistence.findByERC_C(
-			externalReferenceCode, companyId);
+		return listTypeEntryPersistence.findByERC_C_LTDI(
+			externalReferenceCode, companyId, listTypeDefinitionId);
 	}
 
 	@Indexable(type = IndexableType.REINDEX)
@@ -178,9 +169,7 @@ public class ListTypeEntryLocalServiceImpl
 		String externalReferenceCode, long companyId, long listTypeDefinitionId,
 		long listTypeEntryId) {
 
-		if (Validator.isNull(externalReferenceCode) ||
-			!GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-168886"))) {
-
+		if (Validator.isNull(externalReferenceCode)) {
 			return;
 		}
 

@@ -440,7 +440,9 @@ svn://svn.liferay.com/repos/public/alloy/trunk/sandbox/taglibs.
 	</target>
 
 	<target name="format-source-all">
-		<antcall target="format-source-files" />
+		<antcall target="format-source-files">
+			<param name="check.vulnerabilities" value="${check.vulnerabilities}" />
+		</antcall>
 	</target>
 
 	<target name="format-source-bnd">
@@ -600,12 +602,14 @@ svn://svn.liferay.com/repos/public/alloy/trunk/sandbox/taglibs.
 					<jvmarg value="-Dfile.encoding=UTF-8" />
 					<jvmarg value="-Dsource.formatter.check.registry.in.test.classes=${source.formatter.check.registry.in.test.classes}" />
 					<jvmarg value="-Dsource.formatter.excludes=${source.formatter.excludes}" />
+					<arg value="check.vulnerabilities=${check.vulnerabilities}" />
 					<arg value="commit.count=${source.formatter.commit.count}" />
 					<arg value="format.current.branch=${format.current.branch}" />
 					<arg value="format.latest.author=${format.latest.author}" />
 					<arg value="format.local.changes=${format.local.changes}" />
 					<arg value="git.working.branch.name=${git.working.branch.name}" />
 					<arg value="include.subrepositories=${source.formatter.include.subrepositories}" />
+					<arg value="java.parser.enabled=${java.parser.enabled}" />
 					<arg value="max.line.length=${source.formatter.max.line.length}" />
 					<arg value="processor.thread.count=${source.formatter.processor.thread.count}" />
 					<arg value="show.debug.information=${source.formatter.show.debug.information}" />
@@ -619,6 +623,7 @@ svn://svn.liferay.com/repos/public/alloy/trunk/sandbox/taglibs.
 					<arg value="source.files=${source.files}" />
 					<arg value="source.formatter.properties=${source.formatter.properties}" />
 					<arg value="source.print.errors=${source.print.errors}" />
+					<arg value="use.ci.github.access.token=${use.ci.github.access.token}" />
 					<arg value="validate.commit.messages=${validate.commit.messages}" />
 				</java>
 
@@ -874,10 +879,6 @@ svn://svn.liferay.com/repos/public/alloy/trunk/sandbox/taglibs.
 				</if>
 			</sequential>
 		</for>
-	</target>
-
-	<target name="rebuild-hypersonic">
-		<ant dir="../sql" target="rebuild-hypersonic" />
 	</target>
 
 	<target name="sanitize-lang">

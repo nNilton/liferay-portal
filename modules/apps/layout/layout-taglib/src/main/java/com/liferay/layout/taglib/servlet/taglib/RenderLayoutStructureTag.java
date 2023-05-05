@@ -35,6 +35,7 @@ import com.liferay.info.item.provider.InfoItemDetailsProvider;
 import com.liferay.info.list.renderer.DefaultInfoListRendererContext;
 import com.liferay.info.list.renderer.InfoListRenderer;
 import com.liferay.info.permission.provider.InfoPermissionProvider;
+import com.liferay.info.search.InfoSearchClassMapperRegistryUtil;
 import com.liferay.layout.constants.LayoutWebKeys;
 import com.liferay.layout.display.page.LayoutDisplayPageProvider;
 import com.liferay.layout.display.page.constants.LayoutDisplayPageWebKeys;
@@ -43,7 +44,6 @@ import com.liferay.layout.provider.LayoutStructureProvider;
 import com.liferay.layout.responsive.ResponsiveLayoutStructureUtil;
 import com.liferay.layout.taglib.internal.display.context.RenderCollectionLayoutStructureItemDisplayContext;
 import com.liferay.layout.taglib.internal.display.context.RenderLayoutStructureDisplayContext;
-import com.liferay.layout.taglib.internal.info.search.InfoSearchClassMapperRegistryUtil;
 import com.liferay.layout.taglib.internal.servlet.ServletContextUtil;
 import com.liferay.layout.taglib.internal.util.SegmentsExperienceUtil;
 import com.liferay.layout.util.constants.LayoutStructureConstants;
@@ -60,6 +60,7 @@ import com.liferay.layout.util.structure.collection.EmptyCollectionOptions;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.petra.string.StringUtil;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringWriter;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.layoutconfiguration.util.RuntimePageUtil;
@@ -75,10 +76,10 @@ import com.liferay.portal.kernel.servlet.SessionMessages;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.Constants;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.util.PropsValues;
@@ -629,7 +630,7 @@ public class RenderLayoutStructureTag extends IncludeTag {
 
 		if (Validator.isNotNull(containerLinkHref)) {
 			jspWriter.write("<a href=\"");
-			jspWriter.write(containerLinkHref);
+			jspWriter.write(HtmlUtil.escapeAttribute(containerLinkHref));
 			jspWriter.write("\"style=\"color: inherit; text-decoration: ");
 			jspWriter.write("none;\" target=\"");
 			jspWriter.write(
@@ -883,7 +884,7 @@ public class RenderLayoutStructureTag extends IncludeTag {
 		throws Exception {
 
 		if ((infoForm == null) ||
-			(GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-169923")) &&
+			(FeatureFlagManagerUtil.isEnabled("LPS-169923") &&
 			 !_hasAddPermission(
 				 PortalUtil.getClassName(
 					 formStyledLayoutStructureItem.getClassNameId())))) {
@@ -980,6 +981,8 @@ public class RenderLayoutStructureTag extends IncludeTag {
 		jspWriter.write(formStyledLayoutStructureItem.getItemId());
 		jspWriter.write("\"><input name=\"groupId\" type=\"hidden\" value=\"");
 		jspWriter.write(String.valueOf(themeDisplay.getScopeGroupId()));
+		jspWriter.write("\"><input name=\"p_l_id\" type=\"hidden\" value=\"");
+		jspWriter.write(String.valueOf(themeDisplay.getPlid()));
 		jspWriter.write("\"><input name=\"p_l_mode\" type=\"hidden\" value=\"");
 		jspWriter.write(
 			ParamUtil.getString(

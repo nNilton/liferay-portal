@@ -71,6 +71,11 @@ public class SegmentsSimulationPanelApp extends BaseJSPPanelApp {
 	}
 
 	@Override
+	public Portlet getPortlet() {
+		return _portlet;
+	}
+
+	@Override
 	public String getPortletId() {
 		return SegmentsPortletKeys.SEGMENTS_SIMULATION;
 	}
@@ -109,21 +114,8 @@ public class SegmentsSimulationPanelApp extends BaseJSPPanelApp {
 	}
 
 	@Override
-	@Reference(
-		target = "(javax.portlet.name=" + SegmentsPortletKeys.SEGMENTS_SIMULATION + ")",
-		unbind = "-"
-	)
-	public void setPortlet(Portlet portlet) {
-		super.setPortlet(portlet);
-	}
-
-	@Override
-	@Reference(
-		target = "(osgi.web.symbolicname=com.liferay.segments.simulation.web)",
-		unbind = "-"
-	)
-	public void setServletContext(ServletContext servletContext) {
-		super.setServletContext(servletContext);
+	protected ServletContext getServletContext() {
+		return _servletContext;
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
@@ -136,11 +128,21 @@ public class SegmentsSimulationPanelApp extends BaseJSPPanelApp {
 	private Portal _portal;
 
 	@Reference(
+		target = "(javax.portlet.name=" + SegmentsPortletKeys.SEGMENTS_SIMULATION + ")"
+	)
+	private Portlet _portlet;
+
+	@Reference(
 		target = "(resource.name=" + SegmentsConstants.RESOURCE_NAME + ")"
 	)
 	private PortletResourcePermission _portletResourcePermission;
 
 	@Reference
 	private SegmentsConfigurationProvider _segmentsConfigurationProvider;
+
+	@Reference(
+		target = "(osgi.web.symbolicname=com.liferay.segments.simulation.web)"
+	)
+	private ServletContext _servletContext;
 
 }

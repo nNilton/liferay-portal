@@ -101,12 +101,12 @@ public class AuthorizationCodeGrantServiceContainerRequestFilter
 		try {
 			boolean guestAuthorized = false;
 
-			if (user.isDefaultUser() && !Validator.isBlank(clientId)) {
+			if (user.isGuestUser() && !Validator.isBlank(clientId)) {
 				guestAuthorized = _containsOAuth2ApplicationViewPermission(
 					oAuth2Application, user);
 			}
 
-			if (!user.isDefaultUser() || guestAuthorized) {
+			if (!user.isGuestUser() || guestAuthorized) {
 				long userId = user.getUserId();
 
 				containerRequestContext.setSecurityContext(
@@ -277,7 +277,7 @@ public class AuthorizationCodeGrantServiceContainerRequestFilter
 			User user = _portal.getUser(_httpServletRequest);
 
 			if (user == null) {
-				user = _userLocalService.getDefaultUser(
+				user = _userLocalService.getGuestUser(
 					_portal.getCompanyId(_httpServletRequest));
 			}
 
@@ -296,7 +296,7 @@ public class AuthorizationCodeGrantServiceContainerRequestFilter
 		String prompt = ParamUtil.getString(_httpServletRequest, "prompt");
 
 		if (oAuth2Application.isTrustedApplication() &&
-			Objects.equals("none", prompt)) {
+			Objects.equals(prompt, "none")) {
 
 			return true;
 		}

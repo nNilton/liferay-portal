@@ -13,9 +13,9 @@
  */
 
 import ListView from '../../../components/ListView';
+import SearchBuilder from '../../../core/SearchBuilder';
 import i18n from '../../../i18n';
 import {TestrayTeam, testrayComponentImpl} from '../../../services/rest';
-import {SearchBuilder} from '../../../util/search';
 import TeamFormModal from './ComponentsFormModal';
 import useComponentActions from './useComponentActions';
 
@@ -32,6 +32,8 @@ const ComponentsModal: React.FC<ComponentsModalProps> = ({projectId}) => {
 				forceRefetch={formModal.forceRefetch}
 				managementToolbarProps={{
 					addButton: () => formModal.modal.open(),
+					display: {columns: false},
+					filterSchema: 'components',
 				}}
 				resource={testrayComponentImpl.resource}
 				tableProps={{

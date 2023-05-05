@@ -37,6 +37,19 @@
 
 	<propertycopy from="operating.system.${operating.system.type}.version" name="operating.system.version" />
 
+	<condition property="test.workspace.name" value="${env.TEST_WORKSPACE_NAME}">
+		<and>
+			<isset property="env.TEST_WORKSPACE_NAME" />
+			<not>
+				<equals arg1="${env.TEST_WORKSPACE_NAME}" arg2="" />
+			</not>
+		</and>
+	</condition>
+
+	<condition property="test.workspace.dir" value="${project.dir}/workspaces/${test.workspace.name}">
+		<isset property="test.workspace.name" />
+	</condition>
+
 	<macrodef name="apply-portal-ext-properties">
 		<sequential>
 			<if>
@@ -464,6 +477,8 @@ typeSettings=&#91;&quot;friendlyURLMapping=perico&quot;,&quot;instanceable=false
 
 	<macrodef name="docker-execute">
 		<attribute name="container" />
+		<attribute default="/bin/bash" name="shell.path" />
+
 		<text name="script" />
 
 		<sequential>
@@ -471,19 +486,13 @@ typeSettings=&#91;&quot;friendlyURLMapping=perico&quot;,&quot;instanceable=false
 
 			<echo file="${script.sh.file}"><![CDATA[@{script}]]></echo>
 
-			<get-operating-system-property property.name="operating.system.docker.shell.path" />
-
-			<condition else="/bin/bash" property="docker.shell.path" value="${operating.system.docker.shell.path}">
-				<isset property="operating.system.docker.shell.path" />
-			</condition>
-
 			<execute>
 				<![CDATA[
 					docker exec @{container} mkdir -p /tmp
 
 					docker cp ${script.sh.file} @{container}:/tmp/script.sh
 
-					docker exec @{container} ${docker.shell.path} /tmp/script.sh
+					docker exec @{container} @{shell.path} /tmp/script.sh
 
 					docker exec --user root @{container} rm -f /tmp/script.sh
 				]]>
@@ -629,33 +638,53 @@ jdbc.default.url=${database.url}
 jdbc.default.username=${database.username}
 jdbc.default.password=${database.password}
 
-jdbc.counter.driverClassName=${database.driver}
-jdbc.counter.url=${database.url}
-jdbc.counter.username=${database.username}
-jdbc.counter.password=${database.password}
-
 // HikariCP
 
 jdbc.default.connectionTimeout=600000
-jdbc.default.maximumPoolSize=20
-jdbc.default.minimumIdle=0
-
-jdbc.counter.maximumPoolSize=5
-jdbc.counter.minimumIdle=0
-
-counter.jdbc.prefix=jdbc.counter.]]></echo>
+jdbc.default.maximumPoolSize=30
+jdbc.default.minimumIdle=0]]></echo>
 
 			<if>
 				<equals arg1="${database.type}" arg2="oracle" />
 				<then>
 					<echo append="true" file="@{properties.file}"><![CDATA[
-jdbc.default.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_TIMEOUT=0
-
-jdbc.counter.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_TIMEOUT=0]]></echo>
+jdbc.default.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_TIMEOUT=0]]></echo>
 				</then>
 			</if>
 
 			<post-action />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="get-app-server-property">
+		<attribute name="property.name" />
+
+		<sequential>
+			<check-config />
+
+			<var name="property.name" unset="true" />
+			<var name="@{property.name}" unset="true" />
+
+			<property name="property.name" value="@{property.name}" />
+
+			<beanshell>
+				<![CDATA[
+					String propertyName = project.getProperty("property.name");
+
+					StringBuilder sb = new StringBuilder();
+
+					sb.append("app.server.");
+					sb.append(project.getProperty("app.server"));
+					sb.append(".");
+					sb.append(propertyName.substring(8));
+
+					propertyValue = project.getProperty(sb.toString());
+
+					if (propertyValue != null) {
+						project.setProperty(propertyName, propertyValue);
+					}
+				]]>
+			</beanshell>
 		</sequential>
 	</macrodef>
 
@@ -1758,6 +1787,7 @@ jdbc.counter.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_T
 	<macrodef name="get-test-url">
 		<sequential>
 			<get-operating-system-property property.name="operating.system.docker.image" />
+
 			<get-testcase-property property.name="analytics.cloud.enabled" />
 			<get-testcase-property property.name="testcase.url" />
 
@@ -1820,6 +1850,7 @@ jdbc.counter.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_T
 			</if>
 
 			<get-testcase-property property.name="portal.context" />
+			<propertycopy from="portal.context[${env.CI_TEST_SUITE}]" name="portal.context" silent="true" />
 
 			<if>
 				<isset property="portal.context" />
@@ -1829,6 +1860,7 @@ jdbc.counter.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_T
 			</if>
 
 			<get-testcase-property property.name="portal.proxy.path" />
+			<propertycopy from="portal.proxy.path[${env.CI_TEST_SUITE}]" name="portal.proxy.path" silent="true" />
 
 			<if>
 				<isset property="portal.proxy.path" />
@@ -2060,6 +2092,8 @@ war.path=${app.server.portal.dir}/</echo>
 	</macrodef>
 
 	<macrodef name="poshi-execute">
+		<attribute default="portal-web/build-test.gradle" name="build.gradle.file" />
+		<attribute default="${basedir}" name="build.gradle.dir" />
 		<attribute default="false" name="failonerror" />
 		<attribute name="task" />
 
@@ -2094,16 +2128,16 @@ war.path=${app.server.portal.dir}/</echo>
 						</else>
 					</if>
 
-					<gradle-execute failonerror="@{failonerror}" gradlejvmargs="${poshi.gradle.jvm.args}" setupbinariescache="false" stacktrace="false" task="@{task}">
-						<arg value="--build-file=portal-web/build-test.gradle" />
+					<gradle-execute dir="@{build.gradle.dir}" failonerror="@{failonerror}" gradlejvmargs="${poshi.gradle.jvm.args}" setupbinariescache="false" stacktrace="false" task="@{task}">
+						<arg value="--build-file=@{build.gradle.file}" />
 						<arg value="-Ptmp.maven.repository.dir=../.m2-tmp" />
 						<env key="ANT_OPTS" value="${poshi.java.jdk.opts}" />
 						<env key="JAVA_HOME" path="${java.jdk.home}" />
 					</gradle-execute>
 				</then>
 				<else>
-					<gradle-execute failonerror="@{failonerror}" setupbinariescache="false" stacktrace="false" task="@{task}">
-						<arg value="--build-file=portal-web/build-test.gradle" />
+					<gradle-execute dir="@{build.gradle.dir}" failonerror="@{failonerror}" setupbinariescache="false" stacktrace="false" task="@{task}">
+						<arg value="--build-file=@{build.gradle.file}" />
 						<arg value="-Ptmp.maven.repository.dir=../.m2-tmp" />
 					</gradle-execute>
 				</else>
@@ -2223,6 +2257,7 @@ war.path=${app.server.portal.dir}/</echo>
 						/>
 
 						<get-testcase-property property.name="portal.proxy.path" />
+						<propertycopy from="portal.proxy.path[${env.CI_TEST_SUITE}]" name="portal.proxy.path" silent="true" />
 
 						<if>
 							<isset property="portal.proxy.path" />
@@ -2356,7 +2391,7 @@ accessKey=&quot;${aws.s3.access.key.id}&quot;
 cacheDirCleanUpFrequency=&quot;100&quot;
 connectionTimeout=&quot;10000&quot;
 multipartUploadThreshold=&quot;10485760&quot;
-bucketName=&quot;lfr-qa-poshi-test-${aws.bucket.id}&quot;
+bucketName=&quot;lfr-qa-poshi-test-${s3.bucket.id}&quot;
 minimumUploadPartSize=&quot;5242880&quot;
 proxyPassword=&quot;&quot;
 maxPoolSize=&quot;20&quot;
@@ -2871,6 +2906,17 @@ jdbc.default.password=${database.password}</echo>
 		</sequential>
 	</macrodef>
 
+	<macrodef name="prepare-ibm-s3-configuration">
+		<sequential>
+			<echo file="${liferay.home}/osgi/configs/com.liferay.portal.store.s3.configuration.S3StoreConfiguration.config">
+bucketName=&quot;lfr-qa-poshi-test-${s3.bucket.id}&quot;
+accessKey=&quot;${ibm.s3.access.key.id}&quot;
+secretKey=&quot;${ibm.s3.secret.access.key}&quot;
+s3Endpoint=&quot;https://s3.us-east.cloud-object-storage.appdomain.cloud&quot;
+s3Region=&quot;us-east&quot;</echo>
+		</sequential>
+	</macrodef>
+
 	<macrodef name="prepare-liferay-online-properties">
 		<sequential>
 			<echo append="true" file="portal-impl/src/portal-ext.properties">
@@ -2992,6 +3038,12 @@ include-and-override=portal-liferay-online-limit.properties</echo>
 		</sequential>
 	</macrodef>
 
+	<macrodef name="prepare-portal-security-audit-osgi-configuration">
+		<sequential>
+			<echo file="${liferay.home}/osgi/configs/com.liferay.portal.security.audit.router.configuration.PersistentAuditMessageProcessorConfiguration.config">enabled=B"true"</echo>
+		</sequential>
+	</macrodef>
+
 	<macrodef name="prepare-portal-template-freemarker-osgi-configuration">
 		<sequential>
 			<echo file="${liferay.home}/osgi/configs/com.liferay.portal.template.freemarker.configuration.FreeMarkerEngineConfiguration.config">asyncRenderTimeout=L"7200000"${line.separator}loopCountThreshold=I"2147483647"</echo>
@@ -3077,34 +3129,6 @@ jdbc.read.jndi.name=jdbc/LiferayReadPool</echo>
 					</then>
 				</elseif>
 			</if>
-
-			<loadproperties srcFile="${project.dir}/portal-impl/src/portal.properties">
-				<filterchain>
-					<tokenfilter>
-						<containsstring contains="spring" />
-					</tokenfilter>
-				</filterchain>
-			</loadproperties>
-
-			<propertycopy from="spring.configs" name="spring.configs.default" />
-			<propertycopy from="spring.infrastructure.configs" name="spring.infrastructure.configs.default" />
-
-			<echo append="true" file="${test.app.server.classes.portal.dir}/portal-ext.properties">
-				<![CDATA[
-counter.jdbc.prefix=jdbc.write.
-spring.configs=\
-	${spring.configs.default},/META-INF/dynamic-data-source-spring.xml
-spring.infrastructure.configs=\
-	${spring.infrastructure.configs.default}
-				]]>
-			</echo>
-
-			<replace
-				file="${test.app.server.classes.portal.dir}/portal-ext.properties"
-			>
-				<replacetoken><![CDATA[#/META-INF/dynamic-data-source-infrastructure-spring.xml]]></replacetoken>
-				<replacevalue><![CDATA[/META-INF/dynamic-data-source-infrastructure-spring.xml]]></replacevalue>
-			</replace>
 		</sequential>
 	</macrodef>
 
@@ -4322,6 +4346,55 @@ tell application "Safari" to quit
 		</sequential>
 	</macrodef>
 
+	<macrodef name="prepare-selenium-site-initializer-partner-portal-salesforce-properties">
+		<sequential>
+			<if>
+				<isset property="site.initializer.partner.portal.login.url" />
+				<then>
+					<echo append="true" file="${test.ext.properties.file}">
+						site.initializer.partner.portal.login.url=${site.initializer.partner.portal.login.url}
+					</echo>
+				</then>
+			</if>
+
+			<if>
+				<isset property="site.initializer.partner.portal.consumer.key" />
+				<then>
+					<echo append="true" file="${test.ext.properties.file}">
+						site.initializer.partner.portal.consumer.key=${site.initializer.partner.portal.consumer.key}
+					</echo>
+				</then>
+			</if>
+
+			<if>
+				<isset property="site.initializer.partner.portal.consumer.secret" />
+				<then>
+					<echo append="true" file="${test.ext.properties.file}">
+						site.initializer.partner.portal.consumer.secret=${site.initializer.partner.portal.consumer.secret}
+					</echo>
+				</then>
+			</if>
+
+			<if>
+				<isset property="site.initializer.partner.portal.username" />
+				<then>
+					<echo append="true" file="${test.ext.properties.file}">
+						site.initializer.partner.portal.username=${site.initializer.partner.portal.username}
+					</echo>
+				</then>
+			</if>
+
+			<if>
+				<isset property="site.initializer.partner.portal.password" />
+				<then>
+					<echo append="true" file="${test.ext.properties.file}">
+						site.initializer.partner.portal.password=${site.initializer.partner.portal.password}
+					</echo>
+				</then>
+			</if>
+		</sequential>
+	</macrodef>
+
 	<macrodef name="prepare-selenium-site-initializer-raylife-d2c-paypal-properties">
 		<sequential>
 			<if>
@@ -4747,10 +4820,6 @@ tell application "Safari" to quit
 							<ant dir="util-java" inheritAll="false" target="install-portal-snapshot" />
 
 							<gradle-execute dir="${project.dir}/modules/core" task="deploy">
-								<arg value="-Dportal.build=true" />
-							</gradle-execute>
-
-							<gradle-execute dir="${project.dir}/modules/apps/petra" task="deploy">
 								<arg value="-Dportal.build=true" />
 							</gradle-execute>
 						</then>
@@ -6475,8 +6544,20 @@ go</echo>
 						<var name="app.server.tomcat.version" value="9.0.68" />
 					</then>
 				</elseif>
+				<elseif>
+					<or>
+						<equals arg1="@{liferay.portal.bundle}" arg2="7.4.13.u67" />
+						<equals arg1="@{liferay.portal.bundle}" arg2="7.4.13.u68" />
+						<equals arg1="@{liferay.portal.bundle}" arg2="7.4.13.u69" />
+						<equals arg1="@{liferay.portal.bundle}" arg2="7.4.13.u70" />
+						<equals arg1="@{liferay.portal.bundle}" arg2="7.4.13.u71" />
+					</or>
+					<then>
+						<var name="app.server.tomcat.version" value="9.0.71" />
+					</then>
+				</elseif>
 				<else>
-					<var name="app.server.tomcat.version" value="9.0.71" />
+					<var name="app.server.tomcat.version" value="9.0.73" />
 				</else>
 			</if>
 
@@ -6861,12 +6942,14 @@ org.apache.catalina.startup.ClassLoaderFactory.level=INFO]]>
 									<isset property="operating.system.docker.image" />
 									<then>
 										<sequential>
+											<get-app-server-property property.name="max.log.size.in.mb" />
+											<get-operating-system-property property.name="operating.system.docker.shell.path" />
 											<get-operating-system-property property.name="operating.system.host" />
 
-											<docker-execute container="${operating.system.host}">
+											<docker-execute container="${operating.system.host}" shell.path="${operating.system.docker.shell.path}">
 												chmod +x ${test.app.server.bin.dir}/${app.server.start.executable}
 
-												${test.app.server.bin.dir}/${app.server.start.executable} ${app.server.start.executable.arg.line}
+												${test.app.server.bin.dir}/${app.server.start.executable} ${app.server.start.executable.arg.line} | head -c ${app.server.max.log.size}M
 											</docker-execute>
 										</sequential>
 									</then>
@@ -6960,6 +7043,7 @@ org.apache.catalina.startup.ClassLoaderFactory.level=INFO]]>
 				ssh -fN -4 -L 8082:${ip.address}:8082 ${browser.host}
 				ssh -fN -4 -L 8282:${ip.address}:8282 ${browser.host}
 				ssh -fN -4 -L 8443:${ip.address}:8443 ${browser.host}
+				ssh -fN -4 -L 8983:${ip.address}:8983 ${browser.host}
 				ssh -fN -4 -L 9080:${ip.address}:9080 ${browser.host}
 				ssh -fN -4 -L 9200:${ip.address}:9200 ${browser.host}
 				ssh -fN -4 -L 9201:${ip.address}:9201 ${browser.host}
@@ -7110,7 +7194,45 @@ ${docker.start.error}</fail>
 					<equals arg1="${database.type}" arg2="db2" />
 				</and>
 				<then>
-					<property name="docker.database.wait.condition">[[ "$(/bin/su - db2inst1 -c '~/sqllib/bin/db2 db2start')" =~ "SQL1026N" ]]</property>
+					<sequential>
+						<property location="db2_wait.sh" name="db2.wait.script" />
+
+						<echo file="${db2.wait.script}">
+							<![CDATA[
+								while [ -z "$(docker logs ${database.host} | grep "Setup has completed.")" ]
+								do
+									echo "Searching for db2 initialization message"
+
+									sleep 5
+								done
+
+								echo "db2 initialization message found"
+							]]>
+						</echo>
+
+						<print-file file.name="${db2.wait.script}" />
+
+						<chmod
+							perm="a+x"
+						>
+							<fileset
+								dir="."
+								includes="db2_wait.sh"
+							/>
+						</chmod>
+
+						<echo>
+							executing db2_wait.sh
+						</echo>
+
+						<exec executable="/bin/bash">
+							<arg value="${db2.wait.script}" />
+						</exec>
+
+						<delete file="${db2.wait.script}" />
+
+						<property name="docker.database.wait.condition">[[ "$(/bin/su - db2inst1 -c '/database/config/db2inst1/sqllib/bin/db2 db2start')" =~ "SQL1026N" ]]</property>
+					</sequential>
 				</then>
 				<elseif>
 					<equals arg1="${database.type}" arg2="db2" />
@@ -7379,8 +7501,12 @@ ${docker.start.error}</fail>
 									<local name="app.server.waiting.url" />
 
 									<get-operating-system-property property.name="operating.system.docker.image" />
+
 									<get-testcase-property property.name="portal.context" />
+									<propertycopy from="portal.context[${env.CI_TEST_SUITE}]" name="portal.context" silent="true" />
+
 									<get-testcase-property property.name="portal.proxy.path" />
+									<propertycopy from="portal.proxy.path[${env.CI_TEST_SUITE}]" name="portal.proxy.path" silent="true" />
 
 									<if>
 										<isset property="portal.context" />
@@ -7506,7 +7632,7 @@ ${docker.start.error}</fail>
 
 					docker kill @{name}
 
-					docker rm -f @{name}
+					docker rm -fv @{name}
 
 					docker network disconnect -f ${docker.network.name} @{name} 2>/dev/null || true
 				]]>
@@ -7977,8 +8103,12 @@ war.path=${app.server.portal.dir}/</echo>
 			<local name="app.server.waiting.url" />
 
 			<get-operating-system-property property.name="operating.system.docker.image" />
+
 			<get-testcase-property property.name="portal.context" />
+			<propertycopy from="portal.context[${env.CI_TEST_SUITE}]" name="portal.context" silent="true" />
+
 			<get-testcase-property property.name="portal.proxy.path" />
+			<propertycopy from="portal.proxy.path[${env.CI_TEST_SUITE}]" name="portal.proxy.path" silent="true" />
 
 			<if>
 				<isset property="portal.context" />
@@ -10581,6 +10711,7 @@ send_user $expect_out(buffer)]]></echo>
 				<basedir file="${liferay.faces.bridge.impl.dir}/tck/bridge-tck-main-portlet" />
 				<basedir file="${liferay.faces.bridge.impl.dir}/test/integration" />
 				<basedir file="${liferay.faces.portal.dir}/test/integration" />
+				<basedir file="${test.workspace.dir}" />
 				<exclude name="**/node_modules/**/TEST-*.xml" />
 				<include name="**/TEST-*.xml" />
 			</multirootfileset>
@@ -10790,6 +10921,14 @@ ${update.properties}</echo>
 				<echo>The file ${liferay.config.xml} is not exist.</echo>
 			</else>
 		</if>
+	</target>
+
+	<target name="prepare-aws-s3-configuration">
+		<prepare-aws-s3-configuration />
+	</target>
+
+	<target name="prepare-azure-store-configuration">
+		<prepare-azure-store-configuration />
 	</target>
 
 	<target name="prepare-database-upgrade-configuration">
@@ -11027,6 +11166,18 @@ ${update.properties}</echo>
 			</then>
 		</if>
 
+		<get-testcase-property property.name="testray.main.component.name" />
+
+		<if>
+			<or>
+				<equals arg1="${testray.main.component.name}" arg2="Audit" />
+				<equals arg1="${testray.main.component.name}" arg2="Multi Factor Authentication" />
+			</or>
+			<then>
+				<prepare-portal-security-audit-osgi-configuration />
+			</then>
+		</if>
+
 		<prepare-portal-template-freemarker-osgi-configuration />
 
 		<prepare-selenium-login-config />
@@ -11109,11 +11260,8 @@ login.secure.forgot.password=false</echo>
 					// HikariCP
 
 					jdbc.default.connectionTimeout=600000
-					jdbc.default.maximumPoolSize=20
+					jdbc.default.maximumPoolSize=30
 					jdbc.default.minimumIdle=0
-
-					jdbc.counter.maximumPoolSize=5
-					jdbc.counter.minimumIdle=0
 
 					initial.system.check.enabled=true</echo>
 			</then>
@@ -11126,6 +11274,8 @@ login.secure.forgot.password=false</echo>
 jdbc.default.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_TIMEOUT=0]]></echo>
 			</then>
 		</if>
+
+		<get-testcase-property property.name="store.migration.test" />
 
 		<if>
 			<or>
@@ -11140,7 +11290,12 @@ jdbc.default.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_T
 		</if>
 
 		<if>
-			<equals arg1="${aws.store.enabled}" arg2="true" />
+			<and>
+				<equals arg1="${aws.store.enabled}" arg2="true" />
+				<not>
+					<equals arg1="${store.migration.test}" arg2="true" />
+				</not>
+			</and>
 			<then>
 				<echo append="true" file="portal-impl/src/portal-ext.properties">
 
@@ -11161,7 +11316,12 @@ dl.store.impl=com.liferay.portal.store.s3.S3Store</echo>
 		</if>
 
 		<if>
-			<equals arg1="${azure.store.enabled}" arg2="true" />
+			<and>
+				<equals arg1="${azure.store.enabled}" arg2="true" />
+				<not>
+					<equals arg1="${store.migration.test}" arg2="true" />
+				</not>
+			</and>
 			<then>
 				<echo append="true" file="portal-impl/src/portal-ext.properties">
 
@@ -11281,6 +11441,26 @@ passwords.encryption.algorithm.legacy=SHA
 company.default.web.id=www.able.com</echo>
 					</then>
 				</if>
+			</then>
+		</if>
+
+		<if>
+			<or>
+				<equals arg1="ibm.store.enabled" arg2="" />
+				<not>
+					<isset property="ibm.store.enabled" />
+				</not>
+			</or>
+			<then>
+				<get-testcase-property property.name="ibm.store.enabled" />
+			</then>
+		</if>
+
+		<if>
+			<equals arg1="${ibm.store.enabled}" arg2="true" />
+			<then>
+				<echo append="true" file="portal-impl/src/portal-ext.properties">
+dl.store.impl=com.liferay.portal.store.s3.IBMS3Store</echo>
 			</then>
 		</if>
 
@@ -11468,6 +11648,7 @@ session.cookie.use.full.hostname=true
 		</if>
 
 		<get-testcase-property property.name="portal.proxy.path" />
+		<propertycopy from="portal.proxy.path[${env.CI_TEST_SUITE}]" name="portal.proxy.path" silent="true" />
 
 		<if>
 			<isset property="portal.proxy.path" />
@@ -11838,6 +12019,8 @@ auto.deploy.dest.dir=C:/WINDOWS/system32/config/systemprofile/liferay/websphere-
 
 		<get-ip-address />
 
+		<property location="${liferay.home}" name="liferay.home.absolute" />
+
 		<echo append="true" file="${test.ext.properties.file}">
 			app.server.bin.dir=${app.server.bin.dir}
 			app.server.dir=${app.server.dir}
@@ -11848,12 +12031,13 @@ auto.deploy.dest.dir=C:/WINDOWS/system32/config/systemprofile/liferay/websphere-
 			get.location.timeout=${test.get.location.timeout}
 			ignore.errors.file.name=${project.dir}/portal-web/test-ignorable-error-lines.xml
 			ip.address=${ip.address}
-			liferay.home.dir.name=${liferay.home}
+			liferay.home.dir.name=${liferay.home.absolute}
 			liferay.app.server.global.lib.dir=${app.server.lib.global.dir}
 			liferay.app.server.portal.lib.dir=${app.server.lib.portal.dir}
 			liferay.app.server.shielded.container.lib.portal.dir=${app.server.shielded-container-lib.portal.dir}
 			liferay.app.server.portal.web.dir=${app.server.portal.dir}
 			logger.resources.url=${test.poshi.logger.resources.url}
+			oauth2.url=${oauth2.url}
 			operating.system.type=${operating.system.type}
 			output.dir.name=${selenium.output.dir.name}
 			product.names=${product.names}
@@ -11868,10 +12052,10 @@ auto.deploy.dest.dir=C:/WINDOWS/system32/config/systemprofile/liferay/websphere-
 		</echo>
 
 		<if>
-			<isset property="aws.bucket.id" />
+			<isset property="s3.bucket.id" />
 			<then>
 				<echo append="true" file="${test.ext.properties.file}">
-					aws.bucket.id=${aws.bucket.id}
+					s3.bucket.id=${s3.bucket.id}
 				</echo>
 			</then>
 		</if>
@@ -12025,6 +12209,51 @@ auto.deploy.dest.dir=C:/WINDOWS/system32/config/systemprofile/liferay/websphere-
 			<then>
 				<echo append="true" file="${test.ext.properties.file}">
 					digital.signature.rsa.private.key=${digital.signature.rsa.private.key}
+				</echo>
+			</then>
+		</if>
+
+		<if>
+			<isset property="site.initializer.partner.portal.login.url" />
+			<then>
+				<echo append="true" file="${test.ext.properties.file}">
+					site.initializer.partner.portal.login.url=${site.initializer.partner.portal.login.url}
+				</echo>
+			</then>
+		</if>
+
+		<if>
+			<isset property="site.initializer.partner.portal.consumer.key" />
+			<then>
+				<echo append="true" file="${test.ext.properties.file}">
+					site.initializer.partner.portal.consumer.key=${site.initializer.partner.portal.consumer.key}
+				</echo>
+			</then>
+		</if>
+
+		<if>
+			<isset property="site.initializer.partner.portal.consumer.secret" />
+			<then>
+				<echo append="true" file="${test.ext.properties.file}">
+					site.initializer.partner.portal.consumer.secret=${site.initializer.partner.portal.consumer.secret}
+				</echo>
+			</then>
+		</if>
+
+		<if>
+			<isset property="site.initializer.partner.portal.username" />
+			<then>
+				<echo append="true" file="${test.ext.properties.file}">
+					site.initializer.partner.portal.username=${site.initializer.partner.portal.username}
+				</echo>
+			</then>
+		</if>
+
+		<if>
+			<isset property="site.initializer.partner.portal.password" />
+			<then>
+				<echo append="true" file="${test.ext.properties.file}">
+					site.initializer.partner.portal.password=${site.initializer.partner.portal.password}
 				</echo>
 			</then>
 		</if>
@@ -12360,8 +12589,30 @@ auto.deploy.dest.dir=C:/WINDOWS/system32/config/systemprofile/liferay/websphere-
 				</echo>
 			</then>
 			<else>
+				<get-testcase-property property.name="portal.context" />
+				<propertycopy from="portal.context[${env.CI_TEST_SUITE}]" name="portal.context" silent="true" />
+
+				<get-testcase-property property.name="portal.proxy.path" />
+				<propertycopy from="portal.proxy.path[${env.CI_TEST_SUITE}]" name="portal.proxy.path" silent="true" />
+
+				<if>
+					<isset property="portal.context" />
+					<then>
+						<property name="default.portal.url" value="http://localhost:8080/${portal.context}" />
+					</then>
+					<elseif>
+						<isset property="portal.proxy.path" />
+						<then>
+							<property name="default.portal.url" value="http://localhost:88/${portal.proxy.path}" />
+						</then>
+					</elseif>
+					<else>
+						<property name="default.portal.url" value="http://localhost:8080" />
+					</else>
+				</if>
+
 				<echo append="true" file="${test.ext.properties.file}">
-					default.portal.url=http://localhost:8080
+					default.portal.url=${default.portal.url}
 					portal.hostname=localhost
 				</echo>
 			</else>
@@ -12484,6 +12735,17 @@ auto.deploy.dest.dir=C:/WINDOWS/system32/config/systemprofile/liferay/websphere-
 				</echo>
 			</then>
 			<elseif>
+				<and>
+					<equals arg1="${test.liferay.virtual.instance}" arg2="true" />
+					<isset property="env.JENKINS_HOME" />
+				</and>
+				<then>
+					<echo append="true" file="${test.ext.properties.file}">
+						test.skip.tear.down=false
+					</echo>
+				</then>
+			</elseif>
+			<elseif>
 				<isset property="test.skip.tear.down" />
 				<then>
 					<echo append="true" file="${test.ext.properties.file}">
@@ -12522,6 +12784,17 @@ auto.deploy.dest.dir=C:/WINDOWS/system32/config/systemprofile/liferay/websphere-
 			</elseif>
 		</if>
 
+		<get-testcase-property property.name="test.liferay.virtual.instance" />
+
+		<if>
+			<isset property="${test.liferay.virtual.instance}" />
+			<then>
+				<echo append="true" file="${test.ext.properties.file}">
+					test.liferay.virtual.instance=${test.liferay.virtual.instance}
+				</echo>
+			</then>
+		</if>
+
 		<if>
 			<equals arg1="${test.save.screenshot}" arg2="true" />
 			<then>
@@ -12558,6 +12831,16 @@ auto.deploy.dest.dir=C:/WINDOWS/system32/config/systemprofile/liferay/websphere-
 					</echo>
 				</then>
 			</elseif>
+		</if>
+
+		<if>
+			<isset property="test.workspace.dir" />
+			<then>
+				<copy
+					file="${test.ext.properties.file}"
+					todir="${test.workspace.dir}/poshi"
+				/>
+			</then>
 		</if>
 	</target>
 
@@ -14083,12 +14366,29 @@ if (ppstate.equals("normal")) {
 			</else>
 		</if>
 
-		<poshi-execute task="writePoshiProperties" />
+		<if>
+			<isset property="test.workspace.dir" />
+			<then>
+				<poshi-execute
+					build.gradle.dir="${test.workspace.dir}"
+					build.gradle.file="${test.workspace.dir}/poshi/build.gradle"
+					task="writePoshiProperties"
+				/>
 
-		<move
-			file="portal-web/test.case.method.names.properties"
-			tofile="test.case.method.names.properties"
-		/>
+				<move
+					file="${test.workspace.dir}/poshi/test.case.method.names.properties"
+					tofile="test.case.method.names.properties"
+				/>
+			</then>
+			<else>
+				<poshi-execute task="writePoshiProperties" />
+
+				<move
+					file="portal-web/test.case.method.names.properties"
+					tofile="test.case.method.names.properties"
+				/>
+			</else>
+		</if>
 
 		<echo></echo>
 		<echo>##</echo>
@@ -14170,12 +14470,29 @@ if (ppstate.equals("normal")) {
 					</else>
 				</if>
 
-				<poshi-execute task="writePoshiProperties" />
+				<if>
+					<isset property="test.workspace.dir" />
+					<then>
+						<poshi-execute
+							build.gradle.dir="${test.workspace.dir}"
+							build.gradle.file="${test.workspace.dir}/poshi/build.gradle"
+							task="writePoshiProperties"
+						/>
 
-				<move
-					file="portal-web/test.generated.properties"
-					tofile="test.generated.properties"
-				/>
+						<move
+							file="${test.workspace.dir}/poshi/test.generated.properties"
+							tofile="test.generated.properties"
+						/>
+					</then>
+					<else>
+						<poshi-execute task="writePoshiProperties" />
+
+						<move
+							file="portal-web/test.generated.properties"
+							tofile="test.generated.properties"
+						/>
+					</else>
+				</if>
 
 				<if>
 					<isset property="test.class" />
@@ -14492,7 +14809,19 @@ jdbc.default.password=${database.mysql.password}</echo>
 			</then>
 		</if>
 
-		<poshi-execute task="runPoshi" />
+		<if>
+			<isset property="test.workspace.dir" />
+			<then>
+				<poshi-execute
+					build.gradle.dir="${test.workspace.dir}"
+					build.gradle.file="${test.workspace.dir}/poshi/build.gradle"
+					task="runPoshi"
+				/>
+			</then>
+			<else>
+				<poshi-execute task="runPoshi" />
+			</else>
+		</if>
 
 		<property name="test.class" value="${test.simple.class.name}#${test.method.name}" />
 
@@ -14595,44 +14924,8 @@ mail.send.blacklist=</echo>
 			</then>
 		</if>
 
-		<get-testcase-property property.name="portal.context" />
-
-		<if>
-			<isset property="portal.context" />
-			<then>
-				<if>
-					<equals arg1="${app.server.type}" arg2="tomcat" />
-					<then>
-						<move
-							todir="${app.server.dir}/webapps/${portal.context}"
-						>
-							<fileset
-								dir="${app.server.dir}/webapps/ROOT"
-							/>
-						</move>
-						<move
-							file="${app.server.dir}/conf/Catalina/localhost/ROOT.xml"
-							tofile="${app.server.dir}/conf/Catalina/localhost/${portal.context}.xml"
-						/>
-						<replace
-							file="${app.server.dir}/conf/Catalina/localhost/${portal.context}.xml"
-							token="path=&quot;&quot;"
-							value="path=&quot;/${portal.context}&quot;"
-						/>
-						<replace
-							file="${app.server.dir}/conf/catalina.properties"
-							token="common.loader=&quot;${catalina.home}/webapps/ROOT/WEB-INF/lib/support-tomcat.jar&quot;"
-							value="common.loader=&quot;${catalina.home}/webapps/liferay/WEB-INF/lib/support-tomcat.jar&quot;"
-						/>
-					</then>
-					<else>
-						<fail message="Changing the portal context for ${app.server.type} is not supported." />
-					</else>
-				</if>
-			</then>
-		</if>
-
 		<get-testcase-property property.name="portal.proxy.path" />
+		<propertycopy from="portal.proxy.path[${env.CI_TEST_SUITE}]" name="portal.proxy.path" silent="true" />
 
 		<if>
 			<isset property="portal.proxy.path" />
@@ -14788,7 +15081,7 @@ mail.send.blacklist=</echo>
 			<elseif>
 				<equals arg1="${rebuild.staging.database}" arg2="true" />
 				<then>
-					<ant antfile="build-test-staging-mysql.xml" target="rebuild-staging-database" />
+					<ant antfile="build-test-staging.xml" target="rebuild-staging-database" />
 				</then>
 			</elseif>
 			<else>
@@ -14797,6 +15090,7 @@ mail.send.blacklist=</echo>
 		</if>
 
 		<get-testcase-property property.name="skip.clean-app-server-deploy-dir" />
+		<propertycopy from="skip.clean-app-server-deploy-dir[${env.CI_TEST_SUITE}]" name="skip.clean-app-server-deploy-dir" silent="true" />
 
 		<if>
 			<not>
@@ -14839,20 +15133,29 @@ mail.send.blacklist=</echo>
 			</then>
 		</if>
 
+		<get-testcase-property property.name="store.migration.test" />
+
 		<get-testcase-property property.name="aws.store.enabled" />
 
 		<if>
 			<equals arg1="${aws.store.enabled}" arg2="true" />
 			<then>
 				<tstamp>
-					<format pattern="yyyyMMddkkmmssSSS" property="aws.bucket.id" />
+					<format pattern="yyyyMMddkkmmssSSS" property="s3.bucket.id" />
 				</tstamp>
 
-				<ant antfile="build-test-aws-s3.xml" target="configure-aws-cli" />
+				<ant antfile="build-test-s3-store.xml" target="configure-aws-cli" />
 
-				<ant antfile="build-test-aws-s3.xml" target="create-s3-bucket" />
+				<ant antfile="build-test-s3-store.xml" target="create-s3-bucket" />
 
-				<prepare-aws-s3-configuration />
+				<if>
+					<not>
+						<equals arg1="${store.migration.test}" arg2="true" />
+					</not>
+					<then>
+						<prepare-aws-s3-configuration />
+					</then>
+				</if>
 			</then>
 		</if>
 
@@ -14865,11 +15168,16 @@ mail.send.blacklist=</echo>
 					<format pattern="yyyyMMddkkmmssSSS" property="azure.container.id" />
 				</tstamp>
 
-				<ant antfile="build-test-azure.xml" target="login-azure-cli" />
-
 				<ant antfile="build-test-azure.xml" target="create-azure-container" />
 
-				<prepare-azure-store-configuration />
+				<if>
+					<not>
+						<equals arg1="${store.migration.test}" arg2="true" />
+					</not>
+					<then>
+						<prepare-azure-store-configuration />
+					</then>
+				</if>
 			</then>
 		</if>
 
@@ -14878,7 +15186,24 @@ mail.send.blacklist=</echo>
 		<if>
 			<equals arg1="${cas.enabled}" arg2="true" />
 			<then>
-				<ant antfile="build-test-authentication.xml" target="setup-cas" />
+				<ant antfile="build-test-cas.xml" target="setup-cas" />
+			</then>
+		</if>
+
+		<get-testcase-property property.name="ibm.store.enabled" />
+
+		<if>
+			<equals arg1="${ibm.store.enabled}" arg2="true" />
+			<then>
+				<tstamp>
+					<format pattern="yyyyMMddkkmmssSSS" property="s3.bucket.id" />
+				</tstamp>
+
+				<ant antfile="build-test-s3-store.xml" target="configure-ibm-aws-cli" />
+
+				<ant antfile="build-test-s3-store.xml" target="create-s3-bucket" />
+
+				<prepare-ibm-s3-configuration />
 			</then>
 		</if>
 
@@ -14896,9 +15221,9 @@ mail.send.blacklist=</echo>
 		<if>
 			<equals arg1="${openam.enabled}" arg2="true" />
 			<then>
-				<ant antfile="build-test-authentication.xml" target="delete-openam-config" />
+				<ant antfile="build-test-openam.xml" target="delete-openam-config" />
 
-				<ant antfile="build-test-authentication.xml" target="setup-openam" />
+				<ant antfile="build-test-openam.xml" target="setup-openam" />
 			</then>
 		</if>
 
@@ -15032,9 +15357,7 @@ mail.send.blacklist=</echo>
 
 		<set-up-search-engine />
 
-		<antcall inheritAll="false" target="prepare-log4j-ext-xml">
-			<param name="database.type" value="@{database.type}" />
-		</antcall>
+		<antcall target="prepare-log4j-ext-xml" />
 
 		<get-testcase-property property.name="osgi.module.configuration.file.names" />
 		<get-testcase-property property.name="osgi.module.configurations" />
@@ -15195,6 +15518,44 @@ mail.send.blacklist=</echo>
 			</then>
 		</if>
 
+		<get-testcase-property property.name="portal.context" />
+		<propertycopy from="portal.context[${env.CI_TEST_SUITE}]" name="portal.context" silent="true" />
+
+		<if>
+			<isset property="portal.context" />
+			<then>
+				<if>
+					<equals arg1="${app.server.type}" arg2="tomcat" />
+					<then>
+						<move
+							todir="${app.server.dir}/webapps/${portal.context}"
+						>
+							<fileset
+								dir="${app.server.dir}/webapps/ROOT"
+							/>
+						</move>
+						<move
+							file="${app.server.dir}/conf/Catalina/localhost/ROOT.xml"
+							tofile="${app.server.dir}/conf/Catalina/localhost/${portal.context}.xml"
+						/>
+						<replace
+							file="${app.server.dir}/conf/Catalina/localhost/${portal.context}.xml"
+							token="path=&quot;&quot;"
+							value="path=&quot;/${portal.context}&quot;"
+						/>
+						<replace
+							file="${app.server.dir}/conf/catalina.properties"
+							token="common.loader=&quot;${catalina.home}/webapps/ROOT/WEB-INF/lib/support-tomcat.jar&quot;"
+							value="common.loader=&quot;${catalina.home}/webapps/${portal.context}/WEB-INF/lib/support-tomcat.jar&quot;"
+						/>
+					</then>
+					<else>
+						<fail message="Changing the portal context for ${app.server.type} is not supported." />
+					</else>
+				</if>
+			</then>
+		</if>
+
 		<get-testcase-property property.name="skip.start.app.server" />
 
 		<if>
@@ -15292,12 +15653,93 @@ mail.send.blacklist=</echo>
 			</then>
 		</if>
 
+		<get-testcase-property property.name="oauth2.application.enabled" />
+
+		<if>
+			<equals arg1="${oauth2.application.enabled}" arg2="true" />
+			<then>
+				<ant antfile="build-test-oauth2.xml" target="start-oauth2-application" />
+			</then>
+		</if>
+
+		<if>
+			<isset property="test.workspace.name" />
+			<then>
+				<ant antfile="build-test-${test.workspace.name}.xml" inheritAll="false" target="start-workspace">
+					<property name="workspace.name" value="${test.workspace.name}" />
+				</ant>
+			</then>
+		</if>
+
+		<get-testcase-property property.name="workspaces.client.extension.names" />
+
+		<if>
+			<isset property="workspaces.client.extension.names" />
+			<then>
+				<for list="${workspaces.client.extension.names}" param="workspace.client.extension.name">
+					<sequential>
+						<ant antfile="build-test-workspace.xml" inheritAll="false" target="deploy-workspace-client-extension">
+							<property name="workspace.client.extension.name" value="@{workspace.client.extension.name}" />
+						</ant>
+					</sequential>
+				</for>
+			</then>
+		</if>
+
+		<get-testcase-property property.name="workspaces.names" />
+
+		<if>
+			<isset property="workspaces.names" />
+			<then>
+				<for list="${workspaces.names}" param="workspace.name">
+					<sequential>
+						<ant antfile="build-test-@{workspace.name}.xml" inheritAll="false" target="start-workspace">
+							<property name="workspace.name" value="@{workspace.name}" />
+						</ant>
+					</sequential>
+				</for>
+			</then>
+		</if>
+
 		<antcall target="run-selenium-test" />
 
 		<if>
 			<equals arg1="${analytics.cloud.enabled}" arg2="true" />
 			<then>
 				<ant antfile="build-test-analytics-cloud.xml" target="stop-analytics-cloud" />
+			</then>
+		</if>
+
+		<get-testcase-property property.name="oauth2.application.enabled" />
+
+		<if>
+			<equals arg1="${oauth2.application.enabled}" arg2="true" />
+			<then>
+				<ant antfile="build-test-oauth2.xml" target="stop-oauth2-application" />
+			</then>
+		</if>
+
+		<if>
+			<isset property="test.workspace.name" />
+			<then>
+				<ant antfile="build-test-${test.workspace.name}.xml" inheritAll="false" target="stop-workspace">
+					<property name="workspace.name" value="${test.workspace.name}" />
+				</ant>
+			</then>
+		</if>
+
+		<get-testcase-property property.name="workspaces.names" />
+
+		<if>
+			<isset property="workspaces.names" />
+			<then>
+				<for list="${workspaces.names}" param="workspace.name">
+					<sequential>
+						<ant antfile="build-test-@{workspace.name}.xml" inheritAll="false" target="stop-workspace">
+							<property name="workspace.name" value="@{workspace.name}" />
+						</ant>
+					</sequential>
+				</for>
 			</then>
 		</if>
 
@@ -15386,7 +15828,7 @@ mail.send.blacklist=</echo>
 		<if>
 			<equals arg1="${aws.store.enabled}" arg2="true" />
 			<then>
-				<ant antfile="build-test-aws-s3.xml" target="delete-s3-bucket" />
+				<ant antfile="build-test-s3-store.xml" target="delete-s3-bucket" />
 			</then>
 		</if>
 
@@ -15399,7 +15841,17 @@ mail.send.blacklist=</echo>
 			</then>
 		</if>
 
+		<get-testcase-property property.name="ibm.store.enabled" />
+
+		<if>
+			<equals arg1="${ibm.store.enabled}" arg2="true" />
+			<then>
+				<ant antfile="build-test-s3-store.xml" target="delete-s3-bucket" />
+			</then>
+		</if>
+
 		<get-testcase-property property.name="portal.proxy.path" />
+		<propertycopy from="portal.proxy.path[${env.CI_TEST_SUITE}]" name="portal.proxy.path" silent="true" />
 
 		<if>
 			<isset property="portal.proxy.path" />
@@ -15415,7 +15867,7 @@ mail.send.blacklist=</echo>
 		<if>
 			<equals arg1="${openam.enabled}" arg2="true" />
 			<then>
-				<ant antfile="build-test-authentication.xml" target="delete-openam-config" />
+				<ant antfile="build-test-openam.xml" target="delete-openam-config" />
 			</then>
 		</if>
 
@@ -15594,10 +16046,14 @@ mail.send.blacklist=</echo>
 			<then>
 				<var name="database.db2.docker.image" value="liferay/liferay-ci-environment:db2-11.1.3.3_1.0.0" />
 				<var name="database.db2.docker.run.options" value="-p 25010:50000 --privileged=true" />
+				<var name="database.db2.password" value="I7Oen70215bieRR" />
+				<var name="database.db2.username" value="root" />
 			</then>
 			<else>
 				<var name="database.db2.docker.image" value="ibmcom/db2:${database.version}" />
 				<var name="database.db2.docker.run.options" value="-itd --privileged=true -p 25010:50000 --env=LICENSE=accept --env=DB2INST1_PASSWORD=liferay123 -v /tmp/database ibmcom/db2:${database.version}" />
+				<var name="database.db2.password" value="liferay123" />
+				<var name="database.db2.username" value="db2inst1" />
 			</else>
 		</if>
 
@@ -15609,10 +16065,10 @@ mail.send.blacklist=</echo>
 ## Autogenerated Database Properties
 database.db2.docker.image=${database.db2.docker.image}
 database.db2.host=localhost_db2
-database.db2.password=liferay123
+database.db2.password=${database.db2.password}
 database.db2.schema=lportal
 database.db2.url=jdbc:db2://localhost:25010/lportal:deferPrepares=false;fullyMaterializeInputStreams=true;fullyMaterializeLobData=true;progresssiveLocators=2;progressiveStreaming=2;
-database.db2.username=db2inst1
+database.db2.username=${database.db2.username}
 database.db2.version=${database.version}
 database.type=db2
 ## Autogenerated Database Properties

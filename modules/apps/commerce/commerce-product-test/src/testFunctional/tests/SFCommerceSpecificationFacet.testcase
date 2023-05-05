@@ -15,11 +15,11 @@ definition {
 	}
 
 	@description = "This is a test for COMMERCE-8403"
-	@priority = 4
+	@priority = 5
 	test VerifyDisplayFrequencies {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
-		var facetValueNameList = "1 Year Unlimited Mileage Warranty,Limited Lifetime,3 Year Unlimited Mileage Warranty,Steel,Rubber,Aluminum,Cast Iron,Neoprene,Ceramic,Plastic";
+		var facetTermList = "1 Year Unlimited Mileage Warranty,Limited Lifetime,3 Year Unlimited Mileage Warranty,Steel,Rubber,Aluminum,Cast Iron,Neoprene,Ceramic,Plastic";
 
 		ApplicationsMenu.gotoSite(site = "Minium");
 
@@ -29,17 +29,18 @@ definition {
 
 		IFrame.closeFrame();
 
-		for (var facetValueName : list ${facetValueNameList}) {
+		for (var facetTerm : list ${facetTermList}) {
 			AssertElementNotPresent(
-				facetValueName = ${facetValueName},
-				locator1 = "Search#FACET_DISPLAY_FREQUENCIES");
+				key_facetType = "Specification Facet",
+				key_termValue = ${facetTerm},
+				locator1 = "Search#FACET_TERM_FREQUENCIES");
 		}
 	}
 
 	@description = "This is a test for COMMERCE-8401"
-	@priority = 4
+	@priority = 5
 	test VerifyDisplayTemplate {
-		property portal.acceptance = "false";
+		property portal.acceptance = "true";
 
 		var warrantyTagNameList = "1 Year Unlimited Mileage Warranty,Limited Lifetime,3 Year Unlimited Mileage Warranty";
 		var materialTagNameList = "Steel,Rubber,Aluminum,Cast Iron,Neoprene,Ceramic,Plastic";
@@ -130,6 +131,8 @@ definition {
 	@description = "This is a test for COMMERCE-8399."
 	@priority = 3
 	test VerifyMaxTermsFieldValue {
+		property portal.acceptance = "false";
+
 		ApplicationsMenu.gotoSite(site = "Minium");
 
 		CommerceWidget.updateFacetConfiguration(
@@ -143,6 +146,8 @@ definition {
 
 	@description = "This is for COMMERCE-8384."
 	test VerifySpecificationFacetSetupTab {
+		property portal.acceptance = "false";
+
 		ApplicationsMenu.gotoSite(site = "Minium");
 
 		Portlet.gotoPortletOptions(
@@ -168,7 +173,10 @@ definition {
 		IFrame.closeFrame();
 	}
 
+	@priority = 5
 	test View100Terms {
+		property portal.acceptance = "true";
+
 		CommerceJSONSpecificationsAPI._addCommerceProductsWithSpecifications(
 			catalogName = "Minium",
 			specificationKey = "material");

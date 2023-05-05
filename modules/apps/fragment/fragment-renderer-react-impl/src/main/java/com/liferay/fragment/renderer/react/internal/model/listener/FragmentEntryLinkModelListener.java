@@ -16,18 +16,17 @@ package com.liferay.fragment.renderer.react.internal.model.listener;
 
 import com.liferay.fragment.constants.FragmentConstants;
 import com.liferay.fragment.model.FragmentEntryLink;
+import com.liferay.fragment.renderer.react.internal.helper.FragmentEntryLinkJSModuleInitializerHelper;
 import com.liferay.fragment.renderer.react.internal.util.FragmentEntryFragmentRendererReactUtil;
 import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.frontend.js.loader.modules.extender.npm.JSPackage;
-import com.liferay.frontend.js.loader.modules.extender.npm.ModuleNameUtil;
 import com.liferay.frontend.js.loader.modules.extender.npm.NPMRegistry;
 import com.liferay.frontend.js.loader.modules.extender.npm.NPMRegistryUpdate;
 import com.liferay.frontend.js.loader.modules.extender.npm.NPMResolver;
-import com.liferay.petra.string.StringBundler;
-import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.cluster.ClusterExecutor;
 import com.liferay.portal.kernel.cluster.ClusterRequest;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
+import com.liferay.portal.kernel.exception.ModelListenerException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.BaseModelListener;
@@ -36,12 +35,9 @@ import com.liferay.portal.kernel.module.framework.service.IdentifiableOSGiServic
 import com.liferay.portal.kernel.module.framework.service.IdentifiableOSGiServiceUtil;
 import com.liferay.portal.kernel.util.MethodHandler;
 import com.liferay.portal.kernel.util.MethodKey;
-import com.liferay.portal.kernel.util.StringUtil;
 
-import java.util.Collections;
 import java.util.List;
 
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
@@ -76,6 +72,8 @@ public class FragmentEntryLinkModelListener
 			return;
 		}
 
+		_fragmentEntryLinkJSModuleInitializerHelper.ensureInitialized();
+
 		_updateNPMRegistry(MethodType.REMOVE, fragmentEntryLink, null);
 
 		_notifyCluster(MethodType.REMOVE, fragmentEntryLink, null);
@@ -90,6 +88,8 @@ public class FragmentEntryLinkModelListener
 			return;
 		}
 
+		_fragmentEntryLinkJSModuleInitializerHelper.ensureInitialized();
+
 		_updateNPMRegistry(
 			MethodType.UPDATE, originalFragmentEntryLink, fragmentEntryLink);
 
@@ -97,31 +97,16 @@ public class FragmentEntryLinkModelListener
 			MethodType.UPDATE, originalFragmentEntryLink, fragmentEntryLink);
 	}
 
-	@Activate
-	protected void activate() {
-		_jsPackage = _npmResolver.getJSPackage();
+	@Override
+	public void onBeforeCreate(FragmentEntryLink fragmentEntryLink)
+		throws ModelListenerException {
 
-		List<FragmentEntryLink> fragmentEntryLinks =
-			_fragmentEntryLinkLocalService.getFragmentEntryLinks(
-				FragmentConstants.TYPE_REACT, QueryUtil.ALL_POS,
-				QueryUtil.ALL_POS, null);
-
-		NPMRegistryUpdate npmRegistryUpdate = _npmRegistry.update();
-
-		for (FragmentEntryLink fragmentEntryLink : fragmentEntryLinks) {
-			npmRegistryUpdate.registerJSModule(
-				_jsPackage,
-				FragmentEntryFragmentRendererReactUtil.getModuleName(
-					fragmentEntryLink),
-				_dependencies, _getJs(fragmentEntryLink), null);
-		}
-
-		npmRegistryUpdate.finish();
+		_fragmentEntryLinkJSModuleInitializerHelper.ensureInitialized();
 	}
 
 	@Deactivate
 	protected void deactivate() {
-		_jsPackage = _npmResolver.getJSPackage();
+		JSPackage jsPackage = _npmResolver.getJSPackage();
 
 		List<FragmentEntryLink> fragmentEntryLinks =
 			_fragmentEntryLinkLocalService.getFragmentEntryLinks(
@@ -132,7 +117,7 @@ public class FragmentEntryLinkModelListener
 
 		for (FragmentEntryLink fragmentEntryLink : fragmentEntryLinks) {
 			npmRegistryUpdate.unregisterJSModule(
-				_jsPackage.getJSModule(
+				jsPackage.getJSModule(
 					FragmentEntryFragmentRendererReactUtil.getModuleName(
 						fragmentEntryLink)));
 		}
@@ -152,30 +137,6 @@ public class FragmentEntryLinkModelListener
 
 		fragmentEntryLinkModelListener._updateNPMRegistry(
 			methodType, oldFragmentEntryLink, newFragmentEntryLink);
-	}
-
-	private String _getJs(FragmentEntryLink fragmentEntryLink) {
-		return StringUtil.replace(
-			fragmentEntryLink.getJs(),
-			new String[] {
-				"'__FRAGMENT_MODULE_NAME__'", "'__REACT_PROVIDER__$react'",
-				"'frontend-js-react-web$react'"
-			},
-			new String[] {
-				StringBundler.concat(
-					StringPool.APOSTROPHE,
-					ModuleNameUtil.getModuleResolvedId(
-						_jsPackage,
-						FragmentEntryFragmentRendererReactUtil.getModuleName(
-							fragmentEntryLink)),
-					StringPool.APOSTROPHE),
-				StringBundler.concat(
-					StringPool.APOSTROPHE, _DEPENDENCY_PORTAL_REACT,
-					StringPool.APOSTROPHE),
-				StringBundler.concat(
-					StringPool.APOSTROPHE, _DEPENDENCY_PORTAL_REACT,
-					StringPool.APOSTROPHE)
-			});
 	}
 
 	private void _notifyCluster(
@@ -209,11 +170,13 @@ public class FragmentEntryLinkModelListener
 
 		NPMRegistryUpdate npmRegistryUpdate = _npmRegistry.update();
 
+		JSPackage jsPackage = _npmResolver.getJSPackage();
+
 		if ((methodType == MethodType.REMOVE) ||
 			(methodType == MethodType.UPDATE)) {
 
 			npmRegistryUpdate.unregisterJSModule(
-				_jsPackage.getJSModule(
+				jsPackage.getJSModule(
 					FragmentEntryFragmentRendererReactUtil.getModuleName(
 						oldFragmentEntryLink)));
 		}
@@ -222,23 +185,21 @@ public class FragmentEntryLinkModelListener
 			(methodType == MethodType.UPDATE)) {
 
 			npmRegistryUpdate.registerJSModule(
-				_jsPackage,
+				jsPackage,
 				FragmentEntryFragmentRendererReactUtil.getModuleName(
 					newFragmentEntryLink),
-				_dependencies, _getJs(newFragmentEntryLink), null);
+				FragmentEntryFragmentRendererReactUtil.getDependencies(),
+				FragmentEntryFragmentRendererReactUtil.getJs(
+					newFragmentEntryLink, jsPackage),
+				null);
 		}
 
 		npmRegistryUpdate.finish();
 	}
 
-	private static final String _DEPENDENCY_PORTAL_REACT =
-		"liferay!frontend-js-react-web$react";
-
 	private static final Log _log = LogFactoryUtil.getLog(
-		FragmentEntryLinkModelListener.class.getName());
+		FragmentEntryLinkModelListener.class);
 
-	private static final List<String> _dependencies = Collections.singletonList(
-		_DEPENDENCY_PORTAL_REACT);
 	private static final MethodKey _onNotifyMethodKey = new MethodKey(
 		FragmentEntryLinkModelListener.class, "_onNotify", MethodType.class,
 		String.class, FragmentEntryLink.class, FragmentEntryLink.class);
@@ -247,9 +208,11 @@ public class FragmentEntryLinkModelListener
 	private ClusterExecutor _clusterExecutor;
 
 	@Reference
-	private FragmentEntryLinkLocalService _fragmentEntryLinkLocalService;
+	private FragmentEntryLinkJSModuleInitializerHelper
+		_fragmentEntryLinkJSModuleInitializerHelper;
 
-	private JSPackage _jsPackage;
+	@Reference
+	private FragmentEntryLinkLocalService _fragmentEntryLinkLocalService;
 
 	@Reference
 	private NPMRegistry _npmRegistry;

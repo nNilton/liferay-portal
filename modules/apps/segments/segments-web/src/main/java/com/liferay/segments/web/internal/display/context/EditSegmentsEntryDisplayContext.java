@@ -15,7 +15,6 @@
 package com.liferay.segments.web.internal.display.context;
 
 import com.liferay.item.selector.ItemSelector;
-import com.liferay.item.selector.criteria.URLItemSelectorReturnType;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.bean.BeanParamUtil;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -27,25 +26,21 @@ import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.module.configuration.ConfigurationException;
 import com.liferay.portal.kernel.portlet.LiferayWindowState;
-import com.liferay.portal.kernel.portlet.RequestBackedPortletURLFactoryUtil;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
-import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.LocalizationUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.segments.configuration.provider.SegmentsConfigurationProvider;
@@ -56,7 +51,6 @@ import com.liferay.segments.model.SegmentsEntry;
 import com.liferay.segments.provider.SegmentsEntryProviderRegistry;
 import com.liferay.segments.service.SegmentsEntryService;
 import com.liferay.segments.web.internal.security.permission.resource.SegmentsEntryPermission;
-import com.liferay.site.item.selector.criterion.SiteItemSelectorCriterion;
 
 import java.util.HashMap;
 import java.util.List;
@@ -97,7 +91,7 @@ public class EditSegmentsEntryDisplayContext {
 		_segmentsEntryProviderRegistry = segmentsEntryProviderRegistry;
 		_segmentsEntryService = segmentsEntryService;
 
-		_themeDisplay = (ThemeDisplay)_httpServletRequest.getAttribute(
+		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
 		_locale = _themeDisplay.getLocale();
@@ -180,27 +174,6 @@ public class EditSegmentsEntryDisplayContext {
 		}
 
 		return _segmentsEntryKey;
-	}
-
-	public String getSiteItemSelectorURL() {
-		if (getSegmentsEntryId() != 0) {
-			return null;
-		}
-
-		SiteItemSelectorCriterion siteItemSelectorCriterion =
-			new SiteItemSelectorCriterion();
-
-		siteItemSelectorCriterion.setDesiredItemSelectorReturnTypes(
-			new URLItemSelectorReturnType());
-
-		return PortletURLBuilder.create(
-			_itemSelector.getItemSelectorURL(
-				RequestBackedPortletURLFactoryUtil.create(_renderRequest),
-				_renderResponse.getNamespace() + "sitesSelectItem",
-				siteItemSelectorCriterion)
-		).setParameter(
-			"displayStyle", "list"
-		).buildString();
 	}
 
 	public String getTitle(Locale locale) throws PortalException {
@@ -338,21 +311,7 @@ public class EditSegmentsEntryDisplayContext {
 	private long _getGroupId() throws PortalException {
 		return BeanParamUtil.getLong(
 			_getSegmentsEntry(), _httpServletRequest, "groupId",
-			_getInitialGroupId());
-	}
-
-	private long _getInitialGroupId() throws PortalException {
-		long groupId = _themeDisplay.getScopeGroupId();
-
-		if (!GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-166954"))) {
-			return groupId;
-		}
-
-		Group group = _groupLocalService.fetchGroup(groupId);
-
-		Company company = _companyLocalService.getCompany(group.getCompanyId());
-
-		return company.getGroupId();
+			_themeDisplay.getScopeGroupId());
 	}
 
 	private JSONObject _getInitialSegmentsNameJSONObject() throws Exception {
@@ -448,8 +407,6 @@ public class EditSegmentsEntryDisplayContext {
 			"segmentsConfigurationURL", _getSegmentsCompanyConfigurationURL()
 		).put(
 			"showInEditMode", _isShowInEditMode()
-		).put(
-			"siteItemSelectorURL", getSiteItemSelectorURL()
 		).build();
 	}
 
@@ -473,10 +430,17 @@ public class EditSegmentsEntryDisplayContext {
 	}
 
 	private SegmentsEntry _getSegmentsEntry() throws PortalException {
+		if (_segmentsEntry != null) {
+			return _segmentsEntry;
+		}
+
 		long segmentsEntryId = getSegmentsEntryId();
 
 		if (segmentsEntryId > 0) {
-			return _segmentsEntryService.getSegmentsEntry(segmentsEntryId);
+			_segmentsEntry = _segmentsEntryService.getSegmentsEntry(
+				segmentsEntryId);
+
+			return _segmentsEntry;
 		}
 
 		return null;
@@ -576,6 +540,7 @@ public class EditSegmentsEntryDisplayContext {
 	private final SegmentsConfigurationProvider _segmentsConfigurationProvider;
 	private final SegmentsCriteriaContributorRegistry
 		_segmentsCriteriaContributorRegistry;
+	private SegmentsEntry _segmentsEntry;
 	private Long _segmentsEntryId;
 	private String _segmentsEntryKey;
 	private final SegmentsEntryProviderRegistry _segmentsEntryProviderRegistry;

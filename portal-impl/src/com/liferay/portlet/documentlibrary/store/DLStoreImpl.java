@@ -32,7 +32,6 @@ import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GroupThreadLocal;
 import com.liferay.portal.kernel.util.MimeTypesUtil;
 import com.liferay.portal.kernel.util.ServiceProxyFactory;
-import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.util.PropsValues;
 
 import java.io.File;
@@ -153,94 +152,6 @@ public class DLStoreImpl implements DLStore {
 				throw new PrincipalException(accessDeniedException);
 			}
 		}
-	}
-
-	@Override
-	public void addFile(
-			long companyId, long repositoryId, String fileName,
-			boolean validateFileExtension, byte[] bytes)
-		throws PortalException {
-
-		addFile(
-			DLStoreRequest.builder(
-				companyId, repositoryId, fileName
-			).validateFileExtension(
-				validateFileExtension
-			).build(),
-			bytes);
-	}
-
-	@Override
-	public void addFile(
-			long companyId, long repositoryId, String fileName,
-			boolean validateFileExtension, File file)
-		throws PortalException {
-
-		addFile(
-			DLStoreRequest.builder(
-				companyId, repositoryId, fileName
-			).validateFileExtension(
-				validateFileExtension
-			).build(),
-			file);
-	}
-
-	@Override
-	public void addFile(
-			long companyId, long repositoryId, String fileName,
-			boolean validateFileExtension, InputStream inputStream)
-		throws PortalException {
-
-		addFile(
-			DLStoreRequest.builder(
-				companyId, repositoryId, fileName
-			).validateFileExtension(
-				validateFileExtension
-			).build(),
-			inputStream);
-	}
-
-	@Override
-	public void addFile(
-			long companyId, long repositoryId, String fileName, byte[] bytes)
-		throws PortalException {
-
-		addFile(
-			DLStoreRequest.builder(
-				companyId, repositoryId, fileName
-			).validateFileExtension(
-				true
-			).build(),
-			bytes);
-	}
-
-	@Override
-	public void addFile(
-			long companyId, long repositoryId, String fileName, File file)
-		throws PortalException {
-
-		addFile(
-			DLStoreRequest.builder(
-				companyId, repositoryId, fileName
-			).validateFileExtension(
-				true
-			).build(),
-			file);
-	}
-
-	@Override
-	public void addFile(
-			long companyId, long repositoryId, String fileName,
-			InputStream inputStream)
-		throws PortalException {
-
-		addFile(
-			DLStoreRequest.builder(
-				companyId, repositoryId, fileName
-			).validateFileExtension(
-				true
-			).build(),
-			inputStream);
 	}
 
 	@Override
@@ -703,8 +614,7 @@ public class DLStoreImpl implements DLStore {
 	private void _validateVersionLabel(String versionLabel)
 		throws PortalException {
 
-		DLValidatorUtil.validateVersionLabel(
-			StringUtil.removeLast(versionLabel, ".index"));
+		DLValidatorUtil.validateVersionLabel(versionLabel);
 	}
 
 	private static volatile Store _store =

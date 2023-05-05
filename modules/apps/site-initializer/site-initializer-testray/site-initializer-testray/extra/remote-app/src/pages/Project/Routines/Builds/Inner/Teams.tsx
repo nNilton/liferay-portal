@@ -12,10 +12,10 @@
  * details.
  */
 
-import Container from '../../../../../components/Layout/Container';
-import ListView from '../../../../../components/ListView';
-import ProgressBar from '../../../../../components/ProgressBar';
-import i18n from '../../../../../i18n';
+import Container from '~/components/Layout/Container';
+import ListView from '~/components/ListView';
+import ProgressBar from '~/components/ProgressBar';
+import i18n from '~/i18n';
 
 const Teams = () => (
 	<Container className="mt-4">
@@ -27,6 +27,7 @@ const Teams = () => (
 					test_fix: false,
 					untested: false,
 				},
+				columnsFixed: ['name'],
 			}}
 			managementToolbarProps={{
 				filterSchema: 'buildTeams',

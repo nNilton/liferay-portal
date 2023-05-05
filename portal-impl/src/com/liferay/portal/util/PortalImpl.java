@@ -23,6 +23,8 @@ import com.liferay.expando.kernel.model.ExpandoBridge;
 import com.liferay.expando.kernel.model.ExpandoColumnConstants;
 import com.liferay.exportimport.kernel.staging.StagingUtil;
 import com.liferay.layout.admin.kernel.model.LayoutTypePortletConstants;
+import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerList;
+import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerListFactory;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
@@ -160,14 +162,12 @@ import com.liferay.portal.kernel.servlet.ServletContextUtil;
 import com.liferay.portal.kernel.servlet.SessionErrors;
 import com.liferay.portal.kernel.servlet.filters.compoundsessionid.CompoundSessionIdSplitterUtil;
 import com.liferay.portal.kernel.servlet.taglib.ui.BreadcrumbEntry;
-import com.liferay.portal.kernel.struts.StrutsAction;
 import com.liferay.portal.kernel.theme.PortletDisplay;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.upload.UploadPortletRequest;
 import com.liferay.portal.kernel.upload.UploadServletRequest;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.CalendarFactoryUtil;
-import com.liferay.portal.kernel.util.ClassUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.DeterminateKeyGenerator;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -211,7 +211,7 @@ import com.liferay.portal.model.impl.CookieRemotePreference;
 import com.liferay.portal.model.impl.LayoutTypeImpl;
 import com.liferay.portal.security.jaas.JAASHelper;
 import com.liferay.portal.security.sso.SSOUtil;
-import com.liferay.portal.servlet.filters.i18n.I18nFilter;
+import com.liferay.portal.servlet.I18nServlet;
 import com.liferay.portal.spring.context.PortalContextLoaderListener;
 import com.liferay.portal.struts.StrutsUtil;
 import com.liferay.portal.upgrade.PortalUpgradeProcess;
@@ -269,7 +269,6 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -299,9 +298,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceReference;
-import org.osgi.util.tracker.ServiceTracker;
-import org.osgi.util.tracker.ServiceTrackerCustomizer;
 
 /**
  * @author Brian Wing Shun Chan
@@ -479,6 +475,7 @@ public class PortalImpl implements Portal {
 		// Portal layout
 
 		_reservedParams.add("p_l_back_url");
+		_reservedParams.add("p_l_back_url_title");
 		_reservedParams.add("p_l_id");
 		_reservedParams.add("p_l_mode");
 		_reservedParams.add("p_l_reset");
@@ -541,39 +538,10 @@ public class PortalImpl implements Portal {
 			_validPortalDomainCheckDisabled = false;
 		}
 
-		// Always allow do as user service tracker
-
-		try {
-			ServiceTracker<AlwaysAllowDoAsUser, AlwaysAllowDoAsUser>
-				alwaysAllowDoAsUserServiceTracker = new ServiceTracker<>(
-					_bundleContext, AlwaysAllowDoAsUser.class,
-					new AlwaysAllowDoAsUserServiceTrackerCustomizer());
-
-			alwaysAllowDoAsUserServiceTracker.open();
-
-			ServiceTracker
-				<PortalInetSocketAddressEventListener,
-				 PortalInetSocketAddressEventListener>
-					portalInetSocketAddressEventListenerServiceTracker =
-						new ServiceTracker<>(
-							_bundleContext,
-							PortalInetSocketAddressEventListener.class,
-							new PortalInetSocketAddressEventListenerServiceTrackerCustomizer());
-
-			portalInetSocketAddressEventListenerServiceTracker.open();
-
-			ServiceTracker<StrutsAction, StrutsAction>
-				commentsStrutsActionServiceTracker = new ServiceTracker<>(
-					_bundleContext, StrutsAction.class,
-					new CommentsStrutsActionServiceTrackerCustomizer());
-
-			commentsStrutsActionServiceTracker.open();
-		}
-		catch (NullPointerException nullPointerException) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(nullPointerException);
-			}
-		}
+		_alwaysAllowDoAsUsers = ServiceTrackerListFactory.open(
+			_bundleContext, AlwaysAllowDoAsUser.class);
+		_portalInetSocketAddressEventListeners = ServiceTrackerListFactory.open(
+			_bundleContext, PortalInetSocketAddressEventListener.class);
 	}
 
 	@Override
@@ -654,15 +622,6 @@ public class PortalImpl implements Portal {
 		}
 
 		titleListMergeable.add(title);
-	}
-
-	@Override
-	public boolean addPortalInetSocketAddressEventListener(
-		PortalInetSocketAddressEventListener
-			portalInetSocketAddressEventListener) {
-
-		return _portalInetSocketAddressEventListeners.add(
-			portalInetSocketAddressEventListener);
 	}
 
 	@Override
@@ -1392,9 +1351,11 @@ public class PortalImpl implements Portal {
 									WebKeys.LOCALE, locale
 								).build());
 
-						alternateURLSuffix =
-							groupFriendlyURL +
-								layoutFriendlyURLComposite.getFriendlyURL();
+						if (layoutFriendlyURLComposite != null) {
+							alternateURLSuffix =
+								groupFriendlyURL +
+									layoutFriendlyURLComposite.getFriendlyURL();
+						}
 
 						break;
 					}
@@ -3698,7 +3659,7 @@ public class PortalImpl implements Portal {
 			}
 		}
 
-		if ((user != null) && !user.isDefaultUser()) {
+		if ((user != null) && !user.isGuestUser()) {
 			Locale userLocale = getAvailableLocale(groupId, user.getLocale());
 
 			if (LanguageUtil.isAvailableLocale(groupId, userLocale)) {
@@ -3801,10 +3762,10 @@ public class PortalImpl implements Portal {
 			return null;
 		}
 
-		User defaultUser = null;
+		User guestUser = null;
 
 		try {
-			defaultUser = company.getDefaultUser();
+			guestUser = company.getGuestUser();
 		}
 		catch (Exception exception) {
 			if (_log.isDebugEnabled()) {
@@ -3812,20 +3773,20 @@ public class PortalImpl implements Portal {
 			}
 		}
 
-		if (defaultUser == null) {
+		if (guestUser == null) {
 			return null;
 		}
 
-		Locale defaultUserLocale = getAvailableLocale(
-			groupId, defaultUser.getLocale());
+		Locale guestUserLocale = getAvailableLocale(
+			groupId, guestUser.getLocale());
 
-		if (LanguageUtil.isAvailableLocale(groupId, defaultUserLocale)) {
+		if (LanguageUtil.isAvailableLocale(groupId, guestUserLocale)) {
 			if (initialize) {
 				setLocale(
-					httpServletRequest, httpServletResponse, defaultUserLocale);
+					httpServletRequest, httpServletResponse, guestUserLocale);
 			}
 
-			return defaultUserLocale;
+			return guestUserLocale;
 		}
 
 		try {
@@ -4274,14 +4235,6 @@ public class PortalImpl implements Portal {
 		}
 
 		return plid;
-	}
-
-	@Override
-	public PortalInetSocketAddressEventListener[]
-		getPortalInetSocketAddressEventListeners() {
-
-		return _portalInetSocketAddressEventListeners.toArray(
-			new PortalInetSocketAddressEventListener[0]);
 	}
 
 	@Override
@@ -5250,12 +5203,12 @@ public class PortalImpl implements Portal {
 		UnicodeProperties typeSettingsUnicodeProperties =
 			liveGroup.getTypeSettingsProperties();
 
-		User defaultUser = UserLocalServiceUtil.getDefaultUser(
+		User guestUser = UserLocalServiceUtil.getGuestUser(
 			group.getCompanyId());
 
 		String languageId = GetterUtil.getString(
 			typeSettingsUnicodeProperties.getProperty("languageId"),
-			defaultUser.getLanguageId());
+			guestUser.getLanguageId());
 
 		return LocaleUtil.fromLanguageId(languageId);
 	}
@@ -5625,13 +5578,13 @@ public class PortalImpl implements Portal {
 	public UploadServletRequest getUploadServletRequest(
 		HttpServletRequest httpServletRequest) {
 
-		return getUploadServletRequest(httpServletRequest, 0, null, 0, 0);
+		return getUploadServletRequest(httpServletRequest, 0, null);
 	}
 
 	@Override
 	public UploadServletRequest getUploadServletRequest(
 		HttpServletRequest httpServletRequest, int fileSizeThreshold,
-		String location, long maxRequestSize, long maxFileSize) {
+		String location) {
 
 		List<PersistentHttpServletRequestWrapper>
 			persistentHttpServletRequestWrappers = new ArrayList<>();
@@ -5687,8 +5640,7 @@ public class PortalImpl implements Portal {
 		}
 
 		return new UploadServletRequestImpl(
-			currentHttpServletRequest, fileSizeThreshold, location,
-			maxRequestSize, maxFileSize);
+			currentHttpServletRequest, fileSizeThreshold, location);
 	}
 
 	@Override
@@ -6099,7 +6051,7 @@ public class PortalImpl implements Portal {
 		User user = UserLocalServiceUtil.fetchUser(userId);
 
 		if (user == null) {
-			return UserLocalServiceUtil.getDefaultUserId(companyId);
+			return UserLocalServiceUtil.getGuestUserId(companyId);
 		}
 
 		if (user.getCompanyId() == companyId) {
@@ -6227,7 +6179,7 @@ public class PortalImpl implements Portal {
 
 		Company company = getCompany(httpServletRequest);
 
-		return company.getDefaultUser();
+		return company.getGuestUser();
 	}
 
 	@Override
@@ -6702,15 +6654,6 @@ public class PortalImpl implements Portal {
 		}
 
 		return true;
-	}
-
-	@Override
-	public boolean removePortalInetSocketAddressEventListener(
-		PortalInetSocketAddressEventListener
-			portalInetSocketAddressEventListener) {
-
-		return _portalInetSocketAddressEventListeners.remove(
-			portalInetSocketAddressEventListener);
 	}
 
 	@Override
@@ -7815,7 +7758,7 @@ public class PortalImpl implements Portal {
 		PermissionChecker permissionChecker =
 			PermissionCheckerFactoryUtil.create(realUser);
 
-		if (doAsUser.isDefaultUser() ||
+		if (doAsUser.isGuestUser() ||
 			UserPermissionUtil.contains(
 				permissionChecker, doAsUserId, doAsUser.getOrganizationIds(),
 				ActionKeys.IMPERSONATE)) {
@@ -8198,12 +8141,12 @@ public class PortalImpl implements Portal {
 
 		String i18nPath = null;
 
-		Set<String> languageIds = I18nFilter.getLanguageIds();
+		Set<String> languageIds = I18nServlet.getLanguageIds();
 		int localePrependFriendlyURLStyle = PrefsPropsUtil.getInteger(
 			themeDisplay.getCompanyId(),
 			PropsKeys.LOCALE_PREPEND_FRIENDLY_URL_STYLE);
 
-		if ((languageIds.contains(locale.toString()) &&
+		if ((languageIds.contains(CharPool.SLASH + locale.toString()) &&
 			 (localePrependFriendlyURLStyle == 1) &&
 			 !locale.equals(LocaleUtil.getDefault())) ||
 			(localePrependFriendlyURLStyle == 2)) {
@@ -9010,16 +8953,13 @@ public class PortalImpl implements Portal {
 	private final String[] _allSystemOrganizationRoles;
 	private final String[] _allSystemRoles;
 	private final String[] _allSystemSiteRoles;
-	private final List<AlwaysAllowDoAsUser> _alwaysAllowDoAsUsers =
-		new ArrayList<>();
+	private final ServiceTrackerList<AlwaysAllowDoAsUser> _alwaysAllowDoAsUsers;
 	private final BundleContext _bundleContext =
 		SystemBundleUtil.getBundleContext();
 	private final Set<String> _computerAddresses = new HashSet<>();
 	private final String _computerName;
 	private String[] _customSqlKeys;
 	private String[] _customSqlValues;
-	private volatile StrutsAction _editDiscussionStrutsAction;
-	private volatile StrutsAction _getCommentsStrutsAction;
 	private final String _pathContext;
 	private final String _pathFriendlyURLPrivateGroup;
 	private final String _pathFriendlyURLPrivateUser;
@@ -9030,8 +8970,8 @@ public class PortalImpl implements Portal {
 	private final String _pathProxy;
 	private final Map<String, Long> _plidToPortletIdMap =
 		new ConcurrentHashMap<>();
-	private final Set<PortalInetSocketAddressEventListener>
-		_portalInetSocketAddressEventListeners = new CopyOnWriteArraySet<>();
+	private final ServiceTrackerList<PortalInetSocketAddressEventListener>
+		_portalInetSocketAddressEventListeners;
 	private final AtomicReference<InetSocketAddress>
 		_portalLocalInetSocketAddress = new AtomicReference<>();
 	private final AtomicReference<InetSocketAddress>
@@ -9047,163 +8987,5 @@ public class PortalImpl implements Portal {
 	private final String[] _sortedSystemRoles;
 	private final String[] _sortedSystemSiteRoles;
 	private final boolean _validPortalDomainCheckDisabled;
-
-	private class AlwaysAllowDoAsUserServiceTrackerCustomizer
-		implements ServiceTrackerCustomizer
-			<AlwaysAllowDoAsUser, AlwaysAllowDoAsUser> {
-
-		@Override
-		public AlwaysAllowDoAsUser addingService(
-			ServiceReference<AlwaysAllowDoAsUser> serviceReference) {
-
-			AlwaysAllowDoAsUser alwaysAllowDoAsUser = _bundleContext.getService(
-				serviceReference);
-
-			if (_log.isDebugEnabled()) {
-				_log.debug(
-					"Add alway sallow do as user " +
-						ClassUtil.getClassName(alwaysAllowDoAsUser));
-			}
-
-			_alwaysAllowDoAsUsers.add(alwaysAllowDoAsUser);
-
-			if (_log.isDebugEnabled()) {
-				_log.debug(
-					"There are " + _alwaysAllowDoAsUsers.size() +
-						" alway sallow do as user instances");
-			}
-
-			return alwaysAllowDoAsUser;
-		}
-
-		@Override
-		public void modifiedService(
-			ServiceReference<AlwaysAllowDoAsUser> serviceReference,
-			AlwaysAllowDoAsUser alwaysAllowDoAsUser) {
-		}
-
-		@Override
-		public void removedService(
-			ServiceReference<AlwaysAllowDoAsUser> serviceReference,
-			AlwaysAllowDoAsUser alwaysAllowDoAsUser) {
-
-			_bundleContext.ungetService(serviceReference);
-
-			if (_log.isDebugEnabled()) {
-				_log.debug(
-					"Delete alway sallow do as user " +
-						ClassUtil.getClassName(alwaysAllowDoAsUser));
-			}
-
-			_alwaysAllowDoAsUsers.remove(alwaysAllowDoAsUser);
-
-			if (_log.isDebugEnabled()) {
-				_log.debug(
-					"There are " + _alwaysAllowDoAsUsers.size() +
-						" alway sallow do as user instances");
-			}
-		}
-
-	}
-
-	private class CommentsStrutsActionServiceTrackerCustomizer
-		implements ServiceTrackerCustomizer<StrutsAction, StrutsAction> {
-
-		@Override
-		public StrutsAction addingService(
-			ServiceReference<StrutsAction> serviceReference) {
-
-			String path = GetterUtil.getString(
-				serviceReference.getProperty("path"));
-
-			StrutsAction strutsAction = _bundleContext.getService(
-				serviceReference);
-
-			if (Objects.equals(path, "/portal/comment/discussion/edit")) {
-				_editDiscussionStrutsAction = strutsAction;
-			}
-			else if (Objects.equals(
-						path, "/portal/comment/discussion/get_comments")) {
-
-				_getCommentsStrutsAction = strutsAction;
-			}
-
-			return strutsAction;
-		}
-
-		@Override
-		public void modifiedService(
-			ServiceReference<StrutsAction> serviceReference,
-			StrutsAction strutsAction) {
-
-			removedService(serviceReference, strutsAction);
-
-			addingService(serviceReference);
-		}
-
-		@Override
-		public void removedService(
-			ServiceReference<StrutsAction> serviceReference,
-			StrutsAction strutsAction) {
-
-			String path = GetterUtil.getString(
-				serviceReference.getProperty("path"));
-
-			if (Objects.equals(path, "/portal/comment/discussion/edit")) {
-				_editDiscussionStrutsAction = null;
-			}
-			else if (Objects.equals(
-						path, "/portal/comment/discussion/get_comments")) {
-
-				_getCommentsStrutsAction = null;
-			}
-
-			_bundleContext.ungetService(serviceReference);
-		}
-
-	}
-
-	private class PortalInetSocketAddressEventListenerServiceTrackerCustomizer
-		implements ServiceTrackerCustomizer
-			<PortalInetSocketAddressEventListener,
-			 PortalInetSocketAddressEventListener> {
-
-		@Override
-		public PortalInetSocketAddressEventListener addingService(
-			ServiceReference<PortalInetSocketAddressEventListener>
-				serviceReference) {
-
-			PortalInetSocketAddressEventListener
-				portalInetSocketAddressEventListener =
-					_bundleContext.getService(serviceReference);
-
-			addPortalInetSocketAddressEventListener(
-				portalInetSocketAddressEventListener);
-
-			return portalInetSocketAddressEventListener;
-		}
-
-		@Override
-		public void modifiedService(
-			ServiceReference<PortalInetSocketAddressEventListener>
-				serviceReference,
-			PortalInetSocketAddressEventListener
-				portalInetSocketAddressEventListener) {
-		}
-
-		@Override
-		public void removedService(
-			ServiceReference<PortalInetSocketAddressEventListener>
-				serviceReference,
-			PortalInetSocketAddressEventListener
-				portalInetSocketAddressEventListener) {
-
-			_bundleContext.ungetService(serviceReference);
-
-			removePortalInetSocketAddressEventListener(
-				portalInetSocketAddressEventListener);
-		}
-
-	}
 
 }

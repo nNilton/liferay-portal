@@ -4,7 +4,7 @@ definition {
 	property custom.properties = "jsonws.web.service.paths.excludes=";
 	property portal.release = "true";
 	property portal.upstream = "true";
-	property testray.main.component.name = "Site Pages Administration";
+	property testray.main.component.name = "Page Administration";
 
 	setUp {
 		task ("Set up instance and sign in") {
@@ -14,7 +14,7 @@ definition {
 		}
 
 		task ("Add a site") {
-			JSONGroup.addGroup(groupName = "Test Site Name");
+			HeadlessSite.addSite(siteName = "Test Site Name");
 		}
 
 		task ("Add a new user") {
@@ -118,7 +118,7 @@ definition {
 				id = "text",
 				text = "New editable fragment text");
 
-			PageEditor.submitForPublication();
+			PageEditor.submitForWorkflow();
 		}
 
 		task ("View pending status is shown") {
@@ -364,7 +364,7 @@ definition {
 				id = "text",
 				text = "New modified text");
 
-			PageEditor.submitForPublication();
+			PageEditor.submitForWorkflow();
 		}
 	}
 

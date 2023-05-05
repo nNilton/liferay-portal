@@ -29,6 +29,7 @@ import com.liferay.headless.admin.user.client.pagination.Pagination;
 import com.liferay.headless.admin.user.client.resource.v1_0.AccountRoleResource;
 import com.liferay.headless.admin.user.client.serdes.v1_0.AccountRoleSerDes;
 import com.liferay.petra.function.UnsafeTriConsumer;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
@@ -65,8 +66,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.annotation.Generated;
 
@@ -309,7 +308,11 @@ public abstract class BaseAccountRoleResourceTestCase {
 			assertEquals(
 				Arrays.asList(irrelevantAccountRole),
 				(List<AccountRole>)page.getItems());
-			assertValid(page);
+			assertValid(
+				page,
+				testGetAccountByExternalReferenceCodeUserAccountByExternalReferenceCodeAccountRolesPage_getExpectedActions(
+					irrelevantAccountExternalReferenceCode,
+					irrelevantExternalReferenceCode));
 		}
 
 		AccountRole accountRole1 =
@@ -332,7 +335,21 @@ public abstract class BaseAccountRoleResourceTestCase {
 		assertEqualsIgnoringOrder(
 			Arrays.asList(accountRole1, accountRole2),
 			(List<AccountRole>)page.getItems());
-		assertValid(page);
+		assertValid(
+			page,
+			testGetAccountByExternalReferenceCodeUserAccountByExternalReferenceCodeAccountRolesPage_getExpectedActions(
+				accountExternalReferenceCode, externalReferenceCode));
+	}
+
+	protected Map<String, Map<String, String>>
+			testGetAccountByExternalReferenceCodeUserAccountByExternalReferenceCodeAccountRolesPage_getExpectedActions(
+				String accountExternalReferenceCode,
+				String externalReferenceCode)
+		throws Exception {
+
+		Map<String, Map<String, String>> expectedActions = new HashMap<>();
+
+		return expectedActions;
 	}
 
 	protected AccountRole
@@ -409,7 +426,10 @@ public abstract class BaseAccountRoleResourceTestCase {
 			assertEquals(
 				Arrays.asList(irrelevantAccountRole),
 				(List<AccountRole>)page.getItems());
-			assertValid(page);
+			assertValid(
+				page,
+				testGetAccountAccountRolesByExternalReferenceCodePage_getExpectedActions(
+					irrelevantExternalReferenceCode));
 		}
 
 		AccountRole accountRole1 =
@@ -431,7 +451,20 @@ public abstract class BaseAccountRoleResourceTestCase {
 		assertEqualsIgnoringOrder(
 			Arrays.asList(accountRole1, accountRole2),
 			(List<AccountRole>)page.getItems());
-		assertValid(page);
+		assertValid(
+			page,
+			testGetAccountAccountRolesByExternalReferenceCodePage_getExpectedActions(
+				externalReferenceCode));
+	}
+
+	protected Map<String, Map<String, String>>
+			testGetAccountAccountRolesByExternalReferenceCodePage_getExpectedActions(
+				String externalReferenceCode)
+		throws Exception {
+
+		Map<String, Map<String, String>> expectedActions = new HashMap<>();
+
+		return expectedActions;
 	}
 
 	@Test
@@ -899,7 +932,10 @@ public abstract class BaseAccountRoleResourceTestCase {
 			assertEquals(
 				Arrays.asList(irrelevantAccountRole),
 				(List<AccountRole>)page.getItems());
-			assertValid(page);
+			assertValid(
+				page,
+				testGetAccountByExternalReferenceCodeUserAccountByEmailAddressAccountRolesPage_getExpectedActions(
+					irrelevantExternalReferenceCode, irrelevantEmailAddress));
 		}
 
 		AccountRole accountRole1 =
@@ -920,7 +956,20 @@ public abstract class BaseAccountRoleResourceTestCase {
 		assertEqualsIgnoringOrder(
 			Arrays.asList(accountRole1, accountRole2),
 			(List<AccountRole>)page.getItems());
-		assertValid(page);
+		assertValid(
+			page,
+			testGetAccountByExternalReferenceCodeUserAccountByEmailAddressAccountRolesPage_getExpectedActions(
+				externalReferenceCode, emailAddress));
+	}
+
+	protected Map<String, Map<String, String>>
+			testGetAccountByExternalReferenceCodeUserAccountByEmailAddressAccountRolesPage_getExpectedActions(
+				String externalReferenceCode, String emailAddress)
+		throws Exception {
+
+		Map<String, Map<String, String>> expectedActions = new HashMap<>();
+
+		return expectedActions;
 	}
 
 	protected AccountRole
@@ -988,7 +1037,10 @@ public abstract class BaseAccountRoleResourceTestCase {
 			assertEquals(
 				Arrays.asList(irrelevantAccountRole),
 				(List<AccountRole>)page.getItems());
-			assertValid(page);
+			assertValid(
+				page,
+				testGetAccountAccountRolesPage_getExpectedActions(
+					irrelevantAccountId));
 		}
 
 		AccountRole accountRole1 =
@@ -1007,7 +1059,26 @@ public abstract class BaseAccountRoleResourceTestCase {
 		assertEqualsIgnoringOrder(
 			Arrays.asList(accountRole1, accountRole2),
 			(List<AccountRole>)page.getItems());
-		assertValid(page);
+		assertValid(
+			page, testGetAccountAccountRolesPage_getExpectedActions(accountId));
+	}
+
+	protected Map<String, Map<String, String>>
+			testGetAccountAccountRolesPage_getExpectedActions(Long accountId)
+		throws Exception {
+
+		Map<String, Map<String, String>> expectedActions = new HashMap<>();
+
+		Map createBatchAction = new HashMap<>();
+		createBatchAction.put("method", "POST");
+		createBatchAction.put(
+			"href",
+			"http://localhost:8080/o/headless-admin-user/v1.0/accounts/{accountId}/account-roles/batch".
+				replace("{accountId}", String.valueOf(accountId)));
+
+		expectedActions.put("createBatch", createBatchAction);
+
+		return expectedActions;
 	}
 
 	@Test
@@ -1350,8 +1421,18 @@ public abstract class BaseAccountRoleResourceTestCase {
 			204,
 			accountRoleResource.
 				deleteAccountAccountRoleUserAccountAssociationHttpResponse(
-					accountRole.getAccountId(), accountRole.getId(),
+					testDeleteAccountAccountRoleUserAccountAssociation_getAccountId(
+						accountRole),
+					accountRole.getId(),
 					testDeleteAccountAccountRoleUserAccountAssociation_getUserAccountId()));
+	}
+
+	protected Long
+			testDeleteAccountAccountRoleUserAccountAssociation_getAccountId(
+				AccountRole accountRole)
+		throws Exception {
+
+		return accountRole.getAccountId();
 	}
 
 	protected Long
@@ -1535,6 +1616,13 @@ public abstract class BaseAccountRoleResourceTestCase {
 	}
 
 	protected void assertValid(Page<AccountRole> page) {
+		assertValid(page, Collections.emptyMap());
+	}
+
+	protected void assertValid(
+		Page<AccountRole> page,
+		Map<String, Map<String, String>> expectedActions) {
+
 		boolean valid = false;
 
 		java.util.Collection<AccountRole> accountRoles = page.getItems();
@@ -1549,6 +1637,20 @@ public abstract class BaseAccountRoleResourceTestCase {
 		}
 
 		Assert.assertTrue(valid);
+
+		Map<String, Map<String, String>> actions = page.getActions();
+
+		for (String key : expectedActions.keySet()) {
+			Map action = actions.get(key);
+
+			Assert.assertNotNull(key + " does not contain an action", action);
+
+			Map expectedAction = expectedActions.get(key);
+
+			Assert.assertEquals(
+				expectedAction.get("method"), action.get("method"));
+			Assert.assertEquals(expectedAction.get("href"), action.get("href"));
+		}
 	}
 
 	protected String[] getAdditionalAssertFieldNames() {
@@ -1719,14 +1821,16 @@ public abstract class BaseAccountRoleResourceTestCase {
 	protected java.lang.reflect.Field[] getDeclaredFields(Class clazz)
 		throws Exception {
 
-		Stream<java.lang.reflect.Field> stream = Stream.of(
-			ReflectionUtil.getDeclaredFields(clazz));
+		return TransformUtil.transform(
+			ReflectionUtil.getDeclaredFields(clazz),
+			field -> {
+				if (field.isSynthetic()) {
+					return null;
+				}
 
-		return stream.filter(
-			field -> !field.isSynthetic()
-		).toArray(
-			java.lang.reflect.Field[]::new
-		);
+				return field;
+			},
+			java.lang.reflect.Field.class);
 	}
 
 	protected java.util.Collection<EntityField> getEntityFields()
@@ -1743,6 +1847,10 @@ public abstract class BaseAccountRoleResourceTestCase {
 		EntityModel entityModel = entityModelResource.getEntityModel(
 			new MultivaluedHashMap());
 
+		if (entityModel == null) {
+			return Collections.emptyList();
+		}
+
 		Map<String, EntityField> entityFieldsMap =
 			entityModel.getEntityFieldsMap();
 
@@ -1752,18 +1860,18 @@ public abstract class BaseAccountRoleResourceTestCase {
 	protected List<EntityField> getEntityFields(EntityField.Type type)
 		throws Exception {
 
-		java.util.Collection<EntityField> entityFields = getEntityFields();
+		return TransformUtil.transform(
+			getEntityFields(),
+			entityField -> {
+				if (!Objects.equals(entityField.getType(), type) ||
+					ArrayUtil.contains(
+						getIgnoredEntityFieldNames(), entityField.getName())) {
 
-		Stream<EntityField> stream = entityFields.stream();
+					return null;
+				}
 
-		return stream.filter(
-			entityField ->
-				Objects.equals(entityField.getType(), type) &&
-				!ArrayUtil.contains(
-					getIgnoredEntityFieldNames(), entityField.getName())
-		).collect(
-			Collectors.toList()
-		);
+				return entityField;
+			});
 	}
 
 	protected String getFilterString(

@@ -19,10 +19,12 @@ export function getMDFRequestFromDTO(mdfRequest: MDFRequestDTO): MDFRequest {
 			mdfRequest.mdfReqToActs?.map((activityItem) => {
 				const {
 					actToBgts,
+					activityStatus,
 					endDate,
+					externalReferenceCode,
 					id,
 					mdfRequestAmount,
-					mdfRequestExternalReferenceCodeSF,
+					mdfRequestExternalReferenceCode,
 					name,
 					r_accToActs_accountEntryId,
 					r_mdfReqToActs_c_mdfRequestId,
@@ -44,11 +46,13 @@ export function getMDFRequestFromDTO(mdfRequest: MDFRequestDTO): MDFRequest {
 						),
 						leadGenerated: String(activityItem.leadGenerated),
 					},
+					activityStatus,
 					budgets: actToBgts || [],
 					endDate: endDate?.split('T')[0],
+					externalReferenceCode,
 					id,
 					mdfRequestAmount,
-					mdfRequestExternalReferenceCodeSF,
+					mdfRequestExternalReferenceCode,
 					mdfRequestId: r_mdfReqToActs_c_mdfRequestId,
 					name,
 					r_accToActs_accountEntryId,
@@ -61,11 +65,17 @@ export function getMDFRequestFromDTO(mdfRequest: MDFRequestDTO): MDFRequest {
 			}) || [],
 		additionalOption: mdfRequest.additionalOption,
 		company: mdfRequest.r_accToMDFReqs_accountEntry,
-		liferayBusinessSalesGoals: mdfRequest.liferayBusinessSalesGoals?.split(
-			'; '
-		),
+		liferayBusinessSalesGoals: mdfRequest.liferayBusinessSalesGoals
+			?.split('; ')
+			.filter((request) => request !== ''),
+		liferayBusinessSalesGoalsOther:
+			mdfRequest.liferayBusinessSalesGoalsOther,
 		mdfRequestStatus: mdfRequest.mdfRequestStatus,
-		targetAudienceRoles: mdfRequest.targetAudienceRoles?.split('; '),
-		targetMarkets: mdfRequest.targetMarkets?.split('; '),
+		targetAudienceRoles: mdfRequest.targetAudienceRoles
+			?.split('; ')
+			.filter((request) => request !== ''),
+		targetMarkets: mdfRequest.targetMarkets
+			?.split('; ')
+			.filter((request) => request !== ''),
 	};
 }

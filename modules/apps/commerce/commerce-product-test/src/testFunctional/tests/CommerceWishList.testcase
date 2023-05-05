@@ -35,6 +35,8 @@ definition {
 	@description = "COMMERCE-7791 | Verify if only non subscription product in wish list will be imported when subscription product is not the first in the wish list"
 	@priority = 3
 	test AssertOnlyNonSubscriptionProductsAreImportedWhenTheSubscriptionProductIsNotTheFirstOnTheListWhenImporting {
+		property portal.acceptance = "false";
+
 		task ("Given admin user enable subscription in one product") {
 			User.logoutAndLoginPG(
 				userLoginEmailAddress = "test@liferay.com",
@@ -148,6 +150,8 @@ definition {
 	@description = "Verify only one wish list can be imported from list"
 	@priority = 3
 	test AssertOnlyOneWishlistCanBeChosenForTheImport {
+		property portal.acceptance = "false";
+
 		task ("Given a Minium site with a buyer user") {
 			User.logoutPG();
 
@@ -205,6 +209,8 @@ definition {
 	@description = "COMMERCE-7790 | Verify if only first subscription product in wish list will be imported"
 	@priority = 3
 	test AssertOnlyTheFirstSubscriptionProductInTheWishListIsImportedWhenTheOrderIsEmpty {
+		property portal.acceptance = "false";
+
 		task ("Given admin user enable subscription in two products") {
 			User.logoutAndLoginPG(
 				userLoginEmailAddress = "test@liferay.com",
@@ -319,6 +325,8 @@ definition {
 	@description = "COMMERCE-7792 | Verify if when a subscription product is in the cart, nothing can be imported"
 	@priority = 3
 	test AssertProductsCannotBeImportedIfASubscriptionProductIsInTheOrder {
+		property portal.acceptance = "false";
+
 		task ("Given admin user enable subscription in two products") {
 			User.logoutAndLoginPG(
 				userLoginEmailAddress = "test@liferay.com",
@@ -445,6 +453,8 @@ definition {
 	@description = "COMMERCE-7793 | Verify if subscription product can not be imported if the order already has another subscription product"
 	@priority = 3
 	test AssertSubscriptionProductCannotBeImportedIfThereAreNonSubscriptionProductsInTheOrder {
+		property portal.acceptance = "false";
+
 		task ("Given admin user enable subscription in one product") {
 			User.logoutAndLoginPG(
 				userLoginEmailAddress = "test@liferay.com",
@@ -584,6 +594,8 @@ definition {
 	@description = "COMMERCE-7721 | Verify user can import wish discount and see price variations"
 	@priority = 3
 	test CanImportProductsFromWishlistWithPriceVariations {
+		property portal.acceptance = "false";
+
 		task ("Given a Minium site with a buyer user") {
 			User.logoutPG();
 
@@ -756,8 +768,131 @@ definition {
 		}
 	}
 
-	@description = "Verify user can import wish list order in another order and do checkout"
+	@description = "COMMERCE-9373 Verify pagination is working properly in preview when importing a wish list"
 	@priority = 3
+	test CanUseImportFromWishListsPreviewPagination {
+		property portal.acceptance = "false";
+
+		task ("Given a Minium site with a buyer user") {
+			User.logoutPG();
+
+			CommerceLogin.miniumLogin(
+				password = "test",
+				urlAppend = "web/minium",
+				userEmailAddress = "buyer@liferay.com");
+		}
+
+		task ("And a wish list with some products") {
+			CommerceWishList.addProductToWishList(productName = "U-Joint,ABS Sensor,Torque Converters,Power Steering Pump,Brake Fluid,Master Cylinder,Drive Shafts,CV Axles,Mount,Wear Sensors,Calipers,Brake Rotors,Premium Brake Pads");
+
+			CommerceNavigator.goToWishLists();
+
+			CommerceWishList.assertWishListProduct(
+				productName = "U-Joint,ABS Sensor,Torque Converters,Power Steering Pump,Brake Fluid,Master Cylinder,Drive Shafts,CV Axles,Mount,Wear Sensors,Calipers,Brake Rotors,Premium Brake Pads",
+				wishListName = "Default");
+		}
+
+		task ("When the buyer import orders from wish list") {
+			CommerceAcceleratorsInitializer.createNewOrderFromPendingOrders();
+
+			CommerceOrders.importOrderFromType(orderType = "Wish Lists");
+
+			SelectFrameTop();
+
+			IFrame.selectModalFrame();
+
+			ClickNoError(
+				key_itemName = "Default",
+				locator1 = "CommerceEntry#SELECT_ITEM_FROM_LIST");
+
+			SelectFrameTop();
+
+			IFrame.selectModalFrame();
+		}
+
+		task ("And can see data set is filled with the following data in the preview modal and only eigth items are displayed") {
+			Pagination.changePagination(itemsPerPage = "8 Items");
+
+			CommerceEntry.viewPaginationResults(results = "Showing 1 to 8 of 13 entries.");
+
+			CommerceOrders.assertOrderImportPreviewEntry(
+				productName = "Premium Brake Pads",
+				productSku = "MIN93019");
+
+			CommerceOrders.assertOrderImportPreviewEntry(
+				productName = "Brake Rotors",
+				productSku = "MIN93020");
+
+			CommerceOrders.assertOrderImportPreviewEntry(
+				productName = "Calipers",
+				productSku = "MIN93021");
+		}
+
+		task ("When the user go to next page") {
+			Click(locator1 = "ACUtils#NEXT_PAGES");
+		}
+
+		task ("Then the remaining items are displayed") {
+			CommerceEntry.viewPaginationResults(results = "Showing 9 to 13 of 13 entries.");
+
+			CommerceOrders.assertOrderImportPreviewEntry(
+				productName = "ABS Sensor",
+				productSku = "MIN93015");
+
+			CommerceOrders.assertOrderImportPreviewEntry(
+				productName = "U-Joint",
+				productSku = "MIN55861");
+
+			CommerceOrders.assertOrderImportPreviewEntry(
+				productName = "Torque Converters",
+				productSku = "MIN55859");
+
+			AssertElementNotPresent(
+				key_columnNumber = 1,
+				key_productName = "Calipers",
+				key_value = "MIN93021",
+				locator1 = "CommerceEntry#TABLE_SEARCH_BY_NAME_AND_COLUMN_CONTENT");
+
+			AssertElementNotPresent(
+				key_columnNumber = 1,
+				key_productName = "Brake Rotors",
+				key_value = "MIN93020",
+				locator1 = "CommerceEntry#TABLE_SEARCH_BY_NAME_AND_COLUMN_CONTENT");
+
+			AssertElementNotPresent(
+				key_columnNumber = 1,
+				key_productName = "Premium Brake Pads",
+				key_value = "MIN93019",
+				locator1 = "CommerceEntry#TABLE_SEARCH_BY_NAME_AND_COLUMN_CONTENT");
+
+			Click(locator1 = "ACUtils#PREVIOUS_PAGES");
+
+			CommerceEntry.viewPaginationResults(results = "Showing 1 to 8 of 13 entries.");
+
+			CommerceOrders.assertOrderImportPreviewEntry(
+				productName = "Premium Brake Pads",
+				productSku = "MIN93019");
+
+			Click(
+				key_pageNumber = 2,
+				locator1 = "ACUtils#ANY_PAGE");
+
+			CommerceEntry.viewPaginationResults(results = "Showing 9 to 13 of 13 entries.");
+
+			CommerceOrders.assertOrderImportPreviewEntry(
+				productName = "ABS Sensor",
+				productSku = "MIN93015");
+
+			CommerceOrders.assertOrderImportPreviewEntry(
+				productName = "U-Joint",
+				productSku = "MIN55861");
+
+			IFrame.closeFrame();
+		}
+	}
+
+	@description = "Verify user can import wish list order in another order and do checkout"
+	@priority = 5
 	test CheckoutAfterImportFromWishList {
 		property portal.acceptance = "true";
 
@@ -927,6 +1062,8 @@ definition {
 	@description = "Verify user can import item from wish list"
 	@priority = 3
 	test ImportProductsFromWishlist {
+		property portal.acceptance = "false";
+
 		task ("Given a Minium site with a buyer user") {
 			User.logoutPG();
 
@@ -1032,6 +1169,8 @@ definition {
 	@description = "Verify user can import item from wish list and see imported items"
 	@priority = 3
 	test ViewImportedWishlistItemsPreview {
+		property portal.acceptance = "false";
+
 		task ("Given a Minium site with a buyer user") {
 			User.logoutPG();
 
@@ -1115,6 +1254,8 @@ definition {
 	@description = "Verify if the wish list pagination show the right items"
 	@priority = 3
 	test ViewPaginationOnImportFromWishlist {
+		property portal.acceptance = "false";
+
 		task ("Given a Minium site with a buyer user") {
 			User.logoutPG();
 
@@ -1147,9 +1288,9 @@ definition {
 		}
 
 		task ("Then only four wish lists are displayed") {
-			Pagination.changePagination(itemsPerPage = "4 items");
+			Pagination.changePagination(itemsPerPage = "4 Items");
 
-			CommerceEntry.viewPaginationResults(results = "Showing 1 to 4 of 6");
+			CommerceEntry.viewPaginationResults(results = "Showing 1 to 4 of 6 entries.");
 
 			for (var wishListNumber : list "1,2,3,4") {
 				AssertVisible(
@@ -1171,7 +1312,7 @@ definition {
 		}
 
 		task ("Then only two wish lists are displayed") {
-			CommerceEntry.viewPaginationResults(results = "Showing 5 to 6 of 6");
+			CommerceEntry.viewPaginationResults(results = "Showing 5 to 6 of 6 entries.");
 
 			for (var wishListNumber : list "1,2,3,4") {
 				AssertElementNotPresent(

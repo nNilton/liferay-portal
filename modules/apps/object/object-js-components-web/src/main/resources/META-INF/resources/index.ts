@@ -31,13 +31,15 @@ export {InputLocalized} from './components/InputLocalized';
 export {ManagementToolbar} from './components/ManagementToolbar/index';
 export {ManagementToolbarSearch} from './components/ManagementToolbar/ManagementToolbarSearch';
 export {ModalEditExternalReferenceCode} from './components/ManagementToolbar/ModalEditExternalReferenceCode';
+export {PicklistEntryBaseField} from './components/BaseEntryFields/PicklistEntryBaseField';
 export {RichTextLocalized} from './components/RichTextLocalized';
 export {Select} from './components/Select';
 export {CustomItem} from './components/Select/BaseSelect';
 export {CheckboxItem} from './components/Select/CheckBoxItem';
 export {MultipleSelect} from './components/Select/MultipleSelect';
+export {SelectWithOption} from './components/Select/SelectWithOption';
 export {SingleSelect} from './components/Select/SingleSelect';
-export {SelectWithOption} from './components/SelectWithOption';
+
 export {
 	closeSidePanel,
 	openToast,

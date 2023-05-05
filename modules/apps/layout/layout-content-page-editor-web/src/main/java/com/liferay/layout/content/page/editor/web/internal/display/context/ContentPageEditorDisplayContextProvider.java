@@ -15,7 +15,6 @@
 package com.liferay.layout.content.page.editor.web.internal.display.context;
 
 import com.liferay.asset.list.service.AssetListEntryLocalService;
-import com.liferay.dynamic.data.mapping.service.DDMStructureLocalService;
 import com.liferay.exportimport.kernel.staging.Staging;
 import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.fragment.service.FragmentEntryLocalService;
@@ -26,6 +25,7 @@ import com.liferay.item.selector.ItemSelector;
 import com.liferay.layout.content.page.editor.constants.ContentPageEditorWebKeys;
 import com.liferay.layout.content.page.editor.sidebar.panel.ContentPageEditorSidebarPanel;
 import com.liferay.layout.content.page.editor.web.internal.configuration.PageEditorConfiguration;
+import com.liferay.layout.content.page.editor.web.internal.util.ContentManager;
 import com.liferay.layout.content.page.editor.web.internal.util.FragmentCollectionManager;
 import com.liferay.layout.content.page.editor.web.internal.util.FragmentEntryLinkManager;
 import com.liferay.layout.page.template.constants.LayoutPageTemplateEntryTypeConstants;
@@ -92,7 +92,7 @@ public class ContentPageEditorDisplayContextProvider {
 		if (Objects.equals(className, Layout.class.getName())) {
 			return new ContentPageLayoutEditorDisplayContext(
 				_assetListEntryLocalService,
-				_getContentPageEditorSidebarPanels(),
+				_getContentPageEditorSidebarPanels(), _contentManager,
 				_fragmentCollectionManager, _fragmentEntryLinkManager,
 				_fragmentEntryLinkLocalService, _fragmentEntryLocalService,
 				_frontendTokenDefinitionRegistry, _groupLocalService,
@@ -130,7 +130,7 @@ public class ContentPageEditorDisplayContextProvider {
 		}
 
 		return new ContentPageEditorLayoutPageTemplateDisplayContext(
-			_ddmStructureLocalService, _getContentPageEditorSidebarPanels(),
+			_getContentPageEditorSidebarPanels(), _contentManager,
 			_fragmentCollectionManager, _fragmentEntryLinkManager,
 			_fragmentEntryLinkLocalService, _fragmentEntryLocalService,
 			_frontendTokenDefinitionRegistry, httpServletRequest,
@@ -173,7 +173,7 @@ public class ContentPageEditorDisplayContextProvider {
 	private AssetListEntryLocalService _assetListEntryLocalService;
 
 	@Reference
-	private DDMStructureLocalService _ddmStructureLocalService;
+	private ContentManager _contentManager;
 
 	@Reference
 	private FragmentCollectionManager _fragmentCollectionManager;

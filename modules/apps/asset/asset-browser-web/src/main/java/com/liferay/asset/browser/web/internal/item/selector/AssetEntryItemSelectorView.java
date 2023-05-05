@@ -99,7 +99,8 @@ public class AssetEntryItemSelectorView
 			assetEntryItemSelectorCriterion, portletURL, itemSelectedEventName,
 			search,
 			new AssetEntryItemSelectorViewDescriptor(
-				httpServletRequest, assetBrowserDisplayContext, portletURL));
+				httpServletRequest, assetBrowserDisplayContext,
+				assetEntryItemSelectorCriterion, portletURL));
 	}
 
 	private static final List<ItemSelectorReturnType>

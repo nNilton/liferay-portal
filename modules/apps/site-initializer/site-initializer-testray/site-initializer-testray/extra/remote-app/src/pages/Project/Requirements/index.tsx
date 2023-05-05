@@ -15,19 +15,16 @@
 import ClayIcon from '@clayui/icon';
 import ClayManagementToolbar from '@clayui/management-toolbar';
 import {useNavigate, useParams} from 'react-router-dom';
+import {testrayRequirementsImpl} from '~/services/rest';
 
 import Button from '../../../components/Button';
 import Container from '../../../components/Layout/Container';
 import ListView, {ListViewProps} from '../../../components/ListView';
 import {TableProps} from '../../../components/Table';
 import {ListViewContextProviderProps} from '../../../context/ListViewContext';
+import SearchBuilder from '../../../core/SearchBuilder';
 import i18n from '../../../i18n';
-import {
-	getRequirementsTransformData,
-	requirementsResource,
-} from '../../../services/rest';
 import {Action} from '../../../types';
-import {SearchBuilder} from '../../../util/search';
 import useRequirementActions from './useRequirementActions';
 
 type RequirementListViewProps = {
@@ -53,23 +50,28 @@ const RequirementListView: React.FC<RequirementListViewProps> = ({
 		<ListView
 			managementToolbarProps={{
 				addButton: () => navigate('create'),
-				buttons: (
-					<>
-						<Button displayType="secondary" symbol="redo" toolbar>
-							{i18n.translate('import-jira-issues')}
-						</Button>
-
-						<ClayManagementToolbar.Item className="ml-2">
-							<Button displayType="secondary" symbol="upload">
-								{i18n.translate('upload-csv')}
+				buttons: (actions) =>
+					actions?.create && (
+						<>
+							<Button
+								displayType="secondary"
+								symbol="redo"
+								toolbar
+							>
+								{i18n.translate('import-jira-issues')}
 							</Button>
-						</ClayManagementToolbar.Item>
-					</>
-				),
+
+							<ClayManagementToolbar.Item className="ml-2">
+								<Button displayType="secondary" symbol="upload">
+									{i18n.translate('upload-csv')}
+								</Button>
+							</ClayManagementToolbar.Item>
+						</>
+					),
 				filterSchema: 'requirements',
 				title: i18n.translate('requirements'),
 			}}
-			resource={requirementsResource}
+			resource={testrayRequirementsImpl.resource}
 			tableProps={{
 				actions,
 				columns: [
@@ -123,7 +125,9 @@ const RequirementListView: React.FC<RequirementListViewProps> = ({
 				navigateTo: ({id}) => id?.toString(),
 				...tableProps,
 			}}
-			transformData={getRequirementsTransformData}
+			transformData={(response) =>
+				testrayRequirementsImpl.transformDataFromList(response)
+			}
 			variables={variables}
 			{...listViewProps}
 		/>

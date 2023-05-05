@@ -16,45 +16,49 @@ import ClayIcon from '@clayui/icon';
 import {Dispatch, useContext} from 'react';
 import {Link, useOutletContext, useParams} from 'react-router-dom';
 import {KeyedMutator} from 'swr';
-
-import Avatar from '../../components/Avatar';
-import AssignToMe from '../../components/Avatar/AssigneToMe';
-import Code from '../../components/Code';
-import FloatingBox from '../../components/FloatingBox/index';
-import Container from '../../components/Layout/Container';
-import ListView from '../../components/ListView';
-import Loading from '../../components/Loading';
-import TaskbarProgress from '../../components/ProgressBar/TaskbarProgress';
-import StatusBadge from '../../components/StatusBadge';
-import {StatusBadgeType} from '../../components/StatusBadge/StatusBadge';
-import QATable from '../../components/Table/QATable';
-import {ListViewTypes} from '../../context/ListViewContext';
-import {TestrayContext} from '../../context/TestrayContext';
-import useCaseResultGroupBy from '../../data/useCaseResultGroupBy';
-import useSubtaskScore from '../../data/useSubtaskScore';
-import useHeader from '../../hooks/useHeader';
-import useMutate from '../../hooks/useMutate';
-import i18n from '../../i18n';
-import {Liferay} from '../../services/liferay';
+import Avatar from '~/components/Avatar';
+import AssignToMe from '~/components/Avatar/AssignToMe';
+import Code from '~/components/Code';
+import FloatingBox from '~/components/FloatingBox/index';
+import Container from '~/components/Layout/Container';
+import ListView from '~/components/ListView';
+import Loading from '~/components/Loading';
+import TaskbarProgress from '~/components/ProgressBar/TaskbarProgress';
+import StatusBadge from '~/components/StatusBadge';
+import {StatusBadgeType} from '~/components/StatusBadge/StatusBadge';
+import QATable from '~/components/Table/QATable';
+import {ListViewTypes} from '~/context/ListViewContext';
+import {TestrayContext} from '~/context/TestrayContext';
+import SearchBuilder from '~/core/SearchBuilder';
+import useCaseResultGroupBy from '~/hooks/data/useCaseResultGroupBy';
+import useSubtaskScore from '~/hooks/data/useSubtaskScore';
+import useHeader from '~/hooks/useHeader';
+import useMutate from '~/hooks/useMutate';
+import i18n from '~/i18n';
+import {Liferay} from '~/services/liferay';
 import {
 	PickList,
 	TestraySubTask,
 	TestrayTask,
 	TestrayTaskUser,
 	UserAccount,
-} from '../../services/rest';
-import {testraySubTaskImpl} from '../../services/rest/TestraySubtask';
-import {StatusesProgressScore, chartClassNames} from '../../util/constants';
-import {getTimeFromNow} from '../../util/date';
-import {SearchBuilder} from '../../util/search';
-import {SubTaskStatuses} from '../../util/statuses';
+} from '~/services/rest';
+import {testraySubTaskImpl} from '~/services/rest/TestraySubtask';
+import {StatusesProgressScore, chartClassNames} from '~/util/constants';
+import {getTimeFromNow} from '~/util/date';
+import {SubTaskStatuses} from '~/util/statuses';
+
 import SubtaskCompleteModal from './Subtask/SubtaskCompleteModal';
 import useSubtasksActions from './Subtask/useSubtasksActions';
 import TaskHeaderActions from './TaskHeaderActions';
 
 type OutletContext = {
 	data: {
-		testrayTask: TestrayTask;
+		testrayTask: TestrayTask & {
+			actions: {
+				[key: string]: string;
+			};
+		};
 		testrayTaskUser: TestrayTaskUser[];
 	};
 	revalidate: {revalidateSubtask: () => void};
@@ -156,7 +160,7 @@ const TestFlowTasks = () => {
 
 	return (
 		<>
-			<TaskHeaderActions />
+			{testrayTask.actions?.update && <TaskHeaderActions />}
 
 			<Container collapsable title={i18n.sub('task-x', 'details')}>
 				<div className="d-flex flex-wrap">
@@ -184,12 +188,11 @@ const TestFlowTasks = () => {
 													({user}) =>
 														user as UserAccount
 												)
-												.map(({givenName}) => ({
-													name: givenName,
-													url:
-														'https://picsum.photos/200',
+												.map(({image, name}) => ({
+													name,
+													url: image,
 												}))}
-											groupSize={3}
+											groupSize={5}
 										/>
 									),
 								},
@@ -343,7 +346,11 @@ const TestFlowTasks = () => {
 								key: 'user',
 								render: (
 									_: any,
-									subtask: TestraySubTask,
+									subtask: TestraySubTask & {
+										actions: {
+											[key: string]: string;
+										};
+									},
 									mutate
 								) => {
 									if (subtask.user) {
@@ -351,16 +358,16 @@ const TestFlowTasks = () => {
 											<Avatar
 												className="text-capitalize"
 												displayName
-												name={`${subtask?.user?.emailAddress
-													.split('@')[0]
-													.replace('.', ' ')}`}
+												name={subtask?.user?.name}
 												size="sm"
+												url={subtask.user.image}
 											/>
 										);
 									}
 
 									return (
 										<AssignToMe
+											hidden={!subtask.actions.update}
 											onClick={() =>
 												testraySubTaskImpl
 													.assignToMe(subtask)

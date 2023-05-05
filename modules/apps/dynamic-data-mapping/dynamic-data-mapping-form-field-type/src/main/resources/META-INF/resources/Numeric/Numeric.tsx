@@ -60,6 +60,7 @@ const adaptiveMask = (rawValue: string, inputMaskFormat: string) => {
 const getMaskedValue = ({
 	dataType,
 	decimalPlaces,
+	focused,
 	includeThousandsSeparator = false,
 	inputMaskFormat,
 	symbols,
@@ -67,6 +68,7 @@ const getMaskedValue = ({
 }: {
 	dataType: NumericDataType;
 	decimalPlaces: number;
+	focused: boolean;
 	includeThousandsSeparator?: boolean;
 	inputMaskFormat: string;
 	symbols: ISymbols;
@@ -102,8 +104,16 @@ const getMaskedValue = ({
 		'g'
 	);
 
+	const splitNumbers = masked.split(symbols.decimalSymbol);
+
+	const decimalDigitsLength =
+		splitNumbers.length > 1 ? splitNumbers.pop().length : 0;
+
 	return {
-		masked,
+		masked:
+			!focused && dataType === 'double' && decimalDigitsLength
+				? masked + '0'.repeat(decimalPlaces - decimalDigitsLength)
+				: masked,
 		placeholder:
 			dataType === 'double'
 				? `0${symbols.decimalSymbol}${'0'.repeat(decimalPlaces)}`
@@ -161,6 +171,7 @@ const Numeric: React.FC<IProps> = ({
 	dataType = 'integer',
 	decimalPlaces,
 	defaultLanguageId,
+	focused,
 	id,
 	inputMask,
 	inputMaskFormat,
@@ -222,6 +233,7 @@ const Numeric: React.FC<IProps> = ({
 			? getMaskedValue({
 					dataType,
 					decimalPlaces,
+					focused,
 					includeThousandsSeparator: Boolean(
 						symbols.thousandsSeparator
 					),
@@ -242,6 +254,7 @@ const Numeric: React.FC<IProps> = ({
 		decimalPlaces,
 		defaultLanguageId,
 		editingLanguageId,
+		focused,
 		inputMask,
 		inputMaskFormat,
 		localizedValue,
@@ -279,6 +292,7 @@ const Numeric: React.FC<IProps> = ({
 			? getMaskedValue({
 					dataType,
 					decimalPlaces,
+					focused,
 					inputMaskFormat: String(inputMaskFormat),
 					symbols,
 					value,
@@ -288,6 +302,17 @@ const Numeric: React.FC<IProps> = ({
 		if (masked !== inputValue.masked) {
 			onChange({target: {value: raw}});
 		}
+	};
+
+	const accessibleProps = {
+		...(otherProps.tip && {
+			'aria-describedby': `${id ?? name}_fieldHelp`,
+		}),
+		...(otherProps.errorMessage && {
+			'aria-errormessage': `${id ?? name}_fieldError`,
+		}),
+		'aria-invalid': !otherProps.valid,
+		'aria-required': otherProps.required,
 	};
 
 	const input = (
@@ -300,6 +325,7 @@ const Numeric: React.FC<IProps> = ({
 				})}
 			>
 				<ClayInput
+					{...accessibleProps}
 					className={classNames({
 						'ddm-form-field-type__numeric--rtl':
 							Liferay.Language.direction[editingLanguageId] ===
@@ -381,6 +407,8 @@ interface IProps {
 	dataType: NumericDataType;
 	decimalPlaces: number;
 	defaultLanguageId: Locale;
+	errorMessage?: string;
+	focused: boolean;
 	id: string;
 	inputMask?: boolean;
 	inputMaskFormat?: string;
@@ -393,8 +421,11 @@ interface IProps {
 	placeholder?: string;
 	predefinedValue?: string;
 	readOnly: boolean;
+	required?: boolean;
 	settingsContext?: any;
 	symbols: ISymbols;
+	tip?: string;
+	valid?: boolean;
 	value?: string;
 }
 

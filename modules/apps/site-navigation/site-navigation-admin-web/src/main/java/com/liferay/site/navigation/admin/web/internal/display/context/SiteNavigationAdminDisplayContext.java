@@ -20,6 +20,7 @@ import com.liferay.dynamic.data.mapping.service.DDMTemplateLocalServiceUtil;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItem;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItemBuilder;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItemListBuilder;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.dao.search.EmptyOnClickRowChecker;
 import com.liferay.portal.kernel.dao.search.SearchContainer;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -44,6 +45,7 @@ import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.JavaConstants;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -68,8 +70,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.portlet.PortletURL;
 import javax.portlet.RenderRequest;
@@ -100,38 +100,37 @@ public class SiteNavigationAdminDisplayContext {
 		_siteNavigationMenuLocalService = siteNavigationMenuLocalService;
 		_siteNavigationMenuService = siteNavigationMenuService;
 
-		_themeDisplay = (ThemeDisplay)_httpServletRequest.getAttribute(
+		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 	}
 
 	public List<DropdownItem> getAddSiteNavigationMenuItemDropdownItems() {
-		SiteNavigationMenuItemTypeContext siteNavigationMenuItemTypeContext =
-			new DefaultSiteNavigationMenuItemTypeContext(
-				_themeDisplay.getScopeGroup());
-
 		List<SiteNavigationMenuItemType> siteNavigationMenuItemTypes =
 			_siteNavigationMenuItemTypeRegistry.
 				getSiteNavigationMenuItemTypes();
 
-		Stream<SiteNavigationMenuItemType> stream =
-			siteNavigationMenuItemTypes.stream();
+		SiteNavigationMenuItemTypeContext siteNavigationMenuItemTypeContext =
+			new DefaultSiteNavigationMenuItemTypeContext(
+				_themeDisplay.getScopeGroup());
+
+		siteNavigationMenuItemTypes = ListUtil.filter(
+			siteNavigationMenuItemTypes,
+			siteNavigationMenuItemType ->
+				siteNavigationMenuItemType.isAvailable(
+					siteNavigationMenuItemTypeContext));
+
+		ListUtil.sort(
+			siteNavigationMenuItemTypes,
+			Comparator.comparing(
+				siteNavigationMenuItemType ->
+					siteNavigationMenuItemType.getLabel(
+						_themeDisplay.getLocale())));
 
 		return DropdownItemListBuilder.addAll(
-			stream.filter(
-				siteNavigationMenuItemType ->
-					siteNavigationMenuItemType.isAvailable(
-						siteNavigationMenuItemTypeContext)
-			).sorted(
-				Comparator.comparing(
-					siteNavigationMenuItemType ->
-						siteNavigationMenuItemType.getLabel(
-							_themeDisplay.getLocale()))
-			).map(
+			TransformUtil.transform(
+				siteNavigationMenuItemTypes,
 				siteNavigationMenuItemType -> _getDropdownItem(
-					siteNavigationMenuItemType, _themeDisplay)
-			).collect(
-				Collectors.toList()
-			)
+					siteNavigationMenuItemType, _themeDisplay))
 		).build();
 	}
 

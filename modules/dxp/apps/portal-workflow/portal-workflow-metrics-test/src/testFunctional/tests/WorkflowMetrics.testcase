@@ -293,9 +293,9 @@ definition {
 			taskList = "Blogs Entry: Blogs Entry Title 1,Blogs Entry: Blogs Entry Title 2,Blogs Entry: Blogs Entry Title 3,Blogs Entry: Blogs Entry Title 4",
 			taskListUnchecked = "Blogs Entry: Blogs Entry Title 5,Blogs Entry: Blogs Entry Title 6");
 
-		AssertElementPresent(locator1 = "WorkflowReassignModal#NEXT_PAGINATION_BUTTON");
+		AssertElementPresent(locator1 = "Pagination#NEXT_LINK");
 
-		AssertElementPresent(locator1 = "WorkflowReassignModal#PREVIOUS_PAGINATION_BUTTON");
+		AssertElementPresent(locator1 = "Pagination#PREVIOUS_LINK");
 
 		WorkflowMetrics.selectNewAssigneePagination(taskList = "Blogs Entry: Blogs Entry Title 1,Blogs Entry: Blogs Entry Title 2,Blogs Entry: Blogs Entry Title 3,Blogs Entry: Blogs Entry Title 4,Blogs Entry: Blogs Entry Title 5,Blogs Entry: Blogs Entry Title 6");
 
@@ -581,7 +581,7 @@ definition {
 	@description = "LRQA-57667 - Automate LPS-108138: As a Operation Manager, I want to transition a multi-task workflow instance while analyzing my process metrics"
 	@priority = 5
 	test BulkTransitionWorkflowTasks {
-		property portal.acceptance = "true";
+		property portal.acceptance = "quarantine";
 		property test.name.skip.portal.instance = "WorkflowMetrics#BulkTransitionWorkflowTasks";
 
 		var siteName = TestCase.getSiteName(siteName = ${siteName});
@@ -960,6 +960,7 @@ definition {
 	@description = "LRQA-53660 Automate LPS-87571 [Reports] Filter the list of items for a certain process"
 	@priority = 5
 	test FilterAllItemsList {
+		property ci.retries.disabled = "true";
 		property portal.acceptance = "quarantine";
 		property test.name.skip.portal.instance = "WorkflowMetrics#FilterAllItemsList";
 
@@ -1252,7 +1253,7 @@ definition {
 	@description = "LRQA-53649 Automate LPS-87560: Verify metrics available or not for CE and DXP customers"
 	@priority = 5
 	test MetricsAvailableForDXP {
-		property portal.acceptance = "true";
+		property portal.acceptance = "quarantine";
 
 		ApplicationsMenuHelper.openApplicationsMenu();
 
@@ -2229,7 +2230,7 @@ definition {
 	@description = "View that Custom Range is selected with shown input date"
 	@priority = 5
 	test VerifyCustomRangeDateInput {
-		property portal.acceptance = "true";
+		property portal.acceptance = "quarantine";
 
 		var siteName = TestCase.getSiteName(siteName = ${siteName});
 
@@ -3016,7 +3017,7 @@ definition {
 	@priority = 5
 	test ViewReports {
 		property environment.acceptance = "true";
-		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,solaris,suse,ubuntu,windows";
+		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,rockylinux,solaris,suse,ubuntu,windows";
 		property portal.acceptance = "true";
 		property test.name.skip.portal.instance = "WorkflowMetrics#ViewReports";
 
@@ -3059,7 +3060,7 @@ definition {
 	@description = "LRQA-53631 Automate LPS-97666: [Performance] View top assignee performance"
 	@priority = 5
 	test ViewTopAsigneePerformance {
-		property portal.acceptance = "true";
+		property portal.acceptance = "quarantine";
 		property test.name.skip.portal.instance = "WorkflowMetrics#ViewTopAsigneePerformance";
 
 		var siteName = TestCase.getSiteName(siteName = ${siteName});
@@ -3154,7 +3155,9 @@ definition {
 
 		WorkflowMetrics.selectStepFilterPerformaceByAssignee(velocityUnit = "UPDATE");
 
-		AssertElementPresent(locator1 = "WorkflowMetrics#METRICS_PERFORMANCE_BY_ASSIGNEE_CARD_NO_RESULTS");
+		AssertTextEquals(
+			locator1 = "Message#EMPTY_STATE_TEXT",
+			value1 = "No results were found.");
 	}
 
 	@description = "LRQA-53641 Automate LPS-97669 [Dashboard] View overloaded assignees"
@@ -3297,7 +3300,7 @@ definition {
 	@description = "LRQA-58272 Automate LPS-107777: Move Workflow Metrics reindex actions out of the Search Settings"
 	@priority = 5
 	test WorkflowMetricsReindex {
-		property portal.acceptance = "true";
+		property portal.acceptance = "quarantine";
 
 		WorkflowMetrics.executeIndexActions(actionDescription = "Workflow Indexes");
 

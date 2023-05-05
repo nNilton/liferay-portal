@@ -181,7 +181,7 @@ definition {
 		property app.server.types = "tomcat";
 		property database.types = "mysql";
 		property environment.acceptance = "true";
-		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,solaris,suse,ubuntu,windows";
+		property operating.system.types = "alpine,amazonlinux,centos,debian,fedora,orcllinux,osx,redhat,rockylinux,solaris,suse,ubuntu,windows";
 		property portal.acceptance = "true";
 		property testray.component.names = "Frontend Dataset,Remote Apps";
 
@@ -631,8 +631,8 @@ definition {
 
 		task ("Then error message 'HTML element name is empty'") {
 			AssertElementPresent(
-				locator1 = "ClientExtensionEntry#REMOTE_APPS_ERROR_WITH_MESSAGE",
-				text = "HTML Element field is required");
+				key_text = "The HTML Element Name field is required",
+				locator1 = "ClientExtensionEntry#WARNING_SPECIFIC");
 		}
 
 		task ("And Then Remote App is not added") {
@@ -674,7 +674,6 @@ definition {
 	}
 
 	@description = "LPS-163525. Validate Client Extensions UI has a clear error message when all the mandatory fields are empty."
-	@ignore = "true"
 	@priority = 4
 	test HasMandatoryFieldErrorMessagesWhenEmpty {
 		task ("Given Add IFrame Client Extensions admin page") {
@@ -823,6 +822,32 @@ definition {
 		AssertElementNotPresent(
 			key_text = "CSS URL",
 			locator1 = "TextInput#ANY");
+	}
+
+	@description = "LPS-177996 | Created (theme SVG extensions), the theme SVG extensions admin page lists the name and type"
+	@priority = 4
+	test ThemeSvgTypeCanBeCreated {
+		property custom.properties = "feature.flag.LPS-166479=true";
+
+		task ("Given a created Client Extension") {
+			ClientExtensionGeneral.goToRemoteAppsPortlet();
+		}
+
+		task ("When type is Theme svg extensions") {
+			ClientExtensionGeneral.addType(type = "Theme SVG Spritemap");
+		}
+
+		task ("And when adding requirements,and click in publish") {
+			ClientExtensionGeneral.addApp(
+				entryName = "speitemap_example.svg",
+				entryURL = "https://liferay.github.io/liferay-frontend-projects/spritemap-svg/spritemap-pencil-swapped- with-cog.svg");
+		}
+
+		task ("Then theme svg extensions admin page lists the Name and Type") {
+			ClientExtensionGeneral.viewTableEntryName(entryName = "speitemap_example.svg");
+
+			ClientExtensionGeneral.viewTableEntryType(entryType = "Theme SVG Spritemap");
+		}
 	}
 
 	@description = "Verify that the UI label is present when a client extension is not created through osgi"

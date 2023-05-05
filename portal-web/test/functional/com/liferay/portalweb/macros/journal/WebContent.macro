@@ -451,8 +451,8 @@ definition {
 		}
 
 		AssertClick(
-			locator1 = "Button#SUBMIT_FOR_PUBLICATION",
-			value1 = "Submit for Publication");
+			locator1 = "Button#SUBMIT_FOR_WORKFLOW",
+			value1 = "Submit for Workflow");
 
 		Alert.viewSuccessMessage();
 	}
@@ -534,6 +534,7 @@ definition {
 				}
 				else if (isSet(imageFileName)) {
 					ItemSelector.selectDMImage(
+						dmFolderName = ${dmFolderName},
 						imageFileName = ${webContentImage},
 						navTab = ${navTab});
 				}
@@ -822,7 +823,7 @@ definition {
 			webContentContent = ${webContentContent},
 			webContentTitle = ${webContentTitle});
 
-		Button.clickSubmitForPublication();
+		Button.clickSubmitForWorkflow();
 
 		Alert.viewSuccessMessage();
 	}
@@ -835,8 +836,8 @@ definition {
 			webContentTitle = ${webContentTitle});
 
 		AssertClick(
-			locator1 = "Button#SUBMIT_FOR_PUBLICATION",
-			value1 = "Submit for Publication");
+			locator1 = "Button#SUBMIT_FOR_WORKFLOW",
+			value1 = "Submit for Workflow");
 
 		SelectFrame();
 
@@ -1361,7 +1362,7 @@ definition {
 				value1 = "Draft");
 		}
 		else {
-			PortletEntry.publish();
+			Button.clickPublish();
 		}
 	}
 
@@ -1666,9 +1667,9 @@ definition {
 
 	macro removeDuplicatedFieldsGroup {
 		Click(
-			key_fieldName = "FieldsGroup",
+			key_class = "delete-button",
 			key_index = ${index},
-			locator1 = "FormFields#FIELD_REMOVE");
+			locator1 = "Button#ANY_WITH_CLASS_AND_INDEX");
 	}
 
 	macro saveAsDraftViaAP {
@@ -2373,15 +2374,6 @@ definition {
 			value1 = ${webContentContent});
 	}
 
-	macro viewPublicationTimelineEntry {
-		Click(locator1 = "WCEditWebContent#TIMELINE_TAB");
-
-		AssertElementPresent(
-			key_index = ${index},
-			key_publicationName = ${publicationName},
-			locator1 = "WCEditWebContent#TIMELINE_ENTRY_SPECIFIC");
-	}
-
 	macro viewRepeatedField {
 		AssertElementPresent(locator1 = "xpath=(//div[@data-fieldname='${fieldName}'][1]//a[contains(@class,'ddm-repeatable-add-button')]/../div)");
 
@@ -2863,7 +2855,7 @@ definition {
 					key_fieldFieldLabel = ${webContentTextFieldLabel},
 					locator1 = "DDMField#MULTIPLE_LINES");
 
-				var actual = TestUtils.getElementTextContent(element = "//label[normalize-space(text())='${webContentTextFieldLabel}']//following-sibling::textarea");
+				var actual = TestUtils.getElementTextContent(element = "//label[normalize-space(text())='${webContentTextFieldLabel}']//..//textarea");
 
 				TestUtils.assertEquals(
 					actual = ${actual},

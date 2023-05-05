@@ -33,10 +33,6 @@ export default function EditListTypeDefinition({
 	readOnly,
 }: IProps) {
 	const onSubmit = async (values: PickList) => {
-		if (!Liferay.FeatureFlags['LPS-167536']) {
-			values.listTypeEntries = [];
-		}
-
 		try {
 			await API.updatePickList({
 				externalReferenceCode: values.externalReferenceCode,
@@ -52,8 +48,10 @@ export default function EditListTypeDefinition({
 				),
 			});
 		}
-		catch ({message}) {
-			openToast({message: message as string, type: 'danger'});
+		catch (error: unknown) {
+			const {message} = error as Error;
+
+			openToast({message, type: 'danger'});
 		}
 	};
 
@@ -98,7 +96,7 @@ export default function EditListTypeDefinition({
 							autoComplete="off"
 							error={errors.externalReferenceCode}
 							feedbackMessage={Liferay.Language.get(
-								'internal-key-to-reference-the-object-definition'
+								'unique-key-for-referencing-the-picklist-definition'
 							)}
 							label={Liferay.Language.get(
 								'external-reference-code'

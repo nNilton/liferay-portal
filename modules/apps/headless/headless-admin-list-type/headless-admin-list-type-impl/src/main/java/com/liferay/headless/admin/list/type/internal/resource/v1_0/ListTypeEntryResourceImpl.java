@@ -19,6 +19,7 @@ import com.liferay.headless.admin.list.type.dto.v1_0.ListTypeEntry;
 import com.liferay.headless.admin.list.type.internal.dto.v1_0.util.ListTypeEntryUtil;
 import com.liferay.headless.admin.list.type.internal.odata.entity.v1_0.ListTypeEntryEntityModel;
 import com.liferay.headless.admin.list.type.resource.v1_0.ListTypeEntryResource;
+import com.liferay.list.type.service.ListTypeDefinitionService;
 import com.liferay.list.type.service.ListTypeEntryService;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Sort;
@@ -27,7 +28,6 @@ import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.odata.entity.EntityModel;
-import com.liferay.portal.util.PropsUtil;
 import com.liferay.portal.vulcan.aggregation.Aggregation;
 import com.liferay.portal.vulcan.fields.NestedField;
 import com.liferay.portal.vulcan.fields.NestedFieldSupport;
@@ -63,6 +63,25 @@ public class ListTypeEntryResourceImpl
 	@Override
 	public EntityModel getEntityModel(MultivaluedMap multivaluedMap) {
 		return _entityModel;
+	}
+
+	@Override
+	public Page<ListTypeEntry>
+			getListTypeDefinitionByExternalReferenceCodeListTypeEntriesPage(
+				String externalReferenceCode, String search,
+				Aggregation aggregation, Filter filter, Pagination pagination,
+				Sort[] sorts)
+		throws Exception {
+
+		com.liferay.list.type.model.ListTypeDefinition
+			serviceBuilderlistTypeDefinition =
+				_listTypeDefinitionService.
+					getListTypeDefinitionByExternalReferenceCode(
+						externalReferenceCode, contextCompany.getCompanyId());
+
+		return getListTypeDefinitionListTypeEntriesPage(
+			serviceBuilderlistTypeDefinition.getListTypeDefinitionId(), search,
+			aggregation, filter, pagination, sorts);
 	}
 
 	@NestedField(
@@ -133,29 +152,26 @@ public class ListTypeEntryResourceImpl
 	}
 
 	@Override
-	public ListTypeEntry getListTypeEntryByExternalReferenceCode(
-			String externalReferenceCode)
+	public ListTypeEntry
+			postListTypeDefinitionByExternalReferenceCodeListTypeEntry(
+				String externalReferenceCode, ListTypeEntry listTypeEntry)
 		throws Exception {
 
-		return ListTypeEntryUtil.toListTypeEntry(
-			null, contextAcceptLanguage.getPreferredLocale(),
-			_listTypeEntryService.getListTypeEntryByExternalReferenceCode(
-				externalReferenceCode, contextCompany.getCompanyId()));
+		com.liferay.list.type.model.ListTypeDefinition
+			serviceBuilderlistTypeDefinition =
+				_listTypeDefinitionService.
+					getListTypeDefinitionByExternalReferenceCode(
+						externalReferenceCode, contextCompany.getCompanyId());
+
+		return postListTypeDefinitionListTypeEntry(
+			serviceBuilderlistTypeDefinition.getListTypeDefinitionId(),
+			listTypeEntry);
 	}
 
 	@Override
 	public ListTypeEntry postListTypeDefinitionListTypeEntry(
 			Long listTypeDefinitionId, ListTypeEntry listTypeEntry)
 		throws Exception {
-
-		if (!GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-168886"))) {
-			return ListTypeEntryUtil.toListTypeEntry(
-				null, contextAcceptLanguage.getPreferredLocale(),
-				_listTypeEntryService.addListTypeEntry(
-					null, listTypeDefinitionId, listTypeEntry.getKey(),
-					LocalizedMapUtil.getLocalizedMap(
-						listTypeEntry.getName_i18n())));
-		}
 
 		return ListTypeEntryUtil.toListTypeEntry(
 			null, contextAcceptLanguage.getPreferredLocale(),
@@ -171,34 +187,12 @@ public class ListTypeEntryResourceImpl
 			Long listTypeEntryId, ListTypeEntry listTypeEntry)
 		throws Exception {
 
-		if (!GetterUtil.getBoolean(PropsUtil.get("feature.flag.LPS-168886"))) {
-			return ListTypeEntryUtil.toListTypeEntry(
-				null, contextAcceptLanguage.getPreferredLocale(),
-				_listTypeEntryService.updateListTypeEntry(
-					null, listTypeEntryId,
-					LocalizedMapUtil.getLocalizedMap(
-						listTypeEntry.getName_i18n())));
-		}
-
 		return ListTypeEntryUtil.toListTypeEntry(
 			null, contextAcceptLanguage.getPreferredLocale(),
 			_listTypeEntryService.updateListTypeEntry(
 				listTypeEntry.getExternalReferenceCode(), listTypeEntryId,
 				LocalizedMapUtil.getLocalizedMap(
 					listTypeEntry.getName_i18n())));
-	}
-
-	@Override
-	public ListTypeEntry putListTypeEntryByExternalReferenceCode(
-			String externalReferenceCode, ListTypeEntry listTypeEntry)
-		throws Exception {
-
-		com.liferay.list.type.model.ListTypeEntry serviceBuilderlistTypeEntry =
-			_listTypeEntryService.getListTypeEntryByExternalReferenceCode(
-				externalReferenceCode, contextCompany.getCompanyId());
-
-		return putListTypeEntry(
-			serviceBuilderlistTypeEntry.getListTypeEntryId(), listTypeEntry);
 	}
 
 	private Map<String, Map<String, String>> _getActions(
@@ -227,6 +221,9 @@ public class ListTypeEntryResourceImpl
 
 	private static final EntityModel _entityModel =
 		new ListTypeEntryEntityModel();
+
+	@Reference
+	private ListTypeDefinitionService _listTypeDefinitionService;
 
 	@Reference
 	private ListTypeEntryService _listTypeEntryService;

@@ -13,12 +13,12 @@
  */
 
 import TestrayError from '../../TestrayError';
+import Rest from '../../core/Rest';
+import SearchBuilder from '../../core/SearchBuilder';
 import i18n from '../../i18n';
 import {CategoryOptions} from '../../pages/Project/Routines/Builds/BuildForm/Stack/StackList';
 import yupSchema from '../../schema/yup';
-import {SearchBuilder} from '../../util/search';
-import {BuildStatuses, CaseResultStatuses} from '../../util/statuses';
-import Rest from './Rest';
+import {CaseResultStatuses} from '../../util/statuses';
 import {testrayCaseResultImpl} from './TestrayCaseResult';
 import {testrayFactorRest} from './TestrayFactor';
 import {testrayRunImpl} from './TestrayRun';
@@ -36,8 +36,8 @@ class TestrayBuildImpl extends Rest<Build, TestrayBuild> {
 	constructor() {
 		super({
 			adapter: ({
-				active,
 				description,
+				dueStatus,
 				gitHash,
 				name,
 				productVersionId: r_productVersionToBuilds_c_productVersionId,
@@ -47,9 +47,8 @@ class TestrayBuildImpl extends Rest<Build, TestrayBuild> {
 				template,
 				templateTestrayBuildId,
 			}) => ({
-				active,
 				description,
-				dueStatus: BuildStatuses.ACTIVE,
+				dueStatus,
 				gitHash,
 				name,
 				promoted,
@@ -59,12 +58,16 @@ class TestrayBuildImpl extends Rest<Build, TestrayBuild> {
 				template,
 				templateTestrayBuildId,
 			}),
-			nestedFields: 'productVersion',
+			nestedFields: 'buildToTasks,productVersion',
 			transformData: (testrayBuild) => ({
 				...testrayBuild,
+				...testrayCaseResultImpl.normalizeCaseResultAggregation(
+					testrayBuild
+				),
 				creator: testrayBuild?.creator || {},
 				productVersion:
 					testrayBuild?.r_productVersionToBuilds_c_productVersion,
+				tasks: testrayBuild.buildToTasks ?? [],
 			}),
 			uri: 'builds',
 		});

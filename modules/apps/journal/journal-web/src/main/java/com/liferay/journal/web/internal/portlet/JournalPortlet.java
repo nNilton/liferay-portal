@@ -17,6 +17,7 @@ package com.liferay.journal.web.internal.portlet;
 import com.liferay.asset.display.page.portlet.AssetDisplayPageFriendlyURLProvider;
 import com.liferay.asset.kernel.exception.AssetCategoryException;
 import com.liferay.asset.kernel.exception.AssetTagException;
+import com.liferay.change.tracking.spi.constants.CTTimelineKeys;
 import com.liferay.document.library.kernel.exception.DuplicateFileEntryException;
 import com.liferay.document.library.kernel.exception.FileSizeException;
 import com.liferay.dynamic.data.mapping.configuration.DDMWebConfiguration;
@@ -57,6 +58,7 @@ import com.liferay.journal.exception.MaxAddMenuFavItemsException;
 import com.liferay.journal.exception.NoSuchArticleException;
 import com.liferay.journal.exception.NoSuchFeedException;
 import com.liferay.journal.exception.NoSuchFolderException;
+import com.liferay.journal.model.JournalFolder;
 import com.liferay.journal.service.JournalFolderService;
 import com.liferay.journal.util.JournalContent;
 import com.liferay.journal.util.JournalConverter;
@@ -140,7 +142,7 @@ import org.osgi.service.component.annotations.Reference;
 		"javax.portlet.security-role-ref=power-user,user",
 		"javax.portlet.version=3.0"
 	},
-	service = {JournalPortlet.class, Portlet.class}
+	service = Portlet.class
 )
 public class JournalPortlet extends MVCPortlet {
 
@@ -344,6 +346,10 @@ public class JournalPortlet extends MVCPortlet {
 
 		if (folderId > 0) {
 			_journalFolderService.fetchFolder(folderId);
+
+			httpServletRequest.setAttribute(
+				CTTimelineKeys.CLASS_NAME, JournalFolder.class.getName());
+			httpServletRequest.setAttribute(CTTimelineKeys.CLASS_PK, folderId);
 		}
 		else {
 			ThemeDisplay themeDisplay =

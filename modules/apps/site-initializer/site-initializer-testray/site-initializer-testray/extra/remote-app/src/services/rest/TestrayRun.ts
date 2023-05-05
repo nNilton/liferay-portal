@@ -13,12 +13,13 @@
  */
 
 import TestrayError from '../../TestrayError';
+import Rest from '../../core/Rest';
+import SearchBuilder from '../../core/SearchBuilder';
 import yupSchema from '../../schema/yup';
 import {DISPATCH_TRIGGER_TYPE} from '../../util/enum';
-import {SearchBuilder} from '../../util/search';
 import {DispatchTriggerStatuses} from '../../util/statuses';
 import {liferayDispatchTriggerImpl} from './LiferayDispatchTrigger';
-import Rest from './Rest';
+import {testrayCaseResultImpl} from './TestrayCaseResult';
 import {testrayDispatchTriggerImpl} from './TestrayDispatchTrigger';
 import {APIResponse, TestrayRun} from './types';
 
@@ -40,7 +41,7 @@ class TestrayRunImpl extends Rest<RunForm, TestrayRun> {
 				number,
 				r_buildToRuns_c_buildId,
 			}),
-			nestedFields: 'build.routine',
+			nestedFields: 'build.routine,build.projectToBuilds',
 			transformData: (run) => {
 				const environmentValues = run.name.split('|');
 
@@ -54,10 +55,21 @@ class TestrayRunImpl extends Rest<RunForm, TestrayRun> {
 
 				return {
 					...run,
+					...testrayCaseResultImpl.normalizeCaseResultAggregation(
+						run
+					),
 					applicationServer,
 					browser,
 					build: run?.r_buildToRuns_c_build
-						? run?.r_buildToRuns_c_build
+						? {
+								...run.r_buildToRuns_c_build,
+								project:
+									run.r_buildToRuns_c_build
+										.r_projectToBuilds_c_project,
+								routine:
+									run.r_buildToRuns_c_build
+										.r_routineToBuilds_c_routine,
+						  }
 						: undefined,
 					database,
 					javaJDK,

@@ -27,15 +27,14 @@ import com.liferay.expando.kernel.model.ExpandoBridge;
 import com.liferay.headless.commerce.core.util.LanguageUtils;
 import com.liferay.headless.commerce.delivery.catalog.dto.v1_0.Product;
 import com.liferay.headless.commerce.delivery.catalog.dto.v1_0.ProductConfiguration;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.util.ArrayUtil;
+import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterContext;
-
-import java.util.List;
-import java.util.stream.Stream;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -44,8 +43,7 @@ import org.osgi.service.component.annotations.Reference;
  * @author Andrea Sbarra
  */
 @Component(
-	property = "dto.class.name=CPDefinition",
-	service = {DTOConverter.class, ProductDTOConverter.class}
+	property = "dto.class.name=CPDefinition", service = DTOConverter.class
 )
 public class ProductDTOConverter
 	implements DTOConverter<CPDefinition, Product> {
@@ -85,7 +83,11 @@ public class ProductDTOConverter
 				productType = cpDefinition.getProductTypeName();
 				shortDescription = cpDefinition.getShortDescription(languageId);
 				slug = cpDefinition.getURL(languageId);
-				tags = _getTags(cpDefinition);
+				tags = TransformUtil.transformToArray(
+					_assetTagLocalService.getTags(
+						cpDefinition.getModelClassName(),
+						cpDefinition.getCPDefinitionId()),
+					AssetTag::getName, String.class);
 				urls = LanguageUtils.getLanguageIdMap(
 					_cpDefinitionLocalService.getUrlTitleMap(
 						cpDefinition.getCPDefinitionId()));
@@ -101,6 +103,10 @@ public class ProductDTOConverter
 						Company company = _companyLocalService.getCompany(
 							cpDefinition.getCompanyId());
 
+						String portalURL = _portal.getPortalURL(
+							company.getVirtualHostname(),
+							_portal.getPortalServerPort(false), true);
+
 						String defaultImageFileURL =
 							_cpDefinitionHelper.getDefaultImageFileURL(
 								CommerceUtil.getCommerceAccountId(
@@ -108,7 +114,7 @@ public class ProductDTOConverter
 										getCommerceContext()),
 								cpDefinition.getCPDefinitionId());
 
-						return company.getPortalURL(0) + defaultImageFileURL;
+						return portalURL + defaultImageFileURL;
 					});
 			}
 		};
@@ -144,19 +150,6 @@ public class ProductDTOConverter
 		return product;
 	}
 
-	private String[] _getTags(CPDefinition cpDefinition) {
-		List<AssetTag> assetEntryAssetTags = _assetTagLocalService.getTags(
-			cpDefinition.getModelClassName(), cpDefinition.getCPDefinitionId());
-
-		Stream<AssetTag> stream = assetEntryAssetTags.stream();
-
-		return stream.map(
-			AssetTag::getName
-		).toArray(
-			String[]::new
-		);
-	}
-
 	@Reference
 	private AssetTagLocalService _assetTagLocalService;
 
@@ -175,5 +168,8 @@ public class ProductDTOConverter
 
 	@Reference
 	private Language _language;
+
+	@Reference
+	private Portal _portal;
 
 }
