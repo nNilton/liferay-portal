@@ -512,10 +512,12 @@ public class ObjectEntryLocalServiceImpl
 			values);
 
 		if (objectDefinition.isActive()) {
-			Indexer<ObjectEntry> indexer = IndexerRegistryUtil.getIndexer(
-				objectDefinition.getClassName());
+			if(objectDefinition.getEnableIndexedSearch()) {
+				Indexer<ObjectEntry> indexer = IndexerRegistryUtil.getIndexer(
+					objectDefinition.getClassName());
 
-			indexer.delete(objectEntry);
+				indexer.delete(objectEntry);
+			}
 		}
 
 		return objectEntry;
@@ -3733,6 +3735,10 @@ public class ObjectEntryLocalServiceImpl
 		ObjectDefinition objectDefinition =
 			_objectDefinitionPersistence.findByPrimaryKey(
 				objectEntry.getObjectDefinitionId());
+
+		if (!objectDefinition.isEnableIndexedSearch()) {
+			return;
+		}
 
 		Indexer<ObjectEntry> indexer = IndexerRegistryUtil.getIndexer(
 			objectDefinition.getClassName());
