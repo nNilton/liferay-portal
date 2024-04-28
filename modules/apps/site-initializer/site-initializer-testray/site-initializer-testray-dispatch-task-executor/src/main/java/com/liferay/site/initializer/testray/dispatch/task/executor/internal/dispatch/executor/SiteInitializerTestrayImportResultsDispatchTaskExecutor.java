@@ -15,39 +15,43 @@ import com.liferay.dispatch.executor.BaseDispatchTaskExecutor;
 import com.liferay.dispatch.executor.DispatchTaskExecutor;
 import com.liferay.dispatch.executor.DispatchTaskExecutorOutput;
 import com.liferay.dispatch.model.DispatchTrigger;
-import com.liferay.object.rest.dto.v1_0.ObjectEntry;
+import com.liferay.object.constants.ObjectDefinitionConstants;
+import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectEntry;
+import com.liferay.object.rest.filter.factory.FilterFactory;
 import com.liferay.object.rest.manager.v1_0.ObjectEntryManager;
 import com.liferay.object.service.ObjectDefinitionLocalService;
+import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.petra.function.UnsafeRunnable;
+import com.liferay.petra.sql.dsl.expression.Predicate;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
-import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.security.xml.SecureXMLFactoryProviderUtil;
+import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
-import com.liferay.site.initializer.testray.dispatch.task.executor.internal.dispatch.executor.util.ObjectEntryUtil;
-import com.liferay.site.initializer.testray.dispatch.task.executor.internal.dispatch.executor.util.TestrayUtil;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,7 +59,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -75,35 +78,70 @@ import org.w3c.dom.NodeList;
 /**
  * @author José Abelenda
  */
-@Component(
-	property = {
-		"dispatch.task.executor.feature.flag=LPS-163118",
-		"dispatch.task.executor.name=testray-import-results",
+@Component(property = {
+		"dispatch.task.executor.name=testray-import-results-new",
 		"dispatch.task.executor.overlapping=false",
-		"dispatch.task.executor.type=testray-import-results"
-	},
-	service = DispatchTaskExecutor.class
-)
+		"dispatch.task.executor.type=testray-import-results-new"
+}, service = DispatchTaskExecutor.class)
 public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
-	extends BaseDispatchTaskExecutor {
+		extends BaseDispatchTaskExecutor {
+
+	public ObjectDefinition _getObjectDefinition(
+			String objectDefinitionShortName)
+			throws Exception {
+
+		ObjectDefinition objectDefinition = _objectDefinitionsMap.get(
+				objectDefinitionShortName);
+
+		if (objectDefinition == null) {
+			throw new PortalException(
+					"No object definition found with short name " +
+							objectDefinitionShortName);
+		}
+
+		return objectDefinition;
+	}
+
+	public void _loadObjectDefinitions(long companyId) {
+		List<ObjectDefinition> objectDefinitions = _objectDefinitionLocalService.getObjectDefinitions(
+				companyId, true, WorkflowConstants.STATUS_APPROVED);
+
+		if (ListUtil.isEmpty(objectDefinitions)) {
+			return;
+		}
+
+		for (ObjectDefinition objectDefinition : objectDefinitions) {
+			if (_objectDefinitionsMap.get(objectDefinition.getShortName()) != null) {
+
+				continue;
+			}
+
+			_objectDefinitionsMap.put(
+					objectDefinition.getShortName(), objectDefinition);
+		}
+	}
 
 	@Override
 	public void doExecute(
 			DispatchTrigger dispatchTrigger,
 			DispatchTaskExecutorOutput dispatchTaskExecutorOutput)
-		throws Exception {
+			throws Exception {
 
-		UnicodeProperties unicodeProperties =
-			dispatchTrigger.getDispatchTaskSettingsUnicodeProperties();
+		_tarFilesProcessed = 1;
+		_xmlFilesProcessed = 1;
+
+		UnicodeProperties unicodeProperties = dispatchTrigger.getDispatchTaskSettingsUnicodeProperties();
 
 		if (Validator.isNull(unicodeProperties.getProperty("s3APIKey")) ||
-			Validator.isNull(unicodeProperties.getProperty("s3BucketName")) ||
-			Validator.isNull(
-				unicodeProperties.getProperty("s3ErroredFolderName")) ||
-			Validator.isNull(
-				unicodeProperties.getProperty("s3InboxFolderName")) ||
-			Validator.isNull(
-				unicodeProperties.getProperty("s3ProcessedFolderName"))) {
+				Validator.isNull(unicodeProperties.getProperty("s3BucketName")) ||
+				Validator.isNull(
+						unicodeProperties.getProperty("s3ErroredFolderName"))
+				||
+				Validator.isNull(
+						unicodeProperties.getProperty("s3InboxFolderName"))
+				||
+				Validator.isNull(
+						unicodeProperties.getProperty("s3ProcessedFolderName"))) {
 
 			_log.error("The required properties are not set");
 
@@ -112,38 +150,44 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 
 		User user = _userLocalService.getUser(dispatchTrigger.getUserId());
 
-		_defaultDTOConverterContext = new DefaultDTOConverterContext(
-			false, null, null, null, null, LocaleUtil.getSiteDefault(), null,
-			user);
+		ServiceContext serviceContext = new ServiceContext();
 
-		PermissionChecker originalPermissionChecker =
-			PermissionThreadLocal.getPermissionChecker();
+		serviceContext.setAddGroupPermissions(true);
+		serviceContext.setAddGuestPermissions(true);
+		serviceContext.setCompanyId(user.getCompanyId());
+		serviceContext.setTimeZone(user.getTimeZone());
+		serviceContext.setUserId(user.getUserId());
+
+		PermissionChecker originalPermissionChecker = PermissionThreadLocal.getPermissionChecker();
 
 		PermissionThreadLocal.setPermissionChecker(
-			PermissionCheckerFactoryUtil.create(user));
+				PermissionCheckerFactoryUtil.create(user));
 
 		String originalName = PrincipalThreadLocal.getName();
 
 		PrincipalThreadLocal.setName(user.getUserId());
 
 		try {
-			_invoke(() -> _load(dispatchTrigger.getCompanyId()));
+			_objectDefinitionsMap = new HashMap<>();
+			_objectEntryIds = new HashMap<>();
 
 			_invoke(
-				() -> _uploadToTestray(
-					dispatchTrigger.getCompanyId(), unicodeProperties));
-		}
-		finally {
-			PermissionThreadLocal.setPermissionChecker(
-				originalPermissionChecker);
+					() -> _load(dispatchTrigger.getCompanyId(), user.getUserId()));
 
+			_invoke(
+					() -> _uploadToTestray(
+							dispatchTrigger.getCompanyId(), serviceContext,
+							unicodeProperties, user.getUserId()));
+		} finally {
+			PermissionThreadLocal.setPermissionChecker(
+					originalPermissionChecker);
 			PrincipalThreadLocal.setName(originalName);
 		}
 	}
 
 	@Override
 	public String getName() {
-		return "testray-import-results";
+		return "new-testray-import-results";
 	}
 
 	@Override
@@ -151,15 +195,27 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 		return true;
 	}
 
+	private ObjectEntry _addObjectEntry(
+			String shortName, ServiceContext serviceContext, long userId,
+			Map<String, Serializable> values)
+			throws Exception {
+
+		return _objectEntryLocalService.addObjectEntry(
+				userId, 0,
+				_getObjectDefinition(
+						shortName).getObjectDefinitionId(),
+				values, serviceContext);
+	}
+
 	private JSONArray _addTestrayAttachments(Node testcaseNode)
-		throws Exception {
+			throws Exception {
 
 		JSONArray jsonArray = null;
 
-		Element testcaseElement = (Element)testcaseNode;
+		Element testcaseElement = (Element) testcaseNode;
 
 		NodeList attachmentsNodeList = testcaseElement.getElementsByTagName(
-			"attachments");
+				"attachments");
 
 		for (int i = 0; i < attachmentsNodeList.getLength(); i++) {
 			Node attachmentsNode = attachmentsNodeList.item(i);
@@ -168,10 +224,10 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 				continue;
 			}
 
-			Element attachmentsElement = (Element)attachmentsNode;
+			Element attachmentsElement = (Element) attachmentsNode;
 
 			NodeList fileNodeList = attachmentsElement.getElementsByTagName(
-				"file");
+					"file");
 
 			for (int j = 0; j < fileNodeList.getLength(); j++) {
 				Node fileNode = fileNodeList.item(j);
@@ -180,16 +236,14 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 					continue;
 				}
 
-				Element fileElement = (Element)fileNode;
+				Element fileElement = (Element) fileNode;
 
 				jsonArray = JSONUtil.put(
-					JSONUtil.put(
-						"name", fileElement.getAttribute("name")
-					).put(
-						"url", fileElement.getAttribute("url")
-					).put(
-						"value", fileElement.getAttribute("value")
-					));
+						JSONUtil.put(
+								"name", fileElement.getAttribute("name")).put(
+										"url", fileElement.getAttribute("url"))
+								.put(
+										"value", fileElement.getAttribute("value")));
 			}
 		}
 
@@ -197,183 +251,236 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 	}
 
 	private void _addTestrayCase(
-			long companyId, Node testcaseNode, long testrayBuildId,
-			String testrayBuildTime,
-			Map<String, Object> testrayCasePropertiesMap, long testrayProjectId,
-			long testrayRunId)
-		throws Exception {
+			long companyId, ServiceContext serviceContext, Node testcaseNode,
+			long testrayBuildId, String testrayBuildTime,
+			Map<String, Serializable> testrayCasePropertiesMap,
+			long testrayProjectId, long testrayRunId, long userId)
+			throws Exception {
 
-		String testrayCaseName = (String)testrayCasePropertiesMap.get(
-			"testray.testcase.name");
+		String testrayCaseName = (String) testrayCasePropertiesMap.get(
+				"testray.testcase.name");
 
 		String objectEntryIdsKey = StringBundler.concat(
-			"Case#", testrayCaseName, "#ProjectId#", testrayProjectId);
+				"Case#", testrayCaseName, "#ProjectId#", testrayProjectId);
 
 		long testrayCaseId = _getObjectEntryId(
-			companyId,
-			StringBundler.concat(
-				"projectId eq '", testrayProjectId, "' and name eq '",
-				testrayCaseName, "'"),
-			"Case", objectEntryIdsKey);
+				companyId,
+				StringBundler.concat(
+						"projectId eq '", testrayProjectId, "' and name eq '",
+						testrayCaseName, "'"),
+				"c_caseId",
+				"Case", objectEntryIdsKey, userId);
 
 		long testrayTeamId = _getTestrayTeamId(
-			companyId, testrayProjectId,
-			(String)testrayCasePropertiesMap.get("testray.team.name"));
+				companyId, serviceContext, testrayProjectId,
+				(String) testrayCasePropertiesMap.get("testray.team.name"), userId);
 
 		long testrayComponentId = _getTestrayComponentId(
-			companyId,
-			(String)testrayCasePropertiesMap.get("testray.main.component.name"),
-			testrayProjectId, testrayTeamId);
+				companyId, serviceContext,
+				(String) testrayCasePropertiesMap.get("testray.main.component.name"),
+				testrayProjectId, testrayTeamId, userId);
 
 		if (testrayCaseId == 0) {
-			ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-				_defaultDTOConverterContext, "Case", _objectEntryManager,
-				HashMapBuilder.<String, Object>put(
-					"description",
-					testrayCasePropertiesMap.get("testray.testcase.description")
-				).put(
-					"name",
-					(String)testrayCasePropertiesMap.get(
-						"testray.testcase.name")
-				).put(
-					"number",
-					ObjectEntryUtil.increment(
-						companyId, _defaultDTOConverterContext,
-						"projectId eq '" + testrayProjectId + "'", "number",
-						"Case", _objectEntryManager,
-						new Sort[] {
-							new Sort("nestedFieldArray.value_long#number", true)
-						})
-				).put(
-					"priority",
-					testrayCasePropertiesMap.get("testray.testcase.priority")
-				).put(
-					"r_caseTypeToCases_c_caseTypeId",
-					_getTestrayCaseTypeId(
-						companyId,
-						(String)testrayCasePropertiesMap.get(
-							"testray.case.type.name"))
-				).put(
-					"r_componentToCases_c_componentId", testrayComponentId
-				).put(
-					"r_projectToCases_c_projectId", testrayProjectId
-				).build());
+			ObjectEntry objectEntry = _addObjectEntry(
+					"Case", serviceContext, userId,
+					HashMapBuilder.<String, Serializable>put(
+							"description",
+							testrayCasePropertiesMap.get("testray.testcase.description")).put(
+									"name",
+									(String) testrayCasePropertiesMap.get(
+											"testray.testcase.name"))
+							.put(
+									"number", 0)
+							.put(
+									"priority",
+									testrayCasePropertiesMap.get("testray.testcase.priority"))
+							.put(
+									"r_caseTypeToCases_c_caseTypeId",
+									_getTestrayCaseTypeId(
+											companyId, serviceContext,
+											(String) testrayCasePropertiesMap.get(
+													"testray.case.type.name"),
+											userId))
+							.put(
+									"r_componentToCases_c_componentId", testrayComponentId)
+							.put(
+									"r_projectToCases_c_projectId", testrayProjectId)
+							.build());
 
-			testrayCaseId = objectEntry.getId();
+			testrayCaseId = objectEntry.getObjectEntryId();
 
 			_objectEntryIds.put(objectEntryIdsKey, testrayCaseId);
 		}
 
-		ObjectEntry objectEntry = ObjectEntryUtil.getObjectEntriesPage(
-			null, companyId, _defaultDTOConverterContext,
-			StringBundler.concat(
-				"buildId eq '", testrayBuildId, "' and caseId eq '",
-				testrayCaseId, "'"),
-			"BuildsCases", _objectEntryManager, null
-		).fetchFirstItem();
+		List<Map<String, Serializable>> valuesList = _getValuesList(
+				companyId,
+				StringBundler.concat(
+						"buildId eq '", testrayBuildId, "' and caseId eq '",
+						testrayCaseId, "'"),
+						new String[]{"c_buildId"},
+				"BuildsCases", userId);
 
-		if (objectEntry == null) {
-			ObjectEntryUtil.addObjectEntry(
-				_defaultDTOConverterContext, "BuildsCases", _objectEntryManager,
-				HashMapBuilder.<String, Object>put(
-					"r_buildToBuildsCases_c_buildId", testrayBuildId
-				).put(
-					"r_caseToBuildsCases_c_caseId", testrayCaseId
-				).build());
+		if (ListUtil.isEmpty(valuesList)) {
+			_addObjectEntry(
+					"BuildsCases", serviceContext, userId,
+					HashMapBuilder.<String, Serializable>put(
+							"r_buildToBuildsCases_c_buildId", testrayBuildId).put(
+									"r_caseToBuildsCases_c_caseId", testrayCaseId)
+							.build());
 		}
 
-		long testrayCaseResultId = _getTestrayCaseResultId(
-			testcaseNode, testrayBuildId, testrayBuildTime, testrayCaseId,
-			testrayCasePropertiesMap, testrayComponentId, testrayRunId);
-
-		TestrayUtil.addTestrayCaseResultIssue(
-			companyId, _defaultDTOConverterContext, _objectEntryManager,
-			testrayCaseResultId,
-			(String)testrayCasePropertiesMap.get("testray.case.defect"));
-		TestrayUtil.addTestrayCaseResultIssue(
-			companyId, _defaultDTOConverterContext, _objectEntryManager,
-			testrayCaseResultId,
-			(String)testrayCasePropertiesMap.get("testray.case.issue"));
+		_addTestrayCaseResult(
+				serviceContext, testcaseNode, testrayBuildId, testrayBuildTime,
+				testrayCaseId, testrayCasePropertiesMap, testrayComponentId,
+				testrayRunId, userId);
 	}
 
+	private void _addTestrayCaseResult(
+			ServiceContext serviceContext, Node testcaseNode,
+			long testrayBuildId, String testrayBuildTime, long testrayCaseId,
+			Map<String, Serializable> testrayCasePropertiesMap,
+			long testrayComponentId, long testrayRunId, long userId)
+			throws Exception {
+
+		Map<String, Serializable> properties = HashMapBuilder.<String, Serializable>put(
+				"attachments", _addTestrayAttachments(testcaseNode)).put(
+						"closedDate", testrayBuildTime)
+				.put(
+						"dueStatus",
+						() -> {
+							String testrayTestcaseStatus = (String) testrayCasePropertiesMap.get(
+									"testray.testcase.status");
+
+							if (testrayTestcaseStatus.equals("blocked")) {
+								return "BLOCKED";
+							} else if (testrayTestcaseStatus.equals("dnr")) {
+								return "DIDNOTRUN";
+							} else if (testrayTestcaseStatus.equals("failed")) {
+								return "FAILED";
+							} else if (testrayTestcaseStatus.equals("in-progress")) {
+								return "INPROGRESS";
+							} else if (testrayTestcaseStatus.equals("passed")) {
+								return "PASSED";
+							} else if (testrayTestcaseStatus.equals("test-fix")) {
+								return "TESTFIX";
+							}
+
+							return "UNTESTED";
+						})
+				.put(
+						"r_buildToCaseResult_c_buildId", testrayBuildId)
+				.put(
+						"r_caseToCaseResult_c_caseId", testrayCaseId)
+				.put(
+						"r_componentToCaseResult_c_componentId", testrayComponentId)
+				.put(
+						"r_runToCaseResult_c_runId", testrayRunId)
+				.put(
+						"startDate", testrayBuildTime)
+				.put(
+						"warnings",
+						GetterUtil.getInteger(
+								testrayCasePropertiesMap.get("testray.testcase.warnings")))
+				.build();
+
+		Element element = (Element) testcaseNode;
+
+		NodeList nodeList = element.getElementsByTagName("failure");
+
+		Node failureNode = nodeList.item(0);
+
+		if (failureNode != null) {
+			String message = _getAttributeValue("message", failureNode);
+
+			if (!message.isEmpty()) {
+				properties.put("errors", message);
+			}
+		}
+
+		_addObjectEntry("CaseResult", serviceContext, userId, properties);
+	}
+
+	/*
+	 * 
+	 * private ObjectEntry _fetchLatestTestrayRunObjectEntry(
+	 * long companyId, String environmentHash, long testrayRoutineId,
+	 * long testrayRunId)
+	 * throws Exception {
+	 * 
+	 * List<ObjectEntry> testrayBuildsObjectEntries =
+	 * ObjectEntryUtil.getObjectEntries(
+	 * null, companyId, _defaultDTOConverterContext,
+	 * "routineId eq '" + testrayRoutineId + "'", "Build",
+	 * _objectEntryManager, null);
+	 * 
+	 * List<ObjectEntry> testrayRunsObjectEntries =
+	 * ObjectEntryUtil.getObjectEntries(
+	 * null, companyId, _defaultDTOConverterContext,
+	 * StringBundler.concat(
+	 * "environmentHash eq '", environmentHash, "' and id ne '",
+	 * testrayRunId, "'"),
+	 * "Run", _objectEntryManager,
+	 * new Sort[] {new Sort("createDate", 3, true)});
+	 * 
+	 * for (ObjectEntry testrayRunObjectEntry : testrayRunsObjectEntries) {
+	 * for (ObjectEntry testrayBuildObjectEntry :
+	 * testrayBuildsObjectEntries) {
+	 * 
+	 * if (Objects.equals(
+	 * testrayBuildObjectEntry.getObjectEntryId(),
+	 * ObjectEntryUtil.getProperty(
+	 * "r_buildToRuns_c_buildId",
+	 * testrayRunObjectEntry))) {
+	 * 
+	 * return testrayRunObjectEntry;
+	 * }
+	 * }
+	 * }
+	 * 
+	 * return null;
+	 * }
+	 * 
+	 */
 	private void _addTestrayCases(
-			long companyId, Element element, long testrayBuildId,
-			String testrayBuildTime, long testrayProjectId, long testrayRunId)
-		throws Exception {
+			long companyId, Element element, ServiceContext serviceContext,
+			long testrayBuildId, String testrayBuildTime, long testrayProjectId,
+			long testrayRunId, long userId)
+			throws Exception {
 
 		NodeList testCaseNodeList = element.getElementsByTagName("testcase");
 
 		for (int i = 0; i < testCaseNodeList.getLength(); i++) {
 			Node testcaseNode = testCaseNodeList.item(i);
 
-			Map<String, Object> testrayCasePropertiesMap =
-				_getTestrayCaseProperties((Element)testcaseNode);
+			Map<String, Serializable> testrayCasePropertiesMap = _getTestrayCaseProperties((Element) testcaseNode);
 
 			_addTestrayCase(
-				companyId, testcaseNode, testrayBuildId, testrayBuildTime,
-				testrayCasePropertiesMap, testrayProjectId, testrayRunId);
+					companyId, serviceContext, testcaseNode, testrayBuildId,
+					testrayBuildTime, testrayCasePropertiesMap, testrayProjectId,
+					testrayRunId, userId);
 		}
 	}
 
 	private void _addTestrayFactor(
-			long testrayFactorCategoryId, String testrayFactorCategoryName,
-			long testrayFactorOptionId, String testrayFactorOptionName,
-			long testrayRunId)
-		throws Exception {
+			ServiceContext serviceContext, long testrayFactorCategoryId,
+			String testrayFactorCategoryName, long testrayFactorOptionId,
+			String testrayFactorOptionName, long testrayRunId, long userId)
+			throws Exception {
 
-		ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "Factor", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"r_factorCategoryToFactors_c_factorCategoryId",
-				testrayFactorCategoryId
-			).put(
-				"r_factorOptionToFactors_c_factorOptionId",
-				testrayFactorOptionId
-			).put(
-				"r_runToFactors_c_runId", testrayRunId
-			).put(
-				"testrayFactorCategoryName", testrayFactorCategoryName
-			).put(
-				"testrayFactorOptionName", testrayFactorOptionName
-			).build());
-	}
-
-	private ObjectEntry _fetchLatestTestrayRunObjectEntry(
-			long companyId, String environmentHash, long testrayRoutineId,
-			long testrayRunId)
-		throws Exception {
-
-		List<ObjectEntry> testrayBuildsObjectEntries =
-			ObjectEntryUtil.getObjectEntries(
-				null, companyId, _defaultDTOConverterContext,
-				"routineId eq '" + testrayRoutineId + "'", "Build",
-				_objectEntryManager, null);
-
-		List<ObjectEntry> testrayRunsObjectEntries =
-			ObjectEntryUtil.getObjectEntries(
-				null, companyId, _defaultDTOConverterContext,
-				StringBundler.concat(
-					"environmentHash eq '", environmentHash, "' and id ne '",
-					testrayRunId, "'"),
-				"Run", _objectEntryManager,
-				new Sort[] {new Sort("createDate", 3, true)});
-
-		for (ObjectEntry testrayRunObjectEntry : testrayRunsObjectEntries) {
-			for (ObjectEntry testrayBuildObjectEntry :
-					testrayBuildsObjectEntries) {
-
-				if (Objects.equals(
-						testrayBuildObjectEntry.getId(),
-						ObjectEntryUtil.getProperty(
-							"r_buildToRuns_c_buildId",
-							testrayRunObjectEntry))) {
-
-					return testrayRunObjectEntry;
-				}
-			}
-		}
-
-		return null;
+		_addObjectEntry(
+				"Factor", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"r_factorCategoryToFactors_c_factorCategoryId",
+						testrayFactorCategoryId).put(
+								"r_factorOptionToFactors_c_factorOptionId",
+								testrayFactorOptionId)
+						.put(
+								"r_runToFactors_c_runId", testrayRunId)
+						.put(
+								"testrayFactorCategoryName", testrayFactorCategoryName)
+						.put(
+								"testrayFactorOptionName", testrayFactorOptionName)
+						.build());
 	}
 
 	private String _getAttributeValue(String attributeName, Node node) {
@@ -393,9 +500,9 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 	}
 
 	private long _getObjectEntryId(
-			long companyId, String filterString,
-			String objectDefinitionShortName, String objectEntryIdsKey)
-		throws Exception {
+			long companyId, String filterString, String idField,
+			String shortName, String objectEntryIdsKey, long userId)
+			throws Exception {
 
 		Long objectEntryId = _objectEntryIds.get(objectEntryIdsKey);
 
@@ -403,32 +510,31 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 			return objectEntryId;
 		}
 
-		com.liferay.portal.vulcan.pagination.Page<ObjectEntry> page =
-			ObjectEntryUtil.getObjectEntriesPage(
-				null, companyId, _defaultDTOConverterContext, filterString,
-				objectDefinitionShortName, _objectEntryManager, null);
+		List<Map<String, Serializable>> valuesList = _getValuesList(
+				companyId, filterString, new String[]{idField}, shortName,
+				userId);
 
-		ObjectEntry objectEntry = page.fetchFirstItem();
+		if (ListUtil.isNotEmpty(valuesList)) {
+			Map<String, Serializable> values = valuesList.get(0);
 
-		if (objectEntry == null) {
-			return 0;
+			return GetterUtil.getLong(values.get("objectEntryId"));
 		}
 
-		return objectEntry.getId();
+		return 0;
 	}
 
 	private Map<String, String> _getPropertiesMap(Element element) {
 		Map<String, String> map = new HashMap<>();
 
 		NodeList propertiesNodeList = element.getElementsByTagName(
-			"properties");
+				"properties");
 
 		Node propertiesNode = propertiesNodeList.item(0);
 
-		Element propertiesElement = (Element)propertiesNode;
+		Element propertiesElement = (Element) propertiesNode;
 
 		NodeList propertyNodeList = propertiesElement.getElementsByTagName(
-			"property");
+				"property");
 
 		for (int i = 0; i < propertyNodeList.getLength(); i++) {
 			Node propertyNode = propertyNodeList.item(i);
@@ -438,15 +544,15 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 			}
 
 			map.put(
-				_getAttributeValue("name", propertyNode),
-				_getAttributeValue("value", propertyNode));
+					_getAttributeValue("name", propertyNode),
+					_getAttributeValue("value", propertyNode));
 		}
 
 		return map;
 	}
 
 	private String _getTestrayBuildDescription(
-		Map<String, String> propertiesMap) {
+			Map<String, String> propertiesMap) {
 
 		StringBundler sb = new StringBundler(15);
 
@@ -482,70 +588,73 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 
 	private long _getTestrayBuildId(
 			long companyId, Map<String, String> propertiesMap,
-			String testrayBuildName, long testrayProjectId,
-			long testrayRoutineId)
-		throws Exception {
+			ServiceContext serviceContext, String testrayBuildName,
+			long testrayProjectId, long testrayRoutineId, long userId)
+			throws Exception {
 
 		String objectEntryIdsKey = StringBundler.concat(
-			"Build#", testrayBuildName, "#ProjectId#", testrayProjectId);
+				"Build#", testrayBuildName, "#ProjectId#", testrayProjectId);
 
 		long testrayBuildId = _getObjectEntryId(
-			companyId,
-			StringBundler.concat(
-				"projectId eq '", testrayProjectId, "' and name eq '",
-				testrayBuildName, "'"),
-			"Build", objectEntryIdsKey);
+				companyId,
+				StringBundler.concat(
+						"projectId eq '", testrayProjectId, "' and name eq '",
+						testrayBuildName, "'"),
+				"c_buildId",
+				"Build", objectEntryIdsKey, userId);
 
 		if (testrayBuildId != 0) {
 			return testrayBuildId;
 		}
 
 		long testrayProductVersionId = _getTestrayProductVersionId(
-			companyId, propertiesMap.get("testray.product.version"),
-			testrayProjectId);
+				companyId, serviceContext,
+				propertiesMap.get("testray.product.version"), testrayProjectId,
+				userId);
 
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "Build", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"description", _getTestrayBuildDescription(propertiesMap)
-			).put(
-				"dueDate", propertiesMap.get("testray.build.time")
-			).put(
-				"dueStatus", "ACTIVATED"
-			).put(
-				"gitHash", propertiesMap.get("git.id")
-			).put(
-				"githubCompareURLs", propertiesMap.get("liferay.compare.urls")
-			).put(
-				"name", testrayBuildName
-			).put(
-				"r_productVersionToBuilds_c_productVersionId",
-				testrayProductVersionId
-			).put(
-				"r_projectToBuilds_c_projectId", testrayProjectId
-			).put(
-				"r_routineToBuilds_c_routineId", testrayRoutineId
-			).build());
+		ObjectEntry objectEntry = _addObjectEntry(
+				"Build", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"description", _getTestrayBuildDescription(propertiesMap)).put(
+								"dueDate", propertiesMap.get("testray.build.date"))
+						.put(
+								"dueStatus", "ACTIVATED")
+						.put(
+								"gitHash", propertiesMap.get("git.id"))
+						.put(
+								"githubCompareURLs", propertiesMap.get("liferay.compare.urls"))
+						.put(
+								"name", testrayBuildName)
+						.put(
+								"r_productVersionToBuilds_c_productVersionId",
+								testrayProductVersionId)
+						.put(
+								"r_projectToBuilds_c_projectId", testrayProjectId)
+						.put(
+								"r_routineToBuilds_c_routineId", testrayRoutineId)
+						.build());
 
-		testrayBuildId = objectEntry.getId();
+		testrayBuildId = objectEntry.getObjectEntryId();
 
 		_objectEntryIds.put(objectEntryIdsKey, testrayBuildId);
 
 		return testrayBuildId;
 	}
 
-	private Map<String, Object> _getTestrayCaseProperties(Element element) {
-		Map<String, Object> map = new HashMap<>();
+	private Map<String, Serializable> _getTestrayCaseProperties(
+			Element element) {
+
+		Map<String, Serializable> map = new HashMap<>();
 
 		NodeList propertiesNodeList = element.getElementsByTagName(
-			"properties");
+				"properties");
 
 		Node propertiesNode = propertiesNodeList.item(0);
 
-		Element propertiesElement = (Element)propertiesNode;
+		Element propertiesElement = (Element) propertiesNode;
 
 		NodeList propertyNodeList = propertiesElement.getElementsByTagName(
-			"property");
+				"property");
 
 		for (int i = 0; i < propertyNodeList.getLength(); i++) {
 			Node propertyNode = propertyNodeList.item(i);
@@ -555,108 +664,35 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 			}
 
 			map.put(
-				_getAttributeValue("name", propertyNode),
-				_getAttributeValue("value", propertyNode));
+					_getAttributeValue("name", propertyNode),
+					_getAttributeValue("value", propertyNode));
 		}
 
 		return map;
 	}
 
-	private long _getTestrayCaseResultId(
-			Node testcaseNode, long testrayBuildId, String testrayBuildTime,
-			long testrayCaseId, Map<String, Object> testrayCasePropertiesMap,
-			long testrayComponentId, long testrayRunId)
-		throws Exception {
-
-		Map<String, Object> properties = HashMapBuilder.<String, Object>put(
-			"attachments", _addTestrayAttachments(testcaseNode)
-		).put(
-			"closedDate", testrayBuildTime
-		).put(
-			"dueStatus",
-			() -> {
-				String testrayTestcaseStatus =
-					(String)testrayCasePropertiesMap.get(
-						"testray.testcase.status");
-
-				if (testrayTestcaseStatus.equals("blocked")) {
-					return "BLOCKED";
-				}
-				else if (testrayTestcaseStatus.equals("dnr")) {
-					return "DIDNOTRUN";
-				}
-				else if (testrayTestcaseStatus.equals("failed")) {
-					return "FAILED";
-				}
-				else if (testrayTestcaseStatus.equals("in-progress")) {
-					return "INPROGRESS";
-				}
-				else if (testrayTestcaseStatus.equals("passed")) {
-					return "PASSED";
-				}
-				else if (testrayTestcaseStatus.equals("test-fix")) {
-					return "TESTFIX";
-				}
-
-				return "UNTESTED";
-			}
-		).put(
-			"r_buildToCaseResult_c_buildId", testrayBuildId
-		).put(
-			"r_caseToCaseResult_c_caseId", testrayCaseId
-		).put(
-			"r_componentToCaseResult_c_componentId", testrayComponentId
-		).put(
-			"r_runToCaseResult_c_runId", testrayRunId
-		).put(
-			"startDate", testrayBuildTime
-		).put(
-			"warnings",
-			(Integer)testrayCasePropertiesMap.get("testray.testcase.warnings")
-		).build();
-
-		Element element = (Element)testcaseNode;
-
-		NodeList nodeList = element.getElementsByTagName("failure");
-
-		Node failureNode = nodeList.item(0);
-
-		if (failureNode != null) {
-			String message = _getAttributeValue("message", failureNode);
-
-			if (!message.isEmpty()) {
-				properties.put("errors", message);
-			}
-		}
-
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "CaseResult", _objectEntryManager,
-			properties);
-
-		return objectEntry.getId();
-	}
-
 	private long _getTestrayCaseTypeId(
-			long companyId, String testrayCaseTypeName)
-		throws Exception {
+			long companyId, ServiceContext serviceContext,
+			String testrayCaseTypeName, long userId)
+			throws Exception {
 
 		String objectEntryIdsKey = "CaseType#" + testrayCaseTypeName;
 
 		long testrayCaseTypeId = _getObjectEntryId(
-			companyId, "name eq '" + testrayCaseTypeName + "'", "CaseType",
-			objectEntryIdsKey);
+				companyId, "name eq '" + testrayCaseTypeName + "'",
+				"c_casetypeId", "CaseType",
+				objectEntryIdsKey, userId);
 
 		if (testrayCaseTypeId != 0) {
 			return testrayCaseTypeId;
 		}
 
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "CaseType", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"name", testrayCaseTypeName
-			).build());
+		ObjectEntry objectEntry = _addObjectEntry(
+				"CaseType", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"name", testrayCaseTypeName).build());
 
-		testrayCaseTypeId = objectEntry.getId();
+		testrayCaseTypeId = objectEntry.getObjectEntryId();
 
 		_objectEntryIds.put(objectEntryIdsKey, testrayCaseTypeId);
 
@@ -664,36 +700,36 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 	}
 
 	private long _getTestrayComponentId(
-			long companyId, String testrayComponentName, long testrayProjectId,
-			long testrayTeamId)
-		throws Exception {
+			long companyId, ServiceContext serviceContext,
+			String testrayComponentName, long testrayProjectId,
+			long testrayTeamId, long userId)
+			throws Exception {
 
 		String objectEntryIdsKey = StringBundler.concat(
-			"Component#", testrayComponentName, "#ProjectId#",
-			testrayProjectId);
+				"Component#", testrayComponentName, "#ProjectId#",
+				testrayProjectId);
 
 		long testrayComponentId = _getObjectEntryId(
-			companyId,
-			StringBundler.concat(
-				"projectId eq '", testrayProjectId, "' and name eq '",
-				testrayComponentName, "'"),
-			"Component", objectEntryIdsKey);
+				companyId,
+				StringBundler.concat(
+						"projectId eq '", testrayProjectId, "' and name eq '",
+						testrayComponentName, "'"), "c_componentId",
+				"Component", objectEntryIdsKey, userId);
 
 		if (testrayComponentId != 0) {
 			return testrayComponentId;
 		}
 
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "Component", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"name", testrayComponentName
-			).put(
-				"r_projectToComponents_c_projectId", testrayProjectId
-			).put(
-				"r_teamToComponents_c_teamId", testrayTeamId
-			).build());
+		ObjectEntry objectEntry = _addObjectEntry(
+				"Component", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"name", testrayComponentName).put(
+								"r_projectToComponents_c_projectId", testrayProjectId)
+						.put(
+								"r_teamToComponents_c_teamId", testrayTeamId)
+						.build());
 
-		testrayComponentId = objectEntry.getId();
+		testrayComponentId = objectEntry.getObjectEntryId();
 
 		_objectEntryIds.put(objectEntryIdsKey, testrayComponentId);
 
@@ -701,27 +737,27 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 	}
 
 	private long _getTestrayFactorCategoryId(
-			long companyId, String testrayFactorCategoryName)
-		throws Exception {
+			long companyId, ServiceContext serviceContext,
+			String testrayFactorCategoryName, long userId)
+			throws Exception {
 
-		String objectEntryIdsKey =
-			"FactorCategory#" + testrayFactorCategoryName;
+		String objectEntryIdsKey = "FactorCategory#" + testrayFactorCategoryName;
 
 		long testrayFactorCategoryId = _getObjectEntryId(
-			companyId, "name eq '" + testrayFactorCategoryName + "'",
-			"FactorCategory", objectEntryIdsKey);
+				companyId, "name eq '" + testrayFactorCategoryName + "'",
+				"c_factorCategoryId",
+				"FactorCategory", objectEntryIdsKey, userId);
 
 		if (testrayFactorCategoryId != 0) {
 			return testrayFactorCategoryId;
 		}
 
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "FactorCategory", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"name", testrayFactorCategoryName
-			).build());
+		ObjectEntry objectEntry = _addObjectEntry(
+				"FactorCategory", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"name", testrayFactorCategoryName).build());
 
-		testrayFactorCategoryId = objectEntry.getId();
+		testrayFactorCategoryId = objectEntry.getObjectEntryId();
 
 		_objectEntryIds.put(objectEntryIdsKey, testrayFactorCategoryId);
 
@@ -729,35 +765,36 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 	}
 
 	private long _getTestrayFactorOptionId(
-			long companyId, long testrayFactorCategoryId,
-			String testrayFactorOptionName)
-		throws Exception {
+			long companyId, ServiceContext serviceContext,
+			long testrayFactorCategoryId, String testrayFactorOptionName,
+			long userId)
+			throws Exception {
 
 		String objectEntryIdsKey = StringBundler.concat(
-			"FactorOption#", testrayFactorOptionName, "#FactorCategoryId#",
-			testrayFactorCategoryId);
+				"FactorOption#", testrayFactorOptionName, "#FactorCategoryId#",
+				testrayFactorCategoryId);
 
 		long testrayFactorOptionId = _getObjectEntryId(
-			companyId,
-			StringBundler.concat(
-				"factorCategoryId eq '", testrayFactorCategoryId,
-				"' and name eq '", testrayFactorOptionName, "'"),
-			"FactorOption", objectEntryIdsKey);
+				companyId,
+				StringBundler.concat(
+						"factorCategoryId eq '", testrayFactorCategoryId,
+						"' and name eq '", testrayFactorOptionName, "'"),
+				"c_factorOptionId",
+				"FactorOption", objectEntryIdsKey, userId);
 
 		if (testrayFactorOptionId != 0) {
 			return testrayFactorOptionId;
 		}
 
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "FactorOption", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"name", testrayFactorOptionName
-			).put(
-				"r_factorCategoryToOptions_c_factorCategoryId",
-				testrayFactorCategoryId
-			).build());
+		ObjectEntry objectEntry = _addObjectEntry(
+				"FactorOption", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"name", testrayFactorOptionName).put(
+								"r_factorCategoryToOptions_c_factorCategoryId",
+								testrayFactorCategoryId)
+						.build());
 
-		testrayFactorOptionId = objectEntry.getId();
+		testrayFactorOptionId = objectEntry.getObjectEntryId();
 
 		_objectEntryIds.put(objectEntryIdsKey, testrayFactorOptionId);
 
@@ -765,56 +802,57 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 	}
 
 	private long _getTestrayProductVersionId(
-			long companyId, String testrayProductVersionName,
-			long testrayProjectId)
-		throws Exception {
+			long companyId, ServiceContext serviceContext,
+			String testrayProductVersionName, long testrayProjectId,
+			long userId)
+			throws Exception {
 
-		String objectEntryIdsKey =
-			"ProductVersion#" + testrayProductVersionName;
+		String objectEntryIdsKey = "ProductVersion#" + testrayProductVersionName;
 
 		long testrayProductVersionId = _getObjectEntryId(
-			companyId, "name eq '" + testrayProductVersionName + "'",
-			"ProductVersion", objectEntryIdsKey);
+				companyId, "name eq '" + testrayProductVersionName + "'",
+				"c_productVersionId", "ProductVersion", objectEntryIdsKey, userId);
 
 		if (testrayProductVersionId != 0) {
 			return testrayProductVersionId;
 		}
 
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "ProductVersion", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"name", testrayProductVersionName
-			).put(
-				"r_projectToProductVersions_c_projectId", testrayProjectId
-			).build());
+		ObjectEntry objectEntry = _addObjectEntry(
+				"ProductVersion", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"name", testrayProductVersionName).put(
+								"r_projectToProductVersions_c_projectId", testrayProjectId)
+						.build());
 
-		testrayProductVersionId = objectEntry.getId();
+		testrayProductVersionId = objectEntry.getObjectEntryId();
 
 		_objectEntryIds.put(objectEntryIdsKey, testrayProductVersionId);
 
 		return testrayProductVersionId;
 	}
 
-	private long _getTestrayProjectId(long companyId, String testrayProjectName)
-		throws Exception {
+	private long _getTestrayProjectId(
+			long companyId, ServiceContext serviceContext,
+			String testrayProjectName, long userId)
+			throws Exception {
 
 		String objectEntryIdsKey = "Project#" + testrayProjectName;
 
 		long testrayProjectId = _getObjectEntryId(
-			companyId, "name eq '" + testrayProjectName + "'", "Project",
-			objectEntryIdsKey);
+				companyId, "name eq '" + testrayProjectName + "'",
+				"c_projectId", "Project",
+				objectEntryIdsKey, userId);
 
 		if (testrayProjectId != 0) {
 			return testrayProjectId;
 		}
 
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "Project", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"name", testrayProjectName
-			).build());
+		ObjectEntry objectEntry = _addObjectEntry(
+				"Project", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"name", testrayProjectName).build());
 
-		testrayProjectId = objectEntry.getId();
+		testrayProjectId = objectEntry.getObjectEntryId();
 
 		_objectEntryIds.put(objectEntryIdsKey, testrayProjectId);
 
@@ -822,32 +860,32 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 	}
 
 	private long _getTestrayRoutineId(
-			long companyId, long testrayProjectId, String testrayRoutineName)
-		throws Exception {
+			long companyId, ServiceContext serviceContext,
+			long testrayProjectId, String testrayRoutineName, long userId)
+			throws Exception {
 
 		String objectEntryIdsKey = StringBundler.concat(
-			"Routine#", testrayRoutineName, "#ProjectId#", testrayProjectId);
+				"Routine#", testrayRoutineName, "#ProjectId#", testrayProjectId);
 
 		long testrayRoutineId = _getObjectEntryId(
-			companyId,
-			StringBundler.concat(
-				"projectId eq '", testrayProjectId, "' and name eq '",
-				testrayRoutineName, "'"),
-			"Routine", objectEntryIdsKey);
+				companyId,
+				StringBundler.concat(
+						"projectId eq '", testrayProjectId, "' and name eq '",
+						testrayRoutineName, "'"),
+				"c_routineId", "Routine", objectEntryIdsKey, userId);
 
 		if (testrayRoutineId != 0) {
 			return testrayRoutineId;
 		}
 
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "Routine", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"name", testrayRoutineName
-			).put(
-				"r_routineToProjects_c_projectId", testrayProjectId
-			).build());
+		ObjectEntry objectEntry = _addObjectEntry(
+				"Routine", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"name", testrayRoutineName).put(
+								"r_routineToProjects_c_projectId", testrayProjectId)
+						.build());
 
-		testrayRoutineId = objectEntry.getId();
+		testrayRoutineId = objectEntry.getObjectEntryId();
 
 		_objectEntryIds.put(objectEntryIdsKey, testrayRoutineId);
 
@@ -855,13 +893,14 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 	}
 
 	private String _getTestrayRunEnvironmentHash(
-			long companyId, Element element, long testrayRunId)
-		throws Exception {
+			long companyId, Element element, ServiceContext serviceContext,
+			long testrayRunId, long userId)
+			throws Exception {
 
 		StringBundler sb = new StringBundler();
 
 		NodeList environmentNodeList = element.getElementsByTagName(
-			"environment");
+				"environment");
 
 		for (int i = 0; i < environmentNodeList.getLength(); i++) {
 			Node node = environmentNodeList.item(i);
@@ -873,16 +912,18 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 			String testrayFactorCategoryName = _getAttributeValue("type", node);
 
 			long testrayFactorCategoryId = _getTestrayFactorCategoryId(
-				companyId, testrayFactorCategoryName);
+					companyId, serviceContext, testrayFactorCategoryName, userId);
 
 			String testrayFactorOptionName = _getAttributeValue("option", node);
 
 			long testrayFactorOptionId = _getTestrayFactorOptionId(
-				companyId, testrayFactorCategoryId, testrayFactorOptionName);
+					companyId, serviceContext, testrayFactorCategoryId,
+					testrayFactorOptionName, userId);
 
 			_addTestrayFactor(
-				testrayFactorCategoryId, testrayFactorCategoryName,
-				testrayFactorOptionId, testrayFactorOptionName, testrayRunId);
+					serviceContext, testrayFactorCategoryId,
+					testrayFactorCategoryName, testrayFactorOptionId,
+					testrayFactorOptionName, testrayRunId, userId);
 
 			sb.append(testrayFactorCategoryId);
 			sb.append(testrayFactorOptionId);
@@ -894,58 +935,51 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 	}
 
 	private long _getTestrayRunId(
-			long companyId, Element element, Map<String, String> propertiesMap,
-			long testrayBuildId, String testrayRunName)
-		throws Exception {
+			long companyId, Element element, ServiceContext serviceContext,
+			Map<String, String> propertiesMap, long testrayBuildId,
+			String testrayRunName, long userId)
+			throws Exception {
 
 		String objectEntryIdsKey = StringBundler.concat(
-			"Run#", testrayRunName, "#BuildId#", testrayBuildId);
+				"Run#", testrayRunName, "#BuildId#", testrayBuildId);
 
 		long testrayRunId = _getObjectEntryId(
-			companyId,
-			StringBundler.concat(
-				"buildId eq '", testrayBuildId, "' and name eq '",
-				testrayRunName, "'"),
-			"Run", objectEntryIdsKey);
+				companyId,
+				StringBundler.concat(
+						"buildId eq '", testrayBuildId, "' and name eq '",
+						testrayRunName, "'"),
+				"c_runId", "Run", objectEntryIdsKey, userId);
 
 		if (testrayRunId != 0) {
 			return testrayRunId;
 		}
 
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "Run", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"externalReferencePK", propertiesMap.get("testray.run.id")
-			).put(
-				"externalReferenceType", 1
-			).put(
-				"jenkinsJobKey", propertiesMap.get("jenkins.job.id")
-			).put(
-				"name", testrayRunName
-			).put(
-				"number",
-				ObjectEntryUtil.increment(
-					companyId, _defaultDTOConverterContext,
-					"buildId eq '" + testrayBuildId + "'", "number", "Run",
-					_objectEntryManager,
-					new Sort[] {
-						new Sort("nestedFieldArray.value_long#number", true)
-					})
-			).put(
-				"r_buildToRuns_c_buildId", testrayBuildId
-			).build());
+		ObjectEntry objectEntry = _addObjectEntry(
+				"Run", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"externalReferencePK", propertiesMap.get("testray.run.id")).put(
+								"externalReferenceType", 1)
+						.put(
+								"jenkinsJobKey",
+								GetterUtil.getLong(propertiesMap.get("jenkins.job.id"), 0))
+						.put(
+								"name", testrayRunName)
+						.put(
+								"number", _runNumber++)
+						.put(
+								"r_buildToRuns_c_buildId", testrayBuildId)
+						.build());
 
-		testrayRunId = objectEntry.getId();
+		testrayRunId = objectEntry.getObjectEntryId();
 
-		objectEntry.getProperties(
-		).put(
-			"environmentHash",
-			_getTestrayRunEnvironmentHash(companyId, element, testrayRunId)
-		);
+		objectEntry.getValues().put(
+				"environmentHash",
+				_getTestrayRunEnvironmentHash(
+						companyId, element, serviceContext, testrayRunId, userId));
 
-		ObjectEntryUtil.updateObjectEntry(
-			_defaultDTOConverterContext, "Run", objectEntry,
-			objectEntry.getId(), _objectEntryManager);
+		_objectEntryLocalService.updateObjectEntry(
+				userId, objectEntry.getObjectEntryId(), objectEntry.getValues(),
+				serviceContext);
 
 		_objectEntryIds.put(objectEntryIdsKey, testrayRunId);
 
@@ -953,38 +987,52 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 	}
 
 	private long _getTestrayTeamId(
-			long companyId, long testrayProjectId, String testrayTeamName)
-		throws Exception {
+			long companyId, ServiceContext serviceContext,
+			long testrayProjectId, String testrayTeamName, long userId)
+			throws Exception {
 
 		String objectEntryIdsKey = StringBundler.concat(
-			"Team#", testrayTeamName, "#ProjectId#", testrayProjectId);
+				"Team#", testrayTeamName, "#ProjectId#", testrayProjectId);
 
 		long testrayTeamId = _getObjectEntryId(
-			companyId,
-			StringBundler.concat(
-				"projectId eq '", testrayProjectId, "' and name eq '",
-				testrayTeamName, "'"),
-			"Team", objectEntryIdsKey);
+				companyId,
+				StringBundler.concat(
+						"projectId eq '", testrayProjectId, "' and name eq '",
+						testrayTeamName, "'"),
+				"c_teamId", "Team", objectEntryIdsKey, userId);
 
 		if (testrayTeamId != 0) {
 			return testrayTeamId;
 		}
 
-		ObjectEntry objectEntry = ObjectEntryUtil.addObjectEntry(
-			_defaultDTOConverterContext, "Team", _objectEntryManager,
-			HashMapBuilder.<String, Object>put(
-				"name", testrayTeamName
-			).put(
-				"r_projectToTeams_c_projectId", testrayProjectId
-			).build());
+		ObjectEntry objectEntry = _addObjectEntry(
+				"Team", serviceContext, userId,
+				HashMapBuilder.<String, Serializable>put(
+						"name", testrayTeamName).put(
+								"r_projectToTeams_c_projectId", testrayProjectId)
+						.build());
 
-		_objectEntryIds.put(objectEntryIdsKey, objectEntry.getId());
+		_objectEntryIds.put(objectEntryIdsKey, objectEntry.getObjectEntryId());
 
-		return objectEntry.getId();
+		return objectEntry.getObjectEntryId();
+	}
+
+	private List<Map<String, Serializable>> _getValuesList(
+			long companyId, String filterString,
+			String[] selectedObjectFieldNames, String shortName, long userId)
+			throws Exception {
+
+		ObjectDefinition objectDefinition = _getObjectDefinition(shortName);
+
+		return _objectEntryLocalService.getValuesList(
+				0, companyId, userId, objectDefinition.getObjectDefinitionId(),
+				selectedObjectFieldNames,
+				_filterFactory.create(filterString, objectDefinition), null,
+				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	private void _invoke(UnsafeRunnable<Exception> unsafeRunnable)
-		throws Exception {
+			throws Exception {
 
 		long startTime = System.currentTimeMillis();
 
@@ -996,141 +1044,151 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 			StackTraceElement stackTraceElement = thread.getStackTrace()[2];
 
 			_log.info(
-				StringBundler.concat(
-					"Invoking line ", stackTraceElement.getLineNumber(),
-					" took ", System.currentTimeMillis() - startTime, " ms"));
+					StringBundler.concat(
+							"Invoking line ", stackTraceElement.getLineNumber(),
+							" took ", System.currentTimeMillis() - startTime, " ms"));
 		}
 	}
 
-	private void _load(long companyId) throws Exception {
-		ObjectEntryUtil.loadObjectDefinitions(
-			companyId, _objectDefinitionLocalService);
+	private void _load(long companyId, long userId) throws Exception {
+		_loadObjectDefinitions(companyId);
 
-		_loadTestrayCaseTypes(companyId);
-		_loadTestrayComponents(companyId);
-		_loadTestrayFactorCategories(companyId);
-		_loadTestrayFactorOptions(companyId);
-		_loadTestrayProjects(companyId);
-		_loadTestrayTeams(companyId);
+		_loadTestrayCaseTypes(companyId, userId);
+		_loadTestrayComponents(companyId, userId);
+		_loadTestrayFactorCategories(companyId, userId);
+		_loadTestrayFactorOptions(companyId, userId);
+		_loadTestrayProjects(companyId, userId);
+		_loadTestrayTeams(companyId, userId);
 	}
 
-	private void _loadTestrayCaseTypes(long companyId) throws Exception {
-		List<ObjectEntry> objectEntries = ObjectEntryUtil.getObjectEntries(
-			null, companyId, _defaultDTOConverterContext, null, "CaseType",
-			_objectEntryManager, null);
+	private void _loadTestrayCaseTypes(long companyId, long userId)
+			throws Exception {
 
-		if (ListUtil.isEmpty(objectEntries)) {
+		List<Map<String, Serializable>> valuesList = _getValuesList(
+				companyId, null, new String[]{"c_caseTypeId", "name"}, "CaseType",
+					userId);
+
+		if (ListUtil.isEmpty(valuesList)) {
 			return;
 		}
 
-		for (ObjectEntry objectEntry : objectEntries) {
+		for (Map<String, Serializable> values : valuesList) {
 			_objectEntryIds.put(
-				"CaseType#" +
-					(String)ObjectEntryUtil.getProperty("name", objectEntry),
-				objectEntry.getId());
+					"CaseType#" + "name" + values.get("name"),
+					GetterUtil.getLong(values.get("c_caseTypeId")));
 		}
 	}
 
-	private void _loadTestrayComponents(long companyId) throws Exception {
-		List<ObjectEntry> objectEntries = ObjectEntryUtil.getObjectEntries(
-			null, companyId, _defaultDTOConverterContext, null, "Component",
-			_objectEntryManager, null);
+	private void _loadTestrayComponents(long companyId, long userId)
+			throws Exception {
 
-		if (ListUtil.isEmpty(objectEntries)) {
+		List<Map<String, Serializable>> valuesList = _getValuesList(
+				companyId, null, new String[]{"c_componentId", "name",
+				"r_teamToComponents_c_teamId"}, "Component", userId);
+
+		if (ListUtil.isEmpty(valuesList)) {
 			return;
 		}
 
-		for (ObjectEntry objectEntry : objectEntries) {
+		for (Map<String, Serializable> values : valuesList) {
 			_objectEntryIds.put(
-				StringBundler.concat(
-					"Component#",
-					(String)ObjectEntryUtil.getProperty("name", objectEntry),
-					"#TeamId#",
-					(Long)ObjectEntryUtil.getProperty(
-						"r_teamToComponents_c_teamId", objectEntry)),
-				objectEntry.getId());
+					StringBundler.concat(
+							"Component#", GetterUtil.getString(values.get("name")),
+							"#TeamId#",
+							GetterUtil.getLong(
+									values.get("r_teamToComponents_c_teamId"))),
+					GetterUtil.getLong(values.get("c_componentId")));
 		}
 	}
 
-	private void _loadTestrayFactorCategories(long companyId) throws Exception {
-		List<ObjectEntry> objectEntries = ObjectEntryUtil.getObjectEntries(
-			null, companyId, _defaultDTOConverterContext, null,
-			"FactorCategory", _objectEntryManager, null);
+	private void _loadTestrayFactorCategories(long companyId, long userId)
+			throws Exception {
 
-		if (ListUtil.isEmpty(objectEntries)) {
+		List<Map<String, Serializable>> valuesList = _getValuesList(
+				companyId, null, new String[]{"c_factorCategoryId", "name"},
+					"FactorCategory", userId);
+
+		if (ListUtil.isEmpty(valuesList)) {
 			return;
 		}
 
-		for (ObjectEntry objectEntry : objectEntries) {
+		for (Map<String, Serializable> values : valuesList) {
 			_objectEntryIds.put(
-				"FactorCategory#" +
-					(String)ObjectEntryUtil.getProperty("name", objectEntry),
-				objectEntry.getId());
+					StringBundler.concat(
+							"FactorCategory#",
+							GetterUtil.getString(values.get("name"))),
+					GetterUtil.getLong(values.get("c_factorCategoryId")));
 		}
 	}
 
-	private void _loadTestrayFactorOptions(long companyId) throws Exception {
-		List<ObjectEntry> objectEntries = ObjectEntryUtil.getObjectEntries(
-			null, companyId, _defaultDTOConverterContext, null, "FactorOption",
-			_objectEntryManager, null);
+	private void _loadTestrayFactorOptions(long companyId, long userId)
+			throws Exception {
 
-		if (ListUtil.isEmpty(objectEntries)) {
+		List<Map<String, Serializable>> valuesList = _getValuesList(
+				companyId, null, new String[]{"c_factorCategoryId",
+				"r_factorCategoryToOptions_c_factorCategoryId", "name"},
+				"FactorOption", userId);
+
+		if (ListUtil.isEmpty(valuesList)) {
 			return;
 		}
 
-		for (ObjectEntry objectEntry : objectEntries) {
+		for (Map<String, Serializable> values : valuesList) {
 			_objectEntryIds.put(
-				StringBundler.concat(
-					"FactorOption#",
-					(String)ObjectEntryUtil.getProperty("name", objectEntry),
-					"#FactorCategoryId#",
-					(Long)ObjectEntryUtil.getProperty(
-						"r_factorCategoryToOptions_c_factorCategoryId",
-						objectEntry)),
-				objectEntry.getId());
+					StringBundler.concat(
+							"FactorOption#", GetterUtil.getString(values.get("name")),
+							"#FactorCategoryId#",
+							GetterUtil.getLong(
+									values.get(
+											"r_factorCategoryToOptions_c_factorCategoryId"))),
+					GetterUtil.getLong(values.get("c_factorCategoryId")));
 		}
 	}
 
-	private void _loadTestrayProjects(long companyId) throws Exception {
-		List<ObjectEntry> objectEntries = ObjectEntryUtil.getObjectEntries(
-			null, companyId, _defaultDTOConverterContext, null, "Project",
-			_objectEntryManager, null);
+	private void _loadTestrayProjects(long companyId, long userId)
+			throws Exception {
 
-		if (ListUtil.isEmpty(objectEntries)) {
+		List<Map<String, Serializable>> valuesList = _getValuesList(
+				companyId, null, new String[]{"c_projectId", "name"}, "Project", userId);
+
+		if (ListUtil.isEmpty(valuesList)) {
 			return;
 		}
 
-		for (ObjectEntry objectEntry : objectEntries) {
+		for (Map<String, Serializable> values : valuesList) {
 			_objectEntryIds.put(
-				"Project#" +
-					(String)ObjectEntryUtil.getProperty("name", objectEntry),
-				objectEntry.getId());
+					StringBundler.concat(
+							"Project#", GetterUtil.getString(values.get("name"))),
+					GetterUtil.getLong(values.get("c_projectId")));
 		}
 	}
 
-	private void _loadTestrayTeams(long companyId) throws Exception {
-		List<ObjectEntry> objectEntries = ObjectEntryUtil.getObjectEntries(
-			null, companyId, _defaultDTOConverterContext, null, "Team",
-			_objectEntryManager, null);
+	private void _loadTestrayTeams(long companyId, long userId)
+			throws Exception {
 
-		if (ListUtil.isEmpty(objectEntries)) {
+		List<Map<String, Serializable>> valuesList = _getValuesList(
+				companyId, null, new String[]{"c_teamId", "name",
+					"r_projectToTeams_c_projectIds"}, "Team", userId);
+
+		if (ListUtil.isEmpty(valuesList)) {
 			return;
 		}
 
-		for (ObjectEntry objectEntry : objectEntries) {
+		for (Map<String, Serializable> values : valuesList) {
 			_objectEntryIds.put(
-				StringBundler.concat(
-					"Team#",
-					(String)ObjectEntryUtil.getProperty("name", objectEntry),
-					"#ProjectId#",
-					(Long)ObjectEntryUtil.getProperty(
-						"r_projectToTeams_c_projectIds", objectEntry)),
-				objectEntry.getId());
+					StringBundler.concat(
+							"Team#", GetterUtil.getString(values.get("name")),
+							"#ProjectId#",
+							GetterUtil.getLong(
+									values.get("r_projectToTeams_c_projectIds"))),
+					GetterUtil.getLong(values.get("c_teamId")));
 		}
 	}
 
-	private void _processArchive(long companyId, byte[] bytes)
-		throws Exception {
+	private void _processArchive(
+			long companyId, byte[] bytes, ServiceContext serviceContext,
+			long userId)
+			throws Exception {
 
 		Path tempDirectoryPath = null;
 		Path tempFilePath = null;
@@ -1148,27 +1206,30 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 
 			archiver.extract(tempFilePath.toFile(), tempDirectoryFile);
 
-			DocumentBuilderFactory documentBuilderFactory =
-				SecureXMLFactoryProviderUtil.newDocumentBuilderFactory();
+			DocumentBuilderFactory documentBuilderFactory = SecureXMLFactoryProviderUtil.newDocumentBuilderFactory();
 
-			DocumentBuilder documentBuilder =
-				documentBuilderFactory.newDocumentBuilder();
+			DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
 
 			for (File file : tempDirectoryFile.listFiles()) {
 				try {
+					_log.info("Processing TAR " + _tarName);
+					_log.info("Processing XML " + file.getName());
+
 					Document document = documentBuilder.parse(file);
 
-					_invoke(() -> _processDocument(companyId, document));
-				}
-				catch (Exception exception) {
+					_invoke(
+							() -> _processDocument(
+									companyId, document, serviceContext, userId));
+				} catch (Exception exception) {
 					_log.error(exception);
-				}
-				finally {
+				} finally {
 					file.delete();
+
+					_log.info("Tar files processed: " + _tarFilesProcessed);
+					_log.info("XML files processed: " + _xmlFilesProcessed++);
 				}
 			}
-		}
-		finally {
+		} finally {
 			if (tempDirectoryPath != null) {
 				Files.deleteIfExists(tempDirectoryPath);
 			}
@@ -1179,65 +1240,72 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 		}
 	}
 
-	private void _processDocument(long companyId, Document document)
-		throws Exception {
+	private void _processDocument(
+			long companyId, Document document, ServiceContext serviceContext,
+			long userId)
+			throws Exception {
 
 		Element element = document.getDocumentElement();
 
 		Map<String, String> propertiesMap = _getPropertiesMap(element);
 
 		long testrayProjectId = _getTestrayProjectId(
-			companyId, propertiesMap.get("testray.project.name"));
+				companyId, serviceContext,
+				propertiesMap.get("testray.project.name"), userId);
 
 		long testrayRoutineId = _getTestrayRoutineId(
-			companyId, testrayProjectId,
-			propertiesMap.get("testray.build.type"));
+				companyId, serviceContext, testrayProjectId,
+				propertiesMap.get("testray.build.type"), userId);
 
 		long testrayBuildId = _getTestrayBuildId(
-			companyId, propertiesMap, propertiesMap.get("testray.build.name"),
-			testrayProjectId, testrayRoutineId);
+				companyId, propertiesMap, serviceContext,
+				propertiesMap.get("testray.build.name"), testrayProjectId,
+				testrayRoutineId, userId);
 
 		long testrayRunId = _getTestrayRunId(
-			companyId, element, propertiesMap, testrayBuildId,
-			propertiesMap.get("testray.run.id"));
+				companyId, element, serviceContext, propertiesMap, testrayBuildId,
+				propertiesMap.get("testray.run.id"), userId);
 
 		_addTestrayCases(
-			companyId, element, testrayBuildId,
-			propertiesMap.get("testray.build.time"), testrayProjectId,
-			testrayRunId);
+				companyId, element, serviceContext, testrayBuildId,
+				propertiesMap.get("testray.build.time"), testrayProjectId,
+				testrayRunId, userId);
 
-		ObjectEntry testrayRoutineObjectEntry = ObjectEntryUtil.getObjectEntry(
-			_defaultDTOConverterContext, "Routine", testrayRoutineId,
-			_objectEntryManager);
+		// ObjectEntry testrayRoutineObjectEntry =
 
-		if (!(Boolean)ObjectEntryUtil.getProperty(
-				"autoanalyze", testrayRoutineObjectEntry)) {
+		// _objectEntryLocalService.getObjectEntry(testrayRoutineId);
+		//
+		// if (!(Boolean)ObjectEntryUtil.getProperty(
+		// "autoanalyze", testrayRoutineObjectEntry)) {
+		//
+		// return;
+		// }
+		//
 
-			return;
-		}
+		// ObjectEntry testrayRunObjectEntry1 =
 
-		ObjectEntry testrayRunObjectEntry1 = ObjectEntryUtil.getObjectEntry(
-			_defaultDTOConverterContext, "Run", testrayRunId,
-			_objectEntryManager);
+		// _objectEntryLocalService.getObjectEntry(testrayRunId);
 
-		ObjectEntry testrayRunObjectEntry2 = _fetchLatestTestrayRunObjectEntry(
-			companyId,
-			(String)ObjectEntryUtil.getProperty(
-				"environmentHash", testrayRunObjectEntry1),
-			testrayRoutineObjectEntry.getId(), testrayRunId);
-
-		if (testrayRunObjectEntry2 == null) {
-			return;
-		}
-
-		TestrayUtil.autofillTestrayRuns(
-			companyId, _defaultDTOConverterContext, _objectEntryManager,
-			testrayRunObjectEntry1, testrayRunObjectEntry2);
+		//
+		// ObjectEntry testrayRunObjectEntry2 = _fetchLatestTestrayRunObjectEntry(
+		// companyId,
+		// (String)ObjectEntryUtil.getProperty(
+		// "environmentHash", testrayRunObjectEntry1),
+		// testrayRoutineObjectEntry.getObjectEntryId(), testrayRunId);
+		//
+		// if (testrayRunObjectEntry2 == null) {
+		// return;
+		// }
+		//
+		// TestrayUtil.autofillTestrayRuns(
+		// companyId, _defaultDTOConverterContext, _objectEntryManager,
+		// testrayRunObjectEntry1, testrayRunObjectEntry2);
 	}
 
 	private void _uploadToTestray(
-			long companyId, UnicodeProperties unicodeProperties)
-		throws Exception {
+			long companyId, ServiceContext serviceContext,
+			UnicodeProperties unicodeProperties, long userId)
+			throws Exception {
 
 		String s3APIKey = unicodeProperties.getProperty("s3APIKey");
 
@@ -1245,20 +1313,17 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 				s3APIKey.getBytes())) {
 
 			long filesCountThreshold = GetterUtil.getLong(
-				unicodeProperties.getProperty("filesCountThreshold"), -1);
+					unicodeProperties.getProperty("filesCountThreshold"), -1);
 
-			Storage storage = StorageOptions.newBuilder(
-			).setCredentials(
-				GoogleCredentials.fromStream(inputStream)
-			).build(
-			).getService();
+			Storage storage = StorageOptions.newBuilder().setCredentials(
+					GoogleCredentials.fromStream(inputStream)).build().getService();
 
 			String s3InboxFolderName = unicodeProperties.getProperty(
-				"s3InboxFolderName");
+					"s3InboxFolderName");
 
 			Page<Blob> page = storage.list(
-				unicodeProperties.getProperty("s3BucketName"),
-				Storage.BlobListOption.prefix(s3InboxFolderName + "/"));
+					unicodeProperties.getProperty("s3BucketName"),
+					Storage.BlobListOption.prefix(s3InboxFolderName + "/"));
 
 			for (Blob blob : page.iterateAll()) {
 				if (filesCountThreshold == 0) {
@@ -1267,57 +1332,73 @@ public class SiteInitializerTestrayImportResultsDispatchTaskExecutor
 
 				String name = blob.getName();
 
+				_tarName = name;
+
 				if (name.equals(s3InboxFolderName + "/")) {
 					continue;
 				}
 
 				try {
-					_processArchive(companyId, blob.getContent());
+					_runNumber = 1;
+
+					_processArchive(
+							companyId, blob.getContent(), serviceContext, userId);
+
+					_tarFilesProcessed++;
 
 					blob.copyTo(
-						unicodeProperties.getProperty("s3BucketName"),
-						name.replaceFirst(
-							s3InboxFolderName,
-							unicodeProperties.getProperty(
-								"s3ProcessedFolderName")));
-				}
-				catch (Exception exception) {
+							unicodeProperties.getProperty("s3BucketName"),
+							name.replaceFirst(
+									s3InboxFolderName,
+									unicodeProperties.getProperty(
+											"s3ProcessedFolderName")));
+				} catch (Exception exception) {
 					_log.error(exception);
 					blob.copyTo(
-						unicodeProperties.getProperty("s3BucketName"),
-						name.replaceFirst(
-							s3InboxFolderName,
-							unicodeProperties.getProperty(
-								"s3ErroredFolderName")));
+							unicodeProperties.getProperty("s3BucketName"),
+							name.replaceFirst(
+									s3InboxFolderName,
+									unicodeProperties.getProperty(
+											"s3ErroredFolderName")));
 				}
 
 				blob.delete();
 
 				filesCountThreshold--;
 			}
-		}
-		catch (IOException ioException) {
+		} catch (IOException ioException) {
 			_log.error("Unable to authenticate with GCP");
 
 			throw new PortalException(
-				"Unable to authenticate with GCP", ioException);
+					"Unable to authenticate with GCP", ioException);
 		}
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
-		SiteInitializerTestrayImportResultsDispatchTaskExecutor.class);
+			SiteInitializerTestrayImportResultsDispatchTaskExecutor.class);
 
-	private DefaultDTOConverterContext _defaultDTOConverterContext;
+	@Reference(target = "(filter.factory.key=" + ObjectDefinitionConstants.STORAGE_TYPE_DEFAULT + ")")
+	private FilterFactory<Predicate> _filterFactory;
 
 	@Reference
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;
 
-	private final Map<String, Long> _objectEntryIds = new HashMap<>();
+	private Map<String, ObjectDefinition> _objectDefinitionsMap = new HashMap<>();
+	private Map<String, Long> _objectEntryIds = new HashMap<>();
+
+	@Reference
+	private ObjectEntryLocalService _objectEntryLocalService;
 
 	@Reference(target = "(object.entry.manager.storage.type=default)")
 	private ObjectEntryManager _objectEntryManager;
 
+	private int _runNumber;
+	private int _tarFilesProcessed;
+	private String _tarName;
+
 	@Reference
 	private UserLocalService _userLocalService;
+
+	private int _xmlFilesProcessed;
 
 }
