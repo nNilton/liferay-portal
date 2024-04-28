@@ -1,4 +1,5 @@
 {
+	"enableIndexedSearch": false,
 	"label": {
 		"en_US": "Testray Case"
 	},
