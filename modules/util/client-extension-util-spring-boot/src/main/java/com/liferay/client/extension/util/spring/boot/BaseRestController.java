@@ -168,7 +168,7 @@ public abstract class BaseRestController {
 			log.info("JWT ID: " + jwt.getId());
 			log.info("JWT Subject: " + jwt.getSubject());
 			log.info("Parameters: " + parameters);
-		}
+		}	
 	}
 
 	protected void log(Jwt jwt, Log log, String json) {
@@ -314,7 +314,7 @@ public abstract class BaseRestController {
 			).codecs(
 				clientCodecConfigurer -> clientCodecConfigurer.defaultCodecs(
 				).maxInMemorySize(
-					5 * 1024 * 1024
+					16 * 1024 * 1024
 				)
 			).build()
 		).build();
