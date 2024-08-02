@@ -25,8 +25,7 @@ import org.json.JSONObject;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.MediaType;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.DefaultUriBuilderFactory;
 
 /**
  * @author Michael Hashimoto
@@ -160,7 +159,7 @@ public abstract class BaseEntityRelationshipDALO
 		long relatedObjectEntryId) {
 
 		String objectRelationshipURL = StringUtil.combine(
-			_liferayPortalURL, objectDefinitionURLPath, "/", objectEntryId, "/",
+			objectDefinitionURLPath, "/", objectEntryId, "/",
 			getObjectRelationshipName(), "/", relatedObjectEntryId);
 
 		UnsafeSupplier<Void, RuntimeException> unsafeSupplier =
@@ -178,19 +177,8 @@ public abstract class BaseEntityRelationshipDALO
 					String response;
 
 					try {
-						response = WebClient.create(
-							objectRelationshipURL
-						).put(
-						).accept(
-							MediaType.APPLICATION_JSON
-						).contentType(
-							MediaType.APPLICATION_JSON
-						).header(
-							"Authorization", getAuthorization()
-						).retrieve(
-						).bodyToMono(
-							String.class
-						).block();
+						response = put(
+							getAuthorization(), null, objectDefinitionURLPath);
 					}
 					catch (Exception exception) {
 						refresh();
@@ -222,7 +210,7 @@ public abstract class BaseEntityRelationshipDALO
 		long relatedObjectEntryId) {
 
 		String objectRelationshipURL = StringUtil.combine(
-			_liferayPortalURL, objectDefinitionURLPath, "/", objectEntryId, "/",
+			objectDefinitionURLPath, "/", objectEntryId, "/",
 			getObjectRelationshipName(), "/", relatedObjectEntryId);
 
 		UnsafeSupplier<Void, RuntimeException> unsafeSupplier =
@@ -238,17 +226,8 @@ public abstract class BaseEntityRelationshipDALO
 				},
 				() -> {
 					try {
-						WebClient.create(
-							objectRelationshipURL
-						).delete(
-						).accept(
-							MediaType.APPLICATION_JSON
-						).header(
-							"Authorization", getAuthorization()
-						).retrieve(
-						).bodyToMono(
-							String.class
-						).block();
+						delete(
+							getAuthorization(), null, objectDefinitionURLPath);
 					}
 					catch (Exception exception) {
 						refresh();
@@ -272,10 +251,6 @@ public abstract class BaseEntityRelationshipDALO
 	private Set<JSONObject> _get(
 		String objectDefinitionURLPath, long objectEntryId) {
 
-		String objectRelationshipURL = StringUtil.combine(
-			_liferayPortalURL, objectDefinitionURLPath, "/", objectEntryId, "/",
-			getObjectRelationshipName());
-
 		Set<JSONObject> jsonObjects = new HashSet<>();
 
 		int currentPage = 1;
@@ -298,21 +273,18 @@ public abstract class BaseEntityRelationshipDALO
 						String response = null;
 
 						try {
-							response = WebClient.create(
-								objectRelationshipURL
-							).get(
-							).uri(
-								uriBuilder -> uriBuilder.queryParam(
+							response = get(
+								getAuthorization(),
+								_defaultUriBuilderFactory.builder(
+								).path(
+									StringUtil.combine(
+										objectDefinitionURLPath, "/",
+										objectEntryId, "/",
+										getObjectRelationshipName())
+								).queryParam(
 									"page", String.valueOf(finalCurrentPage)
-								).build()
-							).accept(
-								MediaType.APPLICATION_JSON
-							).header(
-								"Authorization", getAuthorization()
-							).retrieve(
-							).bodyToMono(
-								String.class
-							).block();
+								).build(
+								).toString());
 						}
 						catch (Exception exception) {
 							refresh();
@@ -395,6 +367,9 @@ public abstract class BaseEntityRelationshipDALO
 
 	private static final Log _log = LogFactory.getLog(
 		BaseEntityRelationshipDALO.class);
+
+	private final DefaultUriBuilderFactory _defaultUriBuilderFactory =
+		new DefaultUriBuilderFactory();
 
 	@Value(
 		"${com.liferay.lxc.dxp.server.protocol}://${com.liferay.lxc.dxp.main.domain}"
