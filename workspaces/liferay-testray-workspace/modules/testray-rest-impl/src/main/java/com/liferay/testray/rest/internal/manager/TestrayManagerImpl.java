@@ -276,7 +276,12 @@ public class TestrayManagerImpl implements TestrayManager {
 
 		TestrayCache testrayCache = new TestrayCache();
 
-		loadTestrayCache(companyId, testrayCache, userId);
+		if(StringUtil.startsWith(fileName, "prd2-inbox-small")){
+			_loadObjectDefinitions(companyId, testrayCache);
+		}
+		else {
+			loadTestrayCache(companyId, testrayCache, userId);
+		}
 
 		try {
 			tempDirectoryPath = Files.createTempDirectory(null);
