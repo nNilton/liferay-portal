@@ -276,7 +276,7 @@ public class TestrayManagerImpl implements TestrayManager {
 
 		TestrayCache testrayCache = new TestrayCache();
 
-		if(StringUtil.startsWith(fileName, "prd2-inbox-small")){
+		if (StringUtil.startsWith(fileName, "prd2-inbox-small")) {
 			_loadObjectDefinitions(companyId, testrayCache);
 		}
 		else {
@@ -1116,7 +1116,12 @@ public class TestrayManagerImpl implements TestrayManager {
 
 		if (testrayBuildId != 0) {
 			_patchObjectEntry(
-				Collections.singletonMap("importStatus", "INPROGRESS"),
+				HashMapBuilder.<String, Serializable>put(
+					"cpuUseTime",
+					propertiesMap.get("testray.total.cpu.use.time")
+				).put(
+					"importStatus", "INPROGRESS"
+				).build(),
 				testrayBuildId, userId);
 
 			return testrayBuildId;
