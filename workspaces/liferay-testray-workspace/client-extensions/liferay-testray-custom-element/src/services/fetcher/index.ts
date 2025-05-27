@@ -12,6 +12,8 @@ const liferayHost = window.location.origin;
 
 const headlessAdminUserAPIs = ['account', 'roles', 'user-groups'];
 
+const headlessAdminListTypeAPIs = ['list-type-definitions'];
+
 const headlessDeliveryAPIs = [
 	'message-board-messages',
 	'message-board-threads',
@@ -53,6 +55,10 @@ function changeResource(resource: RequestInfo) {
 
 	if (getResourceFromAPI(headlessAdminUserAPIs)) {
 		return `${liferayHost}/o/headless-admin-user/v1.0${resource}`;
+	}
+
+	if (getResourceFromAPI(headlessAdminListTypeAPIs)) {
+		return `${liferayHost}/o/headless-admin-list-type/v1.0${resource}`;
 	}
 
 	return `${liferayHost}/o/c${resource}`;
