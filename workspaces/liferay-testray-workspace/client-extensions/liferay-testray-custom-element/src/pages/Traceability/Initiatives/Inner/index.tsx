@@ -16,7 +16,7 @@ type InitiativesProps = {
 };
 
 const Initiatives: React.FC<InitiativesProps> = ({PageContainer = Container}) => {
-	const {projectKey} = useParams();
+	const {issueKey} = useParams();
 
 	useHeader({
 		dropdown: [],
@@ -44,7 +44,7 @@ const Initiatives: React.FC<InitiativesProps> = ({PageContainer = Container}) =>
 					display: {columns: false},
 					title: i18n.translate('jira-initiatives'),
 				}}
-				resource={`/issues/?filter=projectType eq '${projectKey}' and issueType eq 'initiative'`}
+				resource={`/issues/?filter=r_parentIssue_c_issueERC eq '${issueKey}'`}
 				tableProps={{
 					columns: [
 						{

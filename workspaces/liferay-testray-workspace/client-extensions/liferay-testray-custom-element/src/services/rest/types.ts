@@ -108,6 +108,15 @@ export type UserRole = {
 	userId: number;
 };
 
+export type JiraIssue = {
+	id: number;
+	title: string;
+	issueType: PickList;
+	description: string;
+	projectType: PickList;
+	externalReferenceCode: string;
+}
+
 export type TestrayBuild = {
 	actions: ObjectActionsItems;
 	archived?: boolean;
@@ -191,6 +200,8 @@ export type TestrayBuildsCases = {
 	r_buildToBuildsCases_c_build: TestrayBuild;
 	r_caseToBuildsCases_c_caseId: TestrayCase;
 };
+
+
 
 export type TestrayCaseResult = {
 	actions: ObjectActionsItems;
