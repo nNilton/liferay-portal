@@ -63,6 +63,8 @@ import TestflowOutlet, {
 	TestflowNavigationOutlet,
 } from './pages/Testflow/TestflowOutlet';
 import TestFlowTasks from './pages/Testflow/TestflowTasks';
+import Traceability from './pages/Traceability';
+import Initiatives from './pages/Traceability/Initiatives';
 
 const TestrayRoute = () => (
 	<HashRouter>
@@ -292,6 +294,13 @@ const TestrayRoute = () => (
 								path="password"
 							/>
 						</Route>
+					</Route>
+
+					<Route element={<OutletBridge />} path='traceability'>
+						<Route element={<Traceability />} index />
+
+						<Route element={<Initiatives />}
+						path=":projectKey/initiatives" />
 					</Route>
 
 					<Route element={<OutletBridge />} path="testflow">
