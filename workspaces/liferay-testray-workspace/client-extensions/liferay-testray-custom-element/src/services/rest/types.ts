@@ -11,7 +11,7 @@ export type ActionPermissionProperties = {
 	method: string;
 };
 
-type Facets = {
+export type Facets = {
 	facetCriteria: string;
 	facetValues: {
 		numberOfOccurrences: number;
@@ -56,6 +56,7 @@ export type APIResponse<Query = any> = {
 // Objects Types
 
 export type PickList = {
+	id?: number;
 	key: string;
 	name: string;
 };

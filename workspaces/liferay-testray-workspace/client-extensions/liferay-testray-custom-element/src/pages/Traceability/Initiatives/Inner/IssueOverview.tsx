@@ -27,38 +27,42 @@ import i18n from '../../../../i18n';
 import {JiraIssue, TestrayTask} from '../../../../services/rest';
 import {formatUTCDate} from '../../../../util/date';
 import {getDonutLegend} from '../../../../util/graph';
+import {useNavigate, useParams} from 'react-router-dom';
+import ChildIssues from '.';
 
 type IssueOverviewProps = {
-	jiraIssue: JiraIssue;
+    PageContainer?: React.FC;
 };
 
-const IssueOverview: React.FC<IssueOverviewProps> = ({jiraIssue}) => {
+const IssueOverview: React.FC<IssueOverviewProps> = ({PageContainer = Container}) => {
+    const {issueKey} = useParams();
+
+    const {data: jiraIssue} = useFetch<JiraIssue>(
+        `/issues/by-external-reference-code/${issueKey}`
+    );
+
+    console.log(jiraIssue)
 
     const {data: response} = useFetch<APIResponse<JiraIssue>>(
-            `aggregationTerms=dueStatus&filter=caseDetailsToIssues/r_story_c_issueId eq '${jiraIssue.id}'&fields=id`
+            `/casedetails/?aggregationTerms=&filter='&fields=id`, {
+                params: {
+                    aggregationTerms: 'dueStatus',
+                    fields: 'issues',
+                    filter: `caseDetailsToIssues/r_story_c_issueId eq '${jiraIssue?.id}`,
+                    pageSize: 10,
+                },
+            }
         );
 
-        console.log(response);
+    console.log(response);
 
-	const totalTestCasesGroup = useTotalTestCases(testrayBuild);
-	const {chart, entity, loading} = useCaseResultsChart({
-		buildId: testrayBuild.id,
-	});
+	const totalTestCasesGroup = useTotalTestCases(response?.facets ?? []);
 
 	const ref = useRef<any>();
 
-	const [columnChartLoad, setColumnChartLoad] = useState(false);
-
-	useEffect(() => {
-		setColumnChartLoad(false);
-		setTimeout(() => {
-			setColumnChartLoad(true);
-		}, 100);
-	}, [entity]);
-
 	return (
 		<>
-			<Container collapsable title={jiraIssue.externalReferenceCode + ' ' + jiraIssue.title}>
+			<Container collapsable title={jiraIssue?.externalReferenceCode + ' ' + jiraIssue?.title}>
 				<QATable
 					items={[
 						{
@@ -67,7 +71,7 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({jiraIssue}) => {
 							value: (
 								<div
 									dangerouslySetInnerHTML={{
-										__html: jiraIssue?.description,
+										__html: jiraIssue?.description ?? '',
 									}}
 								/>
 							),
@@ -83,10 +87,7 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({jiraIssue}) => {
 			>
 				<div className="d-flex justify-content-between row">
 					<div
-						className={classNames('align-items-center d-flex', {
-							'col': !entity,
-							'col-4': entity,
-						})}
+						className={'align-items-center d-flex col'}
 					>
 						{totalTestCasesGroup.ready && (
 							<div className="col-8">
@@ -132,90 +133,14 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({jiraIssue}) => {
 							<div id="testrayTotalMetricsGraphLegend" />
 						</div>
 					</div>
-
-					{entity && (
-						<div className="col-8">
-							{loading ||
-								(!columnChartLoad && (
-									<Loading className="py-10" />
-								))}
-
-							{columnChartLoad && !loading && (
-								<ClayChart
-									axis={{
-										x: {
-											categories:
-												!!chart.testrayRunNumber
-													.length &&
-												chart.testrayRunNumber,
-											label: {
-												position: 'outer-center',
-												text: i18n
-													.translate(`${entity}`)
-													.toUpperCase(),
-											},
-											tick: {
-												show: chart.testrayRunNumber
-													.length
-													? true
-													: false,
-												text: {
-													show: chart.testrayRunNumber
-														.length
-														? true
-														: false,
-												},
-											},
-											type: 'category',
-										},
-										y: {
-											label: {
-												position: 'outer-middle',
-												text: i18n
-													.translate('tests')
-													.toUpperCase(),
-											},
-										},
-									}}
-									bar={{
-										width: {
-											max: 30,
-										},
-									}}
-									data={{
-										colors: chart.colors,
-										columns: chart.columns,
-										groups: [chart.statuses],
-										type: 'bar',
-									}}
-									legend={{
-										inset: {
-											anchor: 'top-right',
-											step: 1,
-											x: 10,
-											y: -20,
-										},
-										position: 'inset',
-									}}
-									padding={{
-										bottom: 5,
-										top: 20,
-									}}
-									tooltip={{
-										format: {
-											title: (index: number) =>
-												chart.columnNames[index],
-										},
-										order: '',
-									}}
-								/>
-							)}
-						</div>
-					)}
 				</div>
+			</Container>
+
+            <Container className="mt-5" title={i18n.translate('child-issues')}>
+				<ChildIssues />
 			</Container>
 		</>
 	);
 };
 
-export default BuildOverview;
+export default IssueOverview;
