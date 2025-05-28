@@ -9,13 +9,11 @@ import {useHeader} from '~/hooks';
 import i18n from '~/i18n';
 import {useNavigate, useParams} from 'react-router-dom';
 
-//import useProjectActions from './useProjectActions';
-
-type InitiativesProps = {
+type ChildIssuesProps = {
 	PageContainer?: React.FC;
 };
 
-const Initiatives: React.FC<InitiativesProps> = ({PageContainer = Container}) => {
+const ChildIssues: React.FC<ChildIssuesProps> = ({PageContainer = Container}) => {
 	const {issueKey} = useParams();
 
 	useHeader({
@@ -23,7 +21,7 @@ const Initiatives: React.FC<InitiativesProps> = ({PageContainer = Container}) =>
 		headerActions: {actions: []},
 		heading: [
 			{
-				category: i18n.translate('initiatives'),
+				category: i18n.translate('child-issue'),
 				title: i18n.translate('jira-project-directory'),
 			},
 		],
@@ -42,7 +40,7 @@ const Initiatives: React.FC<InitiativesProps> = ({PageContainer = Container}) =>
 				managementToolbarProps={{
 					applyFilters: true,
 					display: {columns: false},
-					title: i18n.translate('jira-initiatives'),
+					title: i18n.translate('jira-child-issue'),
 				}}
 				resource={`/issues/?filter=r_parentIssue_c_issueERC eq '${issueKey}'`}
 				tableProps={{
@@ -67,4 +65,4 @@ const Initiatives: React.FC<InitiativesProps> = ({PageContainer = Container}) =>
 	);
 };
 
-export default Initiatives;
+export default ChildIssues;

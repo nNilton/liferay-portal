@@ -6,7 +6,7 @@
 import {useCallback, useMemo} from 'react';
 
 import SearchBuilder from '../../core/SearchBuilder';
-import {APIResponse, FacetAggregation, TestrayBuild} from '../../services/rest';
+import {APIResponse, FacetAggregation, TestrayBuild, Facets} from '../../services/rest';
 import {chartColors} from '../../util/constants';
 import {CaseResultStatuses} from '../../util/statuses';
 import {useFetch} from '../useFetch';
@@ -32,40 +32,51 @@ function getStatusesMap(
 const getAggregationValue = (value: number | string) =>
 	value ? Number(value) : 0;
 
-const useTotalTestCases = (testrayBuild: TestrayBuild) => {
-	const donutColumns = useMemo(
-		() => [
+const getDonutColumns = (
+	data: TestrayBuild | Facets[]
+  ) => useMemo(() => {
+	if (!Array.isArray(data)) {
+
+		return [
+			[CaseResultStatuses.PASSED, getAggregationValue(data.caseResultPassed)],
+			[CaseResultStatuses.FAILED, getAggregationValue(data.caseResultFailed)],
+			[CaseResultStatuses.BLOCKED, getAggregationValue(data.caseResultBlocked)],
+			[CaseResultStatuses.TEST_FIX, getAggregationValue(data.caseResultTestFix)],
 			[
-				CaseResultStatuses.PASSED,
-				getAggregationValue(testrayBuild.caseResultPassed),
+			  CaseResultStatuses.INCOMPLETE,
+			  getAggregationValue(data.caseResultIncomplete) +
+				getAggregationValue(data.caseResultUntested),
 			],
-			[
-				CaseResultStatuses.FAILED,
-				getAggregationValue(testrayBuild.caseResultFailed),
-			],
-			[
-				CaseResultStatuses.BLOCKED,
-				getAggregationValue(testrayBuild.caseResultBlocked),
-			],
-			[
-				CaseResultStatuses.TEST_FIX,
-				getAggregationValue(testrayBuild.caseResultTestFix),
-			],
-			[
-				CaseResultStatuses.INCOMPLETE,
-				getAggregationValue(testrayBuild.caseResultIncomplete) +
-					getAggregationValue(testrayBuild.caseResultUntested),
-			],
-		],
-		[
-			testrayBuild.caseResultBlocked,
-			testrayBuild.caseResultFailed,
-			testrayBuild.caseResultIncomplete,
-			testrayBuild.caseResultPassed,
-			testrayBuild.caseResultTestFix,
-			testrayBuild.caseResultUntested,
-		]
-	);
+		  ];
+	}
+
+	const facets = data as Facets[]
+	  
+	  const statusCounts: Record<string, number> = {
+		PASSED: 0,
+		FAILED: 0,
+		BLOCKED: 0,
+		TEST_FIX: 0,
+		INCOMPLETE: 0,
+	  };
+  
+	  facets[0].facetValues.forEach(({ term, numberOfOccurrences }) => {
+		if (term in statusCounts) {
+		  statusCounts[term] = numberOfOccurrences;
+		}
+	  });
+  
+	  return [
+		[CaseResultStatuses.PASSED, statusCounts.PASSED],
+		[CaseResultStatuses.FAILED, statusCounts.FAILED],
+		[CaseResultStatuses.BLOCKED, statusCounts.BLOCKED],
+		[CaseResultStatuses.TEST_FIX, statusCounts.TEST_FIX],
+		[CaseResultStatuses.INCOMPLETE, statusCounts.INCOMPLETE],
+	  ];
+  }, [data]);
+
+const useTotalTestCases = (data: TestrayBuild | Facets[]) => {
+	const donutColumns = getDonutColumns(data);
 
 	return useMemo(
 		() => ({
@@ -79,10 +90,10 @@ const useTotalTestCases = (testrayBuild: TestrayBuild) => {
 							previousValue + currentValue
 					),
 			},
-			ready: !!testrayBuild,
+			ready: !!data,
 			statuses: Object.values(CaseResultStatuses),
 		}),
-		[donutColumns, testrayBuild]
+		[donutColumns, data]
 	);
 };
 
