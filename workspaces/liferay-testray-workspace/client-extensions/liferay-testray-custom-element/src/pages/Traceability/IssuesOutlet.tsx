@@ -42,7 +42,7 @@ const IssuesOutlet = () => {
 
 	const getPath = useCallback(
 		(path: string) => {
-			const relativePath = `/project/${projectKey}/${path}`;
+			const relativePath = `/traceability/${projectKey}/${path}`;
 
 			return {
 				active: relativePath === pathname,
@@ -64,7 +64,7 @@ const IssuesOutlet = () => {
 						},
 						...jiraProjects.map((jiraProject) => ({
 							label: jiraProject.name,
-							path: `/project/${jiraProject.key}/initiatives`,
+							path: `/traceability/${jiraProject.key}/initiative`,
 						})),
 					],
 				},
@@ -78,7 +78,7 @@ const IssuesOutlet = () => {
 				setHeading([
 					{
 						category: i18n.translate('project').toUpperCase(),
-						path: `/project/${jiraProject?.items[0].id}/initiatives`,
+						path: `/traceability/${jiraProject?.items[0].id}/initiative`,
 						title: jiraProject?.items[0].name,
 					},
 				]);
@@ -95,8 +95,8 @@ const IssuesOutlet = () => {
 						title: i18n.translate('overview'),
 					},
 					{
-						...getPath('initiatives'),
-						title: i18n.translate('initiatives'),
+						...getPath('initiative'),
+						title: i18n.translate('initiative'),
 					},
 					{
 						...getPath('epic'),

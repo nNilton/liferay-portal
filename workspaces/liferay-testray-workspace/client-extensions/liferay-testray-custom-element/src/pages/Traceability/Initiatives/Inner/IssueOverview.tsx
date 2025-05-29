@@ -37,12 +37,6 @@ type IssueOverviewProps = {
 const IssueOverview: React.FC<IssueOverviewProps> = ({PageContainer = Container}) => {
     const {issueKey} = useParams();
 
-    const {data: jiraIssue} = useFetch<JiraIssue>(
-        `/issues/by-external-reference-code/${issueKey}`
-    );
-
-    console.log(jiraIssue)
-
     const {data: response} = useFetch<APIResponse<JiraIssue>>(
             `/casedetails/?aggregationTerms=&filter='&fields=id`, {
                 params: {
@@ -136,9 +130,9 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({PageContainer = Container}
 				</div>
 			</Container>
 
-            <Container className="mt-5" title={i18n.translate('child-issues')}>
+            <PageContainer className="mt-5" title={i18n.translate('child-issues')}>
 				<ChildIssues />
-			</Container>
+			</PageContainer>
 		</>
 	);
 };
