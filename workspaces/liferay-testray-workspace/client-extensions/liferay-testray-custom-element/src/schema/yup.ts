@@ -115,6 +115,11 @@ const yupSchema = {
 		projectId: yup.string(),
 		teamId: yup.string(),
 	}),
+	caseDetail: yup.object({
+		id: yup.string(),
+		name: yup.string().required(),
+		dueStatus: yup.string().required(),
+	}),
 	enviroment: yup.object({
 		factorCategoryIds: yup.mixed(),
 		factorOptionIds: yup.mixed(),
@@ -144,13 +149,11 @@ const yupSchema = {
 		id: yup.string(),
 		number: yup.number(),
 	}),
-	jiraIssues: yup.object({
-		issues: yup.array(
-			yup.object({
-				label: yup.string(),
-				value: yup.string(),
-			})
-		),
+	jiraIssue: yup.object({
+		id: yup.string(),
+		externalReferenceCode: yup.string().required(),
+		title: yup.string().required(),
+		description: yup.string()
 	}),
 	option: yup.object({
 		name: yup.string(),

@@ -9,11 +9,7 @@ import {useHeader} from '~/hooks';
 import i18n from '~/i18n';
 import {useNavigate, useParams} from 'react-router-dom';
 
-type ChildIssuesProps = {
-	PageContainer?: React.FC;
-};
-
-const ChildIssues: React.FC<ChildIssuesProps> = ({PageContainer = Container}) => {
+const ChildIssues = () => {
 	const {issueKey} = useParams();
 
 	useHeader({
@@ -29,7 +25,7 @@ const ChildIssues: React.FC<ChildIssuesProps> = ({PageContainer = Container}) =>
 	});
 
 	return (
-		<PageContainer>
+		<Container className="mt-4">
 			<ListView
 				initialContext={{
 					sort: {
@@ -46,22 +42,30 @@ const ChildIssues: React.FC<ChildIssuesProps> = ({PageContainer = Container}) =>
 				tableProps={{
 					columns: [
 						{
+							clickable: true,
 							key: 'externalReferenceCode',
 							size: 'sm',
 							value: i18n.translate('issueKey'),
 						},
 						{
 							clickable: true,
+							size: 'sm',
+							key: 'issueType',
+							render: (_, {issueType}) =>
+								issueType.name,
+							value: i18n.translate('issue-type'),
+						},
+						{
+							clickable: true,
 							key: 'title',
 							size: 'lg',
-							sorteable: true,
 							value: i18n.translate('title'),
-						}
+						},
 					],
-					navigateTo: (issue) => issue.externalReferenceCode,
+					navigateTo: (issue) => `../${issue.externalReferenceCode}`,
 				}}
 			/>
-		</PageContainer>
+		</Container>
 	);
 };
 

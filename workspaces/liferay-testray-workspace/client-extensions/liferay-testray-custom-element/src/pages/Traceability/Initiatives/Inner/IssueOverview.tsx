@@ -15,48 +15,36 @@ import {useFetch} from '~/hooks/useFetch';
 import {
 	APIResponse,
 	TestrayCaseResult,
+	TestrayJiraIssue,
 	TestraySubtask,
 	testraySubtaskImpl,
 } from '../../../../services/rest';
 import JiraLink from '../../../../components/JiraLink';
 import Container from '../../../../components/Layout/Container';
 import QATable from '../../../../components/Table/QATable';
-import {useTotalTestCases} from '../../../../hooks/data/useCaseResultGroupBy';
+import {useTotalTestCasesByTestrayJiraIssue} from '../../../../hooks/data/useCaseResultGroupBy';
 import useIssuesFound from '../../../../hooks/data/useIssuesFound';
 import i18n from '../../../../i18n';
-import {JiraIssue, TestrayTask} from '../../../../services/rest';
 import {formatUTCDate} from '../../../../util/date';
 import {getDonutLegend} from '../../../../util/graph';
 import {useNavigate, useParams} from 'react-router-dom';
 import ChildIssues from '.';
+import { testrayJiraIssueImpl } from '~/services/rest/TestrayJiraIssue';
+import { testrayCaseDetailImpl } from '~/services/rest/TestrayCaseDetail';
 
 type IssueOverviewProps = {
-    PageContainer?: React.FC;
+	testrayJiraIssue: TestrayJiraIssue;
 };
 
-const IssueOverview: React.FC<IssueOverviewProps> = ({PageContainer = Container}) => {
-    const {issueKey} = useParams();
+const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue}) => {
 
-    const {data: response} = useFetch<APIResponse<JiraIssue>>(
-            `/casedetails/?aggregationTerms=&filter='&fields=id`, {
-                params: {
-                    aggregationTerms: 'dueStatus',
-                    fields: 'issues',
-                    filter: `caseDetailsToIssues/r_story_c_issueId eq '${jiraIssue?.id}`,
-                    pageSize: 10,
-                },
-            }
-        );
-
-    console.log(response);
-
-	const totalTestCasesGroup = useTotalTestCases(response?.facets ?? []);
+	const totalTestCasesGroup = useTotalTestCasesByTestrayJiraIssue(testrayJiraIssue);
 
 	const ref = useRef<any>();
 
 	return (
 		<>
-			<Container collapsable title={jiraIssue?.externalReferenceCode + ' ' + jiraIssue?.title}>
+			<Container collapsable title={testrayJiraIssue?.externalReferenceCode + ' ' + testrayJiraIssue?.title}>
 				<QATable
 					items={[
 						{
@@ -65,7 +53,7 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({PageContainer = Container}
 							value: (
 								<div
 									dangerouslySetInnerHTML={{
-										__html: jiraIssue?.description ?? '',
+										__html: testrayJiraIssue?.description ?? '',
 									}}
 								/>
 							),
@@ -80,12 +68,11 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({PageContainer = Container}
 				title={i18n.translate('total-test-cases')}
 			>
 				<div className="d-flex justify-content-between row">
-					<div
-						className={'align-items-center d-flex col'}
-					>
+					<div className='align-items-center d-flex col'>
 						{totalTestCasesGroup.ready && (
 							<div className="col-8">
 								<ClayChart
+									key={testrayJiraIssue.id}
 									data={{
 										colors: totalTestCasesGroup.colors,
 										columns:
@@ -105,14 +92,17 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({PageContainer = Container}
 									}}
 									legend={{show: false}}
 									onafterinit={() => {
+										const elementId = 'testrayTotalMetricsGraphLegend';
+										const legendContainer = document.getElementById(elementId);
+									
+										if (legendContainer) {
+											legendContainer.innerHTML = ''; 
+										}
+									
 										getDonutLegend(ref.current, {
-											data: totalTestCasesGroup.donut.columns.map(
-												([name]) => name
-											),
-											elementId:
-												'testrayTotalMetricsGraphLegend',
-											total: totalTestCasesGroup.donut
-												.total as number,
+											data: totalTestCasesGroup.donut.columns.map(([name]) => name),
+											elementId,
+											total: totalTestCasesGroup.donut.total as number,
 										});
 									}}
 									ref={ref}
@@ -122,17 +112,12 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({PageContainer = Container}
 								/>
 							</div>
 						)}
-
 						<div className="col-">
 							<div id="testrayTotalMetricsGraphLegend" />
 						</div>
 					</div>
 				</div>
 			</Container>
-
-            <PageContainer className="mt-5" title={i18n.translate('child-issues')}>
-				<ChildIssues />
-			</PageContainer>
 		</>
 	);
 };
