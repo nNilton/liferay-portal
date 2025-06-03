@@ -62,7 +62,7 @@ const IssuesList: React.FC<IssuesListProps> = ({PageContainer = Container}) => {
 							value: i18n.translate('title'),
 						}
 					],
-					navigateTo: (issue) => issue.externalReferenceCode,
+					navigateTo: (issue) => `../${issue.externalReferenceCode}`,
 				}}
 			/>
 		</PageContainer>

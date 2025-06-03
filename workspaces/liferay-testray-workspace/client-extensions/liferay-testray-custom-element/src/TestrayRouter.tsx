@@ -68,6 +68,8 @@ import Initiatives from './pages/Traceability/Initiatives';
 import IssueOverview from './pages/Traceability/Initiatives/Inner/IssueOverview';
 import IssuesOutlet from './pages/Traceability/IssuesOutlet';
 import IssuesList from './pages/Traceability/IssuesList';
+import IssueOutlet from './pages/Traceability/Initiatives/Inner/IssueOutlet';
+import ChildIssues from './pages/Traceability/Initiatives/Inner';
 
 const TestrayRoute = () => (
 	<HashRouter>
@@ -303,29 +305,14 @@ const TestrayRoute = () => (
 						<Route element={<Traceability />} index />
 
 						<Route element={<IssuesOutlet />} path=':projectKey'>
+							<Route element={<IssuesList />} path='initiative' />
+							<Route element={<IssuesList />} path='epic' />
+							<Route element={<IssuesList />} path='story' />
 
-							<Route element={<OutletBridge />} path='initiative'>
-								<Route element={<IssuesList />} index />
-
+							<Route element={<IssueOutlet />} path=':issueKey'>
+								<Route element={<ChildIssues/>} index/>
 							</Route>
-
-							<Route element={<OutletBridge />} path='epic'>
-								<Route element={<IssuesList />} index />
-
-							</Route>
-
-
-							<Route element={<OutletBridge />} path='story'>
-								<Route element={<IssuesList />} index />
-
-							</Route>
-
-							<Route element={<OutletBridge />} path=':issueKey'>
-									<Route element={<IssueOverview />}/>  
-							</Route>
-
 						</Route>
-
 
 					</Route>
 

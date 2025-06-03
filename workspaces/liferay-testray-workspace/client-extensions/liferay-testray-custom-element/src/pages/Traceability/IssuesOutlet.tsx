@@ -10,7 +10,7 @@ import PageRenderer from '~/components/PageRenderer';
 import {useFetch} from '../../hooks/useFetch';
 import useHeader from '../../hooks/useHeader';
 import i18n from '../../i18n';
-import {APIResponse, JiraIssue, PickList, TestrayProject} from '../../services/rest';
+import {APIResponse, PickList} from '../../services/rest';
 
 const IssuesOutlet = () => {
 	const {projectKey, ...otherParams} = useParams();
