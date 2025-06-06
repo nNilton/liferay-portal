@@ -36,7 +36,7 @@ const IssueOutlet = ({}) => {
 	 const {projectKey, issueKey, ...otherParams} = useParams();
 	 const {pathname} = useLocation();
 	const {testrayJiraProject}: OutletContext = useOutletContext();
-
+	
 		const {data: jiraIssue,
 			error,
 			loading
@@ -49,29 +49,57 @@ const IssueOutlet = ({}) => {
 		);
 
 			const hasOtherParams = !!Object.values(otherParams).length;
+		
+			const basePath = `/traceability/${projectKey}/${issueKey}`;
 
 			const {setHeading, setTabs} = useHeader({
 				shouldUpdate: !hasOtherParams,
-			});
-		
-			const basePath = `/traceability/${projectKey}/${issueKey}`;
-		
+				timeout: 100,
+			});			
+			
 			useEffect(() => {
-				if (jiraIssue?.title) {
-					setHeading([
-						{
-							category: i18n.translate('project').toUpperCase(),
-							path: `/traceability/${projectKey}/initiatives`,
-							title: testrayJiraProject?.name,
-						},
-						{
-							category: i18n.translate('issue').toUpperCase(),
-							path: `/project/${projectKey}/${issueKey}`,
-							title: jiraIssue?.externalReferenceCode + ' ' +jiraIssue?.title,
-						},
-					]);
+				const heading = [
+					{
+						category: i18n.translate('project').toUpperCase(),
+						path: `/traceability/${projectKey}/initiative`,
+						title: testrayJiraProject.name,
+					},
+				]
+
+				if(jiraIssue?.initiativeERC){
+					heading.push({
+						category: 'INITIATIVE',
+						path: `/traceability/${projectKey}/${jiraIssue.initiativeERC}`,
+						title: jiraIssue.initiativeERC,
+					})
 				}
-			}, [setHeading, jiraIssue, testrayJiraProject]);
+
+				if(jiraIssue?.epicERC){
+					heading.push({
+						category: 'EPIC',
+						path: `/traceability/${projectKey}/${jiraIssue.epicERC}`,
+						title: jiraIssue.epicERC,
+					})
+				}
+		
+				if(jiraIssue?.storyERC){
+					heading.push({
+						category: 'STORY',
+						path: `/traceability/${projectKey}/${jiraIssue.storyERC}`,
+						title: jiraIssue.storyERC,
+					})
+				}
+
+				if(jiraIssue?.externalReferenceCode){
+					heading.push({
+						category: jiraIssue.issueType.name,
+						path: `/traceability/${projectKey}/${jiraIssue.externalReferenceCode}`,
+						title: jiraIssue.externalReferenceCode,
+					})
+				}
+
+				setHeading(heading);
+			}, [setHeading, jiraIssue, projectKey, testrayJiraProject]);
 		
 			useEffect(() => {
 				if (!hasOtherParams) {
@@ -79,11 +107,16 @@ const IssueOutlet = ({}) => {
 						{
 							active: pathname === basePath,
 							path: basePath,
+							title: i18n.translate('current'),
+						},
+						{	
+							active: pathname === `${basePath}/results`,
+							path: `${basePath}/results`,
 							title: i18n.translate('results'),
 						}
 					]);
 				}
-			}, [basePath, pathname, setTabs]);
+			}, [basePath, pathname, hasOtherParams, setTabs]);
 		
 			return (
 				<PageRenderer error={error} loading={loading}>
@@ -97,7 +130,7 @@ const IssueOutlet = ({}) => {
 								actions: jiraIssue?.actions,
 								mutate,
 								testrayJiraProject,
-								jiraIssue
+								testrayJiraIssue: jiraIssue
 							}}
 						/>
 					</>
