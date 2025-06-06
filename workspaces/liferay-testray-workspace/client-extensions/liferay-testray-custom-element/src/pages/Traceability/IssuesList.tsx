@@ -20,17 +20,7 @@ const IssuesList: React.FC<IssuesListProps> = ({PageContainer = Container}) => {
 	const {projectKey} = useParams();
 	const {pathname} = useLocation();
 
-	useHeader({
-		dropdown: [],
-		headerActions: {actions: []},
-		heading: [
-			{
-				category: i18n.translate('initiatives'),
-				title: i18n.translate('jira-project-directory'),
-			},
-		],
-		icon: 'polls',
-	});
+	const filter = `projectType eq '${projectKey}' and issueType eq '${pathname.split('/').filter(Boolean).pop()}'`
 
 	return (
 		<PageContainer>
@@ -43,10 +33,11 @@ const IssuesList: React.FC<IssuesListProps> = ({PageContainer = Container}) => {
 				}}
 				managementToolbarProps={{
 					applyFilters: true,
+					filterSchema: 'issues',
 					display: {columns: false},
 					title: i18n.translate('jira-'+ pathname.split('/').filter(Boolean).pop()),
 				}}
-				resource={`/issues/?filter=projectType eq '${projectKey}' and issueType eq '${pathname.split('/').filter(Boolean).pop()}'`}
+				resource={`/issues/?filter='`}
 				tableProps={{
 					columns: [
 						{
@@ -63,6 +54,9 @@ const IssuesList: React.FC<IssuesListProps> = ({PageContainer = Container}) => {
 						}
 					],
 					navigateTo: (issue) => `../${issue.externalReferenceCode}`,
+				}}
+				variables={{
+					filter: filter,
 				}}
 			/>
 		</PageContainer>

@@ -7,22 +7,19 @@ import Container from '~/components/Layout/Container';
 import ListView from '~/components/ListView';
 import {useHeader} from '~/hooks';
 import i18n from '~/i18n';
-import {useNavigate, useParams} from 'react-router-dom';
+import {useNavigate, useOutletContext, useParams} from 'react-router-dom';
+import { TestrayJiraIssue } from '~/services/rest';
+
+type OutletContext = {
+	testrayJiraIssue: TestrayJiraIssue;
+};
 
 const ChildIssues = () => {
 	const {issueKey} = useParams();
 
-	useHeader({
-		dropdown: [],
-		headerActions: {actions: []},
-		heading: [
-			{
-				category: i18n.translate('child-issue'),
-				title: i18n.translate('jira-project-directory'),
-			},
-		],
-		icon: 'polls',
-	});
+	const {testrayJiraIssue} : OutletContext = useOutletContext();
+
+	const clickable = testrayJiraIssue.issueType.name !== 'Story' && testrayJiraIssue.issueType.name !== 'Task';
 
 	return (
 		<Container className="mt-4">
@@ -42,13 +39,13 @@ const ChildIssues = () => {
 				tableProps={{
 					columns: [
 						{
-							clickable: true,
+							clickable: clickable,
 							key: 'externalReferenceCode',
 							size: 'sm',
 							value: i18n.translate('issueKey'),
 						},
 						{
-							clickable: true,
+							clickable: clickable,
 							size: 'sm',
 							key: 'issueType',
 							render: (_, {issueType}) =>
@@ -56,7 +53,7 @@ const ChildIssues = () => {
 							value: i18n.translate('issue-type'),
 						},
 						{
-							clickable: true,
+							clickable: clickable,
 							key: 'title',
 							size: 'lg',
 							value: i18n.translate('title'),

@@ -15,9 +15,10 @@ import {APIResponse, PickList} from '../../services/rest';
 const IssuesOutlet = () => {
 	const {projectKey, ...otherParams} = useParams();
 	const {pathname} = useLocation();
-	const {setDropdown, setHeading, setTabs} = useHeader({});
-
-	//const {actions} = useProjectActions({isHeaderActions: true});
+	const shouldUpdate = !Object.keys(otherParams).length;
+	const {setDropdown, setHeading, setTabs} = useHeader({
+		shouldUpdate,
+	});
 
 	const {data: dataJiraProjects} = useFetch<APIResponse<PickList>>(
 		'/list-type-definitions/by-external-reference-code/JIRA-PROJECTS/list-type-entries',
@@ -60,7 +61,7 @@ const IssuesOutlet = () => {
 						{
 							divider: true,
 							label: i18n.translate('jira-directory'),
-							path: '/',
+							path: '/traceability',
 						},
 						...jiraProjects.map((jiraProject) => ({
 							label: jiraProject.name,
@@ -117,7 +118,7 @@ const IssuesOutlet = () => {
 				context={{
 					actions: jiraProject?.actions,
 					mutateTestrayProject: mutate,
-					jiraProject,
+					testrayJiraProject: jiraProject?.items[0],
 				}}
 			/>
 		</PageRenderer>

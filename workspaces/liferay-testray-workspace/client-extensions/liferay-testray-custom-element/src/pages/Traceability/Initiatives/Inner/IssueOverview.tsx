@@ -44,22 +44,28 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue}) => {
 
 	return (
 		<>
-			<Container collapsable title={testrayJiraIssue?.externalReferenceCode + ' ' + testrayJiraIssue?.title}>
-				<QATable
-					items={[
-						{
-							title: i18n.translate('description'),
-
-							value: (
-								<div
-									dangerouslySetInnerHTML={{
-										__html: testrayJiraIssue?.description ?? '',
-									}}
-								/>
-							),
-						}
-					]}
-				/>
+			<Container collapsable title={testrayJiraIssue?.title}>
+				<ClayPanel
+					collapsable
+					defaultExpanded
+					displayTitle={
+						<div className="tr-small-heading">
+							{i18n.translate('description')}
+						</div>
+					}
+					displayType="default"
+					showCollapseIcon
+				>
+					<ClayPanel.Body>
+						<div className="c-py-2 c-px-3">
+							<div className="tr-issue-description"
+								dangerouslySetInnerHTML={{
+									__html: testrayJiraIssue?.description ?? '',
+								}}
+							/>
+						</div>
+					</ClayPanel.Body>
+				</ClayPanel>
 			</Container>
 
 			<Container

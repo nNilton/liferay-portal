@@ -70,6 +70,7 @@ import IssuesOutlet from './pages/Traceability/IssuesOutlet';
 import IssuesList from './pages/Traceability/IssuesList';
 import IssueOutlet from './pages/Traceability/Initiatives/Inner/IssueOutlet';
 import ChildIssues from './pages/Traceability/Initiatives/Inner';
+import IssueResults from './pages/Traceability/Initiatives/Inner/IssueResults';
 
 const TestrayRoute = () => (
 	<HashRouter>
@@ -311,6 +312,7 @@ const TestrayRoute = () => (
 
 							<Route element={<IssueOutlet />} path=':issueKey'>
 								<Route element={<ChildIssues/>} index/>
+								<Route element={<IssueResults/>} path='results'/>
 							</Route>
 						</Route>
 

@@ -118,6 +118,10 @@ export type TestrayJiraIssue = {
 	description: string;
 	projectType: PickList;
 	externalReferenceCode: string;
+	parentIssueERC: string;
+	initiativeERC: string;
+	epicERC: string;
+	storyERC: string;
 }
 
 export type TestrayBuild = {
