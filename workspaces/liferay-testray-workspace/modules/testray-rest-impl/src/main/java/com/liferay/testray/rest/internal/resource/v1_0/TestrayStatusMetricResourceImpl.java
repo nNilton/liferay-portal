@@ -5,9 +5,19 @@
 
 package com.liferay.testray.rest.internal.resource.v1_0;
 
+import com.liferay.object.constants.ObjectDefinitionConstants;
+import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectRelationship;
+import com.liferay.object.rest.filter.factory.FilterFactory;
+import com.liferay.object.service.ObjectDefinitionLocalService;
+import com.liferay.object.service.ObjectEntryLocalService;
+import com.liferay.object.service.ObjectRelationshipLocalService;
+import com.liferay.petra.sql.dsl.expression.Predicate;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.vulcan.pagination.Page;
@@ -15,6 +25,7 @@ import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.testray.rest.dto.v1_0.TestrayBuildMetric;
 import com.liferay.testray.rest.dto.v1_0.TestrayCaseTypeMetric;
 import com.liferay.testray.rest.dto.v1_0.TestrayComponentMetric;
+import com.liferay.testray.rest.dto.v1_0.TestrayIssueMetric;
 import com.liferay.testray.rest.dto.v1_0.TestrayRoutineMetric;
 import com.liferay.testray.rest.dto.v1_0.TestrayRunMetric;
 import com.liferay.testray.rest.dto.v1_0.TestrayStatusMetric;
@@ -22,11 +33,14 @@ import com.liferay.testray.rest.dto.v1_0.TestrayTeamMetric;
 import com.liferay.testray.rest.internal.util.TestrayUtil;
 import com.liferay.testray.rest.resource.v1_0.TestrayStatusMetricResource;
 
+import java.io.Serializable;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ServiceScope;
 
 /**
@@ -382,6 +396,95 @@ public class TestrayStatusMetricResourceImpl
 	}
 
 	@Override
+	public Page<TestrayIssueMetric>
+			getTestrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetricsPage(
+				Long testrayIssueId, Pagination pagination)
+		throws Exception {
+
+		Map<String, Serializable> testrayIssueMap =
+			_objectEntryLocalService.getValues(testrayIssueId);
+
+		String issueType = GetterUtil.getString(
+			testrayIssueMap.get("issueType")
+		).toLowerCase();
+
+		StringBundler sb = new StringBundler(31);
+
+		sb.append("select i.c_issueid_, i.issuetype_, i.title_, ");
+		sb.append("oe.externalreferencecode, blocked, failed, incomplete,");
+		sb.append("inprogress, passed, testfix, untested from ");
+		sb.append("O_[%COMPANY_ID%]_issue i join objectentry oe ON ");
+		sb.append("i.c_issueid_ = oe.objectentryid left join (select i.");
+		sb.append(StringUtil.merge(_childRelationships.get(issueType), ", i."));
+		sb.append(", sum(case when duestatus_ = 'BLOCKED' then 1 else 0 end) ");
+		sb.append("as blocked, sum(case when duestatus_ = 'FAILED' then 1 ");
+		sb.append("else 0 end) as failed, sum(case when duestatus_ = ");
+		sb.append("'INCOMPLETE' then 1 else 0 end) as incomplete, sum(case ");
+		sb.append("when duestatus_ = 'INPROGRESS' then 1 else 0 end) as ");
+		sb.append("inprogress, sum(case when duestatus_ = 'PASSED' then 1 ");
+		sb.append("else 0 end) as passed, sum(case when duestatus_ = ");
+		sb.append("'TESTFIX' then 1 else 0 end) as testfix, sum(case when ");
+		sb.append("duestatus_ = 'UNTESTED' then 1 else 0 end) as untested ");
+		sb.append("from ");
+		sb.append(_getRelationshipTableName());
+		sb.append(" rel join o_[%COMPANY_ID%]_issue_x i ON i.c_issueid_ = ");
+		sb.append("rel.c_issueid_ join o_[%COMPANY_ID%]_casedetail cd on ");
+		sb.append("cd.c_casedetailid_ = rel.c_casedetailid_ where i.r_");
+		sb.append(issueType);
+		sb.append("_c_issueid = ? group by i.");
+		sb.append(StringUtil.merge(_childRelationships.get(issueType), ", i."));
+		sb.append(") as status on i.c_issueid_ = status.");
+		sb.append(_childRelationships.get(issueType)[0]);
+
+		if (StringUtil.equalsIgnoreCase(issueType, "epic")) {
+			sb.append(" or i.c_issueid_ = status.");
+			sb.append(_childRelationships.get(issueType)[1]);
+		}
+
+		sb.append(" where i.r_parentissue_c_issueid = ? group by ");
+		sb.append("i.c_issueid_, i.issuetype_, i.title_, ");
+		sb.append("oe.externalreferencecode, blocked, failed, incomplete, ");
+		sb.append("inprogress, passed, testfix, untested");
+
+		List<Object> params = new ArrayList<>();
+
+		params.add(testrayIssueId);
+		params.add(testrayIssueId);
+
+		String sql = StringUtil.replace(
+			sb.toString(), "[%COMPANY_ID%]",
+			String.valueOf(contextCompany.getCompanyId()));
+
+		long totalCount = TestrayUtil.getTotalCount(sql, params);
+
+		if (pagination != null) {
+			sql += " limit ? offset ?";
+
+			params.add(pagination.getPageSize());
+			params.add(pagination.getStartPosition());
+		}
+
+		List<Map<String, Object>> values = TestrayUtil.executeQuery(
+			sql, params);
+
+		return Page.of(
+			transform(
+				values,
+				value -> new TestrayIssueMetric() {
+					{
+						testrayIssueKey = GetterUtil.getString(
+							value.get("externalReferenceCode"));
+						testrayIssueTitle = GetterUtil.getString(
+							value.get("title_"));
+						testrayIssueType = GetterUtil.getString(
+							value.get("issueType_"));
+						testrayStatusMetric = _getTestrayStatusMetric(value);
+					}
+				}),
+			pagination, totalCount);
+	}
+
+	@Override
 	public Page<TestrayRoutineMetric>
 			getTestrayStatusMetricByTestrayProjectIdTestrayProjectTestrayRoutinesMetricsPage(
 				Long testrayProjectId, Pagination pagination, Sort[] sorts)
@@ -621,6 +724,20 @@ public class TestrayStatusMetricResourceImpl
 			pagination, totalCount);
 	}
 
+	private String _getRelationshipTableName() throws Exception {
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.getObjectDefinition(
+				contextCompany.getCompanyId(), "C_CaseDetail");
+
+		List<ObjectRelationship> objectRelationships =
+			_objectRelationshipLocalService.getObjectRelationships(
+				objectDefinition.getObjectDefinitionId(), "manyToMany");
+
+		ObjectRelationship objectRelationship = objectRelationships.get(0);
+
+		return objectRelationship.getDBTableName();
+	}
+
 	private TestrayStatusMetric _getTestrayStatusMetric(
 		Map<String, Object> map) {
 
@@ -640,5 +757,33 @@ public class TestrayStatusMetricResourceImpl
 
 		return testrayStatusMetric;
 	}
+
+	private final Map<String, String[]> _childRelationships =
+		HashMapBuilder.put(
+			"epic", new String[] {"r_story_c_issueid", "r_task_c_issueid"}
+		).put(
+			"initiative", new String[] {"r_epic_c_issueid"}
+		).put(
+			"story", new String[] {"c_issueid_"}
+		).put(
+			"task", new String[] {"c_issueid_"}
+		).build();
+
+	@Reference(
+		target = "(filter.factory.key=" + ObjectDefinitionConstants.STORAGE_TYPE_DEFAULT + ")"
+	)
+	private FilterFactory<Predicate> _filterFactory;
+
+	@Reference
+	private JSONFactory _jsonFactory;
+
+	@Reference
+	private ObjectDefinitionLocalService _objectDefinitionLocalService;
+
+	@Reference
+	private ObjectEntryLocalService _objectEntryLocalService;
+
+	@Reference
+	private ObjectRelationshipLocalService _objectRelationshipLocalService;
 
 }
