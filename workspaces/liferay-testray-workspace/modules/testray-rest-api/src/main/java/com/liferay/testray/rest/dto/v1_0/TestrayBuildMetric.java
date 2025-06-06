@@ -11,8 +11,6 @@ import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
 import com.liferay.portal.vulcan.util.ObjectMapperUtil;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.io.Serializable;
 
 import java.util.Iterator;
@@ -45,7 +43,7 @@ public class TestrayBuildMetric implements Serializable {
 		return ObjectMapperUtil.unsafeReadValue(TestrayBuildMetric.class, json);
 	}
 
-	@Schema
+	@io.swagger.v3.oas.annotations.media.Schema
 	public Boolean getTestrayBuildArchived() {
 		if (_testrayBuildArchivedSupplier != null) {
 			testrayBuildArchived = _testrayBuildArchivedSupplier.get();
@@ -86,7 +84,7 @@ public class TestrayBuildMetric implements Serializable {
 	@JsonIgnore
 	private Supplier<Boolean> _testrayBuildArchivedSupplier;
 
-	@Schema
+	@io.swagger.v3.oas.annotations.media.Schema
 	public String getTestrayBuildDueDate() {
 		if (_testrayBuildDueDateSupplier != null) {
 			testrayBuildDueDate = _testrayBuildDueDateSupplier.get();
@@ -127,7 +125,7 @@ public class TestrayBuildMetric implements Serializable {
 	@JsonIgnore
 	private Supplier<String> _testrayBuildDueDateSupplier;
 
-	@Schema
+	@io.swagger.v3.oas.annotations.media.Schema
 	public String getTestrayBuildGitHash() {
 		if (_testrayBuildGitHashSupplier != null) {
 			testrayBuildGitHash = _testrayBuildGitHashSupplier.get();
@@ -168,7 +166,7 @@ public class TestrayBuildMetric implements Serializable {
 	@JsonIgnore
 	private Supplier<String> _testrayBuildGitHashSupplier;
 
-	@Schema
+	@io.swagger.v3.oas.annotations.media.Schema
 	public Long getTestrayBuildId() {
 		if (_testrayBuildIdSupplier != null) {
 			testrayBuildId = _testrayBuildIdSupplier.get();
@@ -209,7 +207,7 @@ public class TestrayBuildMetric implements Serializable {
 	@JsonIgnore
 	private Supplier<Long> _testrayBuildIdSupplier;
 
-	@Schema
+	@io.swagger.v3.oas.annotations.media.Schema
 	public String getTestrayBuildImportStatus() {
 		if (_testrayBuildImportStatusSupplier != null) {
 			testrayBuildImportStatus = _testrayBuildImportStatusSupplier.get();
@@ -251,7 +249,7 @@ public class TestrayBuildMetric implements Serializable {
 	@JsonIgnore
 	private Supplier<String> _testrayBuildImportStatusSupplier;
 
-	@Schema
+	@io.swagger.v3.oas.annotations.media.Schema
 	public String getTestrayBuildName() {
 		if (_testrayBuildNameSupplier != null) {
 			testrayBuildName = _testrayBuildNameSupplier.get();
@@ -292,7 +290,7 @@ public class TestrayBuildMetric implements Serializable {
 	@JsonIgnore
 	private Supplier<String> _testrayBuildNameSupplier;
 
-	@Schema
+	@io.swagger.v3.oas.annotations.media.Schema
 	public String getTestrayBuildProductVersion() {
 		if (_testrayBuildProductVersionSupplier != null) {
 			testrayBuildProductVersion =
@@ -337,7 +335,7 @@ public class TestrayBuildMetric implements Serializable {
 	@JsonIgnore
 	private Supplier<String> _testrayBuildProductVersionSupplier;
 
-	@Schema
+	@io.swagger.v3.oas.annotations.media.Schema
 	public Boolean getTestrayBuildPromoted() {
 		if (_testrayBuildPromotedSupplier != null) {
 			testrayBuildPromoted = _testrayBuildPromotedSupplier.get();
@@ -378,7 +376,7 @@ public class TestrayBuildMetric implements Serializable {
 	@JsonIgnore
 	private Supplier<Boolean> _testrayBuildPromotedSupplier;
 
-	@Schema
+	@io.swagger.v3.oas.annotations.media.Schema
 	public String getTestrayBuildTaskStatus() {
 		if (_testrayBuildTaskStatusSupplier != null) {
 			testrayBuildTaskStatus = _testrayBuildTaskStatusSupplier.get();
@@ -420,7 +418,7 @@ public class TestrayBuildMetric implements Serializable {
 	@JsonIgnore
 	private Supplier<String> _testrayBuildTaskStatusSupplier;
 
-	@Schema
+	@io.swagger.v3.oas.annotations.media.Schema
 	@Valid
 	public TestrayStatusMetric getTestrayStatusMetric() {
 		if (_testrayStatusMetricSupplier != null) {
@@ -641,8 +639,8 @@ public class TestrayBuildMetric implements Serializable {
 		return sb.toString();
 	}
 
-	@Schema(
-		accessMode = Schema.AccessMode.READ_ONLY,
+	@io.swagger.v3.oas.annotations.media.Schema(
+		accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.READ_ONLY,
 		defaultValue = "com.liferay.testray.rest.dto.v1_0.TestrayBuildMetric",
 		name = "x-class-name"
 	)
