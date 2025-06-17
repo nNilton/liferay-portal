@@ -63,14 +63,13 @@ import TestflowOutlet, {
 	TestflowNavigationOutlet,
 } from './pages/Testflow/TestflowOutlet';
 import TestFlowTasks from './pages/Testflow/TestflowTasks';
-import Traceability from './pages/Traceability';
-import Initiatives from './pages/Traceability/Initiatives';
-import IssueOverview from './pages/Traceability/Initiatives/Inner/IssueOverview';
-import IssuesOutlet from './pages/Traceability/IssuesOutlet';
-import IssuesList from './pages/Traceability/IssuesList';
-import IssueOutlet from './pages/Traceability/Initiatives/Inner/IssueOutlet';
-import ChildIssues from './pages/Traceability/Initiatives/Inner';
-import IssueResults from './pages/Traceability/Initiatives/Inner/IssueResults';
+import IssuesOutlet from './pages/Issues/IssuesOutlet';
+import IssuesList from './pages/Issues/IssuesList';
+import IssueOutlet from './pages/Issues/Inner/IssueOutlet';
+import ChildIssues from './pages/Issues/Inner';
+import IssueResults from './pages/Issues/Inner/IssueResults';
+import JiraProjects from './pages/Issues';
+import Issues from './pages/Issues/IssuesList';
 
 const TestrayRoute = () => (
 	<HashRouter>
@@ -302,15 +301,15 @@ const TestrayRoute = () => (
 						</Route>
 					</Route>
 
-					<Route element={<OutletBridge />} path='traceability'>
-						<Route element={<Traceability />} index />
+					<Route element={<OutletBridge />} path='issues'>
+						<Route element={<JiraProjects />} index />
 
-						<Route element={<IssuesOutlet />} path=':projectKey'>
-							<Route element={<IssuesList />} path='initiative' />
-							<Route element={<IssuesList />} path='epic' />
-							<Route element={<IssuesList />} path='story' />
+						<Route element={<IssuesOutlet />} path=':jiraProjectERC'>
+							<Route element={<Issues />} path='initiative' />
+							<Route element={<Issues />} path='epic' />
+							<Route element={<Issues />} path='story' />
 
-							<Route element={<IssueOutlet />} path=':issueKey'>
+							<Route element={<IssueOutlet />} path=':jiraIssueERC'>
 								<Route element={<ChildIssues/>} index/>
 								<Route element={<IssueResults/>} path='results'/>
 							</Route>

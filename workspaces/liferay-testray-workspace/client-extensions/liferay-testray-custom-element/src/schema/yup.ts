@@ -155,6 +155,11 @@ const yupSchema = {
 		title: yup.string().required(),
 		description: yup.string()
 	}),
+	jiraProject: yup.object({
+		id: yup.string(),
+		externalReferenceCode: yup.string().required(),
+		name: yup.string().required(),
+	}),
 	option: yup.object({
 		name: yup.string(),
 	}),

@@ -7,20 +7,22 @@ import Container from '~/components/Layout/Container';
 import ListView from '~/components/ListView';
 import {useHeader} from '~/hooks';
 import i18n from '~/i18n';
-import {useLocation, useNavigate, useParams} from 'react-router-dom';
-import { console } from 'inspector';
+import {useLocation, useNavigate, useOutletContext, useParams} from 'react-router-dom';
+import { TestrayJiraProject } from '~/services/rest';
 
-//import useProjectActions from './useProjectActions';
-
-type IssuesListProps = {
+type IssuesProps = {
 	PageContainer?: React.FC;
 };
 
-const IssuesList: React.FC<IssuesListProps> = ({PageContainer = Container}) => {
-	const {projectKey} = useParams();
+type OutletContext = {
+	testrayJiraProject: TestrayJiraProject;
+};
+
+const Issues: React.FC<IssuesProps> = ({PageContainer = Container}) => {
+	const {testrayJiraProject} : OutletContext = useOutletContext();
 	const {pathname} = useLocation();
 
-	const filter = `projectType eq '${projectKey}' and issueType eq '${pathname.split('/').filter(Boolean).pop()}'`
+	const filter = `jiraProjectId eq '${testrayJiraProject.id}' and issueType eq '${pathname.split('/').pop()?.toUpperCase()}'`
 
 	return (
 		<PageContainer>
@@ -35,9 +37,9 @@ const IssuesList: React.FC<IssuesListProps> = ({PageContainer = Container}) => {
 					applyFilters: true,
 					filterSchema: 'issues',
 					display: {columns: false},
-					title: i18n.translate('jira-'+ pathname.split('/').filter(Boolean).pop()),
+					title: i18n.translate('' + pathname.split('/').filter(Boolean).pop()),
 				}}
-				resource={`/issues/?filter='`}
+				resource={`/jiraissues`}
 				tableProps={{
 					columns: [
 						{
@@ -63,4 +65,4 @@ const IssuesList: React.FC<IssuesListProps> = ({PageContainer = Container}) => {
 	);
 };
 
-export default IssuesList;
+export default Issues;

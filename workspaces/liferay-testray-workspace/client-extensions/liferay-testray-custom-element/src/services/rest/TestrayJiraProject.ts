@@ -10,24 +10,24 @@ import i18n from '../../i18n';
 import yupSchema from '../../schema/yup';
 import {APIResponse, TestrayJiraIssue} from './types';
 
-type JiraIssue = typeof yupSchema.jiraIssue.__outputType;
+type JiraProject = typeof yupSchema.jiraProject.__outputType;
 
-class TestrayJiraIssueImpl extends Rest<JiraIssue, TestrayJiraIssue> {
+class TestrayJiraProjectImpl extends Rest<JiraProject, TestrayJiraIssue> {
 	constructor() {
 		super({
-			adapter: ({title, externalReferenceCode, description}) => ({
-				title, externalReferenceCode, description
+			adapter: ({name, externalReferenceCode}) => ({
+				name, externalReferenceCode
 			}),
 			fields: 'id,title,externalReferenceCode,description',
-			nestedFields: '',
+			nestedFields: 'projectToJiraProjects,routineToJiraProject',
 			transformData: (testrayJiraIssue) => {
 				return {
 					...testrayJiraIssue,
 				};
 			},
-			uri: 'jiraissues',
+			uri: 'jiraprojects',
 		});
 	}
 }
 
-export const testrayJiraIssueImpl = new TestrayJiraIssueImpl();
+export const testrayJiraProjectImpl = new TestrayJiraProjectImpl();

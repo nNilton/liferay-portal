@@ -8,15 +8,11 @@ import ListView from '~/components/ListView';
 import {useHeader} from '~/hooks';
 import i18n from '~/i18n';
 
-//import useProjectActions from './useProjectActions';
-
-type TraceabilityProps = {
+type JiraProjectsProps = {
 	PageContainer?: React.FC;
 };
 
-const Traceability: React.FC<TraceabilityProps> = ({PageContainer = Container}) => {
-	//const {actions} = useProjectActions();
-
+const JiraProjects: React.FC<JiraProjectsProps> = ({PageContainer = Container}) => {
 	useHeader({
 		dropdown: [],
 		headerActions: {actions: []},
@@ -26,7 +22,7 @@ const Traceability: React.FC<TraceabilityProps> = ({PageContainer = Container}) 
 				title: i18n.translate('jira-project-directory'),
 			},
 		],
-		icon: 'polls',
+		icon: 'box-container',
 	});
 
 	return (
@@ -43,7 +39,7 @@ const Traceability: React.FC<TraceabilityProps> = ({PageContainer = Container}) 
 					display: {columns: false},
 					title: i18n.translate('jira-projects'),
 				}}
-				resource="/list-type-definitions/by-external-reference-code/JIRA-PROJECTS/list-type-entries"
+				resource="/jiraprojects"
 				tableProps={{
 					columns: [
 						{
@@ -54,16 +50,16 @@ const Traceability: React.FC<TraceabilityProps> = ({PageContainer = Container}) 
 							value: i18n.translate('project'),
 						},
 						{
-							key: 'key',
+							key: 'externalReferenceCode',
 							size: 'lg',
 							value: i18n.translate('key'),
 						},
 					],
-					navigateTo: (listType) => `/traceability/${listType.key}/initiative`,
+					navigateTo: (jiraProject) => `/issues/${jiraProject.externalReferenceCode}/initiative`,
 				}}
 			/>
 		</PageContainer>
 	);
 };
 
-export default Traceability;
+export default JiraProjects;
