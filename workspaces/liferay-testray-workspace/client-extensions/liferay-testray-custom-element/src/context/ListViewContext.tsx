@@ -287,8 +287,6 @@ const reducer = (state: InitialState, action: AppActions) => {
 		case ListViewTypes.SET_FILTERS: {
 			state.pin = getPinState(state, action.payload.filters);
 
-			console.log(state.pin, state, action.payload.filters)
-
 			return {
 				...state,
 				filters: action.payload.filters || state.filters,

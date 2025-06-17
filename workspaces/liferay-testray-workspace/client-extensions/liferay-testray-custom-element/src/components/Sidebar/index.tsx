@@ -21,7 +21,6 @@ import Tooltip from '../Tooltip';
 import SidebarFooter from './SidebarFooter';
 import SidebarItem from './SidebarItem';
 import TaskSidebar from './TasksSidebar';
-import Icon from '@clayui/icon';
 
 const Sidebar = () => {
 	const [expanded, setExpanded] = useStorage(STORAGE_KEYS.SIDEBAR, {
@@ -92,7 +91,7 @@ const Sidebar = () => {
 		{
 			icon: 'box-container',
 			label: i18n.translate('Issues'),
-			path: '/issues'
+			path: '/issues',
 		},
 		{
 			icon: 'merge',

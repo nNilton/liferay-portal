@@ -6,12 +6,12 @@
 import {useCallback, useEffect} from 'react';
 import {Outlet, useLocation, useParams} from 'react-router-dom';
 import PageRenderer from '~/components/PageRenderer';
+import {testrayJiraProjectImpl} from '~/services/rest/TestrayJiraProject';
 
 import {useFetch} from '../../hooks/useFetch';
 import useHeader from '../../hooks/useHeader';
 import i18n from '../../i18n';
-import {APIResponse, PickList, TestrayJiraProject} from '../../services/rest';
-import { testrayJiraProjectImpl } from '~/services/rest/TestrayJiraProject';
+import {APIResponse, TestrayJiraProject} from '../../services/rest';
 
 const IssuesOutlet = () => {
 	const {jiraProjectERC, ...otherParams} = useParams();
@@ -22,16 +22,20 @@ const IssuesOutlet = () => {
 		shouldUpdate,
 	});
 
-    const {
+	const {
 		data: testrayJiraProject,
 		error,
 		loading,
 		mutate,
-	} = useFetch<TestrayJiraProject>(testrayJiraProjectImpl.getResourceByExternalReferenceCode(jiraProjectERC as string),
-	{
-		transformData: (response) =>
-			testrayJiraProjectImpl.transformData(response)
-	});
+	} = useFetch<TestrayJiraProject>(
+		testrayJiraProjectImpl.getResourceByExternalReferenceCode(
+			jiraProjectERC as string
+		),
+		{
+			transformData: (response) =>
+				testrayJiraProjectImpl.transformData(response),
+		}
+	);
 
 	const getPath = useCallback(
 		(path: string) => {
@@ -45,16 +49,14 @@ const IssuesOutlet = () => {
 		[jiraProjectERC, pathname]
 	);
 
-
-	const {data: testrayJiraProjects} = useFetch<APIResponse<TestrayJiraProject>>(
-		'/jiraprojects',
-		{
-			params: {
-				fields: 'externalReferenceCode,name',
-				pageSize: 100,
-			},
-		}
-	);
+	const {data: testrayJiraProjects} = useFetch<
+		APIResponse<TestrayJiraProject>
+	>('/jiraprojects', {
+		params: {
+			fields: 'externalReferenceCode,name',
+			pageSize: 100,
+		},
+	});
 
 	const jiraProjects = testrayJiraProjects?.items;
 
@@ -109,7 +111,7 @@ const IssuesOutlet = () => {
 					{
 						...getPath('story'),
 						title: i18n.translate('stories'),
-					}
+					},
 				]);
 			}, 0);
 		}

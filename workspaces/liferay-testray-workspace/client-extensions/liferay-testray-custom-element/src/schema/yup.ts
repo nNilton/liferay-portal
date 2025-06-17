@@ -93,6 +93,11 @@ const yupSchema = {
 		steps: yup.string(),
 		stepsType: yup.string(),
 	}),
+	caseDetail: yup.object({
+		dueStatus: yup.string().required(),
+		id: yup.string(),
+		name: yup.string().required(),
+	}),
 	caseResult: yup.object({
 		buildId: yup.number(),
 		caseId: yup.number(),
@@ -114,11 +119,6 @@ const yupSchema = {
 		name: yup.string().required(),
 		projectId: yup.string(),
 		teamId: yup.string(),
-	}),
-	caseDetail: yup.object({
-		id: yup.string(),
-		name: yup.string().required(),
-		dueStatus: yup.string().required(),
 	}),
 	enviroment: yup.object({
 		factorCategoryIds: yup.mixed(),
@@ -150,14 +150,14 @@ const yupSchema = {
 		number: yup.number(),
 	}),
 	jiraIssue: yup.object({
-		id: yup.string(),
+		description: yup.string(),
 		externalReferenceCode: yup.string().required(),
+		id: yup.string(),
 		title: yup.string().required(),
-		description: yup.string()
 	}),
 	jiraProject: yup.object({
-		id: yup.string(),
 		externalReferenceCode: yup.string().required(),
+		id: yup.string(),
 		name: yup.string().required(),
 	}),
 	option: yup.object({

@@ -12,6 +12,12 @@ import CompareRunsCases from './pages/CompareRuns/CompareRunsCases';
 import CompareRunsOutlet from './pages/CompareRuns/CompareRunsOutlet';
 import CompareRunsComponents from './pages/CompareRuns/Components';
 import CompareRunsTeams from './pages/CompareRuns/Teams';
+import JiraProjects from './pages/Issues';
+import ChildIssues from './pages/Issues/Inner';
+import IssueOutlet from './pages/Issues/Inner/IssueOutlet';
+import IssueResults from './pages/Issues/Inner/IssueResults';
+import Issues from './pages/Issues/Issues';
+import IssuesOutlet from './pages/Issues/IssuesOutlet';
 import Users from './pages/Manage/User';
 import ChangeUserPassword from './pages/Manage/User/ChangeUserPassword';
 import UserForm from './pages/Manage/User/UserForm';
@@ -63,13 +69,6 @@ import TestflowOutlet, {
 	TestflowNavigationOutlet,
 } from './pages/Testflow/TestflowOutlet';
 import TestFlowTasks from './pages/Testflow/TestflowTasks';
-import IssuesOutlet from './pages/Issues/IssuesOutlet';
-import IssuesList from './pages/Issues/IssuesList';
-import IssueOutlet from './pages/Issues/Inner/IssueOutlet';
-import ChildIssues from './pages/Issues/Inner';
-import IssueResults from './pages/Issues/Inner/IssueResults';
-import JiraProjects from './pages/Issues';
-import Issues from './pages/Issues/IssuesList';
 
 const TestrayRoute = () => (
 	<HashRouter>
@@ -301,20 +300,28 @@ const TestrayRoute = () => (
 						</Route>
 					</Route>
 
-					<Route element={<OutletBridge />} path='issues'>
+					<Route element={<OutletBridge />} path="issues">
 						<Route element={<JiraProjects />} index />
 
-						<Route element={<IssuesOutlet />} path=':jiraProjectERC'>
-							<Route element={<Issues />} path='initiative' />
-							<Route element={<Issues />} path='epic' />
-							<Route element={<Issues />} path='story' />
+						<Route
+							element={<IssuesOutlet />}
+							path=":jiraProjectERC"
+						>
+							<Route element={<Issues />} path="initiative" />
+							<Route element={<Issues />} path="epic" />
+							<Route element={<Issues />} path="story" />
 
-							<Route element={<IssueOutlet />} path=':jiraIssueERC'>
-								<Route element={<ChildIssues/>} index/>
-								<Route element={<IssueResults/>} path='results'/>
+							<Route
+								element={<IssueOutlet />}
+								path=":jiraIssueERC"
+							>
+								<Route element={<ChildIssues />} index />
+								<Route
+									element={<IssueResults />}
+									path="results"
+								/>
 							</Route>
 						</Route>
-
 					</Route>
 
 					<Route element={<OutletBridge />} path="testflow">

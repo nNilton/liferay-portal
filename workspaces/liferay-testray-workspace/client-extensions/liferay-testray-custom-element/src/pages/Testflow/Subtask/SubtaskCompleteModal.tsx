@@ -174,25 +174,28 @@ const SubtaskCompleteModal: React.FC<SubtaskCompleteModalProps> = ({
 				subtask.r_userToSubtasks_userId
 			);
 
-			const testrayCaseNames = await
-				testrayCaseImpl.getAll({
-					fields: 'name',
-					filter: SearchBuilder.eq(
-						`caseToCaseResult/r_subtaskToCaseResults_c_subtaskId`,
-						subtask.id
-					),
-					pageSize: -1,
-				});
+			const testrayCaseNames = await testrayCaseImpl.getAll({
+				fields: 'name',
+				filter: SearchBuilder.eq(
+					`caseToCaseResult/r_subtaskToCaseResults_c_subtaskId`,
+					subtask.id
+				),
+				pageSize: -1,
+			});
 
-			if(testrayCaseNames?.items){
-				_issues.map((issue) =>{
-					Liferay.OAuth2Client.FromUserAgentApplication("liferay-testray-etc-spring-boot-oauth-application-user-agent").fetch(`/jira/issues/${issue}`, {
-						method: 'PUT',
+			if (testrayCaseNames?.items) {
+				_issues.map((issue) => {
+					Liferay.OAuth2Client.FromUserAgentApplication(
+						'liferay-testray-etc-spring-boot-oauth-application-user-agent'
+					).fetch(`/jira/issues/${issue}`, {
 						body: JSON.stringify({
-							testrayCaseNames: testrayCaseNames.items.map(({name}) => name)
-						})
-					})
-				})
+							testrayCaseNames: testrayCaseNames.items.map(
+								({name}) => name
+							),
+						}),
+						method: 'PUT',
+					});
+				});
 			}
 
 			revalidateSubtask();

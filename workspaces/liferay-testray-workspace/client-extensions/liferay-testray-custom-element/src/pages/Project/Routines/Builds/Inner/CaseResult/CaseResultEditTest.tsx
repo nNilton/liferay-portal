@@ -73,7 +73,8 @@ const CaseResultEditTest = () => {
 	}: CaseResultForm) => {
 		const _issues = issues
 			.split(',')
-			.map((name) => name.trim().toUpperCase()).filter(Boolean)
+			.map((name) => name.trim().toUpperCase())
+			.filter(Boolean);
 
 		try {
 			const response = await onSubmit(
@@ -97,15 +98,19 @@ const CaseResultEditTest = () => {
 				testrayBuildImpl.updateBuildSummary(buildId);
 			}
 
-			if(_issues.length > 0){
-				_issues.map((issue) =>{
-					Liferay.OAuth2Client.FromUserAgentApplication("liferay-testray-etc-spring-boot-oauth-application-user-agent").fetch(`/jira/issues/${issue}`, {
-						method: 'PUT',
+			if (_issues.length) {
+				_issues.map((issue) => {
+					Liferay.OAuth2Client.FromUserAgentApplication(
+						'liferay-testray-etc-spring-boot-oauth-application-user-agent'
+					).fetch(`/jira/issues/${issue}`, {
 						body: JSON.stringify({
-							testrayCaseNames: [caseResult.r_caseToCaseResult_c_case?.name]
-						})
-					})
-				})
+							testrayCaseNames: [
+								caseResult.r_caseToCaseResult_c_case?.name,
+							],
+						}),
+						method: 'PUT',
+					});
+				});
 			}
 
 			mutateCaseResult({

@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {
+	useLocation,
+	useOutletContext
+} from 'react-router-dom';
 import Container from '~/components/Layout/Container';
 import ListView from '~/components/ListView';
-import {useHeader} from '~/hooks';
 import i18n from '~/i18n';
-import {useLocation, useNavigate, useOutletContext, useParams} from 'react-router-dom';
-import { TestrayJiraProject } from '~/services/rest';
+import {TestrayJiraProject} from '~/services/rest';
 
 type IssuesProps = {
 	PageContainer?: React.FC;
@@ -19,10 +21,10 @@ type OutletContext = {
 };
 
 const Issues: React.FC<IssuesProps> = ({PageContainer = Container}) => {
-	const {testrayJiraProject} : OutletContext = useOutletContext();
+	const {testrayJiraProject}: OutletContext = useOutletContext();
 	const {pathname} = useLocation();
 
-	const filter = `jiraProjectId eq '${testrayJiraProject.id}' and issueType eq '${pathname.split('/').pop()?.toUpperCase()}'`
+	const filter = `jiraProjectId eq '${testrayJiraProject.id}' and issueType eq '${pathname.split('/').pop()?.toUpperCase()}'`;
 
 	return (
 		<PageContainer>
@@ -35,11 +37,13 @@ const Issues: React.FC<IssuesProps> = ({PageContainer = Container}) => {
 				}}
 				managementToolbarProps={{
 					applyFilters: true,
-					filterSchema: 'issues',
 					display: {columns: false},
-					title: i18n.translate('' + pathname.split('/').filter(Boolean).pop()),
+					filterSchema: 'issues',
+					title: i18n.translate(
+						'' + pathname.split('/').filter(Boolean).pop()
+					),
 				}}
-				resource={`/jiraissues`}
+				resource="/jiraissues"
 				tableProps={{
 					columns: [
 						{
@@ -53,12 +57,12 @@ const Issues: React.FC<IssuesProps> = ({PageContainer = Container}) => {
 							size: 'lg',
 							sorteable: true,
 							value: i18n.translate('title'),
-						}
+						},
 					],
 					navigateTo: (issue) => `../${issue.externalReferenceCode}`,
 				}}
 				variables={{
-					filter: filter,
+					filter,
 				}}
 			/>
 		</PageContainer>
