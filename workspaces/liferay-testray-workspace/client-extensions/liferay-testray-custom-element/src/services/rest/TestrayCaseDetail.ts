@@ -28,12 +28,6 @@ class TestrayCaseDetailImpl extends Rest<CaseDetail, TestrayCaseDetail> {
 			uri: 'casedetails',
 		});
 	}
-
-	public async getAggregatedStatus(issueType: string, issueId: number) {
-		return await this.fetcher<APIResponse<TestrayJiraIssue>>(
-					`/casedetails?aggregationTerms=dueStatus&fields=id&filter=caseDetailsToIssues/r_${issueType}_c_issueId eq '${issueId}'&pageSize=10`
-				);
-	}
 }
 
 export const testrayCaseDetailImpl = new TestrayCaseDetailImpl();

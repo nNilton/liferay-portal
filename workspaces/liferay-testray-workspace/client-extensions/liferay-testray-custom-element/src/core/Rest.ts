@@ -208,7 +208,7 @@ class Rest<YupModel = any, ObjectModel = any, NestedObjectOptions = any> {
 	}
 
 	public getResourceByExternalReferenceCode(externalReferenceCode: string) {
-		return `/${this.uri}/by-external-reference-code/${externalReferenceCode}?${this.nestedFields}&nestedFieldsDepth=${this.nestedFieldsDepth}`;
+		return `/${this.uri}/by-external-reference-code/${externalReferenceCode}?${this.nestedFields}`;
 	}
 
 	public async getPagePermission() {

@@ -90,9 +90,9 @@ const Sidebar = () => {
 			path: '/',
 		},
 		{
-			icon: 'magic',
-			label: i18n.translate('Traceability'),
-			path: '/traceability'
+			icon: 'box-container',
+			label: i18n.translate('Issues'),
+			path: '/issues'
 		},
 		{
 			icon: 'merge',

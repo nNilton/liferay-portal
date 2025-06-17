@@ -110,6 +110,17 @@ export type UserRole = {
 	userId: number;
 };
 
+export type TestrayJiraProject = {
+	actions?: ObjectActionsItems;
+	externalReferenceCode: string;
+	id: number;
+	name: string;
+	r_routineToJiraProject_c_routineId: number;
+	routineToJiraProject?: TestrayRoutine;
+	r_projectToJiraProjects_c_projectId: number;
+	projectToJiraProjects?: TestrayProject;
+}
+
 export type TestrayJiraIssue = {
 	actions?: ObjectActionsItems;
 	id: number;
@@ -258,9 +269,11 @@ export type TestrayCaseType = {
 };
 
 export type TestrayCaseDetail = {
+	buildToCaseDetail?: TestrayBuild;
 	id: string;
 	name: string;
 	dueStatus: PickList;
+	r_buildToCaseDetail_c_buildId: number;
 };
 
 export type TestrayDyspatchTrigger = {

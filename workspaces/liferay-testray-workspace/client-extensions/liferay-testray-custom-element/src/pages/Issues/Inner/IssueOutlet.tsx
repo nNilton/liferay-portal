@@ -12,36 +12,36 @@ import {
 } from 'react-router-dom';
 import PageRenderer from '~/components/PageRenderer';
 
-import {useFetch} from '../../../../hooks/useFetch';
-import useHeader from '../../../../hooks/useHeader';
-import i18n from '../../../../i18n';
+import {useFetch} from '../../../hooks/useFetch';
+import useHeader from '../../../hooks/useHeader';
+import i18n from '../../../i18n';
 import {
 	APIResponse,
 	PickList,
 	TestrayBuild,
+	TestrayCaseDetail,
 	TestrayJiraIssue,
+	TestrayJiraProject,
 	TestrayProject,
 	TestrayRoutine,
 	testrayBuildImpl,
-} from '../../../../services/rest';
+} from '../../../services/rest';
 import IssueOverview from './IssueOverview';
 import { testrayJiraIssueImpl } from '~/services/rest/TestrayJiraIssue';
 import { mutate } from 'swr';
+import { testrayCaseDetailImpl } from '~/services/rest/TestrayCaseDetail';
 
 type OutletContext = {
-	testrayJiraProject: PickList;
+	testrayJiraProject: TestrayJiraProject;
 };
 
 const IssueOutlet = ({}) => {
-	 const {projectKey, issueKey, ...otherParams} = useParams();
+	 const {jiraProjectERC, jiraIssueERC, ...otherParams} = useParams();
 	 const {pathname} = useLocation();
 	const {testrayJiraProject}: OutletContext = useOutletContext();
 	
-		const {data: jiraIssue,
-			error,
-			loading
-		} = useFetch<TestrayJiraIssue>(
-			testrayJiraIssueImpl.getResourceByExternalReferenceCode(issueKey as string),
+		const {data: testrayJiraIssue} = useFetch<TestrayJiraIssue>(
+			testrayJiraIssueImpl.getResourceByExternalReferenceCode(jiraIssueERC as string),
 			{
 				transformData: (response) =>
 					testrayJiraIssueImpl.transformData(response)
@@ -50,7 +50,7 @@ const IssueOutlet = ({}) => {
 
 			const hasOtherParams = !!Object.values(otherParams).length;
 		
-			const basePath = `/traceability/${projectKey}/${issueKey}`;
+			const basePath = `/issues/${jiraProjectERC}/${jiraIssueERC}`;
 
 			const {setHeading, setTabs} = useHeader({
 				shouldUpdate: !hasOtherParams,
@@ -61,45 +61,45 @@ const IssueOutlet = ({}) => {
 				const heading = [
 					{
 						category: i18n.translate('project').toUpperCase(),
-						path: `/traceability/${projectKey}/initiative`,
+						path: `/issues/${jiraProjectERC}/initiative`,
 						title: testrayJiraProject.name,
 					},
 				]
 
-				if(jiraIssue?.initiativeERC){
+				if(testrayJiraIssue?.initiativeERC){
 					heading.push({
 						category: 'INITIATIVE',
-						path: `/traceability/${projectKey}/${jiraIssue.initiativeERC}`,
-						title: jiraIssue.initiativeERC,
+						path: `/issues/${jiraProjectERC}/${testrayJiraIssue.initiativeERC}`,
+						title: testrayJiraIssue.initiativeERC,
 					})
 				}
 
-				if(jiraIssue?.epicERC){
+				if(testrayJiraIssue?.epicERC){
 					heading.push({
 						category: 'EPIC',
-						path: `/traceability/${projectKey}/${jiraIssue.epicERC}`,
-						title: jiraIssue.epicERC,
+						path: `/issues/${jiraProjectERC}/${testrayJiraIssue.epicERC}`,
+						title: testrayJiraIssue.epicERC,
 					})
 				}
 		
-				if(jiraIssue?.storyERC){
+				if(testrayJiraIssue?.storyERC){
 					heading.push({
 						category: 'STORY',
-						path: `/traceability/${projectKey}/${jiraIssue.storyERC}`,
-						title: jiraIssue.storyERC,
+						path: `/issues/${jiraProjectERC}/${testrayJiraIssue.storyERC}`,
+						title: testrayJiraIssue.storyERC,
 					})
 				}
 
-				if(jiraIssue?.externalReferenceCode){
+				if(testrayJiraIssue?.externalReferenceCode){
 					heading.push({
-						category: jiraIssue.issueType.name,
-						path: `/traceability/${projectKey}/${jiraIssue.externalReferenceCode}`,
-						title: jiraIssue.externalReferenceCode,
+						category: testrayJiraIssue.issueType.name,
+						path: `/issues/${jiraProjectERC}/${testrayJiraIssue.externalReferenceCode}`,
+						title: testrayJiraIssue.externalReferenceCode,
 					})
 				}
 
 				setHeading(heading);
-			}, [setHeading, jiraIssue, projectKey, testrayJiraProject]);
+			}, [setHeading, testrayJiraIssue, jiraProjectERC, testrayJiraProject]);
 		
 			useEffect(() => {
 				if (!hasOtherParams) {
@@ -117,20 +117,36 @@ const IssueOutlet = ({}) => {
 					]);
 				}
 			}, [basePath, pathname, hasOtherParams, setTabs]);
+
+			const {data: testrayCaseDetail,
+				error,
+				loading
+			} = useFetch<TestrayCaseDetail>(
+				'/casedetails',
+				{
+					params: {
+						filter: `caseDetailsToIssues/r_${testrayJiraIssue?.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue?.id}'`,
+						nestedFields: 'buildToCaseDetail',
+						pageSize: 1,
+					},
+					transformData: (response) =>
+						testrayCaseDetailImpl.transformData(response)
+				}
+			);
 		
 			return (
 				<PageRenderer error={error} loading={loading}>
 					<>
-						{jiraIssue && (
-							<IssueOverview testrayJiraIssue={jiraIssue} />
+						{testrayJiraIssue && (
+							<IssueOverview testrayJiraIssue={testrayJiraIssue} />
 						)}
 		
 						<Outlet
 							context={{
-								actions: jiraIssue?.actions,
+								actions: testrayJiraIssue?.actions,
 								mutate,
 								testrayJiraProject,
-								testrayJiraIssue: jiraIssue
+								testrayJiraIssue,
 							}}
 						/>
 					</>
