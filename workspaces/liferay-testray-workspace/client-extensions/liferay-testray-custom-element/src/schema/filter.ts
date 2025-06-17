@@ -912,44 +912,25 @@ const filterSchema = {
 		] as RendererFields[],
 		name: 'components',
 	},
-	issues:{
-		fields: [
-			{
-				isCustomFilter: false,
-				label: i18n.translate('issue-key'),
-				name: 'externalReferenceCode',
-				operator: 'contains',
-				type: 'text',
-			},
-			{
-				isCustomFilter: false,
-				label: i18n.translate('issue-title'),
-				name: 'title',
-				operator: 'contains',
-				type: 'text',
-			}
-		] as RendererFields[],
-		name: 'issues'
-	},
-	issueResults:{
+	issueResults: {
 		fields: [
 			{
 				isCustomFilter: false,
 				label: i18n.translate('case-name'),
 				name: 'caseToCaseDetails/name',
 				operator: 'contains',
-				type: 'text'
+				type: 'text',
 			},
 			{
 				isCustomFilter: false,
 				label: i18n.translate('test-name'),
 				name: 'name',
 				operator: 'contains',
-				type: 'text'
+				type: 'text',
 			},
-			overrides(baseFilters.priority,{
+			overrides(baseFilters.priority, {
 				name: 'caseToCaseDetails/priority',
-				removeQuoteMark: true
+				removeQuoteMark: true,
 			}),
 			overrides(baseFilters.dueStatus, {
 				isCustomFilter: false,
@@ -985,12 +966,31 @@ const filterSchema = {
 					},
 				],
 			}),
-			overrides(baseFilters.issues,{
+			overrides(baseFilters.issues, {
 				name: 'caseDetailsToIssues/externalReferenceCode',
-				operator: 'contains'
+				operator: 'contains',
 			}),
 		] as RendererFields[],
-		name: 'issueResults'
+		name: 'issueResults',
+	},
+	issues: {
+		fields: [
+			{
+				isCustomFilter: false,
+				label: i18n.translate('issue-key'),
+				name: 'externalReferenceCode',
+				operator: 'contains',
+				type: 'text',
+			},
+			{
+				isCustomFilter: false,
+				label: i18n.translate('issue-title'),
+				name: 'title',
+				operator: 'contains',
+				type: 'text',
+			},
+		] as RendererFields[],
+		name: 'issues',
 	},
 	requirementCases: {
 		fields: [

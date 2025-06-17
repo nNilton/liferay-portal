@@ -12,7 +12,9 @@ type JiraProjectsProps = {
 	PageContainer?: React.FC;
 };
 
-const JiraProjects: React.FC<JiraProjectsProps> = ({PageContainer = Container}) => {
+const JiraProjects: React.FC<JiraProjectsProps> = ({
+	PageContainer = Container,
+}) => {
 	useHeader({
 		dropdown: [],
 		headerActions: {actions: []},
@@ -55,7 +57,8 @@ const JiraProjects: React.FC<JiraProjectsProps> = ({PageContainer = Container}) 
 							value: i18n.translate('key'),
 						},
 					],
-					navigateTo: (jiraProject) => `/issues/${jiraProject.externalReferenceCode}/initiative`,
+					navigateTo: (jiraProject) =>
+						`/issues/${jiraProject.externalReferenceCode}/initiative`,
 				}}
 			/>
 		</PageContainer>

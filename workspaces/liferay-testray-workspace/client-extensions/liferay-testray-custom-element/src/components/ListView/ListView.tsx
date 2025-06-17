@@ -179,8 +179,6 @@ const ListView: React.FC<ListViewProps> = ({
 
 		const filters: {[key: string]: string | undefined | boolean} = {};
 
-		console.log(appliedFilters)
-
 		Object.entries(appliedFilters).forEach(([key, value]) => {
 			const matchingField = filterSchema.fields.find(
 				(field) => field.name === key && field.isCustomFilter

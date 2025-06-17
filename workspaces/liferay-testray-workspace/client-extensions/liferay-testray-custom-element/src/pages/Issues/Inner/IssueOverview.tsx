@@ -6,45 +6,31 @@
 import ClayChart from '@clayui/charts';
 import ClayIcon from '@clayui/icon';
 import ClayPanel from '@clayui/panel';
-import classNames from 'classnames';
-import {useEffect, useMemo, useRef, useState} from 'react';
-import Loading from '~/components/Loading';
-import {useCaseResultsChart} from '~/hooks/useCaseResultsChart';
-import {safeJSONParse} from '~/util';
-import {useFetch} from '~/hooks/useFetch';
-import {
-	APIResponse,
-	TestrayCaseDetail,
-	TestrayCaseResult,
-	TestrayJiraIssue,
-	TestrayJiraProject,
-	TestraySubtask,
-	testraySubtaskImpl,
-} from '../../../services/rest';
-import JiraLink from '../../../components/JiraLink';
-import {StatusesProgressScore, chartClassNames} from '~/util/constants';
+import {useRef} from 'react';
+import {Link, useOutletContext} from 'react-router-dom';
+import TaskbarProgress from '~/components/ProgressBar/TaskbarProgress';
+import {chartClassNames} from '~/util/constants';
+
 import Container from '../../../components/Layout/Container';
 import QATable from '../../../components/Table/QATable';
-import useCaseResultGroupBy, {useTotalTestCasesByTestrayJiraIssue} from '../../../hooks/data/useCaseResultGroupBy';
-import useIssuesFound from '../../../hooks/data/useIssuesFound';
+import useCaseResultGroupBy, {
+	useTotalTestCasesByTestrayJiraIssue,
+} from '../../../hooks/data/useCaseResultGroupBy';
 import i18n from '../../../i18n';
-import {formatUTCDate} from '../../../util/date';
+import {
+	TestrayCaseDetail,
+	TestrayJiraIssue,
+	TestrayJiraProject,
+} from '../../../services/rest';
 import {getDonutLegend} from '../../../util/graph';
-import {Link, useNavigate, useOutletContext, useParams} from 'react-router-dom';
-import TaskbarProgress from '~/components/ProgressBar/TaskbarProgress';
-import ChildIssues from '.';
-import { testrayJiraIssueImpl } from '~/services/rest/TestrayJiraIssue';
-import { testrayCaseDetailImpl } from '~/services/rest/TestrayCaseDetail';
-import { title } from 'process';
-
 
 type IssueOverviewProps = {
 	testrayJiraIssue: TestrayJiraIssue;
 };
 
 type OutletContext = {
-	testrayJiraProject: TestrayJiraProject;
 	testrayCaseDetail: TestrayCaseDetail;
+	testrayJiraProject: TestrayJiraProject;
 };
 
 const ShortcutIcon = () => (
@@ -52,17 +38,17 @@ const ShortcutIcon = () => (
 );
 
 const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue}) => {
-
 	const ref = useRef<any>();
-	const totalTestCasesGroup = useTotalTestCasesByTestrayJiraIssue(testrayJiraIssue);
-	const {testrayJiraProject, testrayCaseDetail} : OutletContext = useOutletContext();
+	const totalTestCasesGroup =
+		useTotalTestCasesByTestrayJiraIssue(testrayJiraIssue);
+	const {testrayCaseDetail, testrayJiraProject}: OutletContext =
+		useOutletContext();
 
 	const {
 		donut: {columns},
 	} = useCaseResultGroupBy(testrayCaseDetail?.r_buildToCaseDetail_c_buildId);
 
-	const items = 
-	[
+	const items = [
 		{
 			title: i18n.translate('project-name'),
 			value: (
@@ -88,12 +74,11 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue}) => {
 					<ShortcutIcon />
 				</Link>
 			),
-		}
-	]
+		},
+	];
 
-	if(testrayCaseDetail){
-		items.push(
-		{
+	if (testrayCaseDetail) {
+		items.push({
 			title: i18n.translate('build-name'),
 			value: (
 				<Link
@@ -105,7 +90,7 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue}) => {
 					<ShortcutIcon />
 				</Link>
 			),
-		})
+		});
 	}
 
 	return (
@@ -113,15 +98,15 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue}) => {
 			<Container collapsable title={testrayJiraIssue.title}>
 				<div className="d-flex flex-wrap">
 					<div className="col-3 col-md-12 mb-5 p-0">
-						<QATable
-							items={items}
-						/>
+						<QATable items={items} />
 
 						<div className="pb-2">
 							<TaskbarProgress
 								displayTotalCompleted={false}
 								items={columns as any}
-								legend={!!testrayCaseDetail?.r_buildToCaseDetail_c_buildId}
+								legend={
+									!!testrayCaseDetail?.r_buildToCaseDetail_c_buildId
+								}
 								taskbarClassNames={chartClassNames}
 							/>
 						</div>
@@ -140,8 +125,9 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue}) => {
 					showCollapseIcon
 				>
 					<ClayPanel.Body>
-						<div className="c-py-2 c-px-3">
-							<div className="tr-issue-description"
+						<div className="c-px-3 c-py-2">
+							<div
+								className="tr-issue-description"
 								dangerouslySetInnerHTML={{
 									__html: testrayJiraIssue?.description ?? '',
 								}}
@@ -157,11 +143,10 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue}) => {
 				title={i18n.translate('total-test-cases')}
 			>
 				<div className="d-flex justify-content-between row">
-					<div className='align-items-center d-flex col'>
+					<div className="align-items-center col d-flex">
 						{totalTestCasesGroup.ready && (
 							<div className="col-8">
 								<ClayChart
-									key={testrayJiraIssue.id}
 									data={{
 										colors: totalTestCasesGroup.colors,
 										columns:
@@ -179,19 +164,25 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue}) => {
 										title: totalTestCasesGroup.donut.total.toString(),
 										width: 15,
 									}}
+									key={testrayJiraIssue.id}
 									legend={{show: false}}
 									onafterinit={() => {
-										const elementId = 'testrayTotalMetricsGraphLegend';
-										const legendContainer = document.getElementById(elementId);
-									
+										const elementId =
+											'testrayTotalMetricsGraphLegend';
+										const legendContainer =
+											document.getElementById(elementId);
+
 										if (legendContainer) {
-											legendContainer.innerHTML = ''; 
+											legendContainer.innerHTML = '';
 										}
-									
+
 										getDonutLegend(ref.current, {
-											data: totalTestCasesGroup.donut.columns.map(([name]) => name),
+											data: totalTestCasesGroup.donut.columns.map(
+												([name]) => name
+											),
 											elementId,
-											total: totalTestCasesGroup.donut.total as number,
+											total: totalTestCasesGroup.donut
+												.total as number,
 										});
 									}}
 									ref={ref}

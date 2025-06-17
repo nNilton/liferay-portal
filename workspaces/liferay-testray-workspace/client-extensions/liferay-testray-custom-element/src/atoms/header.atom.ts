@@ -36,7 +36,7 @@ export type HeaderTabs = {
 
 export type HeaderTitle = {
 	category?: string;
-	icon?: string; //TODO: add story/epic icons and look at TestrayIcon
+	icon?: string; // TODO: add story/epic icons and look at TestrayIcon
 	path?: string;
 	title: string;
 };

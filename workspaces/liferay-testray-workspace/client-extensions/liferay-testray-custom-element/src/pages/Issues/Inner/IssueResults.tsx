@@ -3,48 +3,46 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import Container from '~/components/Layout/Container';
-import PageContainer from '~/components/Layout/Container'
-import ListView from '~/components/ListView';
-import {useHeader} from '~/hooks';
-import i18n from '~/i18n';
 import ClayIcon from '@clayui/icon';
-import {useNavigate, useOutletContext, useParams} from 'react-router-dom';
-import { TestrayJiraIssue } from '~/services/rest';
-import StatusBadge from '~/components/StatusBadge';
-import { StatusBadgeType } from '~/components/StatusBadge/StatusBadge';
+import {ClayTooltipProvider} from '@clayui/tooltip';
+import {useOutletContext} from 'react-router-dom';
 import JiraLink from '~/components/JiraLink';
-import { ClayTooltipProvider } from '@clayui/tooltip';
+import Container from '~/components/Layout/Container';
+import ListView from '~/components/ListView';
+import StatusBadge from '~/components/StatusBadge';
+import {StatusBadgeType} from '~/components/StatusBadge/StatusBadge';
+import i18n from '~/i18n';
+import {TestrayJiraIssue} from '~/services/rest';
 
 type OutletContext = {
 	testrayJiraIssue: TestrayJiraIssue;
 };
 
 const IssueResults = () => {
-	const {testrayJiraIssue} : OutletContext = useOutletContext();
+	const {testrayJiraIssue}: OutletContext = useOutletContext();
 
-    const filter = `caseDetailsToIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}'`;
+	const filter = `caseDetailsToIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}'`;
 
 	return (
 		<Container>
 			<ListView
 				initialContext={{
 					pageSize: 50,
-                    sort:{
-                        direction: 'ASC',
-                        key: 'dueStatus'
-                    },
-                }}
+					sort: {
+						direction: 'ASC',
+						key: 'dueStatus',
+					},
+				}}
 				managementToolbarProps={{
 					applyFilters: true,
 					display: {columns: false},
-                    filterSchema: 'issueResults',
+					filterSchema: 'issueResults',
 					title: i18n.translate('jira-issue-results'),
 				}}
-				resource={`/casedetails/?nestedFields=caseToCaseDetails,caseDetailsToIssues`}
+				resource="/casedetails/?nestedFields=caseToCaseDetails,caseDetailsToIssues"
 				tableProps={{
 					columns: [
-                        {
+						{
 							clickable: true,
 							key: 'flaky',
 							render: (_, {caseToCaseDetails}) => (
@@ -71,8 +69,8 @@ const IssueResults = () => {
 						},
 						{
 							clickable: true,
-							size: 'md',
 							key: 'name',
+							size: 'md',
 							value: i18n.translate('test'),
 						},
 						{
@@ -98,13 +96,19 @@ const IssueResults = () => {
 						{
 							key: 'issues',
 							render: (_, {caseDetailsToIssues}) => (
-                                <>
+								<>
 									{caseDetailsToIssues.map(
-										(issue: TestrayJiraIssue, _: number) => (
-                                            <JiraLink
-                                                displayViewInJira={false}
-                                                issue={issue.externalReferenceCode}
-                                            />
+										(
+											issue: TestrayJiraIssue,
+											_: number
+										) => (
+											<JiraLink
+												displayViewInJira={false}
+												issue={
+													issue.externalReferenceCode
+												}
+												key={issue.id}
+											/>
 										)
 									)}
 								</>
@@ -112,10 +116,11 @@ const IssueResults = () => {
 							value: i18n.translate('issues'),
 						},
 					],
-					navigateTo: (caseDetail) => `/project/${caseDetail.caseToCaseDetails?.r_projectToCases_c_projectId}/cases/${caseDetail.caseToCaseDetails?.id}`,
+					navigateTo: (caseDetail) =>
+						`/project/${caseDetail.caseToCaseDetails?.r_projectToCases_c_projectId}/cases/${caseDetail.caseToCaseDetails?.id}`,
 				}}
 				variables={{
-					filter: filter,
+					filter,
 				}}
 			/>
 		</Container>

@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import Action from 'pusher-js/types/src/core/connection/protocol/action';
 import {StatusBadgeType} from '../../components/StatusBadge/StatusBadge';
 import {DescriptionType} from '../../types';
 
@@ -115,25 +114,25 @@ export type TestrayJiraProject = {
 	externalReferenceCode: string;
 	id: number;
 	name: string;
+	projectToJiraProjects?: TestrayProject;
+	r_projectToJiraProjects_c_projectId: number;
 	r_routineToJiraProject_c_routineId: number;
 	routineToJiraProject?: TestrayRoutine;
-	r_projectToJiraProjects_c_projectId: number;
-	projectToJiraProjects?: TestrayProject;
-}
+};
 
 export type TestrayJiraIssue = {
 	actions?: ObjectActionsItems;
-	id: number;
-	title: string;
-	issueType: PickList;
 	description: string;
-	projectType: PickList;
-	externalReferenceCode: string;
-	parentIssueERC: string;
-	initiativeERC: string;
 	epicERC: string;
+	externalReferenceCode: string;
+	id: number;
+	initiativeERC: string;
+	issueType: PickList;
+	parentIssueERC: string;
+	projectType: PickList;
 	storyERC: string;
-}
+	title: string;
+};
 
 export type TestrayBuild = {
 	actions: ObjectActionsItems;
@@ -270,9 +269,9 @@ export type TestrayCaseType = {
 
 export type TestrayCaseDetail = {
 	buildToCaseDetail?: TestrayBuild;
+	dueStatus: PickList;
 	id: string;
 	name: string;
-	dueStatus: PickList;
 	r_buildToCaseDetail_c_buildId: number;
 };
 

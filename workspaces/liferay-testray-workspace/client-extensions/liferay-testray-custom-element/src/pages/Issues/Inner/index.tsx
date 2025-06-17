@@ -3,22 +3,23 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {useOutletContext} from 'react-router-dom';
 import Container from '~/components/Layout/Container';
 import ListView from '~/components/ListView';
-import {useHeader} from '~/hooks';
-import i18n from '~/i18n';
-import {useNavigate, useOutletContext, useParams} from 'react-router-dom';
-import { TestrayJiraIssue } from '~/services/rest';
 import ProgressBar from '~/components/ProgressBar';
+import i18n from '~/i18n';
+import {TestrayJiraIssue} from '~/services/rest';
 
 type OutletContext = {
 	testrayJiraIssue: TestrayJiraIssue;
 };
 
 const ChildIssues = () => {
-	const {testrayJiraIssue} : OutletContext = useOutletContext();
+	const {testrayJiraIssue}: OutletContext = useOutletContext();
 
-	const clickable = testrayJiraIssue.issueType.name !== 'STORY' && testrayJiraIssue.issueType.name !== 'TASK';
+	const clickable =
+		testrayJiraIssue.issueType.name !== 'STORY' &&
+		testrayJiraIssue.issueType.name !== 'TASK';
 
 	return (
 		<Container className="mt-4">
@@ -27,9 +28,9 @@ const ChildIssues = () => {
 					columns: {
 						inprogress: false,
 						passed: false,
+						testfix: false,
 						total: false,
 						untested: false,
-						testfix: false,
 					},
 					columnsFixed: ['testrayIssueTitle'],
 				}}
@@ -42,19 +43,19 @@ const ChildIssues = () => {
 				tableProps={{
 					columns: [
 						{
-							clickable: clickable,
+							clickable,
 							key: 'testrayIssueKey',
 							size: 'sm',
 							value: i18n.translate('issueKey'),
 						},
 						{
-							clickable: clickable,
-							size: 'sm',
+							clickable,
 							key: 'testrayIssueType',
+							size: 'sm',
 							value: i18n.translate('issue-type'),
 						},
 						{
-							clickable: clickable,
+							clickable,
 							key: 'testrayIssueTitle',
 							size: 'lg',
 							value: i18n.translate('title'),

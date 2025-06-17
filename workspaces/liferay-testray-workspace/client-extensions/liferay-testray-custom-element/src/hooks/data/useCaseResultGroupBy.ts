@@ -6,7 +6,13 @@
 import {useCallback, useMemo} from 'react';
 
 import SearchBuilder from '../../core/SearchBuilder';
-import {APIResponse, FacetAggregation, TestrayBuild, Facets, TestrayCaseDetail, TestrayJiraIssue} from '../../services/rest';
+import {
+	APIResponse,
+	FacetAggregation,
+	TestrayBuild,
+	TestrayCaseDetail,
+	TestrayJiraIssue,
+} from '../../services/rest';
 import {chartColors} from '../../util/constants';
 import {CaseResultStatuses} from '../../util/statuses';
 import {useFetch} from '../useFetch';
@@ -33,7 +39,6 @@ const getAggregationValue = (value: number | string) =>
 	value ? Number(value) : 0;
 
 const useTotalTestCasesByTestrayBuild = (testrayBuild: TestrayBuild) => {
-
 	const donutColumns = useMemo(
 		() => [
 			[
@@ -87,51 +92,57 @@ const useTotalTestCasesByTestrayBuild = (testrayBuild: TestrayBuild) => {
 	);
 };
 
-const useTotalTestCasesByTestrayJiraIssue = (testrayJiraIssue: TestrayJiraIssue) => {
+const useTotalTestCasesByTestrayJiraIssue = (
+	testrayJiraIssue: TestrayJiraIssue
+) => {
 	const {data, loading} = useFetch<APIResponse<TestrayCaseDetail>>(
-		`/casedetails`, {
-			params:{
+		`/casedetails`,
+		{
+			params: {
 				aggregationTerms: 'dueStatus',
 				fields: 'id',
 				filter: `caseDetailsToIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}'`,
-				pageSize: 10
-			}
+				pageSize: 10,
+			},
 		}
 	);
 
 	const donutColumns = useMemo(() => {
-		if(!data){
+		if (!data) {
 			return [
 				[CaseResultStatuses.PASSED, 0],
 				[CaseResultStatuses.FAILED, 0],
 				[CaseResultStatuses.BLOCKED, 0],
 				[CaseResultStatuses.TEST_FIX, 0],
 				[CaseResultStatuses.INCOMPLETE, 0],
-			  ];
+			];
 		}
 
 		const statusCounts: Record<string, number> = {
-			PASSED: 0,
-			FAILED: 0,
 			BLOCKED: 0,
-			TEST_FIX: 0,
+			FAILED: 0,
 			INCOMPLETE: 0,
+			PASSED: 0,
+			TEST_FIX: 0,
 			UNTESTED: 0,
-		  };
-	  
-		  data.facets[0].facetValues.forEach(({ term, numberOfOccurrences }) => {
+		};
+
+		data.facets[0].facetValues.forEach(({numberOfOccurrences, term}) => {
 			if (term in statusCounts) {
-			  statusCounts[term] = numberOfOccurrences;
+				statusCounts[term] = numberOfOccurrences;
 			}
-		  });
-	  
-		  return [
+		});
+
+		return [
 			[CaseResultStatuses.PASSED, statusCounts.PASSED],
 			[CaseResultStatuses.FAILED, statusCounts.FAILED],
 			[CaseResultStatuses.BLOCKED, statusCounts.BLOCKED],
 			[CaseResultStatuses.TEST_FIX, statusCounts.TEST_FIX],
-			[CaseResultStatuses.INCOMPLETE, statusCounts.INCOMPLETE + statusCounts.UNTESTED],
-		  ];
+			[
+				CaseResultStatuses.INCOMPLETE,
+				statusCounts.INCOMPLETE + statusCounts.UNTESTED,
+			],
+		];
 	}, [data]);
 
 	return useMemo(
@@ -149,7 +160,7 @@ const useTotalTestCasesByTestrayJiraIssue = (testrayJiraIssue: TestrayJiraIssue)
 			ready: !loading,
 			statuses: Object.values(CaseResultStatuses),
 		}),
-		[donutColumns, testrayJiraIssue]
+		[donutColumns, loading]
 	);
 };
 
