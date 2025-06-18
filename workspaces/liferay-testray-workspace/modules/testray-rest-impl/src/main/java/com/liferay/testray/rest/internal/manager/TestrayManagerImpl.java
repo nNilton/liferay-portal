@@ -520,9 +520,10 @@ public class TestrayManagerImpl implements TestrayManager {
 					}
 				},
 				new DefaultDTOConverterContext(
-						false, null, null, null, null, LocaleUtil.getSiteDefault(), null,
-						_userLocalService.fetchUser(userId)), "buildId eq '" + testrayBuildId + "'",
-				Pagination.of(1, 8), null, null);
+					false, null, null, null, null, LocaleUtil.getSiteDefault(),
+					null, _userLocalService.fetchUser(userId)),
+				"buildId eq '" + testrayBuildId + "'", Pagination.of(1, 8),
+				null, null);
 
 		List<Facet> facets = objectEntriesPage.getFacets();
 
@@ -632,8 +633,7 @@ public class TestrayManagerImpl implements TestrayManager {
 			() -> HashMapBuilder.<String, Object>put(
 				"caseDetailsToIssues",
 				_getCaseResultsToIssues(
-					StringUtil.split(propertiesMap.get("testray.jira.issues")),
-					testrayCache.getObjectDefinition("JiraIssue"))
+					StringUtil.split(propertiesMap.get("testray.jira.issues")))
 			).put(
 				"dueStatus",
 				() -> {
@@ -1093,30 +1093,10 @@ public class TestrayManagerImpl implements TestrayManager {
 		return attributeNode.getTextContent();
 	}
 
-	private Object[] _getCaseResultsToIssues(
-		String[] jiraIssues, ObjectDefinition objectDefinition) {
-
+	private Object[] _getCaseResultsToIssues(String[] jiraIssues) {
 		List<Map<String, String>> list = new ArrayList<>();
 
 		for (String jiraIssue : jiraIssues) {
-			ObjectEntry objectEntry = _objectEntryLocalService.fetchObjectEntry(
-				StringUtil.trim(jiraIssue),
-				objectDefinition.getObjectDefinitionId());
-
-			if (objectEntry != null) {
-				list.add(
-					HashMapBuilder.put(
-						"description",
-						GetterUtil.getString(
-							objectEntry.getValues(
-							).get(
-								"description"
-							))
-					).put(
-						"externalReferenceCode", StringUtil.trim(jiraIssue)
-					).build());
-			}
-
 			list.add(
 				Collections.singletonMap(
 					"externalReferenceCode", StringUtil.trim(jiraIssue)));
