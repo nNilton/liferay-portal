@@ -1,0 +1,309 @@
+/**
+ * SPDX-FileCopyrightText: (c) 2025 Liferay, Inc. https://liferay.com
+ * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
+ */
+
+package com.liferay.testray;
+
+import com.liferay.client.extension.util.spring.boot3.BaseRestController;
+import com.liferay.client.extension.util.spring.boot3.client.LiferayOAuth2AccessTokenManager;
+import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.util.ArrayUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
+
+import java.util.Map;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.util.UriComponentsBuilder;
+
+/**
+ * @author Nilton Vieira
+ */
+@CrossOrigin("*")
+@EnableScheduling
+@RequestMapping("/jira/issues")
+@RestController
+public class JiraIssuesRestController extends BaseRestController {
+
+	@PutMapping("/{issueKey}")
+	@ResponseBody
+	public ResponseEntity<Object> putIssue(
+		@PathVariable String issueKey, @RequestBody String json) {
+
+		JSONObject jsonObject = new JSONObject(json);
+
+		put(
+			_getJiraAuthorization(),
+			new JSONObject(
+			).put(
+				"fields",
+				new JSONObject(
+				).put(
+					"customfield_10202",
+					jsonObject.getJSONArray("testrayCaseNames")
+				)
+			).toString(),
+			UriComponentsBuilder.fromHttpUrl(
+				"https://liferay.atlassian.net/rest/api/3/issue/{issueKey}"
+			).build(
+				issueKey
+			));
+
+		return new ResponseEntity<>(HttpStatus.OK);
+	}
+
+	@Scheduled(cron = "${liferay.testray.jira.sync.cron}")
+	public void scheduledSyncJiraIssues() {
+		if (_log.isInfoEnabled()) {
+			_log.info("Syncing Jira issues");
+		}
+
+		_syncJiraIssues();
+	}
+
+	@PostMapping("/sync")
+	@ResponseBody
+	public ResponseEntity<Object> sync() {
+		_syncJiraIssues();
+
+		return new ResponseEntity<>(HttpStatus.OK);
+	}
+
+	private String _getJiraAuthorization() {
+		return "";
+	}
+
+	private String _getLiferayAuthorization() {
+		return _liferayOAuth2AccessTokenManager.getAuthorization(
+			"liferay-testray-etc-spring-boot-oauth-application-headless-" +
+				"server");
+	}
+
+	private String _getNestedKey(JSONObject jsonObject, String... keys) {
+		if (!jsonObject.has(keys[0])) {
+			return StringPool.BLANK;
+		}
+
+		if (keys.length == 1) {
+			return jsonObject.getString(keys[0]);
+		}
+
+		return _getNestedKey(
+			jsonObject.getJSONObject(keys[0]),
+			ArrayUtil.subset(keys, 1, keys.length));
+	}
+
+	private Map<String, String> _getParentIssuesMap(String parentKey) {
+		if (Validator.isNull(parentKey)) {
+			return HashMapBuilder.put(
+				"r_epic_c_issueERC", ""
+			).put(
+				"r_initiative_c_issueERC", ""
+			).put(
+				"r_parentIssue_c_issueERC", ""
+			).put(
+				"r_story_c_issueERC", ""
+			).put(
+				"r_task_c_issueERC", ""
+			).build();
+		}
+
+		try {
+			JSONObject jsonObject = new JSONObject(
+				get(
+					_getLiferayAuthorization(),
+					UriComponentsBuilder.fromPath(
+						"/o/c/jiraissues/by-external-reference-code/{parentKey}"
+					).build(
+						parentKey
+					)));
+
+			return HashMapBuilder.put(
+				"r_epic_c_issueERC", jsonObject.getString("epicERC")
+			).put(
+				"r_initiative_c_issueERC", jsonObject.getString("initiativeERC")
+			).put(
+				"r_parentIssue_c_issueERC",
+				jsonObject.getString("externalReferenceCode")
+			).put(
+				"r_story_c_issueERC", jsonObject.getString("storyERC")
+			).put(
+				"r_task_c_issueERC", jsonObject.getString("taskERC")
+			).put(
+				_getRelationshipName(
+					_getNestedKey(jsonObject, "issueType", "name")),
+				jsonObject.getString("externalReferenceCode")
+			).build();
+		}
+		catch (WebClientResponseException webClientResponseException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(webClientResponseException);
+			}
+
+			JSONObject jsonObject = new JSONObject(
+				get(
+					_getJiraAuthorization(),
+					UriComponentsBuilder.fromHttpUrl(
+						"https://liferay.atlassian.net/rest/api/3/issue" +
+							"/{parentKey}"
+					).queryParam(
+						"expand", "renderedFields"
+					).queryParam(
+						"fields", "description,issuetype,parent,project,summary"
+					).build(
+						parentKey
+					)));
+
+			return _importTestrayJiraIssue(jsonObject);
+		}
+	}
+
+	private String _getRelationshipName(String issueType) {
+		return "r_" + StringUtil.lowerCase(issueType) + "_c_issueERC";
+	}
+
+	private Map<String, String> _importTestrayJiraIssue(JSONObject jsonObject) {
+		Map<String, String> map = _getParentIssuesMap(
+			_getNestedKey(jsonObject, "fields", "parent", "key"));
+
+		put(
+			_getLiferayAuthorization(),
+			new JSONObject(
+			).put(
+				"description",
+				_getNestedKey(jsonObject, "renderedFields", "description")
+			).put(
+				"issueType",
+				StringUtil.removeSubstring(
+					StringUtil.upperCase(
+						_getNestedKey(
+							jsonObject, "fields", "issuetype", "name")),
+					" ")
+			).put(
+				"r_jiraProjectToJiraIssue_c_jiraProjectERC",
+				_getNestedKey(jsonObject, "fields", "project", "key")
+			).put(
+				"title", _getNestedKey(jsonObject, "fields", "summary")
+			).put(
+				"r_epic_c_issueERC", map.get("r_epic_c_issueERC")
+			).put(
+				"r_initiative_c_issueERC", map.get("r_initiative_c_issueERC")
+			).put(
+				"r_parentIssue_c_issueERC", map.get("r_parentIssue_c_issueERC")
+			).put(
+				"r_story_c_issueERC", map.get("r_story_c_issueERC")
+			).put(
+				"r_task_c_issueERC", map.get("r_task_c_issueERC")
+			).toString(),
+			UriComponentsBuilder.fromPath(
+				"/o/c/jiraissues/by-external-reference-code/{issueKey}"
+			).build(
+				jsonObject.getString("key")
+			));
+
+		map.put("r_parentIssue_c_issueERC", jsonObject.getString("key"));
+		map.put(
+			_getRelationshipName(
+				_getNestedKey(jsonObject, "fields", "issuetype", "name")),
+			jsonObject.getString("key"));
+
+		return map;
+	}
+
+	private void _syncJiraIssues() {
+		for (int page = 1;; page++) {
+			JSONObject jsonObject = new JSONObject(
+				get(
+					_getLiferayAuthorization(),
+					UriComponentsBuilder.fromPath(
+						"/o/c/jiraissues"
+					).queryParam(
+						"filter", "issueType eq null or issueType eq ''"
+					).queryParam(
+						"fields", "externalReferenceCode"
+					).queryParam(
+						"page", "{page}"
+					).queryParam(
+						"pageSize", 50
+					).build(
+						page
+					)));
+
+			JSONArray jsonArray = jsonObject.getJSONArray("items");
+
+			if (jsonArray.isEmpty()) {
+				return;
+			}
+
+			JSONObject jiraQueryJSONObject = new JSONObject(
+				get(
+					_getJiraAuthorization(),
+					UriComponentsBuilder.fromHttpUrl(
+						"https://liferay.atlassian.net/rest/api/3/search"
+					).queryParam(
+						"jql", "issuekey in ({issueKeys})"
+					).queryParam(
+						"expand", "renderedFields"
+					).queryParam(
+						"fields", "description,issuetype,parent,project,summary"
+					).build(
+						StringUtil.merge(
+							TransformUtil.transform(
+								jsonArray.toList(),
+								item -> {
+									Map<String, Object> itemJSONObject =
+										(Map<String, Object>)item;
+
+									return itemJSONObject.get(
+										"externalReferenceCode");
+								}))
+					)));
+
+			JSONArray issuesJSONArray = jiraQueryJSONObject.getJSONArray(
+				"issues");
+
+			for (int i = 0; i < issuesJSONArray.length(); i++) {
+				JSONObject issueJSONObject = issuesJSONArray.getJSONObject(i);
+
+				_importTestrayJiraIssue(issueJSONObject);
+			}
+
+			if (page == jsonObject.getInt("lastPage")) {
+				break;
+			}
+		}
+	}
+
+	private static final Log _log = LogFactory.getLog(
+		JiraIssuesRestController.class);
+
+	@Autowired
+	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
+
+	@Value("{liferay.oauth.application.external.reference.codes}")
+	private String _liferayOAuthApplicationExternalReferenceCodes;
+
+}
