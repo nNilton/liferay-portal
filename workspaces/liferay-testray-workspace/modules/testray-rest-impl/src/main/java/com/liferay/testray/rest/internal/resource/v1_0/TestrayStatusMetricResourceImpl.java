@@ -408,43 +408,44 @@ public class TestrayStatusMetricResourceImpl
 			testrayIssueMap.get("issueType")
 		).toLowerCase();
 
-		StringBundler sb = new StringBundler(31);
+		StringBundler sb = new StringBundler(32);
 
-		sb.append("select i.c_issueid_, i.issuetype_, i.title_, ");
+		sb.append("select i.c_jiraissueid_, i.issuetype_, i.title_, ");
 		sb.append("oe.externalreferencecode, blocked, failed, incomplete,");
-		sb.append("inprogress, passed, testfix, untested from ");
-		sb.append("O_[%COMPANY_ID%]_issue i join objectentry oe ON ");
-		sb.append("i.c_issueid_ = oe.objectentryid left join (select i.");
+		sb.append("inprogress, passed, testfix, total, untested from ");
+		sb.append("O_[%COMPANY_ID%]_jiraissue i join objectentry oe ON ");
+		sb.append("i.c_jiraissueid_ = oe.objectentryid left join (select i.");
 		sb.append(StringUtil.merge(_childRelationships.get(issueType), ", i."));
-		sb.append(", sum(case when duestatus_ = 'BLOCKED' then 1 else 0 end) ");
-		sb.append("as blocked, sum(case when duestatus_ = 'FAILED' then 1 ");
-		sb.append("else 0 end) as failed, sum(case when duestatus_ = ");
-		sb.append("'INCOMPLETE' then 1 else 0 end) as incomplete, sum(case ");
-		sb.append("when duestatus_ = 'INPROGRESS' then 1 else 0 end) as ");
-		sb.append("inprogress, sum(case when duestatus_ = 'PASSED' then 1 ");
-		sb.append("else 0 end) as passed, sum(case when duestatus_ = ");
-		sb.append("'TESTFIX' then 1 else 0 end) as testfix, sum(case when ");
-		sb.append("duestatus_ = 'UNTESTED' then 1 else 0 end) as untested ");
-		sb.append("from ");
+		sb.append(", count(duestatus_) as total, sum(case when duestatus_ = ");
+		sb.append("'BLOCKED' then 1 else 0 end) as blocked, sum(case when ");
+		sb.append("duestatus_ = 'FAILED' then 1 else 0 end) as failed, ");
+		sb.append("sum(case when duestatus_ = 'INCOMPLETE' then 1 else 0 ");
+		sb.append("end) as incomplete, sum(case when duestatus_ = ");
+		sb.append("'INPROGRESS' then 1 else 0 end) as inprogress, sum(case ");
+		sb.append("when duestatus_ = 'PASSED' then 1 else 0 end) as passed, ");
+		sb.append("sum(case when duestatus_ = 'TESTFIX' then 1 else 0 end) ");
+		sb.append("as testfix, sum(case when duestatus_ = 'UNTESTED' then 1 ");
+		sb.append("else 0 end) as untested from ");
 		sb.append(_getRelationshipTableName());
-		sb.append(" rel join o_[%COMPANY_ID%]_issue_x i ON i.c_issueid_ = ");
-		sb.append("rel.c_issueid_ join o_[%COMPANY_ID%]_casedetail cd on ");
-		sb.append("cd.c_casedetailid_ = rel.c_casedetailid_ where i.r_");
+		sb.append(" rel join o_[%COMPANY_ID%]_jiraissue i ON ");
+		sb.append("i.c_jiraissueid_ = rel.c_jiraissueid_ join ");
+		sb.append("o_[%COMPANY_ID%]_casedetail cd on cd.c_casedetailid_ = ");
+		sb.append("rel.c_casedetailid_ where i.r_");
 		sb.append(issueType);
 		sb.append("_c_issueid = ? group by i.");
 		sb.append(StringUtil.merge(_childRelationships.get(issueType), ", i."));
-		sb.append(") as status on i.c_issueid_ = status.");
+		sb.append(") as status on i.c_jiraissueid_ = status.");
 		sb.append(_childRelationships.get(issueType)[0]);
 
 		if (StringUtil.equalsIgnoreCase(issueType, "epic")) {
-			sb.append(" or i.c_issueid_ = status.");
+			sb.append(" or i.c_jiraissueid_ = status.");
 			sb.append(_childRelationships.get(issueType)[1]);
 		}
 
 		sb.append(" where i.r_parentissue_c_issueid = ? group by ");
-		sb.append("i.c_issueid_, i.issuetype_, i.title_, ");
+		sb.append("i.c_jiraissueid_, i.issuetype_, i.title_, ");
 		sb.append("oe.externalreferencecode, blocked, failed, incomplete, ");
-		sb.append("inprogress, passed, testfix, untested");
+		sb.append("inprogress, passed, testfix, total, untested");
 
 		List<Object> params = new ArrayList<>();
 
@@ -476,8 +477,10 @@ public class TestrayStatusMetricResourceImpl
 							value.get("externalreferencecode"));
 						testrayIssueTitle = GetterUtil.getString(
 							value.get("title_"));
-						testrayIssueType = GetterUtil.getString(
-							value.get("issuetype_"));
+						testrayIssueType = StringUtil.getTitleCase(
+							StringUtil.toLowerCase(
+								GetterUtil.getString(value.get("issuetype_"))),
+							false, "");
 						testrayStatusMetric = _getTestrayStatusMetric(value);
 					}
 				}),
@@ -764,9 +767,9 @@ public class TestrayStatusMetricResourceImpl
 		).put(
 			"initiative", new String[] {"r_epic_c_issueid"}
 		).put(
-			"story", new String[] {"c_issueid_"}
+			"story", new String[] {"c_jiraissueid_"}
 		).put(
-			"task", new String[] {"c_issueid_"}
+			"task", new String[] {"c_jiraissueid_"}
 		).build();
 
 	@Reference(
