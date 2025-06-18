@@ -984,7 +984,7 @@ const filterSchema = {
 			},
 			{
 				isCustomFilter: false,
-				label: i18n.translate('issue-title'),
+				label: i18n.translate('title'),
 				name: 'title',
 				operator: 'contains',
 				type: 'text',

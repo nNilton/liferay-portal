@@ -45,9 +45,9 @@ const IssueResults = () => {
 						{
 							clickable: true,
 							key: 'flaky',
-							render: (_, {caseToCaseDetails}) => (
+							render: (_, {r_caseToCaseDetails_c_case}) => (
 								<>
-									{caseToCaseDetails.flaky && (
+									{r_caseToCaseDetails_c_case.flaky && (
 										<ClayTooltipProvider>
 											<span
 												className="tr-table__row__flaky-icon"
@@ -60,7 +60,7 @@ const IssueResults = () => {
 											</span>
 										</ClayTooltipProvider>
 									)}
-									{caseToCaseDetails.name}
+									{r_caseToCaseDetails_c_case.name}
 								</>
 							),
 							size: 'md',
@@ -76,8 +76,8 @@ const IssueResults = () => {
 						{
 							clickable: true,
 							key: 'priority',
-							render: (_, {caseToCaseDetails}) =>
-								caseToCaseDetails.priority,
+							render: (_, {r_caseToCaseDetails_c_case}) =>
+								r_caseToCaseDetails_c_case.priority,
 							size: 'sm',
 							value: i18n.translate('priority'),
 						},
@@ -117,7 +117,7 @@ const IssueResults = () => {
 						},
 					],
 					navigateTo: (caseDetail) =>
-						`/project/${caseDetail.caseToCaseDetails?.r_projectToCases_c_projectId}/cases/${caseDetail.caseToCaseDetails?.id}`,
+						`/project/${caseDetail.r_caseToCaseDetails_c_case?.r_projectToCases_c_projectId}/cases/${caseDetail.r_caseToCaseDetails_c_case?.id}`,
 				}}
 				variables={{
 					filter,

@@ -25,11 +25,11 @@ import {
 import {getDonutLegend} from '../../../util/graph';
 
 type IssueOverviewProps = {
+	testrayCaseDetail: TestrayCaseDetail;
 	testrayJiraIssue: TestrayJiraIssue;
 };
 
 type OutletContext = {
-	testrayCaseDetail: TestrayCaseDetail;
 	testrayJiraProject: TestrayJiraProject;
 };
 
@@ -37,11 +37,11 @@ const ShortcutIcon = () => (
 	<ClayIcon className="ml-2" fontSize={12} symbol="shortcut" />
 );
 
-const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue}) => {
+const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue, testrayCaseDetail}) => {
 	const ref = useRef<any>();
 	const totalTestCasesGroup =
 		useTotalTestCasesByTestrayJiraIssue(testrayJiraIssue);
-	const {testrayCaseDetail, testrayJiraProject}: OutletContext =
+	const {testrayJiraProject}: OutletContext =
 		useOutletContext();
 
 	const {
