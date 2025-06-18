@@ -18,8 +18,8 @@ const ChildIssues = () => {
 	const {testrayJiraIssue}: OutletContext = useOutletContext();
 
 	const clickable =
-		testrayJiraIssue.issueType.name !== 'STORY' &&
-		testrayJiraIssue.issueType.name !== 'TASK';
+		testrayJiraIssue.issueType.key !== 'STORY' &&
+		testrayJiraIssue.issueType.key !== 'TASK';
 
 	return (
 		<Container className="mt-4">
@@ -37,7 +37,7 @@ const ChildIssues = () => {
 				managementToolbarProps={{
 					applyFilters: true,
 					display: {columns: true},
-					title: i18n.translate('jira-child-issue'),
+					title: i18n.translate('jira-child-issues'),
 				}}
 				resource={`/testray-status-metrics/by-testray-issueId/${testrayJiraIssue.id}/testray-issues-metrics`}
 				tableProps={{
@@ -46,7 +46,7 @@ const ChildIssues = () => {
 							clickable,
 							key: 'testrayIssueKey',
 							size: 'sm',
-							value: i18n.translate('issueKey'),
+							value: i18n.translate('issue-key'),
 						},
 						{
 							clickable,

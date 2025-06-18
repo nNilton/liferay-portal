@@ -52,6 +52,7 @@ const JiraProjects: React.FC<JiraProjectsProps> = ({
 							value: i18n.translate('project'),
 						},
 						{
+							clickable: true,
 							key: 'externalReferenceCode',
 							size: 'lg',
 							value: i18n.translate('key'),
