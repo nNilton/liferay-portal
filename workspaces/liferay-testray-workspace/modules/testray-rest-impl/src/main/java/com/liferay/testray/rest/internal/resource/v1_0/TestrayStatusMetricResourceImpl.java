@@ -473,11 +473,11 @@ public class TestrayStatusMetricResourceImpl
 				value -> new TestrayIssueMetric() {
 					{
 						testrayIssueKey = GetterUtil.getString(
-							value.get("externalReferenceCode"));
+							value.get("externalreferencecode"));
 						testrayIssueTitle = GetterUtil.getString(
 							value.get("title_"));
 						testrayIssueType = GetterUtil.getString(
-							value.get("issueType_"));
+							value.get("issuetype_"));
 						testrayStatusMetric = _getTestrayStatusMetric(value);
 					}
 				}),

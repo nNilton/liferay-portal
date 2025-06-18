@@ -519,7 +519,9 @@ public class TestrayManagerImpl implements TestrayManager {
 							).build());
 					}
 				},
-				_dtoConverterContext, "buildId eq '" + testrayBuildId + "'",
+				new DefaultDTOConverterContext(
+						false, null, null, null, null, LocaleUtil.getSiteDefault(), null,
+						_userLocalService.fetchUser(userId)), "buildId eq '" + testrayBuildId + "'",
 				Pagination.of(1, 8), null, null);
 
 		List<Facet> facets = objectEntriesPage.getFacets();
@@ -609,13 +611,15 @@ public class TestrayManagerImpl implements TestrayManager {
 
 	private void _addOrUpdateTestrayCaseDetail(
 			ServiceContext serviceContext, Map<String, String> propertiesMap,
-			TestrayCache testrayCache, long testrayCaseId, long userId)
+			TestrayCache testrayCache, long testrayBuildId, long testrayCaseId,
+			long userId)
 		throws Exception {
 
 		long testrayCaseDetailId = _getObjectEntryId(
 			serviceContext.getCompanyId(),
 			StringBundler.concat(
-				"r_caseToCaseDetails_c_caseId eq '", testrayCaseId,
+				"r_buildToCaseDetail_c_buildId eq '", testrayBuildId,
+				"' and r_caseToCaseDetails_c_caseId eq '", testrayCaseId,
 				"' and name eq '",
 				propertiesMap.get("testray.testcase.detail.name"), "'"),
 			"", new String[] {"objectEntryId"}, "CaseDetail", testrayCache,
@@ -628,7 +632,8 @@ public class TestrayManagerImpl implements TestrayManager {
 			() -> HashMapBuilder.<String, Object>put(
 				"caseDetailsToIssues",
 				_getCaseResultsToIssues(
-					StringUtil.split(propertiesMap.get("testray.jira.issues")))
+					StringUtil.split(propertiesMap.get("testray.jira.issues")),
+					testrayCache.getObjectDefinition("JiraIssue"))
 			).put(
 				"dueStatus",
 				() -> {
@@ -661,6 +666,8 @@ public class TestrayManagerImpl implements TestrayManager {
 				}
 			).put(
 				"name", propertiesMap.get("testray.testcase.detail.name")
+			).put(
+				"r_buildToCaseDetail_c_buildId", testrayBuildId
 			).put(
 				"r_caseToCaseDetails_c_caseId", testrayCaseId
 			).build());
@@ -713,11 +720,6 @@ public class TestrayManagerImpl implements TestrayManager {
 
 		Map<String, Object> properties = HashMapBuilder.<String, Object>put(
 			"attachments", testrayAttachmentsJSONArray
-		).put(
-			"caseResultsToIssues",
-			_getCaseResultsToIssues(
-				StringUtil.split(
-					testrayCasePropertiesMap.get("testray.jira.issues")))
 		).put(
 			"closedDate", Timestamp.valueOf(testrayBuildDate)
 		).put(
@@ -857,11 +859,6 @@ public class TestrayManagerImpl implements TestrayManager {
 
 		objectEntry.setProperties(
 			() -> HashMapBuilder.<String, Object>put(
-				"casesToIssues",
-				_getCaseResultsToIssues(
-					StringUtil.split(
-						testrayCasePropertiesMap.get("testray.jira.issues")))
-			).put(
 				"description",
 				testrayCasePropertiesMap.get("testray.testcase.description")
 			).put(
@@ -937,7 +934,7 @@ public class TestrayManagerImpl implements TestrayManager {
 		for (int i = 0; i < detailNodeList.getLength(); i++) {
 			_addOrUpdateTestrayCaseDetail(
 				serviceContext, _getPropertiesMap(detailsElement, "detail", i),
-				testrayCache, testrayCaseId, userId);
+				testrayCache, testrayBuildId, testrayCaseId, userId);
 		}
 	}
 
@@ -1096,10 +1093,30 @@ public class TestrayManagerImpl implements TestrayManager {
 		return attributeNode.getTextContent();
 	}
 
-	private Object[] _getCaseResultsToIssues(String[] jiraIssues) {
+	private Object[] _getCaseResultsToIssues(
+		String[] jiraIssues, ObjectDefinition objectDefinition) {
+
 		List<Map<String, String>> list = new ArrayList<>();
 
 		for (String jiraIssue : jiraIssues) {
+			ObjectEntry objectEntry = _objectEntryLocalService.fetchObjectEntry(
+				StringUtil.trim(jiraIssue),
+				objectDefinition.getObjectDefinitionId());
+
+			if (objectEntry != null) {
+				list.add(
+					HashMapBuilder.put(
+						"description",
+						GetterUtil.getString(
+							objectEntry.getValues(
+							).get(
+								"description"
+							))
+					).put(
+						"externalReferenceCode", StringUtil.trim(jiraIssue)
+					).build());
+			}
+
 			list.add(
 				Collections.singletonMap(
 					"externalReferenceCode", StringUtil.trim(jiraIssue)));
