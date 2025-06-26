@@ -31,6 +31,7 @@ import com.liferay.testray.rest.dto.v1_0.TestrayRunMetric;
 import com.liferay.testray.rest.dto.v1_0.TestrayStatusMetric;
 import com.liferay.testray.rest.dto.v1_0.TestrayTeamMetric;
 import com.liferay.testray.rest.internal.util.TestrayUtil;
+import com.liferay.testray.rest.manager.TestrayManager;
 import com.liferay.testray.rest.resource.v1_0.TestrayStatusMetricResource;
 
 import java.io.Serializable;
@@ -585,7 +586,7 @@ public class TestrayStatusMetricResourceImpl
 				String testrayTaskStatus, Pagination pagination)
 		throws Exception {
 
-		StringBundler sb = new StringBundler(14);
+		StringBundler sb = new StringBundler(15);
 
 		sb.append("select b.c_buildId_ from O_[%COMPANY_ID%]_Build b, ");
 		sb.append("O_[%COMPANY_ID%]_ProductVersion pv ");
@@ -594,14 +595,17 @@ public class TestrayStatusMetricResourceImpl
 			sb.append(", O_[%COMPANY_ID%]_Task t ");
 		}
 
-		sb.append("where b.r_routineToBuilds_c_routineId = ? and ");
-		sb.append("pv.c_productVersionId_ = ");
-		sb.append("b.r_productVersionToBuilds_c_productVersionId and ");
-		sb.append("b.template_ = false and b.archived_ = false ");
-
 		List<Object> params = new ArrayList<>();
 
-		params.add(testrayRoutineId);
+		sb.append("where b.r_routineToBuilds_c_routineId in (");
+		sb.append(
+			TestrayUtil.interpolateParams(
+				params,
+				_testrayManager.getRelatedTestrayRoutineIds(
+					contextCompany.getCompanyId(), testrayRoutineId)));
+		sb.append(") and pv.c_productVersionId_ = ");
+		sb.append("b.r_productVersionToBuilds_c_productVersionId and ");
+		sb.append("b.template_ = false and b.archived_ = false ");
 
 		if (Validator.isNotNull(testrayProductVersion)) {
 			sb.append("and pv.c_productVersionId_ = ? ");
@@ -628,7 +632,7 @@ public class TestrayStatusMetricResourceImpl
 
 		long totalCount = TestrayUtil.getTotalCount(sql, params);
 
-		sb = new StringBundler(28);
+		sb = new StringBundler(30);
 
 		sb.append("select (b.caseresultblocked_ + b.caseresultfailed_ + ");
 		sb.append("b.caseresultincomplete_ + b.caseresultinprogress_ + ");
@@ -650,14 +654,18 @@ public class TestrayStatusMetricResourceImpl
 			sb.append(", O_[%COMPANY_ID%]_Task t ");
 		}
 
-		sb.append("where b.r_routineToBuilds_c_routineId = ? and ");
-		sb.append("bx.c_buildid_ = b.c_buildid_ and pv.c_productVersionId_ = ");
-		sb.append("b.r_productVersionToBuilds_c_productVersionId and ");
-		sb.append("b.template_ = false and b.archived_ = false ");
-
 		params = new ArrayList<>();
 
-		params.add(testrayRoutineId);
+		sb.append("where b.r_routineToBuilds_c_routineId in (");
+		sb.append(
+			TestrayUtil.interpolateParams(
+				params,
+				_testrayManager.getRelatedTestrayRoutineIds(
+					contextCompany.getCompanyId(), testrayRoutineId)));
+		sb.append(") and bx.c_buildid_ = b.c_buildid_ and ");
+		sb.append("pv.c_productVersionId_ = ");
+		sb.append("b.r_productVersionToBuilds_c_productVersionId and ");
+		sb.append("b.template_ = false and b.archived_ = false ");
 
 		if (Validator.isNotNull(testrayProductVersion)) {
 			sb.append("and pv.c_productVersionId_ = ? ");
@@ -788,5 +796,8 @@ public class TestrayStatusMetricResourceImpl
 
 	@Reference
 	private ObjectRelationshipLocalService _objectRelationshipLocalService;
+
+	@Reference
+	private TestrayManager _testrayManager;
 
 }
