@@ -478,10 +478,8 @@ public class TestrayStatusMetricResourceImpl
 							value.get("externalreferencecode"));
 						testrayIssueTitle = GetterUtil.getString(
 							value.get("title_"));
-						testrayIssueType = StringUtil.getTitleCase(
-							StringUtil.toLowerCase(
-								GetterUtil.getString(value.get("issuetype_"))),
-							false, "");
+						testrayIssueType = GetterUtil.getString(
+							value.get("issuetype_"));
 						testrayStatusMetric = _getTestrayStatusMetric(value);
 					}
 				}),
