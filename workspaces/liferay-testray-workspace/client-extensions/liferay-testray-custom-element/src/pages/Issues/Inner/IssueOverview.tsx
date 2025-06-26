@@ -10,6 +10,7 @@ import {useRef} from 'react';
 import {Link, useOutletContext} from 'react-router-dom';
 import TaskbarProgress from '~/components/ProgressBar/TaskbarProgress';
 import {chartClassNames} from '~/util/constants';
+import getJiraIconImage from '~/util/icons';
 
 import Container from '../../../components/Layout/Container';
 import QATable from '../../../components/Table/QATable';
@@ -37,12 +38,14 @@ const ShortcutIcon = () => (
 	<ClayIcon className="ml-2" fontSize={12} symbol="shortcut" />
 );
 
-const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue, testrayCaseDetail}) => {
+const IssueOverview: React.FC<IssueOverviewProps> = ({
+	testrayCaseDetail,
+	testrayJiraIssue,
+}) => {
 	const ref = useRef<any>();
 	const totalTestCasesGroup =
 		useTotalTestCasesByTestrayJiraIssue(testrayJiraIssue);
-	const {testrayJiraProject}: OutletContext =
-		useOutletContext();
+	const {testrayJiraProject}: OutletContext = useOutletContext();
 
 	const {
 		donut: {columns},
@@ -95,7 +98,11 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({testrayJiraIssue, testrayC
 
 	return (
 		<>
-			<Container collapsable title={testrayJiraIssue.title}>
+			<Container
+				collapsable
+				imgSrc={getJiraIconImage(testrayJiraIssue.issueType.key)}
+				title={testrayJiraIssue.title}
+			>
 				<div className="d-flex flex-wrap">
 					<div className="col-3 col-md-12 mb-5 p-0">
 						<QATable items={items} />

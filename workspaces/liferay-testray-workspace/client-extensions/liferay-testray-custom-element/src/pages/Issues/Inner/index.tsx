@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import ClayLabel from '@clayui/label';
 import {useOutletContext} from 'react-router-dom';
 import Container from '~/components/Layout/Container';
 import ListView from '~/components/ListView';
 import ProgressBar from '~/components/ProgressBar';
 import i18n from '~/i18n';
 import {TestrayJiraIssue} from '~/services/rest';
+import getJiraIconImage from '~/util/icons';
 
 type OutletContext = {
 	testrayJiraIssue: TestrayJiraIssue;
@@ -51,6 +53,29 @@ const ChildIssues = () => {
 						{
 							clickable,
 							key: 'testrayIssueType',
+							render: (_, {testrayIssueType}) => (
+								<>
+									{testrayIssueType && (
+										<img
+											alt={testrayIssueType}
+											src={getJiraIconImage(
+												testrayIssueType
+											)}
+											style={{
+												height: 16,
+												verticalAlign: 'middle',
+												width: 16,
+											}}
+										/>
+									)}
+									<ClayLabel
+										className="ml-2"
+										displayType="info"
+									>
+										{testrayIssueType}
+									</ClayLabel>
+								</>
+							),
 							size: 'sm',
 							value: i18n.translate('issue-type'),
 						},

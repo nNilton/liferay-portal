@@ -22,7 +22,9 @@ class TestrayRoutineImpl extends Rest<RoutineFormType, TestrayRoutine> {
 				autoanalyze: routine.autoanalyze,
 				id: routine.id,
 				name: routine.name,
+				parentRoutines: routine.parentRoutines,
 				r_routineToProjects_c_projectId: routine.projectId,
+				r_teamToRoutines_c_teamId: routine.r_teamToRoutines_c_teamId,
 			}),
 			nestedFields: 'routineToBuilds',
 			transformData: (testrayRoutine) => ({
