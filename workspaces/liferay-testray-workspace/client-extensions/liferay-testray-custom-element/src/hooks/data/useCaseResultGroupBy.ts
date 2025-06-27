@@ -101,7 +101,7 @@ const useTotalTestCasesByTestrayJiraIssue = (
 			params: {
 				aggregationTerms: 'dueStatus',
 				fields: 'id',
-				filter: `caseDetailsToIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}'`,
+				filter: `caseDetailsToJiraIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}'`,
 				pageSize: 10,
 			},
 		}

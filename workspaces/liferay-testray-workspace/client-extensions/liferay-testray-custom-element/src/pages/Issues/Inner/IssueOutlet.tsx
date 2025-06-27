@@ -121,7 +121,7 @@ const IssueOutlet = () => {
 		loading,
 	} = useFetch<APIResponse<TestrayCaseDetail>>('/casedetails', {
 		params: {
-			filter: `caseDetailsToIssues/r_${testrayJiraIssue?.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue?.id}'`,
+			filter: `caseDetailsToJiraIssues/r_${testrayJiraIssue?.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue?.id}'`,
 			nestedFields: 'buildToCaseDetail',
 			pageSize: 1,
 		}

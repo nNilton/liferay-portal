@@ -967,7 +967,7 @@ const filterSchema = {
 				],
 			}),
 			overrides(baseFilters.issues, {
-				name: 'caseDetailsToIssues/externalReferenceCode',
+				name: 'caseDetailsToJiraIssues/externalReferenceCode',
 				operator: 'contains',
 			}),
 		] as RendererFields[],

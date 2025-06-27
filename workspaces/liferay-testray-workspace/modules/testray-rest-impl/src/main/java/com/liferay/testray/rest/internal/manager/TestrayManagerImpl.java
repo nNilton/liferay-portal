@@ -656,7 +656,7 @@ public class TestrayManagerImpl implements TestrayManager {
 
 		objectEntry.setProperties(
 			() -> HashMapBuilder.<String, Object>put(
-				"caseDetailsToIssues",
+				"caseDetailsToJiraIssues",
 				_getCaseResultsToIssues(
 					StringUtil.split(propertiesMap.get("testray.jira.issues")))
 			).put(

@@ -21,7 +21,7 @@ type OutletContext = {
 const IssueResults = () => {
 	const {testrayJiraIssue}: OutletContext = useOutletContext();
 
-	const filter = `caseDetailsToIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}'`;
+	const filter = `caseDetailsToJiraIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}'`;
 
 	return (
 		<Container>
@@ -39,7 +39,7 @@ const IssueResults = () => {
 					filterSchema: 'issueResults',
 					title: i18n.translate('jira-issue-results'),
 				}}
-				resource="/casedetails/?nestedFields=caseToCaseDetails,caseDetailsToIssues"
+				resource="/casedetails/?nestedFields=caseToCaseDetails,caseDetailsToJiraIssues"
 				tableProps={{
 					columns: [
 						{
@@ -95,9 +95,9 @@ const IssueResults = () => {
 						},
 						{
 							key: 'issues',
-							render: (_, {caseDetailsToIssues}) => (
+							render: (_, {caseDetailsToJiraIssues}) => (
 								<>
-									{caseDetailsToIssues.map(
+									{caseDetailsToJiraIssues.map(
 										(
 											issue: TestrayJiraIssue,
 											_: number
