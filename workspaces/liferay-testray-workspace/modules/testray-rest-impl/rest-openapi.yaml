@@ -1058,6 +1058,12 @@ paths:
                     name: pageSize
                     schema:
                         type: string
+                -   in: query
+                    name: testrayBuildId
+                    required: true
+                    schema:
+                        format: int64
+                        type: integer
             responses:
                 200:
                     content:
