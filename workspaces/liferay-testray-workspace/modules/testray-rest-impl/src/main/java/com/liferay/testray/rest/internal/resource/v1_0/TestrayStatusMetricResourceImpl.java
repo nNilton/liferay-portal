@@ -399,7 +399,7 @@ public class TestrayStatusMetricResourceImpl
 	@Override
 	public Page<TestrayIssueMetric>
 			getTestrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetricsPage(
-				Long testrayIssueId, Pagination pagination)
+				Long testrayIssueId, Long testrayBuildId, Pagination pagination)
 		throws Exception {
 
 		Map<String, Serializable> testrayIssueMap =
@@ -433,7 +433,8 @@ public class TestrayStatusMetricResourceImpl
 		sb.append("o_[%COMPANY_ID%]_casedetail cd on cd.c_casedetailid_ = ");
 		sb.append("rel.c_casedetailid_ where i.r_");
 		sb.append(issueType);
-		sb.append("_c_issueid = ? group by i.");
+		sb.append("_c_issueid = ? and cd.r_buildtocasedetail_c_buildid = ? ");
+		sb.append("group by i.");
 		sb.append(StringUtil.merge(_childRelationships.get(issueType), ", i."));
 		sb.append(") as status on i.c_jiraissueid_ = status.");
 		sb.append(_childRelationships.get(issueType)[0]);
@@ -451,6 +452,7 @@ public class TestrayStatusMetricResourceImpl
 		List<Object> params = new ArrayList<>();
 
 		params.add(testrayIssueId);
+		params.add(testrayBuildId);
 		params.add(testrayIssueId);
 
 		String sql = StringUtil.replace(

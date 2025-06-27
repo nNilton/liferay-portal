@@ -19,14 +19,14 @@ import useCaseResultGroupBy, {
 } from '../../../hooks/data/useCaseResultGroupBy';
 import i18n from '../../../i18n';
 import {
-	TestrayCaseDetail,
+	TestrayBuild,
 	TestrayJiraIssue,
 	TestrayJiraProject,
 } from '../../../services/rest';
 import {getDonutLegend} from '../../../util/graph';
 
 type IssueOverviewProps = {
-	testrayCaseDetail: TestrayCaseDetail;
+	testrayBuild?: TestrayBuild;
 	testrayJiraIssue: TestrayJiraIssue;
 };
 
@@ -39,7 +39,7 @@ const ShortcutIcon = () => (
 );
 
 const IssueOverview: React.FC<IssueOverviewProps> = ({
-	testrayCaseDetail,
+	testrayBuild,
 	testrayJiraIssue,
 }) => {
 	const ref = useRef<any>();
@@ -49,7 +49,7 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({
 
 	const {
 		donut: {columns},
-	} = useCaseResultGroupBy(testrayCaseDetail?.r_buildToCaseDetail_c_buildId);
+	} = useCaseResultGroupBy(testrayBuild?.id);
 
 	const items = [
 		{
@@ -80,15 +80,15 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({
 		},
 	];
 
-	if (testrayCaseDetail) {
+	if (testrayBuild) {
 		items.push({
 			title: i18n.translate('build-name'),
 			value: (
 				<Link
 					className="text-dark"
-					to={`/project/${testrayJiraProject.r_projectToJiraProjects_c_projectId}/routines/${testrayJiraProject.r_routineToJiraProject_c_routineId}/build/${testrayCaseDetail?.r_buildToCaseDetail_c_buildId}`}
+					to={`/project/${testrayJiraProject.r_projectToJiraProjects_c_projectId}/routines/${testrayJiraProject.r_routineToJiraProject_c_routineId}/build/${testrayBuild.id}`}
 				>
-					{testrayCaseDetail?.buildToCaseDetail?.name}
+					{testrayBuild.name}
 
 					<ShortcutIcon />
 				</Link>
@@ -112,7 +112,7 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({
 								displayTotalCompleted={false}
 								items={columns as any}
 								legend={
-									!!testrayCaseDetail?.r_buildToCaseDetail_c_buildId
+									!!testrayBuild?.id
 								}
 								taskbarClassNames={chartClassNames}
 							/>

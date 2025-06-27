@@ -9,15 +9,16 @@ import Container from '~/components/Layout/Container';
 import ListView from '~/components/ListView';
 import ProgressBar from '~/components/ProgressBar';
 import i18n from '~/i18n';
-import {TestrayJiraIssue} from '~/services/rest';
+import {TestrayBuild, TestrayJiraIssue} from '~/services/rest';
 import getJiraIconImage from '~/util/icons';
 
 type OutletContext = {
+	testrayBuild: TestrayBuild,
 	testrayJiraIssue: TestrayJiraIssue;
 };
 
 const ChildIssues = () => {
-	const {testrayJiraIssue}: OutletContext = useOutletContext();
+	const {testrayBuild, testrayJiraIssue}: OutletContext = useOutletContext();
 
 	const clickable =
 		testrayJiraIssue.issueType.key !== 'STORY' &&
@@ -41,7 +42,7 @@ const ChildIssues = () => {
 					display: {columns: true},
 					title: i18n.translate('jira-child-issues'),
 				}}
-				resource={`/testray-status-metrics/by-testray-issueId/${testrayJiraIssue.id}/testray-issues-metrics`}
+				resource={`/testray-status-metrics/by-testray-issueId/${testrayJiraIssue.id}/testray-issues-metrics?testrayBuildId=${testrayBuild.id}`}
 				tableProps={{
 					columns: [
 						{

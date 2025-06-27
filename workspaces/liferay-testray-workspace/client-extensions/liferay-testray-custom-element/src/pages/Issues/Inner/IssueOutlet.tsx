@@ -20,6 +20,7 @@ import useHeader from '../../../hooks/useHeader';
 import i18n from '../../../i18n';
 import {
 	APIResponse,
+	TestrayBuild,
 	TestrayCaseDetail,
 	TestrayJiraIssue,
 	TestrayJiraProject,
@@ -116,31 +117,33 @@ const IssueOutlet = () => {
 	}, [basePath, pathname, hasOtherParams, setTabs]);
 
 	const {
-		data: testrayCaseDetails,
+		data: testrayBuilds,
 		error,
 		loading,
-	} = useFetch<APIResponse<TestrayCaseDetail>>('/casedetails', {
+	} = useFetch<APIResponse<TestrayBuild>>('/builds', {
 		params: {
-			filter: `caseDetailsToJiraIssues/r_${testrayJiraIssue?.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue?.id}'`,
-			nestedFields: 'buildToCaseDetail',
+			filter: `routineId eq '${testrayJiraProject.r_routineToJiraProject_c_routineId}'`,
+			sort: 'dateCreated:desc',
 			pageSize: 1,
 		}
 	});
 
+	console.log(testrayBuilds?.items[0])
+
 	return (
 		<PageRenderer error={error} loading={loading}>
 			<>
-				{testrayJiraIssue && testrayCaseDetails && (
-					<IssueOverview testrayJiraIssue={testrayJiraIssue}
-					testrayCaseDetail={testrayCaseDetails.items[0]} />
+				{testrayJiraIssue && (
+					<IssueOverview testrayJiraIssue={testrayJiraIssue} testrayBuild={testrayBuilds?.items[0]}/>
 				)}
 
 				<Outlet
 					context={{
 						actions: testrayJiraIssue?.actions,
 						mutate,
+						testrayBuild: testrayBuilds?.items[0],
 						testrayJiraIssue,
-						testrayJiraProject,
+						testrayJiraProject
 					}}
 				/>
 			</>

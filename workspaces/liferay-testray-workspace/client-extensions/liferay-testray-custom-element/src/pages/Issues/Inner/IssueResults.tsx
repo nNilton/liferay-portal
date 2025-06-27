@@ -12,16 +12,17 @@ import ListView from '~/components/ListView';
 import StatusBadge from '~/components/StatusBadge';
 import {StatusBadgeType} from '~/components/StatusBadge/StatusBadge';
 import i18n from '~/i18n';
-import {TestrayJiraIssue} from '~/services/rest';
+import {TestrayBuild, TestrayJiraIssue} from '~/services/rest';
 
 type OutletContext = {
+	testrayBuild: TestrayBuild,
 	testrayJiraIssue: TestrayJiraIssue;
 };
 
 const IssueResults = () => {
-	const {testrayJiraIssue}: OutletContext = useOutletContext();
+	const {testrayBuild, testrayJiraIssue}: OutletContext = useOutletContext();
 
-	const filter = `caseDetailsToJiraIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}'`;
+	const filter = `caseDetailsToJiraIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}' and r_buildToCaseDetail_c_buildId eq '${testrayBuild.id}'`;
 
 	return (
 		<Container>
