@@ -409,7 +409,7 @@ public class TestrayStatusMetricResourceImpl
 			testrayIssueMap.get("issueType")
 		).toLowerCase();
 
-		StringBundler sb = new StringBundler(32);
+		StringBundler sb = new StringBundler(33);
 
 		sb.append("select i.c_jiraissueid_, i.issuetype_, i.title_, ");
 		sb.append("oe.externalreferencecode, blocked, failed, incomplete,");
