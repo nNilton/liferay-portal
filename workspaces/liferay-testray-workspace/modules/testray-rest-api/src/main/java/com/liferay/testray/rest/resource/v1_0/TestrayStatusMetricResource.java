@@ -71,15 +71,15 @@ public interface TestrayStatusMetricResource {
 				String testrayTeamIds, Pagination pagination)
 		throws Exception;
 
+	public Page<TestrayIssueMetric>
+			getTestrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetricsPage(
+				Long testrayIssueId, Long testrayBuildId, Pagination pagination)
+		throws Exception;
+
 	public Page<TestrayRoutineMetric>
 			getTestrayStatusMetricByTestrayProjectIdTestrayProjectTestrayRoutinesMetricsPage(
 				Long testrayProjectId, Pagination pagination,
 				com.liferay.portal.kernel.search.Sort[] sorts)
-		throws Exception;
-
-	public Page<TestrayIssueMetric>
-			getTestrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetricsPage(
-				Long testrayIssueId, Pagination pagination)
 		throws Exception;
 
 	public Page<TestrayBuildMetric>

@@ -445,6 +445,30 @@ public class Query {
 	/**
 	 * Invoke this method with the command line:
 	 *
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {testrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetrics(page: ___, pageSize: ___, testrayBuildId: ___, testrayIssueId: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
+	 */
+	@GraphQLField
+	public TestrayStatusMetricPage
+			testrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetrics(
+				@GraphQLName("testrayIssueId") Long testrayIssueId,
+				@GraphQLName("testrayBuildId") Long testrayBuildId,
+				@GraphQLName("pageSize") int pageSize,
+				@GraphQLName("page") int page)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_testrayStatusMetricResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			testrayStatusMetricResource -> new TestrayStatusMetricPage(
+				testrayStatusMetricResource.
+					getTestrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetricsPage(
+						testrayIssueId, testrayBuildId,
+						Pagination.of(page, pageSize))));
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {testrayStatusMetricByTestrayProjectIdTestrayProjectTestrayRoutinesMetrics(page: ___, pageSize: ___, sorts: ___, testrayProjectId: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
 	@GraphQLField
@@ -465,28 +489,6 @@ public class Query {
 						testrayProjectId, Pagination.of(page, pageSize),
 						_sortsBiFunction.apply(
 							testrayStatusMetricResource, sortsString))));
-	}
-
-	/**
-	 * Invoke this method with the command line:
-	 *
-	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {testrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetrics(page: ___, pageSize: ___, testrayIssueId: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
-	 */
-	@GraphQLField
-	public TestrayStatusMetricPage
-			testrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetrics(
-				@GraphQLName("testrayIssueId") Long testrayIssueId,
-				@GraphQLName("pageSize") int pageSize,
-				@GraphQLName("page") int page)
-		throws Exception {
-
-		return _applyComponentServiceObjects(
-			_testrayStatusMetricResourceComponentServiceObjects,
-			this::_populateResourceContext,
-			testrayStatusMetricResource -> new TestrayStatusMetricPage(
-				testrayStatusMetricResource.
-					getTestrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetricsPage(
-						testrayIssueId, Pagination.of(page, pageSize))));
 	}
 
 	/**

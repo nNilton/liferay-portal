@@ -205,15 +205,15 @@ public class ServletDataImpl implements ServletData {
 							TestrayStatusMetricResourceImpl.class,
 							"getTestrayStatusMetricByTestrayBuildIdTestrayBuildTestrayTeamsMetricsPage"));
 					put(
-						"query#testrayStatusMetricByTestrayProjectIdTestrayProjectTestrayRoutinesMetrics",
-						new ObjectValuePair<>(
-							TestrayStatusMetricResourceImpl.class,
-							"getTestrayStatusMetricByTestrayProjectIdTestrayProjectTestrayRoutinesMetricsPage"));
-					put(
 						"query#testrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetrics",
 						new ObjectValuePair<>(
 							TestrayStatusMetricResourceImpl.class,
 							"getTestrayStatusMetricByTestrayIssueIdTestrayIssueTestrayIssuesMetricsPage"));
+					put(
+						"query#testrayStatusMetricByTestrayProjectIdTestrayProjectTestrayRoutinesMetrics",
+						new ObjectValuePair<>(
+							TestrayStatusMetricResourceImpl.class,
+							"getTestrayStatusMetricByTestrayProjectIdTestrayProjectTestrayRoutinesMetricsPage"));
 					put(
 						"query#testrayStatusMetricByTestrayRoutineIdTestrayRoutineTestrayBuildsMetrics",
 						new ObjectValuePair<>(
