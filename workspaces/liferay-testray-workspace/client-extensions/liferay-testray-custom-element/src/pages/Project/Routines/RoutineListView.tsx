@@ -8,7 +8,6 @@ import {TableProps} from '../../../components/Table';
 import {ListViewContextProviderProps} from '../../../context/ListViewContext';
 import {FormModal} from '../../../hooks/useFormModal';
 import i18n from '../../../i18n';
-import {testrayRoutineImpl} from '../../../services/rest';
 import {Action} from '../../../types';
 
 type RoutineListViewProps = {

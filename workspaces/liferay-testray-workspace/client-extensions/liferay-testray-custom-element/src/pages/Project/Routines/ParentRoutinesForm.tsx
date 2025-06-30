@@ -60,7 +60,6 @@ const ParentRoutinesForm: React.FC<ChildRoutinesFormProps> = ({
 
 			{routineIds.length ? (
 				<RoutineListView
-					resource='/routines'
 					listViewProps={{
 						managementToolbarProps: {visible: false},
 						tableProps: {
@@ -89,6 +88,7 @@ const ParentRoutinesForm: React.FC<ChildRoutinesFormProps> = ({
 							filter: `id in ('${routineIds.join(`','`)}')`,
 						},
 					}}
+					resource="/routines"
 				/>
 			) : (
 				<ClayAlert>

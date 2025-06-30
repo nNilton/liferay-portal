@@ -15,7 +15,7 @@ import i18n from '~/i18n';
 import {TestrayBuild, TestrayJiraIssue} from '~/services/rest';
 
 type OutletContext = {
-	testrayBuild: TestrayBuild,
+	testrayBuild: TestrayBuild;
 	testrayJiraIssue: TestrayJiraIssue;
 };
 

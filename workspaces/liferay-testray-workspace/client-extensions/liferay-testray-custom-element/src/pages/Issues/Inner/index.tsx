@@ -13,7 +13,7 @@ import {TestrayBuild, TestrayJiraIssue} from '~/services/rest';
 import getJiraIconImage from '~/util/icons';
 
 type OutletContext = {
-	testrayBuild: TestrayBuild,
+	testrayBuild: TestrayBuild;
 	testrayJiraIssue: TestrayJiraIssue;
 };
 

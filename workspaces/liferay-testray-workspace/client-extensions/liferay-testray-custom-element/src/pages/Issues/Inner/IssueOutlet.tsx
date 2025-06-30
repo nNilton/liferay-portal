@@ -12,7 +12,6 @@ import {
 } from 'react-router-dom';
 import {mutate} from 'swr';
 import PageRenderer from '~/components/PageRenderer';
-import {testrayCaseDetailImpl} from '~/services/rest/TestrayCaseDetail';
 import {testrayJiraIssueImpl} from '~/services/rest/TestrayJiraIssue';
 
 import {useFetch} from '../../../hooks/useFetch';
@@ -21,7 +20,6 @@ import i18n from '../../../i18n';
 import {
 	APIResponse,
 	TestrayBuild,
-	TestrayCaseDetail,
 	TestrayJiraIssue,
 	TestrayJiraProject,
 } from '../../../services/rest';
@@ -123,18 +121,19 @@ const IssueOutlet = () => {
 	} = useFetch<APIResponse<TestrayBuild>>('/builds', {
 		params: {
 			filter: `routineId eq '${testrayJiraProject.r_routineToJiraProject_c_routineId}'`,
-			sort: 'dateCreated:desc',
 			pageSize: 1,
-		}
+			sort: 'dateCreated:desc',
+		},
 	});
-
-	console.log(testrayBuilds?.items[0])
 
 	return (
 		<PageRenderer error={error} loading={loading}>
 			<>
 				{testrayJiraIssue && (
-					<IssueOverview testrayJiraIssue={testrayJiraIssue} testrayBuild={testrayBuilds?.items[0]}/>
+					<IssueOverview
+						testrayBuild={testrayBuilds?.items[0]}
+						testrayJiraIssue={testrayJiraIssue}
+					/>
 				)}
 
 				<Outlet
@@ -143,7 +142,7 @@ const IssueOutlet = () => {
 						mutate,
 						testrayBuild: testrayBuilds?.items[0],
 						testrayJiraIssue,
-						testrayJiraProject
+						testrayJiraProject,
 					}}
 				/>
 			</>

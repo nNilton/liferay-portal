@@ -111,9 +111,7 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({
 							<TaskbarProgress
 								displayTotalCompleted={false}
 								items={columns as any}
-								legend={
-									!!testrayBuild?.id
-								}
+								legend={!!testrayBuild?.id}
 								taskbarClassNames={chartClassNames}
 							/>
 						</div>

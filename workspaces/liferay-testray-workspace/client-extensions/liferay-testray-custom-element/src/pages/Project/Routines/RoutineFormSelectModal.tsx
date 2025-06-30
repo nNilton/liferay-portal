@@ -44,7 +44,6 @@ const RoutineFormSelectModal: React.FC<RoutineFormSelectModalProps> = ({
 			visible={visible}
 		>
 			<RoutineListView
-				resource='/routines'
 				listViewProps={{
 					initialContext: {selectedRows: selectedRoutineIds},
 					managementToolbarProps: {
@@ -54,6 +53,7 @@ const RoutineFormSelectModal: React.FC<RoutineFormSelectModalProps> = ({
 					},
 					onContextChange: ({selectedRows}) => setState(selectedRows),
 				}}
+				resource="/routines"
 				tableProps={{
 					columns: [{key: 'name', value: i18n.translate('name')}],
 					rowSelectable: true,
