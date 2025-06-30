@@ -44,6 +44,7 @@ const RoutineFormSelectModal: React.FC<RoutineFormSelectModalProps> = ({
 			visible={visible}
 		>
 			<RoutineListView
+				resource='/routines'
 				listViewProps={{
 					initialContext: {selectedRows: selectedRoutineIds},
 					managementToolbarProps: {
@@ -51,7 +52,6 @@ const RoutineFormSelectModal: React.FC<RoutineFormSelectModalProps> = ({
 						filterSchema: 'routines',
 						title: i18n.translate('routines'),
 					},
-
 					onContextChange: ({selectedRows}) => setState(selectedRows),
 				}}
 				tableProps={{
@@ -60,6 +60,7 @@ const RoutineFormSelectModal: React.FC<RoutineFormSelectModalProps> = ({
 				}}
 				variables={{
 					filter: `projectId eq '${projectId}' and id ne '${currentRoutineId}'`,
+					pageSize: 50,
 				}}
 			/>
 		</Modal>

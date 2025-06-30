@@ -60,6 +60,7 @@ const ParentRoutinesForm: React.FC<ChildRoutinesFormProps> = ({
 
 			{routineIds.length ? (
 				<RoutineListView
+					resource='/routines'
 					listViewProps={{
 						managementToolbarProps: {visible: false},
 						tableProps: {

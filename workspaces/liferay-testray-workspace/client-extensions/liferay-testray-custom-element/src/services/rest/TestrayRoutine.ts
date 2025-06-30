@@ -39,7 +39,7 @@ class TestrayRoutineImpl extends Rest<RoutineFormType, TestrayRoutine> {
 	}
 
 	protected async validate(routine: RoutineFormType, id?: number) {
-		const searchBuilder = new SearchBuilder();
+		const searchBuilder = new SearchBuilder({useURIEncode: true});
 
 		if (id) {
 			searchBuilder.ne('id', id).and();

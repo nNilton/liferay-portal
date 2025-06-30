@@ -15,7 +15,7 @@ type RoutineListViewProps = {
 	actions?: Action[];
 	formModal?: FormModal;
 	projectId?: number | string;
-	resource?: string;
+	resource: string;
 	variables?: any;
 } & {
 	listViewProps?: Partial<ListViewProps> & {
@@ -40,7 +40,7 @@ const RoutineListView: React.FC<RoutineListViewProps> = ({
 				filterSchema: 'routines',
 				title: i18n.translate('routines'),
 			}}
-			resource={resource || testrayRoutineImpl.resource}
+			resource={resource}
 			tableProps={{
 				actions,
 				columns: [
@@ -55,9 +55,6 @@ const RoutineListView: React.FC<RoutineListViewProps> = ({
 				navigateTo: ({id}) => id?.toString(),
 				...tableProps,
 			}}
-			transformData={(response) =>
-				testrayRoutineImpl.transformDataFromList(response)
-			}
 			variables={variables}
 			{...listViewProps}
 		/>
