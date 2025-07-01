@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-package com.liferay.testray;
+package com.liferay.testray.service;
 
-import com.liferay.client.extension.util.spring.boot3.BaseRestController;
 import com.liferay.client.extension.util.spring.boot3.client.LiferayOAuth2AccessTokenManager;
+import com.liferay.client.extension.util.spring.boot3.service.BaseService;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -23,18 +23,11 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -42,38 +35,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 /**
  * @author Nilton Vieira
  */
-@CrossOrigin("*")
 @EnableScheduling
-@RequestMapping("/jira/issues")
-@RestController
-public class JiraIssuesRestController extends BaseRestController {
-
-	@PutMapping("/{issueKey}")
-	@ResponseBody
-	public ResponseEntity<Object> putIssue(
-		@PathVariable String issueKey, @RequestBody String json) {
-
-		JSONObject jsonObject = new JSONObject(json);
-
-		put(
-			_getJiraAuthorization(),
-			new JSONObject(
-			).put(
-				"fields",
-				new JSONObject(
-				).put(
-					"customfield_10202",
-					jsonObject.getJSONArray("testrayCaseNames")
-				)
-			).toString(),
-			UriComponentsBuilder.fromHttpUrl(
-				"https://liferay.atlassian.net/rest/api/3/issue/{issueKey}"
-			).build(
-				issueKey
-			));
-
-		return new ResponseEntity<>(HttpStatus.OK);
-	}
+@Component
+public class JiraService extends BaseService {
 
 	@Scheduled(cron = "${liferay.testray.jira.sync.cron}")
 	public void scheduledSyncJiraIssues() {
@@ -81,19 +45,96 @@ public class JiraIssuesRestController extends BaseRestController {
 			_log.info("Syncing Jira issues");
 		}
 
-		_syncJiraIssues();
+		syncJiraIssues();
 	}
 
-	@PostMapping("/sync")
-	@ResponseBody
-	public ResponseEntity<Object> sync() {
-		_syncJiraIssues();
+	public void syncJiraIssues() {
+		for (int page = 1;; page++) {
+			JSONObject jsonObject = new JSONObject(
+				get(
+					_getLiferayAuthorization(),
+					UriComponentsBuilder.fromPath(
+						"/o/c/jiraissues"
+					).queryParam(
+						"filter", "issueType eq null or issueType eq ''"
+					).queryParam(
+						"fields", "externalReferenceCode"
+					).queryParam(
+						"page", "{page}"
+					).queryParam(
+						"pageSize", 50
+					).build(
+						page
+					)));
 
-		return new ResponseEntity<>(HttpStatus.OK);
+			JSONArray jsonArray = jsonObject.getJSONArray("items");
+
+			if (jsonArray.isEmpty()) {
+				return;
+			}
+
+			JSONObject jiraQueryJSONObject = new JSONObject(
+				get(
+					_getJiraAuthorization(),
+					UriComponentsBuilder.fromHttpUrl(
+						"https://liferay.atlassian.net/rest/api/3/search"
+					).queryParam(
+						"jql", "issuekey in ({issueKeys})"
+					).queryParam(
+						"expand", "renderedFields"
+					).queryParam(
+						"fields", "description,issuetype,parent,project,summary"
+					).build(
+						StringUtil.merge(
+							TransformUtil.transform(
+								jsonArray.toList(),
+								item -> {
+									Map<String, Object> map =
+										(Map<String, Object>)item;
+
+									return map.get("externalReferenceCode");
+								}))
+					)));
+
+			JSONArray issuesJSONArray = jiraQueryJSONObject.getJSONArray(
+				"issues");
+
+			for (int i = 0; i < issuesJSONArray.length(); i++) {
+				JSONObject issueJSONObject = issuesJSONArray.getJSONObject(i);
+
+				_importTestrayJiraIssue(issueJSONObject);
+			}
+
+			if (page == jsonObject.getInt("lastPage")) {
+				break;
+			}
+		}
+	}
+
+	public JSONObject updateJiraIssue(String issueKey, String json) {
+		JSONObject jsonObject = new JSONObject(json);
+
+		return new JSONObject(
+			put(
+				_getJiraAuthorization(),
+				new JSONObject(
+				).put(
+					"fields",
+					new JSONObject(
+					).put(
+						"customfield_10202",
+						jsonObject.getJSONArray("testrayCaseNames")
+					)
+				).toString(),
+				UriComponentsBuilder.fromHttpUrl(
+					"https://liferay.atlassian.net/rest/api/3/issue/{issueKey}"
+				).build(
+					issueKey
+				)));
 	}
 
 	private String _getJiraAuthorization() {
-		return "";
+		return _jiraOAuthService.getAuthorization();
 	}
 
 	private String _getLiferayAuthorization() {
@@ -233,77 +274,12 @@ public class JiraIssuesRestController extends BaseRestController {
 		return map;
 	}
 
-	private void _syncJiraIssues() {
-		for (int page = 1;; page++) {
-			JSONObject jsonObject = new JSONObject(
-				get(
-					_getLiferayAuthorization(),
-					UriComponentsBuilder.fromPath(
-						"/o/c/jiraissues"
-					).queryParam(
-						"filter", "issueType eq null or issueType eq ''"
-					).queryParam(
-						"fields", "externalReferenceCode"
-					).queryParam(
-						"page", "{page}"
-					).queryParam(
-						"pageSize", 50
-					).build(
-						page
-					)));
+	private static final Log _log = LogFactory.getLog(JiraService.class);
 
-			JSONArray jsonArray = jsonObject.getJSONArray("items");
-
-			if (jsonArray.isEmpty()) {
-				return;
-			}
-
-			JSONObject jiraQueryJSONObject = new JSONObject(
-				get(
-					_getJiraAuthorization(),
-					UriComponentsBuilder.fromHttpUrl(
-						"https://liferay.atlassian.net/rest/api/3/search"
-					).queryParam(
-						"jql", "issuekey in ({issueKeys})"
-					).queryParam(
-						"expand", "renderedFields"
-					).queryParam(
-						"fields", "description,issuetype,parent,project,summary"
-					).build(
-						StringUtil.merge(
-							TransformUtil.transform(
-								jsonArray.toList(),
-								item -> {
-									Map<String, Object> itemJSONObject =
-										(Map<String, Object>)item;
-
-									return itemJSONObject.get(
-										"externalReferenceCode");
-								}))
-					)));
-
-			JSONArray issuesJSONArray = jiraQueryJSONObject.getJSONArray(
-				"issues");
-
-			for (int i = 0; i < issuesJSONArray.length(); i++) {
-				JSONObject issueJSONObject = issuesJSONArray.getJSONObject(i);
-
-				_importTestrayJiraIssue(issueJSONObject);
-			}
-
-			if (page == jsonObject.getInt("lastPage")) {
-				break;
-			}
-		}
-	}
-
-	private static final Log _log = LogFactory.getLog(
-		JiraIssuesRestController.class);
+	@Autowired
+	private JiraOAuthService _jiraOAuthService;
 
 	@Autowired
 	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
-
-	@Value("{liferay.oauth.application.external.reference.codes}")
-	private String _liferayOAuthApplicationExternalReferenceCodes;
 
 }
