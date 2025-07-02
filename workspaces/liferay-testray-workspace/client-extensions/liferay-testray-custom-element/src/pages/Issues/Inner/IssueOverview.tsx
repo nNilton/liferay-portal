@@ -44,7 +44,7 @@ const IssueOverview: React.FC<IssueOverviewProps> = ({
 }) => {
 	const ref = useRef<any>();
 	const totalTestCasesGroup =
-		useTotalTestCasesByTestrayJiraIssue(testrayJiraIssue);
+		useTotalTestCasesByTestrayJiraIssue(testrayJiraIssue, testrayBuild?.id || 0);
 	const {testrayJiraProject}: OutletContext = useOutletContext();
 
 	const {

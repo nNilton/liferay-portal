@@ -14,15 +14,15 @@ import getJiraIconImage from '~/util/icons';
 
 type OutletContext = {
 	testrayBuild: TestrayBuild;
-	testrayJiraIssue: TestrayJiraIssue;
+	testrayJiraIssue?: TestrayJiraIssue;
 };
 
 const ChildIssues = () => {
 	const {testrayBuild, testrayJiraIssue}: OutletContext = useOutletContext();
 
 	const clickable =
-		testrayJiraIssue.issueType.key !== 'STORY' &&
-		testrayJiraIssue.issueType.key !== 'TASK';
+		testrayJiraIssue?.issueType.key !== 'STORY' &&
+		testrayJiraIssue?.issueType.key !== 'TASK';
 
 	return (
 		<Container className="mt-4">
@@ -42,7 +42,7 @@ const ChildIssues = () => {
 					display: {columns: true},
 					title: i18n.translate('jira-child-issues'),
 				}}
-				resource={`/testray-status-metrics/by-testray-issueId/${testrayJiraIssue.id}/testray-issues-metrics?testrayBuildId=${testrayBuild.id}`}
+				resource={`/testray-status-metrics/by-testray-issueId/${testrayJiraIssue?.id}/testray-issues-metrics?testrayBuildId=${testrayBuild.id}`}
 				tableProps={{
 					columns: [
 						{

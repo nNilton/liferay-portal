@@ -93,15 +93,35 @@ const useTotalTestCasesByTestrayBuild = (testrayBuild: TestrayBuild) => {
 };
 
 const useTotalTestCasesByTestrayJiraIssue = (
-	testrayJiraIssue: TestrayJiraIssue
+	testrayJiraIssue: TestrayJiraIssue,
+	testaryBuildId: number
 ) => {
+
+	if (testaryBuildId <= 0) {
+		return {
+			colors: chartColors,
+			donut: {
+				columns: [
+					[CaseResultStatuses.PASSED, 0],
+					[CaseResultStatuses.FAILED, 0],
+					[CaseResultStatuses.BLOCKED, 0],
+					[CaseResultStatuses.TEST_FIX, 0],
+					[CaseResultStatuses.INCOMPLETE, 0],
+				],
+				total: 0,
+			},
+			ready: false,
+			statuses: Object.values(CaseResultStatuses),
+		}
+	}
+
 	const {data, loading} = useFetch<APIResponse<TestrayCaseDetail>>(
 		`/casedetails`,
 		{
 			params: {
 				aggregationTerms: 'dueStatus',
 				fields: 'id',
-				filter: `caseDetailsToJiraIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}'`,
+				filter: `caseDetailsToJiraIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}' and r_buildToCaseDetail_c_buildId eq '${testaryBuildId}'`,
 				pageSize: 10,
 			},
 		}
