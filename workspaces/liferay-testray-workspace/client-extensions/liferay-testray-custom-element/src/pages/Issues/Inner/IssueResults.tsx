@@ -22,7 +22,7 @@ type OutletContext = {
 const IssueResults = () => {
 	const {testrayBuild, testrayJiraIssue}: OutletContext = useOutletContext();
 
-	const filter = `caseDetailsToJiraIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_issueId eq '${testrayJiraIssue.id}' and r_buildToCaseDetail_c_buildId eq '${testrayBuild.id}'`;
+	const filter = `caseDetailsToJiraIssues/r_${testrayJiraIssue.issueType.key.toLowerCase()}_c_jiraIssueId eq '${testrayJiraIssue.id}' and r_buildToCaseDetail_c_buildId eq '${testrayBuild.id}'`;
 
 	return (
 		<Container>

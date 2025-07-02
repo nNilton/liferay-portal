@@ -15,6 +15,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -31,8 +33,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.UUID;
-
 /**
  * @author Nilton Vieira
  */
@@ -40,24 +40,6 @@ import java.util.UUID;
 @RequestMapping("/jira")
 @RestController
 public class JiraRestController extends BaseRestController {
-
-	@GetMapping("/oauth/login")
-	public void redirectToOAuth(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception {
-		String state = UUID.randomUUID().toString();
-
-		httpServletRequest.getSession().setAttribute("oauth_state", state);
-
-		httpServletResponse.sendRedirect(UriComponentsBuilder.fromUriString("https://auth.atlassian.com/authorize")
-				.queryParam("audience", "api.atlassian.com")
-				.queryParam("client_id", "{clientId}")
-				.queryParam("prompt", "consent")
-				.queryParam("redirect_uri", StringUtil.replace(httpServletRequest.getRequestURL().toString(), "login", "callback"))
-				.queryParam("response_type", "code")
-				.queryParam("scope", "offline_access read:jira-work write:jira-work")
-				.queryParam("state", state)
-				.build(_liferayTestrayJiraOAuthClientId).toString());
-	}
-
 
 	@GetMapping("/oauth/callback")
 	public void getOAuthCallback(
@@ -73,18 +55,20 @@ public class JiraRestController extends BaseRestController {
 		}
 
 		_jiraOAuthService.generateToken(
-			code, "code", httpServletRequest.getRequestURL().toString());
+			code, "code",
+			httpServletRequest.getRequestURL(
+			).toString());
 	}
 
-	@PostMapping("/sync")
+	@PostMapping("issues/sync")
 	@ResponseBody
-	public ResponseEntity<Object> postSync() {
+	public ResponseEntity<Object> postIssueSync() {
 		_jiraService.syncJiraIssues();
 
 		return new ResponseEntity<>(HttpStatus.OK);
 	}
 
-	@PutMapping("/{issueKey}")
+	@PutMapping("issues/{issueKey}")
 	@ResponseBody
 	public ResponseEntity<Object> putIssue(
 		@PathVariable String issueKey, @RequestBody String json) {
@@ -92,6 +76,46 @@ public class JiraRestController extends BaseRestController {
 		_jiraService.updateJiraIssue(issueKey, json);
 
 		return new ResponseEntity<>(HttpStatus.OK);
+	}
+
+	@GetMapping("/oauth/login")
+	public void redirectToOAuth(
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
+		throws Exception {
+
+		String state = UUID.randomUUID(
+		).toString();
+
+		httpServletRequest.getSession(
+		).setAttribute(
+			"oauth_state", state
+		);
+
+		httpServletResponse.sendRedirect(
+			UriComponentsBuilder.fromUriString(
+				"https://auth.atlassian.com/authorize"
+			).queryParam(
+				"audience", "api.atlassian.com"
+			).queryParam(
+				"client_id", "{clientId}"
+			).queryParam(
+				"prompt", "consent"
+			).queryParam(
+				"redirect_uri",
+				StringUtil.replace(
+					httpServletRequest.getRequestURL(
+					).toString(),
+					"login", "callback")
+			).queryParam(
+				"response_type", "code"
+			).queryParam(
+				"scope", "offline_access read:jira-work write:jira-work"
+			).queryParam(
+				"state", state
+			).build(
+				_liferayTestrayJiraOAuthClientId
+			).toString());
 	}
 
 	@Autowired

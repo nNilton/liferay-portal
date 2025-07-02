@@ -23,20 +23,18 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * @author Nilton Vieira
  */
-@EnableScheduling
 @Component
+@EnableScheduling
 public class JiraService extends BaseService {
 
 	@Scheduled(cron = "${liferay.testray.jira.sync.cron}")
@@ -77,7 +75,7 @@ public class JiraService extends BaseService {
 				get(
 					_getJiraAuthorization(),
 					UriComponentsBuilder.fromHttpUrl(
-						"https://liferay.atlassian.net/rest/api/3/search"
+						"https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/search"
 					).queryParam(
 						"jql", "issuekey in ({issueKeys})"
 					).queryParam(
@@ -85,6 +83,7 @@ public class JiraService extends BaseService {
 					).queryParam(
 						"fields", "description,issuetype,parent,project,summary"
 					).build(
+						_liferayTestrayJiraCloudId,
 						StringUtil.merge(
 							TransformUtil.transform(
 								jsonArray.toList(),
@@ -127,9 +126,9 @@ public class JiraService extends BaseService {
 					)
 				).toString(),
 				UriComponentsBuilder.fromHttpUrl(
-					"https://liferay.atlassian.net/rest/api/3/issue/{issueKey}"
+					"https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/issue/{issueKey}"
 				).build(
-					issueKey
+					_liferayTestrayJiraCloudId, issueKey
 				)));
 	}
 
@@ -160,15 +159,15 @@ public class JiraService extends BaseService {
 	private Map<String, String> _getParentIssuesMap(String parentKey) {
 		if (Validator.isNull(parentKey)) {
 			return HashMapBuilder.put(
-				"r_epic_c_issueERC", ""
+				"r_epic_c_jiraIssueERC", ""
 			).put(
-				"r_initiative_c_issueERC", ""
+				"r_initiative_c_jiraIssueERC", ""
 			).put(
-				"r_parentIssue_c_issueERC", ""
+				"r_parentIssue_c_jiraIssueERC", ""
 			).put(
-				"r_story_c_issueERC", ""
+				"r_story_c_jiraIssueERC", ""
 			).put(
-				"r_task_c_issueERC", ""
+				"r_task_c_jiraIssueERC", ""
 			).build();
 		}
 
@@ -183,16 +182,16 @@ public class JiraService extends BaseService {
 					)));
 
 			return HashMapBuilder.put(
-				"r_epic_c_issueERC", jsonObject.getString("epicERC")
+				"r_epic_c_jiraIssueERC", jsonObject.getString("epicERC")
 			).put(
-				"r_initiative_c_issueERC", jsonObject.getString("initiativeERC")
+				"r_initiative_c_jiraIssueERC", jsonObject.getString("initiativeERC")
 			).put(
-				"r_parentIssue_c_issueERC",
+				"r_parentIssue_c_jiraIssueERC",
 				jsonObject.getString("externalReferenceCode")
 			).put(
-				"r_story_c_issueERC", jsonObject.getString("storyERC")
+				"r_story_c_jiraIssueERC", jsonObject.getString("storyERC")
 			).put(
-				"r_task_c_issueERC", jsonObject.getString("taskERC")
+				"r_task_c_jiraIssueERC", jsonObject.getString("taskERC")
 			).put(
 				_getRelationshipName(
 					_getNestedKey(jsonObject, "issueType", "name")),
@@ -208,14 +207,14 @@ public class JiraService extends BaseService {
 				get(
 					_getJiraAuthorization(),
 					UriComponentsBuilder.fromHttpUrl(
-						"https://liferay.atlassian.net/rest/api/3/issue" +
+						"https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/issue" +
 							"/{parentKey}"
 					).queryParam(
 						"expand", "renderedFields"
 					).queryParam(
 						"fields", "description,issuetype,parent,project,summary"
 					).build(
-						parentKey
+						_liferayTestrayJiraCloudId, parentKey
 					)));
 
 			return _importTestrayJiraIssue(jsonObject);
@@ -223,7 +222,7 @@ public class JiraService extends BaseService {
 	}
 
 	private String _getRelationshipName(String issueType) {
-		return "r_" + StringUtil.lowerCase(issueType) + "_c_issueERC";
+		return "r_" + StringUtil.lowerCase(issueType) + "_c_jiraIssueERC";
 	}
 
 	private Map<String, String> _importTestrayJiraIssue(JSONObject jsonObject) {
@@ -249,15 +248,15 @@ public class JiraService extends BaseService {
 			).put(
 				"title", _getNestedKey(jsonObject, "fields", "summary")
 			).put(
-				"r_epic_c_issueERC", map.get("r_epic_c_issueERC")
+				"r_epic_c_jiraIssueERC", map.get("r_epic_c_jiraIssueERC")
 			).put(
-				"r_initiative_c_issueERC", map.get("r_initiative_c_issueERC")
+				"r_initiative_c_jiraIssueERC", map.get("r_initiative_c_jiraIssueERC")
 			).put(
-				"r_parentIssue_c_issueERC", map.get("r_parentIssue_c_issueERC")
+				"r_parentIssue_c_jiraIssueERC", map.get("r_parentIssue_c_jiraIssueERC")
 			).put(
-				"r_story_c_issueERC", map.get("r_story_c_issueERC")
+				"r_story_c_jiraIssueERC", map.get("r_story_c_jiraIssueERC")
 			).put(
-				"r_task_c_issueERC", map.get("r_task_c_issueERC")
+				"r_task_c_jiraIssueERC", map.get("r_task_c_jiraIssueERC")
 			).toString(),
 			UriComponentsBuilder.fromPath(
 				"/o/c/jiraissues/by-external-reference-code/{issueKey}"
@@ -265,7 +264,7 @@ public class JiraService extends BaseService {
 				jsonObject.getString("key")
 			));
 
-		map.put("r_parentIssue_c_issueERC", jsonObject.getString("key"));
+		map.put("r_parentIssue_c_jiraIssueERC", jsonObject.getString("key"));
 		map.put(
 			_getRelationshipName(
 				_getNestedKey(jsonObject, "fields", "issuetype", "name")),
@@ -281,5 +280,8 @@ public class JiraService extends BaseService {
 
 	@Autowired
 	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
+
+	@Value("${liferay.testray.jira.cloud.id}")
+	private String _liferayTestrayJiraCloudId;
 
 }
