@@ -75,7 +75,8 @@ public class JiraService extends BaseService {
 				get(
 					_getJiraAuthorization(),
 					UriComponentsBuilder.fromHttpUrl(
-						"https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/search"
+						"https://api.atlassian.com/ex/jira/{cloudId}/rest/api" +
+							"/3/search"
 					).queryParam(
 						"jql", "issuekey in ({issueKeys})"
 					).queryParam(
@@ -126,7 +127,8 @@ public class JiraService extends BaseService {
 					)
 				).toString(),
 				UriComponentsBuilder.fromHttpUrl(
-					"https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/issue/{issueKey}"
+					"https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3" +
+						"/issue/{issueKey}"
 				).build(
 					_liferayTestrayJiraCloudId, issueKey
 				)));
@@ -184,7 +186,8 @@ public class JiraService extends BaseService {
 			return HashMapBuilder.put(
 				"r_epic_c_jiraIssueERC", jsonObject.getString("epicERC")
 			).put(
-				"r_initiative_c_jiraIssueERC", jsonObject.getString("initiativeERC")
+				"r_initiative_c_jiraIssueERC",
+				jsonObject.getString("initiativeERC")
 			).put(
 				"r_parentIssue_c_jiraIssueERC",
 				jsonObject.getString("externalReferenceCode")
@@ -207,8 +210,8 @@ public class JiraService extends BaseService {
 				get(
 					_getJiraAuthorization(),
 					UriComponentsBuilder.fromHttpUrl(
-						"https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3/issue" +
-							"/{parentKey}"
+						"https://api.atlassian.com/ex/jira/{cloudId}/rest/api" +
+							"/3/issue/{parentKey}"
 					).queryParam(
 						"expand", "renderedFields"
 					).queryParam(
@@ -250,9 +253,11 @@ public class JiraService extends BaseService {
 			).put(
 				"r_epic_c_jiraIssueERC", map.get("r_epic_c_jiraIssueERC")
 			).put(
-				"r_initiative_c_jiraIssueERC", map.get("r_initiative_c_jiraIssueERC")
+				"r_initiative_c_jiraIssueERC",
+				map.get("r_initiative_c_jiraIssueERC")
 			).put(
-				"r_parentIssue_c_jiraIssueERC", map.get("r_parentIssue_c_jiraIssueERC")
+				"r_parentIssue_c_jiraIssueERC",
+				map.get("r_parentIssue_c_jiraIssueERC")
 			).put(
 				"r_story_c_jiraIssueERC", map.get("r_story_c_jiraIssueERC")
 			).put(

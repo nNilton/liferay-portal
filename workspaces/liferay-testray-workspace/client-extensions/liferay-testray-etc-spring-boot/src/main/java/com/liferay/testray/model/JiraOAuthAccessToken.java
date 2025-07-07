@@ -32,16 +32,11 @@ public class JiraOAuthAccessToken {
 	}
 
 	public boolean isValid() {
-		if (_dateCreated.plusMinutes(
-				55
-			).isBefore(
-				OffsetDateTime.now()
-			)) {
-
-			return true;
-		}
-
-		return false;
+		return _dateCreated.plusMinutes(
+			55
+		).isAfter(
+			OffsetDateTime.now()
+		);
 	}
 
 	public void setAccessToken(String accessToken) {
