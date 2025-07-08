@@ -43,13 +43,14 @@ public class JiraRestController extends BaseRestController {
 
 	@GetMapping("/oauth/callback")
 	public void getOAuthCallback(
-		@RequestParam String code, @RequestParam String state,
-		HttpSession httpSession, HttpServletRequest httpServletRequest) {
+			@RequestParam String code, @RequestParam String state,
+			HttpSession httpSession, HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
+		throws Exception {
 
 		if (!StringUtil.equals(
 				state,
-				GetterUtil.getString(
-					httpSession.getAttribute("oauth_state")))) {
+				GetterUtil.getString(httpSession.getAttribute("state")))) {
 
 			return;
 		}
@@ -58,28 +59,16 @@ public class JiraRestController extends BaseRestController {
 			code, "code",
 			httpServletRequest.getRequestURL(
 			).toString());
-	}
 
-	@PostMapping("issues/sync")
-	@ResponseBody
-	public ResponseEntity<Object> postIssueSync() {
-		_jiraService.syncJiraIssues();
-
-		return new ResponseEntity<>(HttpStatus.OK);
-	}
-
-	@PutMapping("issues/{issueKey}")
-	@ResponseBody
-	public ResponseEntity<Object> putIssue(
-		@PathVariable String issueKey, @RequestBody String json) {
-
-		_jiraService.updateJiraIssue(issueKey, json);
-
-		return new ResponseEntity<>(HttpStatus.OK);
+		httpServletResponse.sendRedirect(
+			UriComponentsBuilder.fromUriString(
+				lxcDXPServerProtocol + "://" + lxcDXPMainDomain
+			).build(
+			).toString());
 	}
 
 	@GetMapping("/oauth/login")
-	public void redirectToOAuth(
+	public void getOAuthLogin(
 			HttpServletRequest httpServletRequest,
 			HttpServletResponse httpServletResponse)
 		throws Exception {
@@ -89,7 +78,7 @@ public class JiraRestController extends BaseRestController {
 
 		httpServletRequest.getSession(
 		).setAttribute(
-			"oauth_state", state
+			"state", state
 		);
 
 		httpServletResponse.sendRedirect(
@@ -117,6 +106,29 @@ public class JiraRestController extends BaseRestController {
 				_liferayTestrayJiraOAuthClientId
 			).toString());
 	}
+
+	@PostMapping("issues/sync")
+	@ResponseBody
+	public ResponseEntity<Object> postIssueSync() {
+		_jiraService.syncJiraIssues();
+
+		return new ResponseEntity<>(HttpStatus.OK);
+	}
+
+	@PutMapping("issues/{issueKey}")
+	@ResponseBody
+	public ResponseEntity<Object> putIssue(
+		@PathVariable String issueKey, @RequestBody String json) {
+
+		return new ResponseEntity<>(
+			_jiraService.updateJiraIssue(issueKey, json), HttpStatus.OK);
+	}
+
+	@Value("${com.liferay.lxc.dxp.mainDomain}")
+	protected String lxcDXPMainDomain;
+
+	@Value("${com.liferay.lxc.dxp.server.protocol}")
+	protected String lxcDXPServerProtocol;
 
 	@Autowired
 	private JiraOAuthService _jiraOAuthService;

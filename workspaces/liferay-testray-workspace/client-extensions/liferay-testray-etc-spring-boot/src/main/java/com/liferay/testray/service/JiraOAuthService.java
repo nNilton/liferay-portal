@@ -62,7 +62,7 @@ public class JiraOAuthService extends BaseService {
 		if (_jiraOAuthAccessToken == null) {
 			_log.error("Unable to get OAuth 2 authorized client");
 
-			return null;
+			return "";
 		}
 
 		if (!_jiraOAuthAccessToken.isValid()) {
