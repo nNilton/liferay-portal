@@ -1509,6 +1509,11 @@ public class BundleSiteInitializerTest {
 			depotAppCustomizations.get(
 				0
 			).getEnabled());
+
+		_assertDLFileEntry1(
+			depotEntries.get(
+				0
+			).getGroupId());
 	}
 
 	private void _assertDepotEntries2() throws Exception {
@@ -1550,11 +1555,20 @@ public class BundleSiteInitializerTest {
 			depotAppCustomizations.get(
 				0
 			).getEnabled());
+
+		_assertDLFileEntry2(
+			depotEntries.get(
+				0
+			).getGroupId());
 	}
 
-	private void _assertDLFileEntry1() throws Exception {
+	private void _assertDLFileEntry1(long groupId) throws Exception {
+		if (groupId == 0) {
+			groupId = _group.getGroupId();
+		}
+
 		DLFileEntry dlFileEntry = _dlFileEntryLocalService.getFileEntry(
-			_group.getGroupId(), DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			groupId, DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
 			"Table of Contents.md");
 
 		String string = new String(
@@ -1568,9 +1582,13 @@ public class BundleSiteInitializerTest {
 		Assert.assertTrue(string.contains("1. Revelation"));
 	}
 
-	private void _assertDLFileEntry2() throws Exception {
+	private void _assertDLFileEntry2(long groupId) throws Exception {
+		if (groupId == 0) {
+			groupId = _group.getGroupId();
+		}
+
 		DLFileEntry dlFileEntry = _dlFileEntryLocalService.getFileEntry(
-			_group.getGroupId(), DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			groupId, DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
 			"Table of Contents.md");
 
 		String string = new String(
@@ -1586,13 +1604,13 @@ public class BundleSiteInitializerTest {
 		Assert.assertTrue(string.contains("1. Test Update"));
 
 		DLFolder dlFolder = _dlFolderLocalService.fetchFolder(
-			_group.getGroupId(), DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			groupId, DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
 			"Old Testament");
 
 		Assert.assertNotNull(dlFolder);
 
 		dlFileEntry = _dlFileEntryLocalService.getFileEntry(
-			_group.getGroupId(), dlFolder.getFolderId(), "Genesis.txt");
+			groupId, dlFolder.getFolderId(), "Genesis.txt");
 
 		Assert.assertNotNull(dlFileEntry);
 
@@ -4545,7 +4563,7 @@ public class BundleSiteInitializerTest {
 		_assertDDMStructure();
 		_assertDDMTemplate1();
 		_assertDepotEntries1();
-		_assertDLFileEntry1();
+		_assertDLFileEntry1(0);
 		_assertExpandoColumns1();
 		_assertExpandoValues1();
 		_assertFragmentEntries1();
@@ -4590,7 +4608,7 @@ public class BundleSiteInitializerTest {
 		_assertDataDefinition2();
 		_assertDDMTemplate2();
 		_assertDepotEntries2();
-		_assertDLFileEntry2();
+		_assertDLFileEntry2(0);
 		_assertExpandoColumns2();
 		_assertExpandoValues2();
 		_assertFragmentEntries2();

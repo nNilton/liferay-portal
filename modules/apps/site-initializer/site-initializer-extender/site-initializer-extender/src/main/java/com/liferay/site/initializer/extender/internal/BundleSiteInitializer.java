@@ -951,10 +951,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 		throws Exception {
 
 		_addKeywords(
-			"ASSET_LIBRARY", "/site-initializer/keywords/asset-libraries",
-			serviceContext, stringUtilReplaceValues);
-		_addKeywords(
-			"SITE", "/site-initializer/keywords/group", serviceContext,
+			"SITE", "/site-initializer", serviceContext,
 			stringUtilReplaceValues);
 	}
 
@@ -985,10 +982,21 @@ public class BundleSiteInitializer implements SiteInitializer {
 
 			long groupId = 0;
 
-			if (jsonObject.has("assetLibraryName")) {
+			if (StringUtil.equals(replaceKey, "ASSET_LIBRARY")) {
+				JSONObject depotEntrySettingsJSONObject =
+					_jsonFactory.createJSONObject(
+						SiteInitializerUtil.read(
+							resourcePath + "/depot-entry-settings.json",
+							_servletContext));
+
 				Group group = _groupLocalService.fetchGroup(
 					serviceContext.getCompanyId(),
-					jsonObject.getString("assetLibraryName"));
+					depotEntrySettingsJSONObject.getJSONObject(
+						"name_i18n"
+					).getString(
+						LocaleUtil.getSiteDefault(
+						).toString()
+					));
 
 				if (group == null) {
 					_log.error(
@@ -1918,100 +1926,120 @@ public class BundleSiteInitializer implements SiteInitializer {
 		}
 	}
 
-	private void _addOrUpdateDepotEntries(ServiceContext serviceContext)
+	private void _addOrUpdateDepotEntries(
+			ServiceContext serviceContext,
+			SiteNavigationMenuItemSettingsBuilder
+				siteNavigationMenuItemSettingsBuilder,
+			Map<String, String> stringUtilReplaceValues)
 		throws Exception {
 
-		String json = SiteInitializerUtil.read(
-			"/site-initializer/depot-entries.json", _servletContext);
+		Set<String> resourcePaths = _servletContext.getResourcePaths(
+			"/site-initializer/depot-entries");
 
-		if (json == null) {
+		if (SetUtil.isEmpty(resourcePaths)) {
 			return;
 		}
 
-		JSONArray jsonArray = _jsonFactory.createJSONArray(json);
+		for (String resourcePath : resourcePaths) {
+			if (resourcePath.endsWith("/")) {
+				String json = SiteInitializerUtil.read(
+					resourcePath + "depot-entry-settings.json",
+					_servletContext);
 
-		for (int i = 0; i < jsonArray.length(); i++) {
-			JSONObject jsonObject = jsonArray.getJSONObject(i);
+				if (json == null) {
+					continue;
+				}
 
-			Group group = _groupLocalService.fetchGroup(
-				serviceContext.getCompanyId(),
-				SiteInitializerUtil.toMap(
-					jsonObject.getString("name_i18n")
-				).get(
-					LocaleUtil.getSiteDefault()
-				));
+				JSONObject jsonObject = JSONFactoryUtil.createJSONObject(json);
 
-			DepotEntry depotEntry = null;
+				Group group = _groupLocalService.fetchGroup(
+					serviceContext.getCompanyId(),
+					SiteInitializerUtil.toMap(
+						jsonObject.getString("name_i18n")
+					).get(
+						LocaleUtil.getSiteDefault()
+					));
 
-			if (group == null) {
-				depotEntry = _depotEntryLocalService.addDepotEntry(
+				DepotEntry depotEntry = null;
+
+				if (group == null) {
+					depotEntry = _depotEntryLocalService.addDepotEntry(
+						SiteInitializerUtil.toMap(
+							jsonObject.getString("name_i18n")),
+						SiteInitializerUtil.toMap(
+							jsonObject.getString("description_i18n")),
+						DepotConstants.TYPE_ASSET_LIBRARY, serviceContext);
+				}
+
+				UnicodeProperties unicodeProperties = new UnicodeProperties(
+					true);
+
+				JSONArray typeSettingsJSONArray = jsonObject.getJSONArray(
+					"typeSettings");
+
+				if (typeSettingsJSONArray != null) {
+					for (int j = 0; j < typeSettingsJSONArray.length(); j++) {
+						JSONObject propertyJSONObject =
+							typeSettingsJSONArray.getJSONObject(j);
+
+						unicodeProperties.put(
+							propertyJSONObject.getString("key"),
+							propertyJSONObject.getString("value"));
+					}
+				}
+
+				JSONObject depotAppCustomizationJSONObject =
+					jsonObject.getJSONObject("depotAppCustomization");
+
+				_depotEntryLocalService.updateDepotEntry(
+					(group != null) ? group.getClassPK() :
+						depotEntry.getDepotEntryId(),
 					SiteInitializerUtil.toMap(
 						jsonObject.getString("name_i18n")),
 					SiteInitializerUtil.toMap(
 						jsonObject.getString("description_i18n")),
-					_getDepotEntryType(jsonObject.getString("type")),
-					serviceContext);
-			}
+					HashMapBuilder.put(
+						PortletKeys.ASSET_LIST,
+						GetterUtil.getBoolean(
+							depotAppCustomizationJSONObject.getBoolean(
+								PortletKeys.ASSET_LIST),
+							true)
+					).put(
+						PortletKeys.DOCUMENT_LIBRARY_ADMIN,
+						GetterUtil.getBoolean(
+							depotAppCustomizationJSONObject.getBoolean(
+								PortletKeys.DOCUMENT_LIBRARY_ADMIN),
+							true)
+					).put(
+						PortletKeys.JOURNAL,
+						GetterUtil.getBoolean(
+							depotAppCustomizationJSONObject.getBoolean(
+								PortletKeys.JOURNAL),
+							true)
+					).put(
+						PortletKeys.TRANSLATION,
+						GetterUtil.getBoolean(
+							depotAppCustomizationJSONObject.getBoolean(
+								PortletKeys.TRANSLATION),
+							true)
+					).build(),
+					unicodeProperties, serviceContext);
 
-			UnicodeProperties unicodeProperties = new UnicodeProperties(true);
-
-			JSONArray typeSettingsJSONArray = jsonObject.getJSONArray(
-				"typeSettings");
-
-			if (typeSettingsJSONArray != null) {
-				for (int j = 0; j < typeSettingsJSONArray.length(); j++) {
-					JSONObject propertyJSONObject =
-						typeSettingsJSONArray.getJSONObject(j);
-
-					unicodeProperties.put(
-						propertyJSONObject.getString("key"),
-						propertyJSONObject.getString("value"));
-				}
-			}
-
-			JSONObject depotAppCustomizationJSONObject =
-				jsonObject.getJSONObject("depotAppCustomization");
-
-			_depotEntryLocalService.updateDepotEntry(
-				(group != null) ? group.getClassPK() :
-					depotEntry.getDepotEntryId(),
-				SiteInitializerUtil.toMap(jsonObject.getString("name_i18n")),
-				SiteInitializerUtil.toMap(
-					jsonObject.getString("description_i18n")),
-				HashMapBuilder.put(
-					PortletKeys.ASSET_LIST,
-					GetterUtil.getBoolean(
-						depotAppCustomizationJSONObject.getBoolean(
-							PortletKeys.ASSET_LIST),
-						true)
-				).put(
-					PortletKeys.DOCUMENT_LIBRARY_ADMIN,
-					GetterUtil.getBoolean(
-						depotAppCustomizationJSONObject.getBoolean(
-							PortletKeys.DOCUMENT_LIBRARY_ADMIN),
-						true)
-				).put(
-					PortletKeys.JOURNAL,
-					GetterUtil.getBoolean(
-						depotAppCustomizationJSONObject.getBoolean(
-							PortletKeys.JOURNAL),
-						true)
-				).put(
-					PortletKeys.TRANSLATION,
-					GetterUtil.getBoolean(
-						depotAppCustomizationJSONObject.getBoolean(
-							PortletKeys.TRANSLATION),
-						true)
-				).build(),
-				unicodeProperties, serviceContext);
-
-			Group scopeGroup = serviceContext.getScopeGroup();
-
-			if (scopeGroup.isSite()) {
 				_depotEntryGroupRelLocalService.addDepotEntryGroupRel(
 					(group != null) ? group.getClassPK() :
 						depotEntry.getDepotEntryId(),
 					serviceContext.getScopeGroupId());
+
+				_addOrUpdateDocuments(
+					null,
+					(group != null) ? group.getGroupId() :
+						depotEntry.getGroupId(),
+					resourcePath + "documents", serviceContext,
+					siteNavigationMenuItemSettingsBuilder,
+					stringUtilReplaceValues);
+				_addKeywords(
+					"ASSET_LIBRARY", resourcePath, serviceContext,
+					stringUtilReplaceValues);
 			}
 		}
 	}
@@ -5122,7 +5150,9 @@ public class BundleSiteInitializer implements SiteInitializer {
 				serviceContext, stringUtilReplaceValues));
 		R addOrUpdateDepotEntriesR = new R(
 			"addOrUpdateDepotEntries",
-			() -> _addOrUpdateDepotEntries(serviceContext));
+			() -> _addOrUpdateDepotEntries(
+				serviceContext, siteNavigationMenuItemSettingsBuilder,
+				stringUtilReplaceValues));
 		R addOrUpdateDocumentsR = new R(
 			"addOrUpdateDocuments",
 			() -> _addOrUpdateDocuments(
@@ -5461,22 +5491,6 @@ public class BundleSiteInitializer implements SiteInitializer {
 		}
 
 		return map;
-	}
-
-	private int _getDepotEntryType(String assetLibraryTypeString) {
-		if (Validator.isNull(assetLibraryTypeString) ||
-			StringUtil.equalsIgnoreCase(
-				assetLibraryTypeString, "AssetLibrary")) {
-
-			return DepotConstants.TYPE_ASSET_LIBRARY;
-		}
-		else if (StringUtil.equalsIgnoreCase(assetLibraryTypeString, "Space")) {
-			return DepotConstants.TYPE_SPACE;
-		}
-
-		throw new IllegalArgumentException(
-			"Asset library type " + assetLibraryTypeString +
-				" must be \"AssetLibrary\" or \"Space\"");
 	}
 
 	private Serializable _getExpandoAttributeValue(JSONObject jsonObject)
