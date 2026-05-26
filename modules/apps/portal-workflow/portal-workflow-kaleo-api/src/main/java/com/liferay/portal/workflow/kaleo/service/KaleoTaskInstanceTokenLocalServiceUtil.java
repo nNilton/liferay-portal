@@ -373,6 +373,12 @@ public class KaleoTaskInstanceTokenLocalServiceUtil {
 	}
 
 	public static List<KaleoTaskInstanceToken> getKaleoTaskInstanceTokens(
+		String className, long classPK) {
+
+		return getService().getKaleoTaskInstanceTokens(className, classPK);
+	}
+
+	public static List<KaleoTaskInstanceToken> getKaleoTaskInstanceTokens(
 		String assigneeClassName, long assigneeClassPK, Boolean completed,
 		int start, int end,
 		OrderByComparator<KaleoTaskInstanceToken> orderByComparator,
@@ -465,6 +471,12 @@ public class KaleoTaskInstanceTokenLocalServiceUtil {
 		throws PortalException {
 
 		return getService().hasPendingKaleoTaskForms(kaleoTaskInstanceTokenId);
+	}
+
+	public static boolean isNotifiableUser(long userId, long workflowTaskId)
+		throws PortalException {
+
+		return getService().isNotifiableUser(userId, workflowTaskId);
 	}
 
 	public static List<KaleoTaskInstanceToken> search(
@@ -684,3 +696,4 @@ public class KaleoTaskInstanceTokenLocalServiceUtil {
 			KaleoTaskInstanceTokenLocalService.class);
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:1984201992

@@ -28,6 +28,7 @@ import com.liferay.portal.search.searcher.SearchResponse;
 import com.liferay.portal.search.searcher.Searcher;
 import com.liferay.site.cms.site.initializer.internal.constants.CMSSiteInitializerFDSNames;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -39,6 +40,7 @@ import org.osgi.service.component.annotations.Reference;
  */
 @Component(
 	property = {
+		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.ALL_RELATED_ASSETS_SECTION,
 		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.ALL_SECTION,
 		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.FILES_SECTION,
 		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.RECYCLE_BIN_SECTION,
@@ -88,7 +90,7 @@ public class ExtensionSelectionFDSFilter extends BaseSelectionFDSFilter {
 				companyId, DepotConstants.TYPE_SPACE),
 			DepotEntry::getGroupId);
 
-		if ((groupIds != null) && ArrayUtil.isNotEmpty(groupIds)) {
+		if (ArrayUtil.isNotEmpty(groupIds)) {
 			searchContext.setGroupIds(groupIds);
 		}
 
@@ -117,6 +119,10 @@ public class ExtensionSelectionFDSFilter extends BaseSelectionFDSFilter {
 		TermsAggregationResult termsAggregationResult =
 			(TermsAggregationResult)searchResponse.getAggregationResult(
 				"extensions");
+
+		if (termsAggregationResult == null) {
+			return Collections.emptyList();
+		}
 
 		return TransformUtil.transform(
 			termsAggregationResult.getBuckets(), Bucket::getKey);

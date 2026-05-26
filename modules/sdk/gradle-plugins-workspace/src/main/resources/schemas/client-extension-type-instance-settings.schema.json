@@ -139,6 +139,60 @@
 		},
 		{
 			"properties": {
+				"clientId": {
+					"title": "Client ID",
+					"type": "string"
+				},
+				"clientSecret": {
+					"title": "Client Secret",
+					"type": "string"
+				},
+				"pid": {
+					"const": "com.liferay.ai.hub.cell.configuration.AIHubCellConfiguration",
+					"title": "AI Hub Configuration"
+				},
+				"serviceURL": {
+					"title": "Service URL",
+					"type": "string"
+				}
+			},
+			"required": [
+				"pid",
+				"clientId",
+				"clientSecret",
+				"serviceURL"
+			],
+			"title": "AI Hub Configuration"
+		},
+		{
+			"properties": {
+				"location": {
+					"title": "Location",
+					"type": "string"
+				},
+				"modelName": {
+					"title": "Model Name",
+					"type": "string"
+				},
+				"pid": {
+					"const": "com.liferay.ai.hub.internal.configuration.VertexAIConfiguration",
+					"title": "Vertex AI Configuration"
+				},
+				"projectId": {
+					"title": "Project ID",
+					"type": "string"
+				}
+			},
+			"required": [
+				"pid",
+				"location",
+				"modelName",
+				"projectId"
+			],
+			"title": "Vertex AI Configuration"
+		},
+		{
+			"properties": {
 				"commerceSyncEnabledAnalyticsChannelIds": {
 					"items": {
 						"type": "string"
@@ -159,6 +213,9 @@
 					"type": "string"
 				},
 				"liferayAnalyticsConnectionType": {
+					"type": "string"
+				},
+				"liferayAnalyticsCredentialType": {
 					"type": "string"
 				},
 				"liferayAnalyticsDataSourceId": {
@@ -716,6 +773,12 @@
 		},
 		{
 			"properties": {
+				"cleanUpCTSContentData": {
+					"default": false,
+					"description": "Enable this to remove change tracking store content immediately after a publication publishes.",
+					"title": "Clean Up Change Tracking Store Content Data",
+					"type": "boolean"
+				},
 				"defaultCTCollectionTemplateId": {
 					"default": 0,
 					"title": "Default Publication Template ID",
@@ -785,6 +848,12 @@
 		},
 		{
 			"properties": {
+				"contextViewScoreThreshold": {
+					"default": 60000,
+					"description": "Set the maximum score a publication can have and still render the context view. Publications with a score above this threshold will skip the context view for better performance.",
+					"title": "Context View Score Threshold",
+					"type": "number"
+				},
 				"hiddenApplications": {
 					"description": "These applications will be hidden from the application menu when you are in a publication.",
 					"items": {
@@ -1818,13 +1887,13 @@
 				},
 				"propagateChanges": {
 					"default": false,
-					"description": "When enabled, changes will be propagated immediately after publishing a fragment entry. If staging is enabled, this setting does not affect live sites.",
+					"description": "When enabled, changes are propagated immediately after publishing a fragment entry. If staging is enabled, this setting does not affect live sites.",
 					"title": "Propagate Fragment Changes Automatically",
 					"type": "boolean"
 				},
 				"propagateContributedFragmentChanges": {
 					"default": true,
-					"description": "When enabled, changes will be propagated immediately during the deploy process. When disabled, changes can be propagated manually after deploy process.",
+					"description": "When enabled, changes are propagated immediately during the deploy process. When disabled, changes can be propagated manually after deploy process.",
 					"title": "Propagate Default Fragments Changes During Deploy Process Automatically",
 					"type": "boolean"
 				}
@@ -1996,16 +2065,28 @@
 		},
 		{
 			"properties": {
+				"cachingStrategy": {
+					"default": "do-not-use-hashes",
+					"description": "Set the balance between caching span and size of the import maps (which affect the size of the page's HTML). If you decide not to use hashes, the import maps will be smaller but the caching span will be limited. On the other hand, if you use one hash per file, the import maps will be bigger but files will be infinitely cacheable.",
+					"title": "Caching Strategy",
+					"type": "string"
+				},
 				"cssStyleSheetsMaxAge": {
 					"default": 86400,
-					"description": "Set the value of the \"max-age\" directive in the \"Cache-Control\" header for CSS style sheets.",
+					"description": "Set the value of the \"max-age\" directive in the \"Cache-Control\" header for mutable CSS style sheets.",
 					"title": "CSS Style Sheets Max Age Directive Value",
 					"type": "number"
 				},
-				"esModulesMaxAge": {
+				"jsFilesMaxAge": {
 					"default": 86400,
-					"description": "Set the value of the \"max-age\" directive in the \"Cache-Control\" header for ES modules.",
-					"title": "ES Modules Max Age Directive Value",
+					"description": "Set the value of the \"max-age\" directive in the \"Cache-Control\" header for mutable JavaScript files.",
+					"title": "JavaScript Files Max Age Directive Value",
+					"type": "number"
+				},
+				"labelsModulesMaxAge": {
+					"default": 3600,
+					"description": "Set the value of the \"max-age\" directive in the \"Cache-Control\" header for labels modules.",
+					"title": "Labels Modules Max Age Directive Value",
 					"type": "number"
 				},
 				"pid": {
@@ -2015,14 +2096,44 @@
 				"sendNoCacheForCSSStyleSheets": {
 					"default": false,
 					"description": "If checked, a \"no-cache\" directive (instead of \"must-revalidate\") will be sent in the \"Cache-Control\" header for CSS style sheets.",
-					"title": "Send No Cache Directive For CSS Style Sheets",
+					"title": "Send No Cache Directive for CSS Style Sheets",
 					"type": "boolean"
 				},
-				"sendNoCacheForESModules": {
+				"sendNoCacheForJSFiles": {
 					"default": false,
-					"description": "If checked, a \"no-cache\" directive (instead of \"must-revalidate\") will be sent in the \"Cache-Control\" header for ES modules.",
-					"title": "Send No Cache Directive For ES Modules",
+					"description": "If checked, a \"no-cache\" directive (instead of \"must-revalidate\") will be sent in the \"Cache-Control\" header for JavaScript files.",
+					"title": "Send No Cache Directive for JavaScript Files",
 					"type": "boolean"
+				},
+				"sendNoCacheForLabelsModules": {
+					"default": false,
+					"description": "If checked, a \"no-cache\" directive (instead of \"must-revalidate\") will be sent in the \"Cache-Control\" header for labels modules.",
+					"title": "Send No Cache Directive for Labels Modules",
+					"type": "boolean"
+				},
+				"sendNoCacheForTokenizedCSSStyleSheets": {
+					"default": false,
+					"description": "If checked, a \"no-cache\" directive (instead of \"must-revalidate\") will be sent in the \"Cache-Control\" header for CSS style sheets that contain tokens (e.g. \"@theme_image_path@\").",
+					"title": "Send No Cache Directive for Tokenized CSS Style Sheets",
+					"type": "boolean"
+				},
+				"sendNoCacheForTranslatedJSFiles": {
+					"default": false,
+					"description": "If checked, a \"no-cache\" directive (instead of \"must-revalidate\") will be sent in the \"Cache-Control\" header for translated JavaScript files (those that contain invocations to \"Liferay.Language.get()\" and do not have an associated language.json file).",
+					"title": "Send No Cache Directive for Translated JavaScript Files",
+					"type": "boolean"
+				},
+				"tokenizedCSSStyleSheetsMaxAge": {
+					"default": 86400,
+					"description": "Set the value of the \"max-age\" directive in the \"Cache-Control\" header for CSS style sheets that contain tokens (e.g. \"@theme_image_path@\").",
+					"title": "Tokenized CSS Style Sheets Max Age Directive Value",
+					"type": "number"
+				},
+				"translatedJSFilesMaxAge": {
+					"default": 3600,
+					"description": "Set the value of the \"max-age\" directive in the \"Cache-Control\" header for translated JavaScript files for translated JavaScript files (those that contain invocations to \"Liferay.Language.get()\" and do not have an associated language.json file).",
+					"title": "Translated JavaScript Files Max Age Directive Value",
+					"type": "number"
 				}
 			},
 			"required": [
@@ -2292,7 +2403,7 @@
 			"title": "SEO"
 		},
 		{
-			"description": "Configure when automatic propagation is triggered for site templates.",
+			"description": "Site Templates Configuration",
 			"properties": {
 				"cancelPropagationImportTask": {
 					"default": true,
@@ -2302,14 +2413,8 @@
 				},
 				"pid": {
 					"const": "com.liferay.layout.set.prototype.configuration.LayoutSetPrototypeConfiguration",
-					"description": "Configure when automatic propagation is triggered for site templates.",
+					"description": "Site Templates Configuration",
 					"title": "Site Templates"
-				},
-				"triggerPropagation": {
-					"default": false,
-					"description": "If unchecked, changes are propagated to sites individually when they are first visited by a user. If checked, enabling propagation in a template also triggers propagation for all connected sites simultaneously.",
-					"title": "Trigger Propagation",
-					"type": "boolean"
 				}
 			},
 			"required": [
@@ -2910,10 +3015,6 @@
 					"default": "",
 					"type": "string"
 				},
-				"patcherPubsubCredentialFilePath": {
-					"default": "",
-					"type": "string"
-				},
 				"patcherPubsubProjectId": {
 					"default": "",
 					"type": "string"
@@ -3267,12 +3368,12 @@
 			"title": "Portal Cross-Origin Resource Sharing (CORS)"
 		},
 		{
-			"description": "Configure third party providers and other settings to index and search text embeddings. Semantic Search is a beta feature: enable it in Instance Settings > Feature Flags.",
+			"description": "Configure third party providers and other settings to index and search text embeddings. You can enable additional providers for Semantic Search in Instance Settings > Feature Flags > Beta.",
 			"properties": {
 				"pid": {
 					"const": "com.liferay.portal.search.configuration.SemanticSearchConfiguration",
-					"description": "Configure third party providers and other settings to index and search text embeddings. Semantic Search is a beta feature: enable it in Instance Settings > Feature Flags.",
-					"title": "Semantic Search (Beta)"
+					"description": "Configure third party providers and other settings to index and search text embeddings. You can enable additional providers for Semantic Search in Instance Settings > Feature Flags > Beta.",
+					"title": "Semantic Search"
 				},
 				"textEmbeddingCacheTimeout": {
 					"default": 604800,
@@ -3296,31 +3397,7 @@
 			"required": [
 				"pid"
 			],
-			"title": "Semantic Search (Beta)"
-		},
-		{
-			"properties": {
-				"enableDeepPagination": {
-					"default": false,
-					"description": "Enable deep pagination to paginate through all the results of a search query.",
-					"title": "Enable Deep Pagination",
-					"type": "boolean"
-				},
-				"pid": {
-					"const": "com.liferay.portal.search.elasticsearch7.configuration.DeepPaginationConfiguration",
-					"title": "Deep Pagination Configuration"
-				},
-				"pointInTimeKeepAliveSeconds": {
-					"default": 60,
-					"description": "The amount of time in seconds the search engine will keep a point in time alive (between 1 and 60).",
-					"title": "Point in Time Keep Alive",
-					"type": "number"
-				}
-			},
-			"required": [
-				"pid"
-			],
-			"title": "Deep Pagination Configuration"
+			"title": "Semantic Search"
 		},
 		{
 			"properties": {
@@ -4060,24 +4137,6 @@
 		},
 		{
 			"properties": {
-				"enableESModulesHashing": {
-					"default": true,
-					"description": "Enable this to generate import map entries that point to hashed file names for ES modules. This makes infinite caching for ES modules possible.",
-					"title": "Enable ES Modules Hashing",
-					"type": "boolean"
-				},
-				"pid": {
-					"const": "com.liferay.portal.url.builder.configuration.PortalURLBuilderConfiguration",
-					"title": "Portal URL Builder"
-				}
-			},
-			"required": [
-				"pid"
-			],
-			"title": "Portal URL Builder"
-		},
-		{
-			"properties": {
 				"pageSizeLimit": {
 					"default": 500,
 					"description": "Set the page size limit of elements that can be recovered through REST. Enter a negative number or zero for unlimited page size.",
@@ -4131,24 +4190,6 @@
 				"path"
 			],
 			"title": "Headless API Endpoint"
-		},
-		{
-			"properties": {
-				"enableApplicationsMenu": {
-					"default": true,
-					"description": "When enabled, the control panel applications and cross-site applications will be accessible through the new applications menu which can be accessed by clicking the grid menu icon in the upper-right corner.",
-					"title": "Enable Applications Menu",
-					"type": "boolean"
-				},
-				"pid": {
-					"const": "com.liferay.product.navigation.applications.menu.configuration.ApplicationsMenuInstanceConfiguration",
-					"title": "Applications Menu"
-				}
-			},
-			"required": [
-				"pid"
-			],
-			"title": "Applications Menu"
 		},
 		{
 			"properties": {
@@ -4631,18 +4672,6 @@
 					"description": "The settings in this configuration let you control the staging process.",
 					"title": "Staging"
 				},
-				"publishDisplayedContent": {
-					"default": false,
-					"description": "If checked, the displayed content will be published to Live for Dynamic Data Lists Display, Form, Web Content Display and Wiki Display. These widgets will publish the displayed content to Live independently of the Publish Process settings. For example, a Web Content Display will publish the Web Content even if Web Contents were not selected on the Publish Process screen. This can be useful to make sure that Staging and Live display the same content. However, in most cases the content is already available in Live and publishing it again can slow down the process unnecessarily. Uncheck to not publish the displayed content.",
-					"title": "Publish Displayed Content by Default",
-					"type": "boolean"
-				},
-				"publishParentLayoutsByDefault": {
-					"default": true,
-					"description": "If checked, parent pages are always published to live.",
-					"title": "Publish Parent Pages by Default",
-					"type": "boolean"
-				},
 				"stagingDeleteTempLAROnFailure": {
 					"default": true,
 					"description": "Uncheck to avoid deleting the temporary LAR during a failed staging publish process. In remote staging contexts, this only applies for the staging environment.",
@@ -4813,7 +4842,7 @@
 				"imageDefaultUseInitials": {
 					"default": true,
 					"description": "Enable to set the user's initials as the default user portrait. Otherwise, the default portrait image files will be used. The default portrait image path is set by the \"image.default.user.portrait\" property in portal.properties.",
-					"title": "Use Initials For Default User Portrait",
+					"title": "Use Initials for Default User Portrait",
 					"type": "boolean"
 				},
 				"imageMaxHeight": {
@@ -4853,6 +4882,8 @@
 				"com.liferay.adaptive.media.image.content.transformer.backwards.compatibility.internal.configuration.AMBackwardsCompatibilityHtmlContentTransformerConfiguration",
 				"com.liferay.adaptive.media.image.internal.configuration.AMImageCompanyConfiguration",
 				"com.liferay.ai.creator.openai.configuration.AICreatorOpenAICompanyConfiguration",
+				"com.liferay.ai.hub.cell.configuration.AIHubCellConfiguration",
+				"com.liferay.ai.hub.internal.configuration.VertexAIConfiguration",
 				"com.liferay.analytics.settings.configuration.AnalyticsConfiguration",
 				"com.liferay.asset.auto.tagger.google.cloud.natural.language.internal.configuration.GCloudNaturalLanguageAssetAutoTaggerCompanyConfiguration",
 				"com.liferay.asset.auto.tagger.internal.configuration.AssetAutoTaggerCompanyConfiguration",
@@ -4932,7 +4963,6 @@
 				"com.liferay.portal.defaultpermissions.configuration.PortalDefaultPermissionsCompanyConfiguration",
 				"com.liferay.portal.remote.cors.configuration.PortalCORSConfiguration",
 				"com.liferay.portal.search.configuration.SemanticSearchConfiguration",
-				"com.liferay.portal.search.elasticsearch7.configuration.DeepPaginationConfiguration",
 				"com.liferay.portal.search.elasticsearch8.configuration.DeepPaginationConfiguration",
 				"com.liferay.portal.search.internal.configuration.SiteActivityAsahConfiguration",
 				"com.liferay.portal.search.internal.configuration.UserActivityAsahConfiguration",
@@ -4947,10 +4977,8 @@
 				"com.liferay.portal.security.ldap.exportimport.configuration.LDAPExportConfiguration",
 				"com.liferay.portal.security.ldap.exportimport.configuration.LDAPImportConfiguration",
 				"com.liferay.portal.security.sso.openid.connect.internal.configuration.OpenIdConnectProviderConfiguration",
-				"com.liferay.portal.url.builder.configuration.PortalURLBuilderConfiguration",
 				"com.liferay.portal.vulcan.internal.configuration.HeadlessAPICompanyConfiguration",
 				"com.liferay.portal.vulcan.internal.configuration.VulcanCompanyConfiguration",
-				"com.liferay.product.navigation.applications.menu.configuration.ApplicationsMenuInstanceConfiguration",
 				"com.liferay.product.navigation.personal.menu.configuration.PersonalMenuConfiguration",
 				"com.liferay.redirect.internal.configuration.RedirectURLConfiguration",
 				"com.liferay.saml.runtime.configuration.SamlProviderConfiguration",

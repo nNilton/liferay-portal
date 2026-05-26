@@ -1,3 +1,4 @@
+const error = document.getElementById(`${fragmentElementId}-date-input-error`);
 const inputElement = document.getElementById(`${fragmentElementId}-date-input`);
 
 if (inputElement) {
@@ -13,12 +14,22 @@ if (inputElement) {
 		inputElement.setAttribute('disabled', true);
 	}
 	else {
-		const defaultLanguageId = themeDisplay.getDefaultLanguageId();
+		const defaultLanguageId = input.attributes.defaultLanguageId;
 
 		import('@liferay/fragment-impl/api').then(
-			({registerLocalizedInput, registerUnlocalizedInput}) => {
+			({
+				focusInput,
+				registerLocalizedInput,
+				registerUnlocalizedInput,
+			}) => {
+				if (error) {
+					focusInput(inputElement);
+				}
+
 				if (input.localizable) {
 					const {onChange} = registerLocalizedInput({
+						availableLanguageIds:
+							input.attributes.availableLanguageIds,
 						defaultLanguageId,
 						initialValues: input.valueI18n,
 						inputElement,

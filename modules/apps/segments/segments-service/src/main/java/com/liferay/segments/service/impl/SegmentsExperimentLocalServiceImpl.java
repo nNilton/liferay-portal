@@ -7,19 +7,23 @@ package com.liferay.segments.service.impl;
 
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.aop.AopService;
+import com.liferay.portal.kernel.dao.orm.Criterion;
 import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.dao.orm.OrderFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.ProjectionFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.Property;
 import com.liferay.portal.kernel.dao.orm.PropertyFactoryUtil;
+import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.SystemEventConstants;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.UserNotificationDeliveryConstants;
 import com.liferay.portal.kernel.notifications.UserNotificationManagerUtil;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ResourceLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
@@ -55,10 +59,12 @@ import com.liferay.segments.service.SegmentsExperimentRelLocalService;
 import com.liferay.segments.service.base.SegmentsExperimentLocalServiceBaseImpl;
 import com.liferay.segments.service.persistence.SegmentsExperiencePersistence;
 import com.liferay.segments.service.persistence.SegmentsExperimentRelPersistence;
+import com.liferay.segments.util.comparator.SegmentsExperiencePriorityComparator;
 
 import java.math.RoundingMode;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -244,17 +250,56 @@ public class SegmentsExperimentLocalServiceImpl
 
 	@Override
 	public List<SegmentsExperiment> getSegmentsEntrySegmentsExperiments(
-		long segmentsEntryId) {
+		String segmentsEntryERC, long segmentsEntryGroupId) {
 
 		DynamicQuery dynamicQuery =
-			segmentsExperimentLocalService.dynamicQuery();
+			_segmentsExperienceLocalService.dynamicQuery();
+
+		Property segmentsEntryERCProperty = PropertyFactoryUtil.forName(
+			"segmentsEntryERC");
+		Property segmentsExperienceGroupIdProperty =
+			PropertyFactoryUtil.forName("groupId");
+		Property segmentsEntryScopeERCProperty = PropertyFactoryUtil.forName(
+			"segmentsEntryScopeERC");
+
+		Criterion criterion = RestrictionsFactoryUtil.and(
+			segmentsEntryERCProperty.eq(segmentsEntryERC),
+			RestrictionsFactoryUtil.and(
+				segmentsExperienceGroupIdProperty.eq(segmentsEntryGroupId),
+				segmentsEntryScopeERCProperty.isNull()));
+
+		Group group = _groupLocalService.fetchGroup(segmentsEntryGroupId);
+
+		if ((group != null) &&
+			Validator.isNotNull(group.getExternalReferenceCode())) {
+
+			Criterion remoteCriterion = RestrictionsFactoryUtil.and(
+				segmentsEntryERCProperty.eq(segmentsEntryERC),
+				segmentsEntryScopeERCProperty.eq(
+					group.getExternalReferenceCode()));
+
+			criterion = RestrictionsFactoryUtil.or(criterion, remoteCriterion);
+		}
+
+		dynamicQuery.add(criterion);
+
+		dynamicQuery.setProjection(
+			ProjectionFactoryUtil.property("segmentsExperienceId"));
+
+		List<Long> segmentsExperienceIds =
+			_segmentsExperienceLocalService.dynamicQuery(dynamicQuery);
+
+		if (segmentsExperienceIds.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		dynamicQuery = segmentsExperimentLocalService.dynamicQuery();
 
 		Property segmentsExperienceIdProperty = PropertyFactoryUtil.forName(
 			"segmentsExperienceId");
 
 		dynamicQuery.add(
-			segmentsExperienceIdProperty.in(
-				_getSegmentsExperienceIdsDynamicQuery(segmentsEntryId)));
+			segmentsExperienceIdProperty.in(segmentsExperienceIds));
 
 		dynamicQuery.addOrder(OrderFactoryUtil.desc("createDate"));
 
@@ -380,23 +425,6 @@ public class SegmentsExperimentLocalServiceImpl
 		return plid;
 	}
 
-	private DynamicQuery _getSegmentsExperienceIdsDynamicQuery(
-		long segmentsEntryId) {
-
-		DynamicQuery dynamicQuery =
-			_segmentsExperienceLocalService.dynamicQuery();
-
-		Property segmentsEntryIdProperty = PropertyFactoryUtil.forName(
-			"segmentsEntryId");
-
-		dynamicQuery.add(segmentsEntryIdProperty.eq(segmentsEntryId));
-
-		dynamicQuery.setProjection(
-			ProjectionFactoryUtil.property("segmentsExperienceId"));
-
-		return dynamicQuery;
-	}
-
 	private void _publishSegmentsExperienceVariant(
 		SegmentsExperience controlSegmentsExperience,
 		String newSegmentsExperienceKey,
@@ -405,9 +433,10 @@ public class SegmentsExperimentLocalServiceImpl
 		int originalPriority = controlSegmentsExperience.getPriority();
 
 		SegmentsExperience segmentsExperience =
-			_segmentsExperiencePersistence.fetchByG_P_Last(
+			_segmentsExperiencePersistence.fetchByG_P_First(
 				controlSegmentsExperience.getGroupId(),
-				controlSegmentsExperience.getPlid(), null);
+				controlSegmentsExperience.getPlid(),
+				SegmentsExperiencePriorityComparator.getInstance(true));
 
 		controlSegmentsExperience.setPriority(
 			segmentsExperience.getPriority() - 1);
@@ -743,6 +772,9 @@ public class SegmentsExperimentLocalServiceImpl
 			throw new SegmentsExperimentTypeException();
 		}
 	}
+
+	@Reference
+	private GroupLocalService _groupLocalService;
 
 	@Reference
 	private LayoutLocalService _layoutLocalService;

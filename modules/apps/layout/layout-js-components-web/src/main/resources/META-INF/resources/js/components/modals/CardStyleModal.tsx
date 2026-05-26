@@ -5,34 +5,36 @@
 
 import ClayButton from '@clayui/button';
 import ClayIcon from '@clayui/icon';
+import ClayLink from '@clayui/link';
 import ClayModal, {useModal} from '@clayui/modal';
+import {FeatureIndicator} from 'frontend-js-components-web';
 import React from 'react';
 
 interface CardStyleModalProps {
 	body: string;
-	heading: string;
+	buttons: Array<{
+		displayType: 'primary' | 'secondary';
+		href?: string;
+		icon?: string;
+		label: string;
+		onClick?: () => void;
+	}>;
 	imageSrc: string;
 	onCloseModal?: () => void;
-	onPrimaryButtonClick?: () => void;
-	primaryButtonIcon?: string;
-	primaryButtonLabel?: string;
-	secondaryButtonLabel?: string;
+	showEnterpriseIndicator?: boolean;
+	title: string;
 }
 
 const CardStyleModal: React.FC<CardStyleModalProps> = ({
 	body,
-	heading,
+	buttons,
 	imageSrc,
-	onCloseModal,
-	onPrimaryButtonClick,
-	primaryButtonIcon,
-	primaryButtonLabel,
-	secondaryButtonLabel,
+	onCloseModal = () => {},
+	showEnterpriseIndicator,
+	title,
 }) => {
 	const {observer, onClose} = useModal({
-		onClose: () => {
-			onCloseModal?.();
-		},
+		onClose: onCloseModal,
 	});
 
 	return (
@@ -53,41 +55,60 @@ const CardStyleModal: React.FC<CardStyleModalProps> = ({
 					</div>
 				</div>
 
-				<ClayModal.Title className="c-mx-4">{heading}</ClayModal.Title>
+				{showEnterpriseIndicator ? (
+					<FeatureIndicator className="mt-4 mx-4" type="enterprise" />
+				) : null}
 
-				<p className="c-m-4">{body}</p>
+				<ClayModal.Title className="c-mx-4">{title}</ClayModal.Title>
+
+				<p className="c-m-4 text-secondary">{body}</p>
 			</ClayModal.Body>
 
 			<ClayModal.Footer
 				last={
 					<ClayButton.Group spaced>
-						{secondaryButtonLabel ? (
-							<ClayButton
-								displayType="secondary"
-								onClick={onClose}
-							>
-								{secondaryButtonLabel}
-							</ClayButton>
-						) : null}
+						{buttons.map((button, index) =>
+							button.href ? (
+								<ClayLink
+									className={`btn btn-${button.displayType}`}
+									displayType="unstyled"
+									href={button.href}
+									key={index}
+									role="button"
+									target="_blank"
+								>
+									{button.label}
 
-						{primaryButtonLabel ? (
-							<ClayButton
-								displayType="primary"
-								onClick={() => {
-									onPrimaryButtonClick?.();
-									onClose();
-								}}
-							>
-								{primaryButtonIcon ? (
-									<ClayIcon
-										className="inline-item inline-item-before"
-										symbol={primaryButtonIcon}
-									/>
-								) : null}
+									{button.icon ? (
+										<ClayIcon
+											className="inline-item inline-item-after"
+											symbol={button.icon}
+										/>
+									) : null}
+								</ClayLink>
+							) : (
+								<ClayButton
+									displayType={button.displayType}
+									key={index}
+									onClick={() => {
+										if (button.onClick) {
+											button.onClick();
+										}
 
-								{primaryButtonLabel}
-							</ClayButton>
-						) : null}
+										onClose();
+									}}
+								>
+									{button.icon ? (
+										<ClayIcon
+											className="inline-item inline-item-before"
+											symbol={button.icon}
+										/>
+									) : null}
+
+									{button.label}
+								</ClayButton>
+							)
+						)}
 					</ClayButton.Group>
 				}
 			/>

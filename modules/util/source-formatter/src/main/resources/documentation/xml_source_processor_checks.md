@@ -2,8 +2,8 @@
 
 Check | Category | Description
 ----- | -------- | -----------
+EmbeddedJSONCheck | [Styling](styling_checks.md#styling-checks) | Ensures consistent formatting for embedded JSON. |
 XMLBuildFileCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Performs several checks on `build.xml`. |
-XMLCDATACheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Performs several checks on `CDATA` inside `xml`. |
 XMLCheckstyleFileCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Performs several checks on `checkstyle.xml` file. |
 XMLCustomSQLOrderCheck | [Styling](styling_checks.md#styling-checks) | Checks the order of attributes in `custom-sql` file. |
 XMLCustomSQLStylingCheck | [Styling](styling_checks.md#styling-checks) | Applies rules to enforce consistency in code style for `.xml` files in directory `custom-sql`. |
@@ -18,6 +18,7 @@ XMLImportsCheck | [Styling](styling_checks.md#styling-checks) | Sorts and groups
 XMLIndentationCheck | [Styling](styling_checks.md#styling-checks) | Finds incorrect indentation in `.xml` files. |
 XMLInstanceWrappersFileCheck | [Styling](styling_checks.md#styling-checks) | Checks the order of instance-wrappers in `instance_wrappers.xml` file. |
 XMLIvyFileCheck | [Styling](styling_checks.md#styling-checks) | Checks the order of dependencies in `ivy.xml` file. |
+XMLLiferayWebFileCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Performs several checks on `liferay-web.xml` file. |
 XMLLog4jFileCheck | [Styling](styling_checks.md#styling-checks) | Checks the order of categories in `*-log4j.xml` file. |
 XMLLog4jLoggersCheck | [Miscellaneous](miscellaneous_checks.md#miscellaneous-checks) | Checks the loggers defined in `*-log4j.xml` file. |
 XMLLookAndFeelCompatibilityVersionCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Finds missing attribute `version` in `compatibility` element in `*--look-and-feel.xml` file. |
@@ -31,8 +32,10 @@ XMLProjectElementCheck | [Bug Prevention](bug_prevention_checks.md#bug-preventio
 XMLResourceActionsFileCheck | [Styling](styling_checks.md#styling-checks) | Checks the order of elements in files in directory `resource-actions`. |
 XMLServiceAutoImportDefaultReferencesCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Checks that the `auto-import-default-references` in `service.xml` does not equal `false`. |
 [XMLServiceEntityNameCheck](check/xml_service_entity_name_check.md#xmlserviceentitynamecheck) | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Checks that the `entity name` in `service.xml` does not equal the `package name`. |
-XMLServiceFileCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Performs several checks on `service.xml` file. |
 [XMLServiceFinderNameCheck](check/xml_service_finder_name_check.md#xmlservicefindernamecheck) | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Checks that the `finder name` in `service.xml`. |
+XMLServiceMVCCEnabledCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Checks that the `mvcc-enabled` attribute is always set in `service.xml`. |
+XMLServiceMissingCompanyIdCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Finds missing `companyId` column in `service.xml`. |
+XMLServiceOrderCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Performs several checks on `service.xml` file. |
 XMLServiceReferenceCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Checks for unused references in `service.xml` file. |
 XMLSolrSchemaFileCheck | [Styling](styling_checks.md#styling-checks) | Checks the order of elements in `portlet-preferences.xml` file. |
 XMLSourcechecksFileCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Performs several checks on `sourcechecks.xml` file. |

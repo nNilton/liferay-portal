@@ -5,9 +5,15 @@
 
 package com.liferay.portal.search.elasticsearch8.internal.connection;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.ingest.ElasticsearchIngestClient;
+import co.elastic.clients.elasticsearch.ingest.Processor;
+import co.elastic.clients.elasticsearch.ingest.PutPipelineRequest;
+import co.elastic.clients.json.JsonData;
+import co.elastic.clients.json.JsonpMapper;
+
 import com.liferay.petra.process.local.LocalProcessExecutor;
 import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
-import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.JavaDetector;
 import com.liferay.portal.kernel.util.PropsKeys;
@@ -23,19 +29,11 @@ import com.liferay.portal.search.elasticsearch8.internal.sidecar.SidecarManager;
 import java.io.File;
 import java.io.IOException;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import java.util.Collections;
 import java.util.Map;
-
-import org.elasticsearch.action.ingest.PutPipelineRequest;
-import org.elasticsearch.client.IngestClient;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.bytes.BytesArray;
-import org.elasticsearch.xcontent.XContentType;
 
 import org.mockito.Mockito;
 
@@ -77,27 +75,25 @@ public class ElasticsearchConnectionFixture
 			Mockito.mock(SidecarManager.class),
 			new File(_workPath.toFile(), "sidecar.process"), _workPath);
 
-		ElasticsearchConnectionBuilder elasticsearchConnectionBuilder =
-			new ElasticsearchConnectionBuilder();
+		ElasticsearchConnection.Builder builder =
+			new ElasticsearchConnection.Builder(
+				() -> new String[] {sidecar.getNetworkHostAddress()});
 
-		elasticsearchConnectionBuilder.active(
+		builder.active(
 			true
 		).connectionId(
 			ConnectionConstants.SIDECAR_CONNECTION_ID
 		).postCloseRunnable(
 			sidecar::stop
-		).preConnectElasticsearchConnectionConsumer(
-			elasticsearchConnection -> {
+		).preConnectRunnable(
+			() -> {
 				_deleteTmpDir();
 
 				sidecar.start();
-
-				elasticsearchConnection.setNetworkHostAddresses(
-					new String[] {sidecar.getNetworkHostAddress()});
 			}
 		);
 
-		_elasticsearchConnection = elasticsearchConnectionBuilder.build();
+		_elasticsearchConnection = builder.build();
 
 		return _elasticsearchConnection;
 	}
@@ -107,7 +103,7 @@ public class ElasticsearchConnectionFixture
 
 		_elasticsearchConnection.connect();
 
-		_putTimestampPipeline(getRestHighLevelClient());
+		_putTimestampPipeline(getElasticsearchClient());
 	}
 
 	public void destroyNode() {
@@ -116,6 +112,23 @@ public class ElasticsearchConnectionFixture
 		}
 
 		_deleteTmpDir();
+	}
+
+	@Override
+	public ElasticsearchClient getElasticsearchClient() {
+		return _elasticsearchConnection.getElasticsearchClient();
+	}
+
+	@Override
+	public ElasticsearchClient getElasticsearchClient(String connectionId) {
+		return getElasticsearchClient();
+	}
+
+	@Override
+	public ElasticsearchClient getElasticsearchClient(
+		String connectionId, boolean preferLocalCluster) {
+
+		return getElasticsearchClient();
 	}
 
 	public Map<String, Object> getElasticsearchConfigurationProperties() {
@@ -127,20 +140,8 @@ public class ElasticsearchConnectionFixture
 	}
 
 	@Override
-	public RestHighLevelClient getRestHighLevelClient() {
-		return _elasticsearchConnection.getRestHighLevelClient();
-	}
-
-	@Override
-	public RestHighLevelClient getRestHighLevelClient(String connectionId) {
-		return getRestHighLevelClient();
-	}
-
-	@Override
-	public RestHighLevelClient getRestHighLevelClient(
-		String connectionId, boolean preferLocalCluster) {
-
-		return getRestHighLevelClient();
+	public JsonpMapper getJsonpMapper(String connectionId) {
+		return _elasticsearchConnection.getJsonpMapper();
 	}
 
 	public static class Builder {
@@ -222,31 +223,29 @@ public class ElasticsearchConnectionFixture
 	}
 
 	private void _putTimestampPipeline(
-		RestHighLevelClient restHighLevelClient) {
+		ElasticsearchClient elasticsearchClient) {
 
-		IngestClient ingestClient = restHighLevelClient.ingest();
+		ElasticsearchIngestClient elasticsearchIngestClient =
+			elasticsearchClient.ingest();
 
-		String json = JSONUtil.put(
-			"description", "Adds timestamp to documents"
-		).put(
-			"processors",
-			JSONUtil.put(
-				JSONUtil.put(
-					"set",
-					JSONUtil.put(
-						"field", "_source.timestamp"
-					).put(
-						"value", "{{{_ingest.timestamp}}}"
-					)))
-		).toString();
-
-		PutPipelineRequest putPipelineRequest = new PutPipelineRequest(
-			"timestamp", new BytesArray(json.getBytes(StandardCharsets.UTF_8)),
-			XContentType.JSON);
+		PutPipelineRequest putPipelineRequest = new PutPipelineRequest.Builder(
+		).id(
+			"timestamp"
+		).description(
+			"Adds timestamp to documents"
+		).processors(
+			new Processor.Builder(
+			).set(
+				setProcessor -> setProcessor.field(
+					"_source.timestamp"
+				).value(
+					JsonData.of("{{{_ingest.timestamp}}}")
+				)
+			).build()
+		).build();
 
 		try {
-			ingestClient.putPipeline(
-				putPipelineRequest, RequestOptions.DEFAULT);
+			elasticsearchIngestClient.putPipeline(putPipelineRequest);
 		}
 		catch (IOException ioException) {
 			throw new RuntimeException(ioException);

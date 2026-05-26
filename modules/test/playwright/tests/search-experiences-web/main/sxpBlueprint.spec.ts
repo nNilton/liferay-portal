@@ -24,7 +24,6 @@ export const test = mergeTests(
 	isolatedLayoutTest({type: 'portlet'}),
 	dataApiHelpersTest,
 	featureFlagsTest({
-		'LPS-129412': {enabled: true}, // Collection Providers for Blueprint
 		'LPS-178052': {enabled: true},
 	}),
 	isolatedSiteTest,
@@ -161,9 +160,11 @@ test.describe('Manual Creation', () => {
 		editSXPBlueprintPage,
 	}) => {
 		await test.step('Confirm clause contributors is set as Enable All', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
+			);
 
-			await editSXPBlueprintPage.assertQuerySettingsRadioPropertySelection(
+			await editSXPBlueprintPage.assertSourceRadioPropertySelection(
 				'Enable All'
 			);
 		});
@@ -193,11 +194,11 @@ test.describe('Data Persistence - Clause Contributors', () => {
 		sxpBlueprintsAndElementsViewPage,
 	}) => {
 		await test.step('Set clause contributors to "Enable All"', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
-
-			await editSXPBlueprintPage.selectQuerySettingsRadioProperty(
-				'Enable All'
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
 			);
+
+			await editSXPBlueprintPage.selectSourceRadioProperty('Enable All');
 
 			await editSXPBlueprintPage.saveBlueprint();
 		});
@@ -207,9 +208,11 @@ test.describe('Data Persistence - Clause Contributors', () => {
 				sxpBlueprint.title
 			);
 
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
+			);
 
-			await editSXPBlueprintPage.assertQuerySettingsRadioPropertySelection(
+			await editSXPBlueprintPage.assertSourceRadioPropertySelection(
 				'Enable All'
 			);
 		});
@@ -220,11 +223,11 @@ test.describe('Data Persistence - Clause Contributors', () => {
 		sxpBlueprintsAndElementsViewPage,
 	}) => {
 		await test.step('Set clause contributors to "Disable All"', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
-
-			await editSXPBlueprintPage.selectQuerySettingsRadioProperty(
-				'Disable All'
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
 			);
+
+			await editSXPBlueprintPage.selectSourceRadioProperty('Disable All');
 
 			await editSXPBlueprintPage.saveBlueprint();
 		});
@@ -234,9 +237,11 @@ test.describe('Data Persistence - Clause Contributors', () => {
 				sxpBlueprint.title
 			);
 
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
+			);
 
-			await editSXPBlueprintPage.assertQuerySettingsRadioPropertySelection(
+			await editSXPBlueprintPage.assertSourceRadioPropertySelection(
 				'Disable All'
 			);
 		});
@@ -247,11 +252,11 @@ test.describe('Data Persistence - Clause Contributors', () => {
 		sxpBlueprintsAndElementsViewPage,
 	}) => {
 		await test.step('Set clause contributors to "Customize"', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
-
-			await editSXPBlueprintPage.selectQuerySettingsRadioProperty(
-				'Customize'
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
 			);
+
+			await editSXPBlueprintPage.selectSourceRadioProperty('Customize');
 		});
 
 		await test.step('Assert all clause contributors are enabled by default', async () => {
@@ -270,9 +275,11 @@ test.describe('Data Persistence - Clause Contributors', () => {
 				sxpBlueprint.title
 			);
 
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
+			);
 
-			await editSXPBlueprintPage.assertQuerySettingsRadioPropertySelection(
+			await editSXPBlueprintPage.assertSourceRadioPropertySelection(
 				'Customize'
 			);
 
@@ -290,11 +297,11 @@ test.describe('Data Persistence - Clause Contributors', () => {
 		sxpBlueprintsAndElementsViewPage,
 	}) => {
 		await test.step('Set clause contributors to "Customize"', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
-
-			await editSXPBlueprintPage.selectQuerySettingsRadioProperty(
-				'Customize'
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
 			);
+
+			await editSXPBlueprintPage.selectSourceRadioProperty('Customize');
 		});
 
 		await test.step('Disable all contributors', async () => {
@@ -313,9 +320,11 @@ test.describe('Data Persistence - Clause Contributors', () => {
 				sxpBlueprint.title
 			);
 
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
+			);
 
-			await editSXPBlueprintPage.assertQuerySettingsRadioPropertySelection(
+			await editSXPBlueprintPage.assertSourceRadioPropertySelection(
 				'Disable All'
 			);
 		});
@@ -326,11 +335,11 @@ test.describe('Data Persistence - Clause Contributors', () => {
 		sxpBlueprintsAndElementsViewPage,
 	}) => {
 		await test.step('Set clause contributors to "Customize"', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
-
-			await editSXPBlueprintPage.selectQuerySettingsRadioProperty(
-				'Customize'
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
 			);
+
+			await editSXPBlueprintPage.selectSourceRadioProperty('Customize');
 		});
 
 		await test.step('Vary clause contributors selection', async () => {
@@ -353,9 +362,11 @@ test.describe('Data Persistence - Clause Contributors', () => {
 				sxpBlueprint.title
 			);
 
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
+			);
 
-			await editSXPBlueprintPage.assertQuerySettingsRadioPropertySelection(
+			await editSXPBlueprintPage.assertSourceRadioPropertySelection(
 				'Customize'
 			);
 
@@ -395,11 +406,11 @@ test.describe('Search Preview - Clause Contributors', () => {
 		editSXPBlueprintPage,
 	}) => {
 		await test.step('Set clause contributors to "Enable All"', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
-
-			await editSXPBlueprintPage.selectQuerySettingsRadioProperty(
-				'Enable All'
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
 			);
+
+			await editSXPBlueprintPage.selectSourceRadioProperty('Enable All');
 		});
 
 		await test.step('Search for "tree" in preview sidebar and find tree.png', async () => {
@@ -424,11 +435,11 @@ test.describe('Search Preview - Clause Contributors', () => {
 		editSXPBlueprintPage,
 	}) => {
 		await test.step('Set clause contributors to "Disable All"', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
-
-			await editSXPBlueprintPage.selectQuerySettingsRadioProperty(
-				'Disable All'
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
 			);
+
+			await editSXPBlueprintPage.selectSourceRadioProperty('Disable All');
 		});
 
 		await test.step('Search for "tree" in preview sidebar and find no results', async () => {
@@ -444,11 +455,11 @@ test.describe('Search Preview - Clause Contributors', () => {
 		editSXPBlueprintPage,
 	}) => {
 		await test.step('Set clause contributors to "Customize"', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
-
-			await editSXPBlueprintPage.selectQuerySettingsRadioProperty(
-				'Customize'
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
 			);
+
+			await editSXPBlueprintPage.selectSourceRadioProperty('Customize');
 		});
 
 		await test.step('Disable all clause contributors', async () => {
@@ -473,11 +484,11 @@ test.describe('Search Preview - Clause Contributors', () => {
 		editSXPBlueprintPage,
 	}) => {
 		await test.step('Set clause contributors to "Customize"', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
-
-			await editSXPBlueprintPage.selectQuerySettingsRadioProperty(
-				'Customize'
+			await editSXPBlueprintPage.expandPanel(
+				'Search Framework Query Contributors'
 			);
+
+			await editSXPBlueprintPage.selectSourceRadioProperty('Customize');
 		});
 
 		await test.step('Enable only "DL File Entry" clause contributor', async () => {
@@ -563,9 +574,11 @@ test.describe('Collection Provider', () => {
 		});
 
 		await test.step('Add the custom web content structure to blueprint subtypes', async () => {
-			await editSXPBlueprintPage.goToQuerySettingsMenuItem();
+			await editSXPBlueprintPage.expandPanel(
+				'Searchable Types and Subtypes'
+			);
 
-			await editSXPBlueprintPage.selectQuerySettingsRadioProperty(
+			await editSXPBlueprintPage.selectSourceRadioProperty(
 				'Selected Types'
 			);
 

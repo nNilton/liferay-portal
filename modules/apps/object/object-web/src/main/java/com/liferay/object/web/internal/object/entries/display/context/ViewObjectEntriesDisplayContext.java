@@ -10,6 +10,7 @@ import com.liferay.frontend.data.set.model.FDSActionDropdownItem;
 import com.liferay.frontend.data.set.model.FDSSortItemBuilder;
 import com.liferay.frontend.data.set.model.FDSSortItemList;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.CreationMenu;
+import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItem;
 import com.liferay.object.constants.ObjectActionKeys;
 import com.liferay.object.constants.ObjectActionTriggerConstants;
 import com.liferay.object.constants.ObjectRelationshipConstants;
@@ -88,6 +89,14 @@ public class ViewObjectEntriesDisplayContext {
 		return _apiURL + _getQueryString();
 	}
 
+	public List<DropdownItem> getBulkActionDropdownItems() {
+		return ListUtil.fromArray(
+			new FDSActionDropdownItem(
+				null, "trash", "delete",
+				LanguageUtil.get(_httpServletRequest, "delete"), null, "delete",
+				null));
+	}
+
 	public String getByExternalReferenceCodePath() {
 		return _apiURL + "/by-external-reference-code";
 	}
@@ -140,7 +149,9 @@ public class ViewObjectEntriesDisplayContext {
 				LanguageUtil.get(_objectRequestHelper.getRequest(), "view"),
 				"get", null, null),
 			new FDSActionDropdownItem(
-				_getRESTContextPathURL() + "/{id}/expire", "time", "expire",
+				getByExternalReferenceCodePath() +
+					"/{externalReferenceCode}/expire",
+				"time", "expire",
 				LanguageUtil.get(_objectRequestHelper.getRequest(), "expire"),
 				"post", "expire", "async"),
 			new FDSActionDropdownItem(

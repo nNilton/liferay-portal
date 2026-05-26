@@ -75,27 +75,6 @@ public abstract class PageSpecification implements Cloneable, Serializable {
 
 	protected String externalReferenceCode;
 
-	public Settings getSettings() {
-		return settings;
-	}
-
-	public void setSettings(Settings settings) {
-		this.settings = settings;
-	}
-
-	public void setSettings(
-		UnsafeSupplier<Settings, Exception> settingsUnsafeSupplier) {
-
-		try {
-			settings = settingsUnsafeSupplier.get();
-		}
-		catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	protected Settings settings;
-
 	public String getSiteTemplatePageSpecificationExternalReferenceCode() {
 		return siteTemplatePageSpecificationExternalReferenceCode;
 	}
@@ -246,6 +225,10 @@ public abstract class PageSpecification implements Cloneable, Serializable {
 	public static enum Type {
 
 		CONTENT_PAGE_SPECIFICATION("ContentPageSpecification"),
+		EMBEDDED_PAGE_SPECIFICATION("EmbeddedPageSpecification"),
+		LINK_TO_PAGE_PAGE_SPECIFICATION("LinkToPagePageSpecification"),
+		LINK_TO_URL_PAGE_SPECIFICATION("LinkToURLPageSpecification"),
+		PAGE_SET_PAGE_SPECIFICATION("PageSetPageSpecification"),
 		WIDGET_PAGE_SPECIFICATION("WidgetPageSpecification");
 
 		public static Type create(String value) {
@@ -278,3 +261,4 @@ public abstract class PageSpecification implements Cloneable, Serializable {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:2108654183

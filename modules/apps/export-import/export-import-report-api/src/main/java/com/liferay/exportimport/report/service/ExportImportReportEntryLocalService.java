@@ -56,7 +56,7 @@ public interface ExportImportReportEntryLocalService
 	public ExportImportReportEntry addEmptyExportImportReportEntry(
 		long groupId, long companyId, String classExternalReferenceCode,
 		long classNameId, long exportImportConfigurationId,
-		String modelNameLanguageKey, int origin);
+		String modelNameLanguageKey);
 
 	@Indexable(type = IndexableType.REINDEX)
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -64,7 +64,7 @@ public interface ExportImportReportEntryLocalService
 		long groupId, long companyId, String classExternalReferenceCode,
 		long classNameId, long classPK, long exportImportConfigurationId,
 		String errorMessage, String errorStacktrace,
-		String modelNameLanguageKey, int origin);
+		String modelNameLanguageKey);
 
 	/**
 	 * Adds the export import report entry to the database. Also notifies the appropriate model listeners.
@@ -239,6 +239,10 @@ public interface ExportImportReportEntryLocalService
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public int getExportImportReportEntriesCount();
 
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public int getExportImportReportEntriesCount(
+		long companyId, long exportImportConfigurationId);
+
 	/**
 	 * Returns the export import report entry with the primary key.
 	 *
@@ -254,6 +258,19 @@ public interface ExportImportReportEntryLocalService
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public IndexableActionableDynamicQuery getIndexableActionableDynamicQuery();
 
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public ExportImportReportEntry getOrAddEmptyExportImportReportEntry(
+		long groupId, long companyId, String classExternalReferenceCode,
+		long classNameId, long exportImportConfigurationId,
+		String modelNameLanguageKey);
+
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public ExportImportReportEntry getOrAddErrorExportImportReportEntry(
+		long groupId, long companyId, String classExternalReferenceCode,
+		long classNameId, long classPK, long exportImportConfigurationId,
+		String errorMessage, String errorStacktrace,
+		String modelNameLanguageKey);
+
 	/**
 	 * Returns the OSGi service identifier.
 	 *
@@ -267,6 +284,11 @@ public interface ExportImportReportEntryLocalService
 	@Override
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public PersistedModel getPersistedModel(Serializable primaryKeyObj)
+		throws PortalException;
+
+	public void resolveEmptyExportImportReportEntries(
+			long groupId, long companyId, String classExternalReferenceCode,
+			long classNameId)
 		throws PortalException;
 
 	/**
@@ -284,3 +306,4 @@ public interface ExportImportReportEntryLocalService
 		ExportImportReportEntry exportImportReportEntry);
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-1818811699

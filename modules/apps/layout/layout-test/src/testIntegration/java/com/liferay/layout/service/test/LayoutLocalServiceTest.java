@@ -30,6 +30,8 @@ import com.liferay.portal.kernel.exception.LayoutTypeException;
 import com.liferay.portal.kernel.exception.MasterLayoutException;
 import com.liferay.portal.kernel.exception.NoSuchLayoutException;
 import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.ColorScheme;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
@@ -41,6 +43,7 @@ import com.liferay.portal.kernel.model.Theme;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.ClassNameLocalServiceUtil;
 import com.liferay.portal.kernel.service.LayoutLocalService;
+import com.liferay.portal.kernel.service.LayoutLocalServiceUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
 import com.liferay.portal.kernel.service.SystemEventLocalService;
@@ -57,6 +60,7 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.HttpComponentsUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.kernel.util.ScopeUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
@@ -224,6 +228,41 @@ public class LayoutLocalServiceTest {
 		Assert.assertEquals(draftLayout1, draftLayout2);
 	}
 
+	@Test
+	@TestInfo("LPD-67894")
+	public void testAddEmptyLayout() throws Exception {
+		try {
+			_layoutLocalService.addLayout(
+				null, TestPropsValues.getUserId(), _group.getGroupId(), false,
+				LayoutConstants.DEFAULT_PARENT_LAYOUT_ID,
+				RandomTestUtil.randomString(), StringPool.BLANK,
+				StringPool.BLANK, LayoutConstants.TYPE_EMPTY, true,
+				StringPool.BLANK, _serviceContext);
+
+			Assert.fail();
+		}
+		catch (LayoutTypeException layoutTypeException) {
+			Assert.assertEquals(
+				LayoutTypeException.EMPTY, layoutTypeException.getType());
+		}
+
+		try (SafeCloseable safeCloseable =
+				LazyReferencingThreadLocal.setEnabledWithSafeCloseable(true)) {
+
+			_serviceContext.setAttribute(
+				"layout.instanceable.allowed", Boolean.TRUE);
+
+			Layout layout = LayoutLocalServiceUtil.addLayout(
+				null, TestPropsValues.getUserId(), _group.getGroupId(), false,
+				LayoutConstants.DEFAULT_PARENT_LAYOUT_ID,
+				RandomTestUtil.randomString(), StringPool.BLANK,
+				StringPool.BLANK, LayoutConstants.TYPE_EMPTY, true,
+				StringPool.BLANK, _serviceContext);
+
+			Assert.assertEquals(LayoutConstants.TYPE_EMPTY, layout.getType());
+		}
+	}
+
 	@Test(expected = DuplicateLayoutExternalReferenceCodeException.class)
 	public void testAddLayoutWithExistingExternalReferenceCode()
 		throws Exception {
@@ -283,6 +322,64 @@ public class LayoutLocalServiceTest {
 			externalReferenceCode, _group.getGroupId());
 
 		Assert.assertEquals(layout1, layout2);
+	}
+
+	@Test
+	@TestInfo({"LPD-64609", "LPD-72013"})
+	public void testConvertEmptyLayoutToContentLayout() throws Exception {
+		Layout layout = _addEmptyLayout();
+
+		try {
+			layout = _layoutLocalService.updateLayout(
+				_group.getGroupId(), layout.isPrivateLayout(),
+				layout.getLayoutId(), layout.getParentLayoutId(),
+				layout.getNameMap(), layout.getTitleMap(),
+				layout.getDescriptionMap(), layout.getKeywordsMap(),
+				layout.getRobotsMap(), layout.getType(), false,
+				layout.getFriendlyURLMap(), layout.isIconImage(), null,
+				layout.getStyleBookEntryERC(), layout.getFaviconFileEntryERC(),
+				layout.getFaviconFileEntryScopeERC(),
+				layout.getMasterLayoutPageTemplateEntryERC(), _serviceContext);
+
+			Assert.fail();
+		}
+		catch (LayoutTypeException layoutTypeException) {
+			Assert.assertEquals(
+				LayoutTypeException.EMPTY, layoutTypeException.getType());
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(layoutTypeException);
+			}
+		}
+
+		_serviceContext.setAttribute(
+			"layout.instanceable.allowed", Boolean.TRUE);
+
+		try {
+			layout = _layoutLocalService.convertEmptyLayout(
+				TestPropsValues.getUserId(), layout.getPlid(),
+				RandomTestUtil.randomLocaleStringMap(),
+				LayoutConstants.TYPE_CONTENT, 0, 0, null, _serviceContext);
+		}
+		finally {
+			_serviceContext.removeAttribute("layout.instanceable.allowed");
+		}
+
+		Assert.assertFalse(layout.isPublished());
+		Assert.assertTrue(layout.isTypeContent());
+	}
+
+	@Test
+	@TestInfo({"LPD-64609", "LPD-72013"})
+	public void testConvertEmptyLayoutToPortletLayout() throws Exception {
+		Layout layout = _addEmptyLayout();
+
+		layout = _layoutLocalService.convertEmptyLayout(
+			TestPropsValues.getUserId(), layout.getPlid(),
+			RandomTestUtil.randomLocaleStringMap(),
+			LayoutConstants.TYPE_PORTLET, 0, 0, null, _serviceContext);
+
+		Assert.assertTrue(layout.isTypePortlet());
 	}
 
 	@Test
@@ -454,7 +551,7 @@ public class LayoutLocalServiceTest {
 		try {
 			_layoutLocalService.getOrAddEmptyLayout(
 				RandomTestUtil.randomString(), TestPropsValues.getUserId(),
-				_group.getGroupId(), _serviceContext);
+				_group.getGroupId(), false, _serviceContext);
 
 			Assert.fail();
 		}
@@ -469,7 +566,7 @@ public class LayoutLocalServiceTest {
 
 			Layout layout = _layoutLocalService.getOrAddEmptyLayout(
 				RandomTestUtil.randomString(), TestPropsValues.getUserId(),
-				_group.getGroupId(), _serviceContext);
+				_group.getGroupId(), false, _serviceContext);
 
 			Assert.assertEquals(
 				WorkflowConstants.STATUS_EMPTY, layout.getStatus());
@@ -697,8 +794,9 @@ public class LayoutLocalServiceTest {
 		ContentLayoutTestUtil.addFragmentEntryLinkToLayout(
 			null, fragmentEntry.getCss(), fragmentEntry.getConfiguration(),
 			fragmentEntry.getExternalReferenceCode(),
-			fragmentEntry.getScopeERC(), fragmentEntry.getHtml(),
-			fragmentEntry.getJs(), draftLayout,
+			ScopeUtil.getItemScopeExternalReferenceCode(
+				fragmentEntry.getGroupId(), draftLayout.getGroupId()),
+			fragmentEntry.getHtml(), fragmentEntry.getJs(), draftLayout,
 			fragmentEntry.getFragmentEntryKey(),
 			_segmentsExperienceLocalService.fetchDefaultSegmentsExperienceId(
 				draftLayout.getPlid()),
@@ -839,7 +937,7 @@ public class LayoutLocalServiceTest {
 	}
 
 	@Test(expected = LayoutJavaScriptException.class)
-	public void testUpdateLayoutWithJavaScriptIvalidValue1() throws Exception {
+	public void testUpdateLayoutWithJavaScriptInvalidValue1() throws Exception {
 		Layout layout = LayoutTestUtil.addTypePortletLayout(_group);
 
 		_layoutLocalService.updateTypeSettings(
@@ -850,7 +948,7 @@ public class LayoutLocalServiceTest {
 	}
 
 	@Test(expected = LayoutJavaScriptException.class)
-	public void testUpdateLayoutWithJavaScriptIvalidValue2() throws Exception {
+	public void testUpdateLayoutWithJavaScriptInvalidValue2() throws Exception {
 		Layout layout = LayoutTestUtil.addTypePortletLayout(_group);
 
 		_layoutLocalService.updateTypeSettings(
@@ -858,54 +956,6 @@ public class LayoutLocalServiceTest {
 			UnicodePropertiesBuilder.put(
 				"javascript", "</script>"
 			).buildString());
-	}
-
-	@Test
-	public void testUpdateLayoutWithLazyReferencingEnabled() throws Exception {
-		try (SafeCloseable safeCloseable =
-				LazyReferencingThreadLocal.setEnabledWithSafeCloseable(true)) {
-
-			Layout layout = _layoutLocalService.getOrAddEmptyLayout(
-				RandomTestUtil.randomString(), TestPropsValues.getUserId(),
-				_group.getGroupId(), _serviceContext);
-
-			Assert.assertEquals(
-				WorkflowConstants.STATUS_EMPTY, layout.getStatus());
-
-			try {
-				layout = _layoutLocalService.updateLayout(
-					_group.getGroupId(), layout.isPrivateLayout(),
-					layout.getLayoutId(), layout.getParentLayoutId(),
-					layout.getNameMap(), layout.getTitleMap(),
-					layout.getDescriptionMap(), layout.getKeywordsMap(),
-					layout.getRobotsMap(), layout.getType(), false,
-					layout.getFriendlyURLMap(), layout.isIconImage(), null,
-					layout.getStyleBookEntryERC(),
-					layout.getFaviconFileEntryERC(),
-					layout.getFaviconFileEntryScopeERC(),
-					layout.getMasterLayoutPageTemplateEntryERC(),
-					_serviceContext);
-
-				Assert.fail();
-			}
-			catch (LayoutTypeException layoutTypeException) {
-				Assert.assertNotNull(layoutTypeException);
-			}
-
-			layout = _layoutLocalService.updateLayout(
-				_group.getGroupId(), layout.isPrivateLayout(),
-				layout.getLayoutId(), layout.getParentLayoutId(),
-				layout.getNameMap(), layout.getTitleMap(),
-				layout.getDescriptionMap(), layout.getKeywordsMap(),
-				layout.getRobotsMap(), LayoutConstants.TYPE_CONTENT, false,
-				layout.getFriendlyURLMap(), layout.isIconImage(), null,
-				layout.getStyleBookEntryERC(), layout.getFaviconFileEntryERC(),
-				layout.getFaviconFileEntryScopeERC(),
-				layout.getMasterLayoutPageTemplateEntryERC(), _serviceContext);
-
-			Assert.assertEquals(
-				WorkflowConstants.STATUS_DRAFT, layout.getStatus());
-		}
 	}
 
 	@Test
@@ -1085,6 +1135,16 @@ public class LayoutLocalServiceTest {
 			typeSettingsUnicodeProperties.containsKey(Sites.LAYOUT_UPDATEABLE));
 	}
 
+	private Layout _addEmptyLayout() throws Exception {
+		try (SafeCloseable safeCloseable =
+				LazyReferencingThreadLocal.setEnabledWithSafeCloseable(true)) {
+
+			return _layoutLocalService.getOrAddEmptyLayout(
+				RandomTestUtil.randomString(), TestPropsValues.getUserId(),
+				_group.getGroupId(), false, _serviceContext);
+		}
+	}
+
 	private void _assertExternalReferenceCodes(
 			Layout draftLayout,
 			UnsafeBiFunction<String, String, Boolean, Exception>
@@ -1165,6 +1225,9 @@ public class LayoutLocalServiceTest {
 		Assert.assertEquals(expectedParentLayoutId, layout.getParentLayoutId());
 		Assert.assertEquals(expectedPriority, layout.getPriority());
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		LayoutLocalServiceTest.class);
 
 	@Inject
 	private CounterLocalService _counterLocalService;

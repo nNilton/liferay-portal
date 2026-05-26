@@ -15,6 +15,7 @@ import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.search.elasticsearch8.internal.util.IndexUtil;
 import com.liferay.portal.search.spi.index.configuration.contributor.helper.SettingsHelper;
 
@@ -58,7 +59,7 @@ public class SettingsHelperImpl implements SettingsHelper {
 		source = source.trim();
 
 		if (source.charAt(0) == CharPool.OPEN_CURLY_BRACE) {
-			IndexUtil.mergeToJsonObject(
+			IndexUtil.mergeToJSONObject(
 				_settingsJSONObject, _createJSONObject(source));
 		}
 		else {
@@ -92,7 +93,7 @@ public class SettingsHelperImpl implements SettingsHelper {
 
 					ObjectMapper objectMapper = new ObjectMapper();
 
-					IndexUtil.mergeToJsonObject(
+					IndexUtil.mergeToJSONObject(
 						_settingsJSONObject,
 						_createJSONObject(
 							objectMapper.writeValueAsString(object)));
@@ -111,9 +112,22 @@ public class SettingsHelperImpl implements SettingsHelper {
 	}
 
 	public void put(String key, List<String> values) {
-		for (String value : values) {
-			put(key, value);
+		JSONObject settingJSONObject = JSONFactoryUtil.createJSONObject();
+
+		String[] settingParts = key.split("\\.");
+
+		for (int i = settingParts.length - 1; i >= 0; i--) {
+			if (i == (settingParts.length - 1)) {
+				settingJSONObject.put(
+					settingParts[i], ArrayUtil.toStringArray(values));
+			}
+			else {
+				settingJSONObject = JSONUtil.put(
+					settingParts[i], settingJSONObject);
+			}
 		}
+
+		IndexUtil.mergeToJSONObject(_settingsJSONObject, settingJSONObject);
 	}
 
 	@Override
@@ -133,7 +147,7 @@ public class SettingsHelperImpl implements SettingsHelper {
 				}
 			}
 
-			IndexUtil.mergeToJsonObject(_settingsJSONObject, settingJSONObject);
+			IndexUtil.mergeToJSONObject(_settingsJSONObject, settingJSONObject);
 		}
 	}
 

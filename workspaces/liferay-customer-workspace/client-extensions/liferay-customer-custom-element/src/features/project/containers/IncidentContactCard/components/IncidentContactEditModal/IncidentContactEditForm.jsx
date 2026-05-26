@@ -28,6 +28,7 @@ import {
 const IncidentContactEditModal = ({
 	close,
 	hasCriticalIncidentContact,
+	hasPaaSUserContact,
 	hasPrivacyBreachContact,
 	hasSecurityBreachContact,
 	leftButton,
@@ -139,6 +140,7 @@ const IncidentContactEditModal = ({
 
 	const hasHighPriorityContactByCategory = {
 		[HIGH_PRIORITY_CONTACT_CATEGORIES.criticalIncident]: hasCriticalIncidentContact,
+		[HIGH_PRIORITY_CONTACT_CATEGORIES.paasUser]: hasPaaSUserContact,
 		[HIGH_PRIORITY_CONTACT_CATEGORIES.privacyBreach]: hasPrivacyBreachContact,
 		[HIGH_PRIORITY_CONTACT_CATEGORIES.securityBreach]: hasSecurityBreachContact,
 	};
@@ -208,6 +210,7 @@ const IncidentContactEditModal = ({
 const IncidentContactEditForm = ({
 	close,
 	hasCriticalIncidentContact,
+	hasPaaSUserContact,
 	hasPrivacyBreachContact,
 	hasSecurityBreachContact,
 	leftButton,
@@ -220,6 +223,7 @@ const IncidentContactEditForm = ({
 				<IncidentContactEditModal
 					close={close}
 					hasCriticalIncidentContact={hasCriticalIncidentContact}
+					hasPaaSUserContact={hasPaaSUserContact}
 					hasPrivacyBreachContact={hasPrivacyBreachContact}
 					hasSecurityBreachContact={hasSecurityBreachContact}
 					leftButton={leftButton}

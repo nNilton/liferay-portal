@@ -78,9 +78,11 @@ describe('BulkDefaultPermissionModalContent', () => {
 			});
 
 		getSpaceSpy = jest.spyOn(SpaceService, 'getSpace').mockResolvedValue({
+			assetLibraryKey: 'assetLibraryKey',
 			creatorUserId: '20103',
 			description: 'This is a test space',
 			externalReferenceCode: 'ERC2',
+			friendlyURL: '/asset-library-1',
 			id: 1,
 			name: 'Test Space',
 			settings: {logoColor: 'outline-0'},
@@ -517,6 +519,7 @@ describe('BulkDefaultPermissionModalContent', () => {
 				L_FILES: [],
 				OBJECT_ENTRY_FOLDERS: [
 					{key: 'ADD_ENTRY', label: 'Add Entry'},
+					{key: 'ADD_OBJECT_ENTRY_FOLDER', label: 'Add Subfolder'},
 					{key: 'VIEW', label: 'View'},
 				],
 			},
@@ -573,10 +576,20 @@ describe('BulkDefaultPermissionModalContent', () => {
 				screen.getByTestId('row-checkbox-CMS Administrator_ADD_ENTRY')
 			).toBeChecked();
 			expect(
+				screen.getByTestId(
+					'row-checkbox-CMS Administrator_ADD_OBJECT_ENTRY_FOLDER'
+				)
+			).toBeChecked();
+			expect(
 				screen.getByTestId('row-checkbox-CMS Administrator_VIEW')
 			).toBeChecked();
 			expect(
 				screen.queryByTestId('row-checkbox-Guest_ADD_ENTRY')
+			).not.toBeChecked();
+			expect(
+				screen.queryByTestId(
+					'row-checkbox-Guest_ADD_OBJECT_ENTRY_FOLDER'
+				)
 			).not.toBeChecked();
 			expect(
 				screen.queryByTestId('row-checkbox-Guest_VIEW')
@@ -744,7 +757,7 @@ describe('BulkDefaultPermissionModalContent', () => {
 				onCreateError: expect.any(Function),
 				onCreateSuccess: expect.any(Function),
 				selectedData: props.selectedData,
-				type: 'DefaultPermissionBulkAction',
+				type: 'DefaultPermissionObjectBulkSelectionAction',
 			});
 		});
 	});

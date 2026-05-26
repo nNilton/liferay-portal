@@ -6,23 +6,32 @@
 package com.liferay.portal.verify.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.object.constants.ObjectDefinitionConstants;
+import com.liferay.object.field.builder.TextObjectFieldBuilder;
+import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectField;
+import com.liferay.object.service.ObjectDefinitionLocalService;
+import com.liferay.object.test.util.ObjectDefinitionTestUtil;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.db.DBResourceUtil;
 import com.liferay.portal.db.partition.util.DBPartitionUtil;
 import com.liferay.portal.kernel.dao.db.DB;
 import com.liferay.portal.kernel.dao.db.DBInspector;
 import com.liferay.portal.kernel.dao.db.DBManagerUtil;
 import com.liferay.portal.kernel.dao.db.DBType;
 import com.liferay.portal.kernel.dao.jdbc.DataAccess;
+import com.liferay.portal.kernel.db.DBResourceUtil;
 import com.liferay.portal.kernel.instance.PortalInstancePool;
 import com.liferay.portal.kernel.model.ServiceComponent;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.service.ServiceComponentLocalService;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.version.Version;
@@ -35,9 +44,12 @@ import com.liferay.portal.upgrade.PortalUpgradeProcess;
 import com.liferay.portal.verify.PreupgradeVerifyDatabaseState;
 import com.liferay.portal.verify.VerifyProcess;
 import com.liferay.portal.verify.test.util.BaseVerifyProcessTestCase;
+import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 
 import java.sql.Connection;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -160,7 +172,10 @@ public class PreupgradeVerifyDatabaseStateTest
 	public void testVerifyPreupgradeMissingColumnName() throws Exception {
 		_alterColumnName("UserTracker", "companyId", "companyId_backup LONG");
 
-		try {
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				PreupgradeVerifyDatabaseState.class.getName(),
+				LoggerTestUtil.ERROR)) {
+
 			testVerify();
 
 			Assert.fail();
@@ -180,12 +195,86 @@ public class PreupgradeVerifyDatabaseStateTest
 	}
 
 	@Test
-	public void testVerifyPreupgradeMissingTable() throws Exception {
+	public void testVerifyPreupgradeMissingNonserviceBuilderTable()
+		throws Exception {
+
+		User user = UserTestUtil.getAdminUser(
+			CompanyThreadLocal.getCompanyId());
+
+		ObjectField objectField = new TextObjectFieldBuilder(
+		).userId(
+			user.getUserId()
+		).labelMap(
+			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
+		).localized(
+			true
+		).name(
+			"localizedField"
+		).build();
+
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				Collections.singletonList(objectField),
+				ObjectDefinitionConstants.SCOPE_COMPANY, user.getUserId());
+
+		DB db = DBManagerUtil.getDB();
+
+		db.runSQL("drop table " + objectDefinition.getDBTableName());
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				PreupgradeVerifyDatabaseState.class.getName(),
+				LoggerTestUtil.ERROR)) {
+
+			try {
+				testVerify();
+
+				Assert.fail();
+			}
+			catch (Exception exception) {
+				List<LogEntry> logEntries = logCapture.getLogEntries();
+
+				Assert.assertEquals(
+					logEntries.toString(), 1, logEntries.size());
+
+				LogEntry logEntry = logEntries.get(0);
+
+				String prefix = "A missing table was detected";
+
+				if (PropsValues.DATABASE_PARTITION_ENABLED) {
+					prefix = StringBundler.concat(
+						prefix, " for company ",
+						PortalInstancePool.getDefaultCompanyId());
+				}
+
+				Assert.assertEquals(
+					StringBundler.concat(
+						prefix, StringPool.COLON, StringPool.SPACE,
+						StringPool.OPEN_BRACKET,
+						_getNormalizedName(objectDefinition.getDBTableName()),
+						StringPool.CLOSE_BRACKET),
+					logEntry.getMessage());
+			}
+			finally {
+				_objectDefinitionLocalService.deleteObjectDefinition(
+					objectDefinition);
+			}
+		}
+	}
+
+	@Test
+	public void testVerifyPreupgradeMissingServiceComponentTable()
+		throws Exception {
+
+		DB db = DBManagerUtil.getDB();
+		String tableName = _getNormalizedName("TestTable");
+
+		if (PropsValues.DATABASE_PARTITION_ENABLED) {
+			db.runSQL("create table " + tableName + "(id LONG)");
+		}
+
 		ServiceComponent serviceComponent =
 			_serviceComponentLocalService.createServiceComponent(
 				RandomTestUtil.nextLong());
-
-		String tableName = _getNormalizedName("TestTable");
 
 		serviceComponent.setMvccVersion(0);
 		serviceComponent.setBuildNamespace("com.liferay.test.service.impl");
@@ -194,19 +283,119 @@ public class PreupgradeVerifyDatabaseStateTest
 
 		_serviceComponentLocalService.addServiceComponent(serviceComponent);
 
-		try {
-			testVerify();
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				PreupgradeVerifyDatabaseState.class.getName(),
+				LoggerTestUtil.ERROR)) {
 
-			Assert.fail();
+			try {
+				testVerify();
+
+				Assert.fail();
+			}
+			catch (Exception exception) {
+				List<LogEntry> logEntries = logCapture.getLogEntries();
+
+				Assert.assertEquals(
+					logEntries.toString(), 1, logEntries.size());
+
+				LogEntry logEntry = logEntries.get(0);
+
+				String prefix = "A missing table was detected";
+
+				if (PropsValues.DATABASE_PARTITION_ENABLED) {
+					prefix = StringBundler.concat(
+						prefix, " for company ",
+						TestPropsValues.getCompanyId());
+				}
+
+				Assert.assertEquals(
+					StringBundler.concat(
+						prefix, StringPool.COLON, StringPool.SPACE,
+						StringPool.OPEN_BRACKET, tableName,
+						StringPool.CLOSE_BRACKET),
+					logEntry.getMessage());
+			}
+			finally {
+				db.runSQL("DROP_TABLE_IF_EXISTS(" + tableName + ")");
+
+				_serviceComponentLocalService.deleteServiceComponent(
+					serviceComponent);
+			}
 		}
-		catch (Exception exception) {
-			Assert.assertEquals(
-				"Missing tables detected: [" + tableName + "]",
-				exception.getMessage());
-		}
-		finally {
-			_serviceComponentLocalService.deleteServiceComponent(
-				serviceComponent);
+	}
+
+	@Test
+	public void testVerifyPreupgradeMissingTableAndMissingView()
+		throws Exception {
+
+		Assume.assumeTrue(PropsValues.DATABASE_PARTITION_ENABLED);
+
+		DB db = DBManagerUtil.getDB();
+		String tableName = _getNormalizedName("TestTable");
+
+		db.runSQL("create table " + tableName + "(id LONG)");
+
+		ServiceComponent serviceComponent =
+			_serviceComponentLocalService.createServiceComponent(
+				RandomTestUtil.nextLong());
+
+		serviceComponent.setMvccVersion(0);
+		serviceComponent.setBuildNamespace("com.liferay.test.service.impl");
+		serviceComponent.setData(
+			StringBundler.concat("<![CDATA[create table ", tableName, " ("));
+
+		_serviceComponentLocalService.addServiceComponent(serviceComponent);
+
+		_renameView("Release_", "Release_backup");
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				PreupgradeVerifyDatabaseState.class.getName(),
+				LoggerTestUtil.ERROR)) {
+
+			try {
+				testVerify();
+
+				Assert.fail();
+			}
+			catch (Exception exception) {
+				String viewName = _getNormalizedName("Release_");
+
+				Set<String> expectedMessages = Set.of(
+					StringBundler.concat(
+						"A missing table was detected for company ",
+						TestPropsValues.getCompanyId(), StringPool.COLON,
+						StringPool.SPACE, StringPool.OPEN_BRACKET, tableName,
+						StringPool.CLOSE_BRACKET),
+					StringBundler.concat(
+						"A missing view was detected for company ",
+						TestPropsValues.getCompanyId(), StringPool.COLON,
+						StringPool.SPACE, StringPool.OPEN_BRACKET, viewName,
+						StringPool.CLOSE_BRACKET));
+
+				List<LogEntry> logEntries = logCapture.getLogEntries();
+
+				Assert.assertEquals(
+					logEntries.toString(), expectedMessages.size(),
+					logEntries.size());
+
+				Set<String> verifyMessages = new HashSet<>();
+
+				for (LogEntry entry : logEntries) {
+					verifyMessages.add(entry.getMessage());
+				}
+
+				Assert.assertEquals(
+					verifyMessages.toString(), expectedMessages,
+					verifyMessages);
+			}
+			finally {
+				db.runSQL("DROP_TABLE_IF_EXISTS(" + tableName + ")");
+
+				_renameView("Release_backup", "Release_");
+
+				_serviceComponentLocalService.deleteServiceComponent(
+					serviceComponent);
+			}
 		}
 	}
 
@@ -216,7 +405,10 @@ public class PreupgradeVerifyDatabaseStateTest
 
 		_renameView("Release_", "Release_backup");
 
-		try {
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				PreupgradeVerifyDatabaseState.class.getName(),
+				LoggerTestUtil.ERROR)) {
+
 			testVerify();
 
 			Assert.fail();
@@ -226,8 +418,10 @@ public class PreupgradeVerifyDatabaseStateTest
 
 			Assert.assertEquals(
 				StringBundler.concat(
-					"Missing views detected: [", viewName, "] in company ",
-					TestPropsValues.getCompanyId()),
+					"A missing view was detected for company ",
+					TestPropsValues.getCompanyId(), StringPool.COLON,
+					StringPool.SPACE, StringPool.OPEN_BRACKET, viewName,
+					StringPool.CLOSE_BRACKET),
 				exception.getMessage());
 		}
 		finally {
@@ -241,35 +435,73 @@ public class PreupgradeVerifyDatabaseStateTest
 
 		String originalData = serviceComponent.getData();
 
-		try {
-			serviceComponent.setData(RandomTestUtil.randomString());
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				PreupgradeVerifyDatabaseState.class.getName(),
+				LoggerTestUtil.ERROR)) {
 
-			serviceComponent =
-				_serviceComponentLocalService.updateServiceComponent(
-					serviceComponent);
+			try {
+				serviceComponent.setData(StringPool.BLANK);
 
-			testVerify();
+				serviceComponent =
+					_serviceComponentLocalService.updateServiceComponent(
+						serviceComponent);
 
-			Assert.fail();
-		}
-		catch (Exception exception) {
-			try (Connection connection = DataAccess.getConnection()) {
-				DBInspector dbInspector = new DBInspector(connection);
+				testVerify();
 
+				Assert.fail();
+			}
+			catch (Exception exception) {
 				Set<String> tableNames = DBResourceUtil.parseCreateTableSQL(
-					dbInspector, originalData);
+					originalData);
+
+				Set<String> normalizedTableNames = new TreeSet<>(
+					TransformUtil.transform(
+						tableNames, this::_getNormalizedName));
+
+				String prefix = "Stale tables were detected";
+
+				if (PropsValues.DATABASE_PARTITION_ENABLED) {
+					prefix = StringBundler.concat(
+						prefix, " for company ",
+						PortalInstancePool.getDefaultCompanyId());
+				}
+
+				Set<String> expectedMessages = new HashSet<>(
+					Set.of(
+						StringBundler.concat(
+							prefix, StringPool.COLON, StringPool.SPACE,
+							normalizedTableNames)));
+
+				if (PropsValues.DATABASE_PARTITION_ENABLED) {
+					expectedMessages.add(
+						StringBundler.concat(
+							"Stale tables were detected for company ",
+							TestPropsValues.getCompanyId(), StringPool.COLON,
+							StringPool.SPACE, normalizedTableNames));
+				}
+
+				List<LogEntry> logEntries = logCapture.getLogEntries();
 
 				Assert.assertEquals(
-					"Stale tables from a previous upgrade detected: " +
-						new TreeSet<>(tableNames),
-					exception.getMessage());
-			}
-		}
-		finally {
-			serviceComponent.setData(originalData);
+					logEntries.toString(), expectedMessages.size(),
+					logEntries.size());
 
-			_serviceComponentLocalService.updateServiceComponent(
-				serviceComponent);
+				Set<String> verifyMessages = new HashSet<>();
+
+				for (LogEntry entry : logEntries) {
+					verifyMessages.add(entry.getMessage());
+				}
+
+				Assert.assertEquals(
+					verifyMessages.toString(), expectedMessages,
+					verifyMessages);
+			}
+			finally {
+				serviceComponent.setData(originalData);
+
+				_serviceComponentLocalService.updateServiceComponent(
+					serviceComponent);
+			}
 		}
 	}
 
@@ -391,6 +623,9 @@ public class PreupgradeVerifyDatabaseStateTest
 
 	private static Version _currentSchemaVersion;
 	private static SafeCloseable _safeCloseable;
+
+	@Inject
+	private ObjectDefinitionLocalService _objectDefinitionLocalService;
 
 	@Inject
 	private ServiceComponentLocalService _serviceComponentLocalService;

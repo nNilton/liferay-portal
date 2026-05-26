@@ -7,8 +7,10 @@ import {FrameLocator, Locator, Page, expect} from '@playwright/test';
 
 import {ApiHelpers} from '../../../../helpers/ApiHelpers';
 import {liferayConfig} from '../../../../liferay.config';
+import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVisible';
 import getRandomString from '../../../../utils/getRandomString';
 import {EFDSVisualizationMode, waitForFDS} from '../../../../utils/waitFor';
+import getFragmentDefinition from '../../../layout-content-page-editor-web/main/utils/getFragmentDefinition';
 import getPageDefinition from '../../../layout-content-page-editor-web/main/utils/getPageDefinition';
 import getWidgetDefinition from '../../../layout-content-page-editor-web/main/utils/getWidgetDefinition';
 
@@ -29,11 +31,16 @@ export class FDSSamplePage {
 		itemActionButtons: Locator;
 		items: Locator;
 	};
+	readonly creatorFilterSearchInput: Locator;
+	readonly dropdownMenu: Locator;
 	readonly emptyStateContainer: Locator;
 	readonly fdsWrapper: Locator;
 	readonly fileDropModal: Locator;
+	readonly filterDropdownMenu: Locator;
+	readonly filterMenu: Locator;
+	readonly filterMenuSearchInput: Locator;
+	readonly filterShowResultsOrAddButton: Locator;
 	readonly infoPanel: Locator;
-	readonly itemActionButton: Locator;
 	readonly itemActionsButtons: Locator;
 	readonly list: {
 		container: Locator;
@@ -42,6 +49,7 @@ export class FDSSamplePage {
 	};
 	readonly managementToolbar: {
 		container: Locator;
+		filterButton: Locator;
 		searchButton: Locator;
 		searchInput: Locator;
 	};
@@ -49,6 +57,7 @@ export class FDSSamplePage {
 	readonly paginator: {
 		itemsPerPageSelector: Locator;
 	};
+	readonly resubmitButton: Locator;
 	readonly sidePanel: Locator;
 	readonly sidePanelFrame: FrameLocator;
 	readonly selectAllCheckbox: Locator;
@@ -68,6 +77,7 @@ export class FDSSamplePage {
 	readonly toggleInfoPanelButton: Locator;
 	readonly userViewsActionsButton: Locator;
 	readonly userViewsDeleteAlert: Locator;
+	readonly userViewsRenameModal: Locator;
 	readonly userViewsSaveModal: Locator;
 	readonly userViewsSelectorButton: Locator;
 	readonly visualizationModeSelector: Locator;
@@ -81,9 +91,11 @@ export class FDSSamplePage {
 			activeFiltersToolbarContainer.locator('.search-resume');
 		this.activeFiltersToolbar = {
 			clearButton: activeFiltersToolbarContainer.getByRole('button', {
+				exact: true,
 				name: 'Clear',
 			}),
 			clearSearchButton: searchResume.getByRole('button', {
+				exact: true,
 				name: 'Clear Search',
 			}),
 			container: activeFiltersToolbarContainer,
@@ -103,14 +115,26 @@ export class FDSSamplePage {
 
 		this.cards = {
 			container: cardsContainer,
-			itemActionButtons: cardItems.getByLabel('More actions'),
+			itemActionButtons: cardItems.getByLabel('Actions'),
 			items: cardItems,
 		};
+		this.creatorFilterSearchInput = page
+			.locator('.data-set-filter')
+			.getByRole('textbox', {name: 'Search'});
+		this.dropdownMenu = page.locator('.dropdown-menu.show');
 		this.emptyStateContainer = page.locator('.fds .c-empty-state');
 		this.fdsWrapper = page.locator('div.data-set-wrapper').first();
 		this.fileDropModal = page.getByRole('dialog', {
 			name: 'Custom dummy file uploader',
 		});
+		this.filterDropdownMenu = page.locator('.data-set-filter');
+		this.filterMenu = page.locator('.dropdown-menu');
+		this.filterMenuSearchInput = this.filterMenu
+			.getByLabel('Search')
+			.first();
+		this.filterShowResultsOrAddButton = this.filterMenu
+			.getByRole('button', {name: 'Show Results'})
+			.or(this.filterMenu.getByRole('button', {name: 'Add Filter'}));
 		this.infoPanel = page.locator('.fds-info-panel');
 
 		this.itemActionsButtons = page.locator(
@@ -124,7 +148,6 @@ export class FDSSamplePage {
 		this.list = {
 			container: listContainer,
 			itemActionButtons: listItems.getByRole('button', {
-				exact: true,
 				name: 'Actions',
 			}),
 			items: listItems,
@@ -135,6 +158,9 @@ export class FDSSamplePage {
 
 		this.managementToolbar = {
 			container: managementToolbarContainer,
+			filterButton: managementToolbarContainer.getByRole('button', {
+				name: 'Filter',
+			}),
 			searchButton: managementToolbarContainer.getByRole('button', {
 				name: 'Search',
 			}),
@@ -150,6 +176,8 @@ export class FDSSamplePage {
 				exact: true,
 			}),
 		};
+
+		this.resubmitButton = page.getByRole('button', {name: 'Resubmit'});
 
 		this.selectAllCheckbox = page.getByText('Select All');
 
@@ -176,7 +204,6 @@ export class FDSSamplePage {
 			itemActionButtons: tableContainer
 				.locator('.cell-item-actions')
 				.getByRole('button', {
-					exact: true,
 					name: 'Actions',
 				}),
 			manageColumnsVisibilityButton: tableContainer.getByTitle(
@@ -194,6 +221,9 @@ export class FDSSamplePage {
 		this.userViewsDeleteAlert = page.getByRole('dialog', {
 			name: 'Delete View',
 		});
+		this.userViewsRenameModal = page.getByRole('dialog', {
+			name: 'Rename View',
+		});
 		this.userViewsSaveModal = page.getByRole('dialog', {
 			name: 'Save New View As',
 		});
@@ -204,6 +234,14 @@ export class FDSSamplePage {
 		this.visualizationModeSelector = page.getByLabel(/View Selected/);
 	}
 
+	async assignTaskToMe() {
+		const assignToMeButton = this.page
+			.locator('.fds-roles-tasks')
+			.getByLabel('Assign to Me');
+
+		await assignToMeButton.click();
+	}
+
 	async changeItemsPerPage({delta}: {delta: string}) {
 		await this.paginator.itemsPerPageSelector.click();
 
@@ -212,6 +250,19 @@ export class FDSSamplePage {
 		await dropdownItem.waitFor({state: 'visible'});
 
 		await dropdownItem.click();
+	}
+
+	async changePage(pageNumber: number) {
+		const button = this.page.getByLabel(`Go to page, ${pageNumber}`);
+
+		await clickAndExpectToBeVisible({
+			target: this.page
+				.locator('.page-item.active')
+				.filter({has: button}),
+			trigger: button,
+		});
+
+		await this.page.getByLabel(`Go to page, ${pageNumber}`).click();
 	}
 
 	async changeVisualizationMode({
@@ -235,10 +286,8 @@ export class FDSSamplePage {
 		await waitForFDS({page, visualizationMode});
 	}
 
-	async checkDropdownMenuIconsAreVisible(itemActionButton: Locator) {
-		const dropdownMenu = await this.getDropdownId(itemActionButton);
-
-		const menuItems = dropdownMenu.getByRole('menuitem');
+	async checkDropdownMenuIconsAreVisible() {
+		const menuItems = this.dropdownMenu.getByRole('menuitem');
 
 		for (const menuItem of await menuItems.all()) {
 			await expect
@@ -250,19 +299,9 @@ export class FDSSamplePage {
 	}
 
 	async clickItemAction(action: string, item: number = 0) {
-		const dropdownId = await this.itemActionsButtons
-			.nth(item)
-			.getAttribute('aria-controls');
-
 		await this.itemActionsButtons.nth(item).click();
 
-		await this.page
-			.locator(`#${dropdownId}`)
-			.filter({has: this.page.getByRole('menu')})
-			.waitFor();
-
-		await this.page
-			.locator(`#${dropdownId}`)
+		await this.dropdownMenu
 			.getByRole('menuitem', {
 				exact: true,
 				name: action,
@@ -270,16 +309,28 @@ export class FDSSamplePage {
 			.click();
 	}
 
-	async getDropdownId(itemActionButton: Locator) {
-		await itemActionButton.click();
+	async fillAndSaveWorkflowModal({
+		comment,
+		name,
+	}: {
+		comment: string;
+		name: string;
+	}) {
+		const workflowModal = this.page.getByRole('dialog', {name});
 
-		const dropdownId = await itemActionButton.getAttribute('aria-controls');
+		await workflowModal.waitFor({state: 'visible'});
 
-		const dropdownMenu = this.page.locator(`#${dropdownId}`);
+		await this.page.getByRole('textbox', {name: 'Comment'}).fill(comment);
 
-		await dropdownMenu.filter({has: this.page.getByRole('menu')}).waitFor();
+		await workflowModal.getByRole('button', {name: 'Save'}).click();
 
-		return dropdownMenu;
+		await workflowModal.waitFor({state: 'hidden'});
+	}
+
+	async search(value: string) {
+		await this.managementToolbar.searchInput.fill(value);
+
+		await this.managementToolbar.searchInput.press('Enter');
 	}
 
 	selectItemActionsByRow(text: string) {
@@ -289,7 +340,6 @@ export class FDSSamplePage {
 			})
 			.locator('.cell-item-actions')
 			.getByRole('button', {
-				exact: true,
 				name: 'Actions',
 			});
 	}
@@ -350,15 +400,29 @@ export class FDSSamplePage {
 		await expect(navLink).toHaveClass(/active/);
 	}
 
-	async setupFDSSampleWidget({locale = 'en', site}) {
-		const widgetDefinition = getWidgetDefinition({
-			id: getRandomString(),
-			widgetName:
-				'com_liferay_frontend_data_set_sample_web_internal_portlet_FDSSamplePortlet',
-		});
-
+	async setupFDSSampleWidget({
+		fragmentKeys = [],
+		locale = 'en',
+		site,
+	}: {
+		fragmentKeys?: Array<string>;
+		locale?: string;
+		site: Site;
+	}) {
 		const layout = await this.apiHelpers.headlessDelivery.createSitePage({
-			pageDefinition: getPageDefinition([widgetDefinition]),
+			pageDefinition: getPageDefinition([
+				...fragmentKeys.map((fragmentKey) =>
+					getFragmentDefinition({
+						id: getRandomString(),
+						key: fragmentKey,
+					})
+				),
+				getWidgetDefinition({
+					id: getRandomString(),
+					widgetName:
+						'com_liferay_frontend_data_set_sample_web_internal_portlet_FDSSamplePortlet',
+				}),
+			]),
 			siteId: site.id,
 			title: getRandomString(),
 		});

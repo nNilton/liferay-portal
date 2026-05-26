@@ -113,6 +113,16 @@ public class ObjectDefinitionImpl extends ObjectDefinitionBaseImpl {
 	}
 
 	@Override
+	public ObjectFolder getObjectFolder() {
+		if (_objectFolder == null) {
+			_objectFolder = ObjectFolderLocalServiceUtil.fetchObjectFolder(
+				getObjectFolderId());
+		}
+
+		return _objectFolder;
+	}
+
+	@Override
 	public String getObjectFolderExternalReferenceCode() {
 		ObjectFolder objectFolder =
 			ObjectFolderLocalServiceUtil.fetchObjectFolder(getObjectFolderId());
@@ -136,10 +146,6 @@ public class ObjectDefinitionImpl extends ObjectDefinitionBaseImpl {
 
 	@Override
 	public String getPortletId() {
-		if (isUnmodifiableSystemObject()) {
-			throw new UnsupportedOperationException();
-		}
-
 		return ObjectDefinitionUtil.getPortletId(getClassName());
 	}
 
@@ -218,8 +224,36 @@ public class ObjectDefinitionImpl extends ObjectDefinitionBaseImpl {
 	}
 
 	@Override
+	public boolean isAllowStandaloneObjectEntry() {
+		if (!isRootDescendantNode()) {
+			return true;
+		}
+
+		return GetterUtil.getBoolean(
+			ObjectDefinitionSettingUtil.getValue(
+				ObjectDefinitionSettingConstants.
+					NAME_ALLOW_STANDALONE_OBJECT_ENTRY,
+				getObjectDefinitionSettings()),
+			true);
+	}
+
+	@Override
 	public boolean isApproved() {
 		if (getStatus() == WorkflowConstants.STATUS_APPROVED) {
+			return true;
+		}
+
+		return false;
+	}
+
+	public boolean isCMP() {
+		if (!FeatureFlagManagerUtil.isEnabled(getCompanyId(), "LPD-58677")) {
+			return false;
+		}
+
+		if (Objects.equals(getExternalReferenceCode(), "L_CMP_PROJECT") ||
+			Objects.equals(getExternalReferenceCode(), "L_CMP_TASK")) {
+
 			return true;
 		}
 
@@ -338,7 +372,13 @@ public class ObjectDefinitionImpl extends ObjectDefinitionBaseImpl {
 		_objectFieldBag = objectFieldBag;
 	}
 
+	@Override
+	public void setObjectFolder(ObjectFolder objectFolder) {
+		_objectFolder = objectFolder;
+	}
+
 	private List<ObjectDefinitionSetting> _objectDefinitionSettings;
-	private ObjectFieldBag _objectFieldBag;
+	private transient ObjectFieldBag _objectFieldBag;
+	private ObjectFolder _objectFolder;
 
 }

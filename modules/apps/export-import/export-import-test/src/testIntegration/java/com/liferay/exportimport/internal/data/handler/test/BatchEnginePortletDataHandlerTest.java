@@ -8,18 +8,25 @@ package com.liferay.exportimport.internal.data.handler.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.batch.engine.BatchEngineTaskExecuteStatus;
 import com.liferay.batch.engine.service.BatchEngineImportTaskLocalService;
+import com.liferay.depot.constants.DepotConstants;
+import com.liferay.depot.model.DepotEntry;
+import com.liferay.depot.service.DepotEntryLocalService;
+import com.liferay.document.library.constants.DLPortletKeys;
 import com.liferay.document.library.kernel.model.DLFileEntry;
+import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
+import com.liferay.document.library.test.util.DLTestUtil;
+import com.liferay.document.library.util.DLURLHelper;
 import com.liferay.exportimport.data.handler.base.BaseStagedModelDataHandler;
 import com.liferay.exportimport.kernel.configuration.ExportImportConfigurationSettingsMapFactoryUtil;
 import com.liferay.exportimport.kernel.configuration.constants.ExportImportConfigurationConstants;
+import com.liferay.exportimport.kernel.exception.MissingPortletDataHandlerException;
 import com.liferay.exportimport.kernel.lar.ManifestSummary;
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.exportimport.kernel.lar.PortletDataContextFactoryUtil;
 import com.liferay.exportimport.kernel.lar.PortletDataException;
 import com.liferay.exportimport.kernel.lar.PortletDataHandler;
-import com.liferay.exportimport.kernel.lar.PortletDataHandlerControl;
 import com.liferay.exportimport.kernel.lar.PortletDataHandlerKeys;
 import com.liferay.exportimport.kernel.lar.StagedModelDataHandler;
 import com.liferay.exportimport.kernel.model.ExportImportConfiguration;
@@ -30,28 +37,36 @@ import com.liferay.exportimport.portlet.data.handler.provider.PortletDataHandler
 import com.liferay.exportimport.report.constants.ExportImportReportEntryConstants;
 import com.liferay.exportimport.report.model.ExportImportReportEntry;
 import com.liferay.exportimport.report.service.ExportImportReportEntryLocalService;
+import com.liferay.exportimport.test.util.ExportImportTestUtil;
 import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
+import com.liferay.friendly.url.model.FriendlyURLEntry;
+import com.liferay.friendly.url.service.FriendlyURLEntryLocalService;
 import com.liferay.journal.constants.JournalContentPortletKeys;
 import com.liferay.layout.test.util.LayoutTestUtil;
 import com.liferay.list.type.model.ListTypeDefinition;
 import com.liferay.list.type.model.ListTypeEntry;
 import com.liferay.list.type.service.ListTypeDefinitionLocalService;
 import com.liferay.list.type.service.ListTypeEntryLocalService;
+import com.liferay.object.comment.ObjectEntryComment;
 import com.liferay.object.constants.ObjectDefinitionConstants;
+import com.liferay.object.constants.ObjectDefinitionSettingConstants;
 import com.liferay.object.constants.ObjectEntryFolderConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
 import com.liferay.object.constants.ObjectFieldSettingConstants;
 import com.liferay.object.constants.ObjectPortletKeys;
 import com.liferay.object.constants.ObjectRelationshipConstants;
 import com.liferay.object.exception.NoSuchObjectEntryException;
+import com.liferay.object.field.builder.PicklistObjectFieldBuilder;
 import com.liferay.object.field.builder.TextObjectFieldBuilder;
 import com.liferay.object.field.setting.builder.ObjectFieldSettingBuilder;
 import com.liferay.object.field.util.ObjectFieldUtil;
 import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectDefinitionSetting;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.model.ObjectField;
 import com.liferay.object.model.ObjectRelationship;
 import com.liferay.object.service.ObjectDefinitionLocalService;
+import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
@@ -64,18 +79,22 @@ import com.liferay.petra.function.UnsafeFunction;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.comment.Comment;
+import com.liferay.portal.kernel.comment.CommentManager;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.sanitizer.SanitizerUtil;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
@@ -90,11 +109,11 @@ import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.AssertUtils;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
-import com.liferay.portal.kernel.test.util.FeatureFlagTestUtil;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
@@ -103,9 +122,12 @@ import com.liferay.portal.kernel.util.LinkedHashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MapUtil;
+import com.liferay.portal.kernel.util.ObjectValuePair;
 import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.TempFileEntryUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.Element;
@@ -117,6 +139,7 @@ import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LogEntry;
 import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
+import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -135,9 +158,12 @@ import jakarta.ws.rs.core.UriInfo;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.io.Serializable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -147,11 +173,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -172,7 +198,6 @@ import org.skyscreamer.jsonassert.JSONCompareMode;
  * @author Vendel Toreki
  * @author Petteri Karttunen
  */
-@FeatureFlag("LPD-35914")
 @RunWith(Arquillian.class)
 public class BatchEnginePortletDataHandlerTest {
 
@@ -185,14 +210,10 @@ public class BatchEnginePortletDataHandlerTest {
 
 	@BeforeClass
 	public static void setUpClass() throws PortalException {
-		FeatureFlagTestUtil.invokeFeatureFlagListeners(
-			TestPropsValues.getCompanyId(), true, "LPD-35914");
-	}
+		Bundle bundle = FrameworkUtil.getBundle(
+			BatchEnginePortletDataHandlerTest.class);
 
-	@AfterClass
-	public static void tearDownClass() throws PortalException {
-		FeatureFlagTestUtil.invokeFeatureFlagListeners(
-			TestPropsValues.getCompanyId(), false, "LPD-35914");
+		_bundleContext = bundle.getBundleContext();
 	}
 
 	@Test
@@ -254,7 +275,7 @@ public class BatchEnginePortletDataHandlerTest {
 
 	@Test
 	@TestInfo("LPD-50142")
-	public void testExportImportCompanyGroupObjectEntries() throws Exception {
+	public void testExportImportCompanyObjectEntries() throws Exception {
 		_testExportImportObjectEntriesToSameGroup(
 			_stagingGroupHelper.fetchCompanyGroup(
 				TestPropsValues.getCompanyId()),
@@ -262,7 +283,7 @@ public class BatchEnginePortletDataHandlerTest {
 	}
 
 	@Test
-	public void testExportImportCompanyGroupObjectEntriesWithError()
+	public void testExportImportCompanyObjectEntriesWithError()
 		throws Exception {
 
 		Group group = _stagingGroupHelper.fetchCompanyGroup(
@@ -274,8 +295,12 @@ public class BatchEnginePortletDataHandlerTest {
 		ObjectEntry[] objectEntries = _addObjectEntries(
 			3, 0L, objectDefinition);
 
-		File larFile = _exportLayouts(
-			false, group.getGroupId(), false, new long[0], objectDefinition);
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
 
 		_deleteObjectEntries(objectEntries);
 
@@ -292,8 +317,14 @@ public class BatchEnginePortletDataHandlerTest {
 					"BatchEngineImportTaskExecutorImpl",
 				LoggerTestUtil.OFF)) {
 
-			_importLayouts(
-				false, false, larFile, group.getGroupId(), objectDefinition);
+			new ExportImportExecutor(
+			).withGroupId(
+				group.getGroupId()
+			).withLARFile(
+				larFile
+			).withObjectEntries(
+				objectDefinition
+			).executeImport();
 		}
 
 		List<ObjectEntry> objectEntriesList =
@@ -323,8 +354,250 @@ public class BatchEnginePortletDataHandlerTest {
 	}
 
 	@Test
+	@TestInfo({"LPD-49421", "LPD-50142", "LPD-77963"})
+	public void testExportImportCompanyObjectEntriesWithIndividualDeletions()
+		throws Exception {
+
+		Group group = _stagingGroupHelper.fetchCompanyGroup(
+			TestPropsValues.getCompanyId());
+
+		ObjectDefinition objectDefinition = _addObjectDefinition(
+			ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		ObjectEntry[] objectEntries = _addObjectEntries(
+			3, GroupConstants.DEFAULT_PARENT_GROUP_ID, objectDefinition);
+
+		File larFile1 = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		_deleteObjectEntries(objectEntries[0], objectEntries[1]);
+
+		File larFile2 = new ExportImportExecutor(
+		).withDeletions(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		JSONAssert.assertEquals(
+			JSONUtil.putAll(
+				objectEntries[0].getExternalReferenceCode(),
+				objectEntries[1].getExternalReferenceCode()
+			).toString(),
+			_getExternalReferenceCodesJSONArray(
+				objectDefinition.getExternalReferenceCode(), larFile2,
+				group.getGroupId()
+			).toString(),
+			JSONCompareMode.LENIENT);
+		JSONAssert.assertEquals(
+			JSONUtil.putAll(
+			).toString(),
+			_getClassExternalReferenceCodesJSONArray(
+				larFile2, group.getGroupId()
+			).toString(),
+			JSONCompareMode.STRICT);
+
+		_deleteObjectEntries(objectEntries[2]);
+
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile1
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		_assertObjectEntries(
+			false, objectDefinition.getObjectDefinitionId(), objectEntries);
+
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile2
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		_assertObjectEntries(
+			false, objectDefinition.getObjectDefinitionId(), objectEntries);
+
+		new ExportImportExecutor(
+		).withDeletions(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile2
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		_assertObjectEntries(
+			false, objectDefinition.getObjectDefinitionId(), objectEntries[2]);
+		_assertNull(
+			objectDefinition.getObjectDefinitionId(), objectEntries[0],
+			objectEntries[1]);
+
+		_testExportImportObjectEntriesWithIndividualDeletionsAndMissingPortlet(
+			_stagingGroupHelper.fetchCompanyGroup(
+				TestPropsValues.getCompanyId()),
+			ObjectDefinitionConstants.SCOPE_COMPANY);
+	}
+
+	@Test
+	@TestInfo("LPD-77963")
+	public void testExportImportCompanyObjectEntriesWithMissingPortlet()
+		throws Exception {
+
+		Group group = _stagingGroupHelper.fetchCompanyGroup(
+			TestPropsValues.getCompanyId());
+
+		List<ObjectField> objectFields = Collections.singletonList(
+			ObjectFieldUtil.createObjectField(
+				ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+				ObjectFieldConstants.DB_TYPE_STRING, true, true, null,
+				RandomTestUtil.randomString(), "textField", false));
+
+		ObjectDefinition objectDefinition1 =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				ObjectDefinitionTestUtil.getRandomName(), objectFields,
+				ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		_objectEntryLocalService.addObjectEntry(
+			GroupConstants.DEFAULT_PARENT_GROUP_ID, TestPropsValues.getUserId(),
+			objectDefinition1.getObjectDefinitionId(),
+			ObjectEntryFolderConstants.PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
+			null,
+			HashMapBuilder.<String, Serializable>put(
+				"textField", RandomTestUtil.randomString()
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
+
+		ObjectDefinition objectDefinition2 =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				ObjectDefinitionTestUtil.getRandomName(), objectFields,
+				ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		_objectEntryLocalService.addObjectEntry(
+			GroupConstants.DEFAULT_PARENT_GROUP_ID, TestPropsValues.getUserId(),
+			objectDefinition2.getObjectDefinitionId(),
+			ObjectEntryFolderConstants.PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
+			null,
+			HashMapBuilder.<String, Serializable>put(
+				"textField", RandomTestUtil.randomString()
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
+
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeObjectDefinitions(
+		).withObjectEntries(
+			objectDefinition1
+		).withObjectEntries(
+			objectDefinition2
+		).executeExport();
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition1);
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition2);
+
+		ObjectDefinition targetObjectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				ObjectDefinitionTestUtil.getRandomName(), objectFields,
+				ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		targetObjectDefinition.setExternalReferenceCode(
+			objectDefinition1.getExternalReferenceCode());
+
+		targetObjectDefinition =
+			_objectDefinitionLocalService.updateObjectDefinition(
+				targetObjectDefinition);
+
+		_objectDefinitionLocalService.deployObjectDefinition(
+			targetObjectDefinition);
+
+		ExportImportConfiguration exportImportConfiguration =
+			new ExportImportExecutor(
+			).withExpectError(
+			).withGroupId(
+				group.getGroupId()
+			).withLARFile(
+				larFile
+			).withObjectEntries(
+				objectDefinition1
+			).withObjectEntries(
+				objectDefinition2
+			).executeImport();
+
+		Assert.assertEquals(
+			1,
+			_objectEntryLocalService.getObjectEntriesCount(
+				targetObjectDefinition.getObjectDefinitionId()));
+
+		List<ExportImportReportEntry> exportImportReportEntries =
+			_exportImportReportEntryLocalService.getExportImportReportEntries(
+				TestPropsValues.getCompanyId(),
+				exportImportConfiguration.getExportImportConfigurationId());
+
+		Assert.assertEquals(
+			exportImportReportEntries.toString(), 1,
+			exportImportReportEntries.size());
+
+		Assert.assertEquals(
+			"The data handler for the \"" +
+				objectDefinition2.getPluralLabel(LocaleUtil.getDefault()) +
+					"\" portlet is missing from the system.",
+			exportImportReportEntries.get(
+				0
+			).getErrorMessage());
+
+		_objectDefinitionLocalService.deleteObjectDefinition(
+			targetObjectDefinition);
+
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeObjectDefinitions(
+		).withLARFile(
+			larFile
+		).withObjectEntries(
+			objectDefinition1
+		).withObjectEntries(
+			objectDefinition2
+		).executeImport();
+
+		objectDefinition1 =
+			_objectDefinitionLocalService.
+				getObjectDefinitionByExternalReferenceCode(
+					objectDefinition1.getExternalReferenceCode(),
+					TestPropsValues.getCompanyId());
+
+		Assert.assertEquals(
+			1,
+			_objectEntryLocalService.getObjectEntriesCount(
+				objectDefinition1.getObjectDefinitionId()));
+
+		objectDefinition2 =
+			_objectDefinitionLocalService.
+				getObjectDefinitionByExternalReferenceCode(
+					objectDefinition2.getExternalReferenceCode(),
+					TestPropsValues.getCompanyId());
+
+		Assert.assertEquals(
+			1,
+			_objectEntryLocalService.getObjectEntriesCount(
+				objectDefinition2.getObjectDefinitionId()));
+	}
+
+	@Test
 	@TestInfo("LPD-61997")
-	public void testExportImportCompanyGroupObjectEntriesWithRelatedObjectEntries()
+	public void testExportImportCompanyObjectEntriesWithRelatedObjectEntries()
 		throws Exception {
 
 		Group group = _stagingGroupHelper.fetchCompanyGroup(
@@ -338,7 +611,323 @@ public class BatchEnginePortletDataHandlerTest {
 			ObjectRelationshipConstants.TYPE_MANY_TO_MANY);
 	}
 
-	@FeatureFlag("LPD-35443")
+	@Test
+	@TestInfo("LPD-72635")
+	public void testExportImportCompanyObjectEntriesWithRichTextAndURLs()
+		throws Exception {
+
+		// File entry from a depot entry
+
+		Company company = _companyLocalService.getCompany(
+			TestPropsValues.getCompanyId());
+
+		DepotEntry depotEntry = _addDepotEntry();
+
+		Group group = _stagingGroupHelper.fetchCompanyGroup(
+			company.getCompanyId());
+
+		ObjectDefinition objectDefinition = _addObjectDefinition(
+			ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			null, null, false, false,
+			_addImageFileEntry(depotEntry.getGroupId()), false,
+			objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(depotEntry.getGroupId()), false,
+			objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(depotEntry.getGroupId()), true, objectDefinition,
+			group);
+
+		// File entry from a depot entry, deleted before exporting
+
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", fileEntry.getGroupId()),
+			false, false, _addImageFileEntry(depotEntry.getGroupId()), false,
+			objectDefinition, group);
+
+		// File entry from a depot entry, deleted before importing
+
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			false, _addImageFileEntry(depotEntry.getGroupId()), false,
+			objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(depotEntry.getGroupId()), false,
+			objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(depotEntry.getGroupId()), true,
+			objectDefinition, group);
+
+		// File entry from a group
+
+		Group testGroup = GroupTestUtil.addGroup();
+
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			null, null, false, false,
+			_addImageFileEntry(testGroup.getGroupId()), false, objectDefinition,
+			group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			null, null, false, true, _addImageFileEntry(testGroup.getGroupId()),
+			false, objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			null, null, false, true, _addImageFileEntry(testGroup.getGroupId()),
+			true, objectDefinition, group);
+
+		// File entry from a group, deleted before exporting
+
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", fileEntry.getGroupId()),
+			false, false, _addImageFileEntry(testGroup.getGroupId()), false,
+			objectDefinition, group);
+
+		// File entry from a group, deleted before importing
+
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			false, _addImageFileEntry(testGroup.getGroupId()), false,
+			objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(testGroup.getGroupId()), false,
+			objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(testGroup.getGroupId()), true,
+			objectDefinition, group);
+
+		// File entry from the company group
+
+		Group companyGroup = company.getGroup();
+
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			null, null, false, false,
+			_addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(companyGroup.getGroupId()), true,
+			objectDefinition, group);
+
+		// File entry from the company group, deleted before exporting
+
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", fileEntry.getGroupId()),
+			false, false, _addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, group);
+
+		// File entry from the company group, deleted before importing
+
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			false, _addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, group);
+		_testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(companyGroup.getGroupId()), true,
+			objectDefinition, group);
+	}
+
+	@Test
+	@TestInfo("LPD-72635")
+	public void testExportImportDepotObjectEntriesWithRichTextAndURLs()
+		throws Exception {
+
+		// File entry from a different depot entry
+
+		DepotEntry differentDepotEntry = _addDepotEntry();
+
+		ObjectDefinition objectDefinition = _addObjectDefinition(
+			ObjectDefinitionConstants.SCOPE_DEPOT);
+
+		DepotEntry sourceDepotEntry = _addDepotEntry();
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null, null, false, false,
+			_addImageFileEntry(differentDepotEntry.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(differentDepotEntry.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(differentDepotEntry.getGroupId()), true,
+			objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from a different depot entry, deleted before exporting
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", fileEntry.getGroupId()),
+			false, false, _addImageFileEntry(differentDepotEntry.getGroupId()),
+			false, objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from a different depot entry, deleted before importing
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			false, _addImageFileEntry(differentDepotEntry.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(differentDepotEntry.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(differentDepotEntry.getGroupId()), true,
+			objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from a group
+
+		Group group = GroupTestUtil.addGroup();
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null, null, false, false, _addImageFileEntry(group.getGroupId()),
+			false, objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null, null, false, true, _addImageFileEntry(group.getGroupId()),
+			false, objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null, null, false, true, _addImageFileEntry(group.getGroupId()),
+			true, objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from a group, deleted before exporting
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", fileEntry.getGroupId()),
+			false, false, _addImageFileEntry(group.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from a group, deleted before importing
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			false, _addImageFileEntry(group.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(group.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(group.getGroupId()), true,
+			objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from the company group
+
+		Company company = _companyLocalService.getCompany(
+			TestPropsValues.getCompanyId());
+
+		Group companyGroup = company.getGroup();
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null, null, false, false,
+			_addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(companyGroup.getGroupId()), true,
+			objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from the company group, deleted before exporting
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", fileEntry.getGroupId()),
+			false, false, _addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from the company group, deleted before importing
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			false, _addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(companyGroup.getGroupId()), true,
+			objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from the same depot entry
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				fileEntry.getExternalReferenceCode(), targetGroup.getGroupId()),
+			true, false, _addImageFileEntry(sourceDepotEntry.getGroupId()),
+			false, objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				fileEntry.getExternalReferenceCode(), targetGroup.getGroupId()),
+			true, true, _addImageFileEntry(sourceDepotEntry.getGroupId()),
+			false, objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			null, null, true, true,
+			_addImageFileEntry(sourceDepotEntry.getGroupId()), true,
+			objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from the same depot entry, deleted before exporting
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", targetGroup.getGroupId()),
+			true, false, _addImageFileEntry(sourceDepotEntry.getGroupId()),
+			false, objectDefinition, sourceDepotEntry.getGroup());
+
+		// File entry from the same depot entry, deleted before importing
+
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				fileEntry.getExternalReferenceCode(), targetGroup.getGroupId()),
+			true, false, _addImageFileEntry(sourceDepotEntry.getGroupId()),
+			false, objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				fileEntry.getExternalReferenceCode(), targetGroup.getGroupId()),
+			true, true, _addImageFileEntry(sourceDepotEntry.getGroupId()),
+			false, objectDefinition, sourceDepotEntry.getGroup());
+		_testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, null, true, true,
+			_addImageFileEntry(sourceDepotEntry.getGroupId()), true,
+			objectDefinition, sourceDepotEntry.getGroup());
+	}
+
 	@Test
 	@TestInfo("LPD-64365")
 	public void testExportImportLayoutsToOtherSite() throws Exception {
@@ -347,15 +936,23 @@ public class BatchEnginePortletDataHandlerTest {
 		Layout layout1 = LayoutTestUtil.addTypePortletLayout(group1);
 		Layout layout2 = LayoutTestUtil.addTypePortletLayout(group1);
 
-		File larFile = _exportLayouts(
-			false, group1.getGroupId(), true, false,
-			new long[] {layout1.getLayoutId()});
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group1.getGroupId()
+		).withIncludeLayoutSetLayouts(
+		).withLayoutId(
+			layout1.getLayoutId()
+		).executeExport();
 
 		Group group2 = GroupTestUtil.addGroup();
 
-		_importLayouts(
-			false, false, larFile, group2.getGroupId(), true, false,
-			new Object[0]);
+		new ExportImportExecutor(
+		).withGroupId(
+			group2.getGroupId()
+		).withIncludeLayoutSetLayouts(
+		).withLARFile(
+			larFile
+		).executeImport();
 
 		layout1 = _layoutLocalService.fetchLayoutByExternalReferenceCode(
 			layout1.getExternalReferenceCode(), group2.getGroupId());
@@ -378,26 +975,42 @@ public class BatchEnginePortletDataHandlerTest {
 		ListTypeEntry[] listTypeEntries = _addListTypeEntries(
 			3, listTypeDefinition);
 
-		File larFile1 = _exportLayouts(
-			false, group.getGroupId(), false, null, listTypeDefinition);
+		File larFile1 = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeListTypeDefinitions(
+		).executeExport();
 
 		_listTypeEntryLocalService.deleteListTypeEntry(listTypeEntries[0]);
 		_listTypeEntryLocalService.deleteListTypeEntry(listTypeEntries[1]);
 
-		File larFile2 = _exportLayouts(
-			false, group.getGroupId(), false, null, listTypeDefinition);
+		File larFile2 = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeListTypeDefinitions(
+		).executeExport();
 
 		_listTypeDefinitionLocalService.deleteListTypeDefinition(
 			listTypeDefinition);
 
-		_importLayouts(
-			false, false, larFile1, group.getGroupId(), listTypeDefinition);
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeListTypeDefinitions(
+		).withLARFile(
+			larFile1
+		).executeImport();
 
 		_assertListTypeDefinition(
 			listTypeDefinition, listTypeEntries.length, listTypeEntries);
 
-		_importLayouts(
-			false, false, larFile2, group.getGroupId(), listTypeDefinition);
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeListTypeDefinitions(
+		).withLARFile(
+			larFile2
+		).executeImport();
 
 		_assertListTypeDefinition(listTypeDefinition, 1, listTypeEntries[2]);
 	}
@@ -412,23 +1025,67 @@ public class BatchEnginePortletDataHandlerTest {
 
 		ObjectField[] objectFields = _addObjectFields(3, objectDefinition);
 
-		File larFile1 = _exportLayouts(false, group.getGroupId(), false, null);
+		File larFile1 = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeObjectDefinitions(
+		).executeExport();
 
 		_objectFieldLocalService.deleteObjectField(objectFields[0]);
 		_objectFieldLocalService.deleteObjectField(objectFields[1]);
 
-		File larFile2 = _exportLayouts(false, group.getGroupId(), false, null);
+		File larFile2 = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeObjectDefinitions(
+		).executeExport();
 
 		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
 
-		_importLayouts(false, false, larFile1, group.getGroupId());
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeObjectDefinitions(
+		).withLARFile(
+			larFile1
+		).executeImport();
 
 		_assertObjectDefinition(
 			objectDefinition, objectFields.length, objectFields);
 
-		_importLayouts(false, false, larFile2, group.getGroupId());
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeObjectDefinitions(
+		).withLARFile(
+			larFile2
+		).executeImport();
 
 		_assertObjectDefinition(objectDefinition, 1, objectFields[2]);
+	}
+
+	@FeatureFlag("LPD-43996")
+	@Test
+	public void testExportImportObjectEntriesWithComments() throws Exception {
+
+		// Company scope
+
+		_testExportImportObjectEntriesWithComments(
+			_stagingGroupHelper.fetchCompanyGroup(
+				TestPropsValues.getCompanyId()),
+			ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		// Site scope
+
+		PropsUtil.set("feature.flag.LPD-43996", "false");
+
+		try {
+			_testExportImportObjectEntriesWithComments(
+				GroupTestUtil.addGroup(), ObjectDefinitionConstants.SCOPE_SITE);
+		}
+		finally {
+			PropsUtil.set("feature.flag.LPD-43996", "true");
+		}
 	}
 
 	@Test
@@ -463,18 +1120,19 @@ public class BatchEnginePortletDataHandlerTest {
 		ObjectEntry[] objectEntries = _addObjectEntries(
 			3, group1.getGroupId(), objectDefinition);
 
-		File larFile = _exportLayouts(
-			false, group1.getGroupId(), false,
-			new long[] {layout.getLayoutId()}, objectDefinition);
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group1.getGroupId()
+		).withLayoutId(
+			layout.getLayoutId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
 
 		Group group2 = GroupTestUtil.addGroup();
 
-		Bundle bundle = FrameworkUtil.getBundle(getClass());
-
-		BundleContext bundleContext = bundle.getBundleContext();
-
 		ServiceRegistration<?> serviceRegistration =
-			bundleContext.registerService(
+			_bundleContext.registerService(
 				StagedModelDataHandler.class,
 				new BaseStagedModelDataHandler<Layout>() {
 
@@ -507,8 +1165,16 @@ public class BatchEnginePortletDataHandlerTest {
 				).build());
 
 		try {
-			_importLayouts(
-				false, true, larFile, group2.getGroupId(), objectDefinition);
+			new ExportImportExecutor(
+			).withExpectError(
+			).withGroupId(
+				group2.getGroupId()
+			).withLARFile(
+				larFile
+			).withObjectEntries(
+				objectDefinition
+			).executeImport();
+
 			Assert.fail();
 		}
 		catch (PortletDataException portletDataException) {
@@ -537,15 +1203,24 @@ public class BatchEnginePortletDataHandlerTest {
 		Layout layout1 = LayoutTestUtil.addTypePortletLayout(group1, true);
 		Layout layout2 = LayoutTestUtil.addTypePortletLayout(group1, true);
 
-		File larFile = _exportLayouts(
-			false, group1.getGroupId(), false, true,
-			new long[] {layout1.getLayoutId()});
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group1.getGroupId()
+		).withLayoutId(
+			layout1.getLayoutId()
+		).withPrivateLayouts(
+		).executeExport();
 
 		Group group2 = GroupTestUtil.addGroup();
 
-		_importLayouts(
-			false, false, larFile, group2.getGroupId(), false, true,
-			new Object[0]);
+		new ExportImportExecutor(
+		).withGroupId(
+			group2.getGroupId()
+		).withIncludeLayoutSetLayouts(
+		).withLARFile(
+			larFile
+		).withPrivateLayouts(
+		).executeImport();
 
 		layout1 = _layoutLocalService.fetchLayoutByExternalReferenceCode(
 			layout1.getExternalReferenceCode(), group2.getGroupId());
@@ -570,13 +1245,23 @@ public class BatchEnginePortletDataHandlerTest {
 		ObjectEntry[] objectEntries = _addObjectEntries(
 			3, group1.getGroupId(), objectDefinition);
 
-		File larFile = _exportLayouts(
-			false, group1.getGroupId(), false, new long[0], objectDefinition);
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group1.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
 
 		Group group2 = GroupTestUtil.addGroup();
 
-		_importLayouts(
-			false, false, larFile, group2.getGroupId(), objectDefinition);
+		new ExportImportExecutor(
+		).withGroupId(
+			group2.getGroupId()
+		).withLARFile(
+			larFile
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
 
 		List<ObjectEntry> objectEntriesList =
 			_objectEntryLocalService.getObjectEntries(
@@ -595,6 +1280,185 @@ public class BatchEnginePortletDataHandlerTest {
 	}
 
 	@Test
+	@TestInfo("LPD-77099")
+	public void testExportImportSiteObjectEntriesWithIndividualDeletions()
+		throws Exception {
+
+		Group group = GroupTestUtil.addGroup();
+
+		ObjectDefinition objectDefinition = _addObjectDefinition(
+			ObjectDefinitionConstants.SCOPE_SITE);
+
+		ObjectEntry[] objectEntries = _addObjectEntries(
+			3, group.getGroupId(), objectDefinition);
+
+		File larFile1 = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		_deleteObjectEntries(objectEntries[0], objectEntries[1]);
+
+		File larFile2 = new ExportImportExecutor(
+		).withDeletions(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		JSONAssert.assertEquals(
+			JSONUtil.putAll(
+				objectEntries[0].getExternalReferenceCode(),
+				objectEntries[1].getExternalReferenceCode()
+			).toString(),
+			_getExternalReferenceCodesJSONArray(
+				objectDefinition.getExternalReferenceCode(), larFile2,
+				group.getGroupId()
+			).toString(),
+			JSONCompareMode.LENIENT);
+		JSONAssert.assertEquals(
+			JSONUtil.putAll(
+			).toString(),
+			_getClassExternalReferenceCodesJSONArray(
+				larFile2, group.getGroupId()
+			).toString(),
+			JSONCompareMode.STRICT);
+
+		_deleteObjectEntries(objectEntries[2]);
+
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile1
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		_assertObjectEntries(
+			false, objectDefinition.getObjectDefinitionId(), objectEntries);
+
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile2
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		_assertObjectEntries(
+			false, objectDefinition.getObjectDefinitionId(), objectEntries);
+
+		new ExportImportExecutor(
+		).withDeletions(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile2
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		_assertObjectEntries(
+			false, objectDefinition.getObjectDefinitionId(), objectEntries[2]);
+		_assertNull(
+			objectDefinition.getObjectDefinitionId(), objectEntries[0],
+			objectEntries[1]);
+
+		_testExportImportObjectEntriesWithIndividualDeletionsAndMissingPortlet(
+			GroupTestUtil.addGroup(), ObjectDefinitionConstants.SCOPE_SITE);
+	}
+
+	@Test
+	@TestInfo("LPD-77963")
+	public void testExportImportSiteObjectEntriesWithMissingPortlet()
+		throws Exception {
+
+		Group group = GroupTestUtil.addGroup();
+
+		List<ObjectField> objectFields = Collections.singletonList(
+			ObjectFieldUtil.createObjectField(
+				ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+				ObjectFieldConstants.DB_TYPE_STRING, true, true, null,
+				RandomTestUtil.randomString(), "textField", false));
+
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				ObjectDefinitionTestUtil.getRandomName(), objectFields,
+				ObjectDefinitionConstants.SCOPE_SITE);
+
+		_objectEntryLocalService.addObjectEntry(
+			group.getGroupId(), TestPropsValues.getUserId(),
+			objectDefinition.getObjectDefinitionId(),
+			ObjectEntryFolderConstants.PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
+			null,
+			HashMapBuilder.<String, Serializable>put(
+				"textField", RandomTestUtil.randomString()
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
+
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.exportimport.internal.lifecycle." +
+					"LoggerExportImportLifecycleListener",
+				LoggerTestUtil.ERROR)) {
+
+			Assert.assertThrows(
+				MissingPortletDataHandlerException.class,
+				() -> new ExportImportExecutor(
+				).withGroupId(
+					group.getGroupId()
+				).withLARFile(
+					larFile
+				).withObjectEntries(
+					objectDefinition
+				).executeImport());
+		}
+
+		ObjectDefinition targetObjectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				ObjectDefinitionTestUtil.getRandomName(), objectFields,
+				ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		targetObjectDefinition.setExternalReferenceCode(
+			objectDefinition.getExternalReferenceCode());
+
+		targetObjectDefinition =
+			_objectDefinitionLocalService.updateObjectDefinition(
+				targetObjectDefinition);
+
+		_objectDefinitionLocalService.deployObjectDefinition(
+			targetObjectDefinition);
+
+		new ExportImportExecutor(
+		).withExpectError(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		Assert.assertEquals(
+			1,
+			_objectEntryLocalService.getObjectEntriesCount(
+				targetObjectDefinition.getObjectDefinitionId()));
+	}
+
+	@Test
 	@TestInfo("LPD-61997")
 	public void testExportImportSiteObjectEntriesWithRelatedObjectEntries()
 		throws Exception {
@@ -607,6 +1471,190 @@ public class BatchEnginePortletDataHandlerTest {
 		_testExportImportObjectEntriesWithRelatedObjectEntries(
 			group, ObjectDefinitionConstants.SCOPE_SITE,
 			ObjectRelationshipConstants.TYPE_MANY_TO_MANY);
+	}
+
+	@Test
+	@TestInfo("LPD-72635")
+	public void testExportImportSiteObjectEntriesWithRichTextAndURLs()
+		throws Exception {
+
+		// File entry from a depot entry
+
+		DepotEntry depotEntry = _addDepotEntry();
+
+		ObjectDefinition objectDefinition = _addObjectDefinition(
+			ObjectDefinitionConstants.SCOPE_SITE);
+
+		Group sourceGroup = GroupTestUtil.addGroup();
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null, null, false, false,
+			_addImageFileEntry(depotEntry.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(depotEntry.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(depotEntry.getGroupId()), true, objectDefinition,
+			sourceGroup);
+
+		// File entry from a depot entry, deleted before exporting
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", fileEntry.getGroupId()),
+			false, false, _addImageFileEntry(depotEntry.getGroupId()), false,
+			objectDefinition, sourceGroup);
+
+		// File entry from a depot entry, deleted before importing
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			false, _addImageFileEntry(depotEntry.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(depotEntry.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(depotEntry.getGroupId()), true,
+			objectDefinition, sourceGroup);
+
+		// File entry from a different group
+
+		Group differentGroup = GroupTestUtil.addGroup();
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null, null, false, false,
+			_addImageFileEntry(differentGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(differentGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(differentGroup.getGroupId()), true,
+			objectDefinition, sourceGroup);
+
+		// File entry from a different group, deleted before exporting
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", fileEntry.getGroupId()),
+			false, false, _addImageFileEntry(differentGroup.getGroupId()),
+			false, objectDefinition, sourceGroup);
+
+		// File entry from a different group, deleted before importing
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			false, _addImageFileEntry(differentGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(differentGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(differentGroup.getGroupId()), true,
+			objectDefinition, sourceGroup);
+
+		// File entry from the company group
+
+		Company company = _companyLocalService.getCompany(
+			TestPropsValues.getCompanyId());
+
+		Group companyGroup = company.getGroup();
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null, null, false, false,
+			_addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null, null, false, true,
+			_addImageFileEntry(companyGroup.getGroupId()), true,
+			objectDefinition, sourceGroup);
+
+		// File entry from the company group, deleted before exporting
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", fileEntry.getGroupId()),
+			false, false, _addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+
+		// File entry from the company group, deleted before importing
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			false, _addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(companyGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, _defaultReportEntryBiFunction, false,
+			true, _addImageFileEntry(companyGroup.getGroupId()), true,
+			objectDefinition, sourceGroup);
+
+		// File entry from the same group
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				fileEntry.getExternalReferenceCode(), targetGroup.getGroupId()),
+			true, false, _addImageFileEntry(sourceGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				fileEntry.getExternalReferenceCode(), targetGroup.getGroupId()),
+			true, true, _addImageFileEntry(sourceGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			null, null, true, true,
+			_addImageFileEntry(sourceGroup.getGroupId()), true,
+			objectDefinition, sourceGroup);
+
+		// File entry from the same group, deleted before exporting
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_EXPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				"", targetGroup.getGroupId()),
+			true, false, _addImageFileEntry(sourceGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+
+		// File entry from the same group, deleted before importing
+
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				fileEntry.getExternalReferenceCode(), targetGroup.getGroupId()),
+			true, false, _addImageFileEntry(sourceGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT,
+			(fileEntry, targetGroup) -> new ObjectValuePair<>(
+				fileEntry.getExternalReferenceCode(), targetGroup.getGroupId()),
+			true, true, _addImageFileEntry(sourceGroup.getGroupId()), false,
+			objectDefinition, sourceGroup);
+		_testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry.BEFORE_IMPORT, null, true, true,
+			_addImageFileEntry(sourceGroup.getGroupId()), true,
+			objectDefinition, sourceGroup);
 	}
 
 	@Test
@@ -624,15 +1672,27 @@ public class BatchEnginePortletDataHandlerTest {
 
 		_addObjectEntries(3, group1.getGroupId(), objectDefinition);
 
-		File larFile = _exportLayouts(
-			false, group1.getGroupId(), false,
-			new long[] {layout.getLayoutId()}, objectDefinition);
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group1.getGroupId()
+		).withLayoutId(
+			layout.getLayoutId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
 
 		Group group2 = GroupTestUtil.addGroupWithType(
 			GroupConstants.TYPE_DEPOT);
 
-		_importLayouts(
-			false, true, larFile, group2.getGroupId(), objectDefinition);
+		new ExportImportExecutor(
+		).withExpectError(
+		).withGroupId(
+			group2.getGroupId()
+		).withLARFile(
+			larFile
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
 
 		List<ObjectEntry> objectEntries =
 			_objectEntryLocalService.getObjectEntries(
@@ -642,102 +1702,60 @@ public class BatchEnginePortletDataHandlerTest {
 		Assert.assertEquals(objectEntries.toString(), 0, objectEntries.size());
 	}
 
+	@FeatureFlag("LPD-34594")
 	@Test
-	@TestInfo("LPD-50142")
-	public void testExportIndividualDeletionsCompanyGroup() throws Exception {
-		Group group = _stagingGroupHelper.fetchCompanyGroup(
-			TestPropsValues.getCompanyId());
+	public void testGetDescriptionAndTagWithObjectDefinitionHierarchy()
+		throws Exception {
 
-		ObjectDefinition objectDefinition1 = _addObjectDefinition(
-			ObjectDefinitionConstants.SCOPE_COMPANY);
+		Tree tree = TreeTestUtil.createObjectDefinitionTree(
+			_objectDefinitionLocalService, _objectRelationshipLocalService,
+			true,
+			LinkedHashMapBuilder.put(
+				"A", new String[] {"AA"}
+			).put(
+				"AA", new String[] {"AAA"}
+			).put(
+				"AAA", new String[0]
+			).build());
 
-		ObjectEntry[] objectEntries = _addObjectEntries(
-			3, GroupConstants.DEFAULT_PARENT_GROUP_ID, objectDefinition1);
+		ObjectDefinition objectDefinitionA =
+			_objectDefinitionLocalService.getObjectDefinition(
+				TestPropsValues.getCompanyId(), "C_A");
 
-		_deleteObjectEntries(objectEntries);
+		PortletDataHandler portletDataHandler =
+			_portletDataHandlerProvider.provide(
+				TestPropsValues.getCompanyId(),
+				objectDefinitionA.getPortletId());
 
-		ObjectDefinition objectDefinition2 =
-			ObjectDefinitionTestUtil.publishObjectDefinition(
-				ObjectDefinitionTestUtil.getRandomName(),
-				Collections.singletonList(
-					ObjectFieldUtil.createObjectField(
-						ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-						ObjectFieldConstants.DB_TYPE_STRING, true, true, null,
-						RandomTestUtil.randomString(), _OBJECT_FIELD_NAME_TEXT,
-						false)),
-				ObjectDefinitionConstants.SCOPE_COMPANY);
+		String description = portletDataHandler.getDescription(
+			LocaleUtil.getDefault());
 
-		ObjectEntry objectEntry = _addObjectEntry(
-			GroupConstants.DEFAULT_PARENT_GROUP_ID, objectDefinition2,
-			RandomTestUtil.randomString());
+		TreeTestUtil.forEachNodeObjectDefinition(
+			tree.iterator(), _objectDefinitionLocalService,
+			nodeObjectDefinition -> {
+				if (nodeObjectDefinition.isRootNode()) {
+					return;
+				}
 
-		_deleteObjectEntries(objectEntry);
+				String modelResourceNamePrefix =
+					ResourceActionsUtil.getModelResourceNamePrefix();
 
-		File file = _exportLayouts(
-			true, group.getGroupId(), false, new long[0], objectDefinition1);
+				Assert.assertTrue(
+					description.contains(
+						LanguageUtil.get(
+							LocaleUtil.getDefault(),
+							modelResourceNamePrefix +
+								nodeObjectDefinition.getResourceName())));
+			});
 
-		JSONAssert.assertEquals(
-			JSONUtil.putAll(
-				_getExternalReferenceCodes(objectEntries)
-			).toString(),
-			_getExternalReferenceCodesJSONArray(
-				objectDefinition1.getName(), file, group.getGroupId()
-			).toString(),
-			JSONCompareMode.LENIENT);
-		JSONAssert.assertEquals(
-			JSONUtil.putAll(
-			).toString(),
-			_getClassExternalReferenceCodesJSONArray(
-				file, group.getGroupId()
-			).toString(),
-			JSONCompareMode.STRICT);
+		Assert.assertEquals(
+			LanguageUtil.get(LocaleUtil.getDefault(), "root-object"),
+			portletDataHandler.getTag(LocaleUtil.getDefault()));
 
-		file = _exportLayouts(
-			true, group.getGroupId(), true, new long[0], objectDefinition2);
-
-		JSONAssert.assertEquals(
-			JSONUtil.putAll(
-				objectEntry.getExternalReferenceCode()
-			).toString(),
-			_getExternalReferenceCodesJSONArray(
-				objectDefinition2.getName(), file, group.getGroupId()
-			).toString(),
-			JSONCompareMode.LENIENT);
-		JSONAssert.assertEquals(
-			JSONUtil.putAll(
-			).toString(),
-			_getClassExternalReferenceCodesJSONArray(
-				file, group.getGroupId()
-			).toString(),
-			JSONCompareMode.STRICT);
-
-		file = _exportLayouts(
-			true, group.getGroupId(), false, new long[0], objectDefinition1,
-			objectDefinition2);
-
-		JSONAssert.assertEquals(
-			JSONUtil.putAll(
-				_getExternalReferenceCodes(objectEntries)
-			).toString(),
-			_getExternalReferenceCodesJSONArray(
-				objectDefinition1.getName(), file, group.getGroupId()
-			).toString(),
-			JSONCompareMode.LENIENT);
-		JSONAssert.assertEquals(
-			JSONUtil.putAll(
-				objectEntry.getExternalReferenceCode()
-			).toString(),
-			_getExternalReferenceCodesJSONArray(
-				objectDefinition2.getName(), file, group.getGroupId()
-			).toString(),
-			JSONCompareMode.LENIENT);
-		JSONAssert.assertEquals(
-			JSONUtil.putAll(
-			).toString(),
-			_getClassExternalReferenceCodesJSONArray(
-				file, group.getGroupId()
-			).toString(),
-			JSONCompareMode.STRICT);
+		TreeTestUtil.deleteObjectDefinitionHierarchy(
+			_objectDefinitionLocalService,
+			new String[] {"C_A", "C_AA", "C_AAA"}, _objectEntryLocalService,
+			_objectRelationshipLocalService);
 	}
 
 	@Test
@@ -750,16 +1768,21 @@ public class BatchEnginePortletDataHandlerTest {
 				TestPropsValues.getCompanyId(), portletId));
 
 		try (SafeCloseable safeCloseable = _register(
-				filter -> {
-					if (filter != null) {
-						return Page.of(Arrays.asList(new TestItem(1)));
-					}
+				new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+				).withFunction(
+					filter -> {
+						if (filter != null) {
+							return Page.of(Arrays.asList(new TestItem(1)));
+						}
 
-					return Page.of(
-						Arrays.asList(
-							new TestItem(1), new TestItem(2), new TestItem(3)));
-				},
-				portletId)) {
+						return Page.of(
+							Arrays.asList(
+								new TestItem(1), new TestItem(2),
+								new TestItem(3)));
+					}
+				).withPortletId(
+					portletId
+				).build())) {
 
 			PortletDataHandler portletDataHandler =
 				_portletDataHandlerProvider.provide(
@@ -802,12 +1825,239 @@ public class BatchEnginePortletDataHandlerTest {
 			_addObjectDefinition(ObjectDefinitionConstants.SCOPE_SITE));
 	}
 
-	@FeatureFlag("LPD-34594")
 	@Test
-	public void testGetExportPortletDataHandlerControlsWithRootModelHierarchy()
-		throws Exception {
+	@TestInfo("LPD-75687")
+	public void testGetRank() throws Exception {
+		String portletId = RandomTestUtil.randomString();
 
-		Tree tree = TreeTestUtil.createObjectDefinitionTree(
+		try (SafeCloseable safeCloseable = _register(
+				new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+				).withPortletId(
+					portletId
+				).build())) {
+
+			PortletDataHandler portletDataHandler =
+				_portletDataHandlerProvider.provide(
+					TestPropsValues.getCompanyId(), portletId);
+
+			Assert.assertEquals(100, portletDataHandler.getRank());
+		}
+
+		int rank1 = 101;
+
+		try (SafeCloseable safeCloseable = _register(
+				new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+				).withPortletId(
+					portletId
+				).withRank(
+					rank1
+				).build())) {
+
+			PortletDataHandler portletDataHandler =
+				_portletDataHandlerProvider.provide(
+					TestPropsValues.getCompanyId(), portletId);
+
+			Assert.assertEquals(rank1, portletDataHandler.getRank());
+		}
+
+		int rank2 = 99;
+
+		try (SafeCloseable safeCloseable = _register(
+				new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+				).withPortletId(
+					portletId
+				).withRank(
+					rank2
+				).build())) {
+
+			PortletDataHandler portletDataHandler =
+				_portletDataHandlerProvider.provide(
+					TestPropsValues.getCompanyId(), portletId);
+
+			Assert.assertEquals(rank2, portletDataHandler.getRank());
+		}
+
+		try (SafeCloseable safeCloseable1 = _register(
+				new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+				).withPortletId(
+					portletId
+				).build())) {
+
+			try (SafeCloseable safeCloseable2 = _register(
+					new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+					).withPortletId(
+						portletId
+					).withRank(
+						rank1
+					).build())) {
+
+				PortletDataHandler portletDataHandler =
+					_portletDataHandlerProvider.provide(
+						TestPropsValues.getCompanyId(), portletId);
+
+				Assert.assertEquals(100, portletDataHandler.getRank());
+			}
+
+			try (SafeCloseable safeCloseable2 = _register(
+					new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+					).withPortletId(
+						portletId
+					).withRank(
+						rank2
+					).build())) {
+
+				PortletDataHandler portletDataHandler =
+					_portletDataHandlerProvider.provide(
+						TestPropsValues.getCompanyId(), portletId);
+
+				Assert.assertEquals(rank2, portletDataHandler.getRank());
+			}
+
+			try (SafeCloseable safeCloseable3 = _register(
+					new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+					).withPortletId(
+						portletId
+					).withRank(
+						rank1
+					).build());
+				SafeCloseable safeCloseable4 = _register(
+					new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+					).withPortletId(
+						portletId
+					).withRank(
+						rank2
+					).build())) {
+
+				PortletDataHandler portletDataHandler =
+					_portletDataHandlerProvider.provide(
+						TestPropsValues.getCompanyId(), portletId);
+
+				Assert.assertEquals(rank2, portletDataHandler.getRank());
+			}
+		}
+	}
+
+	@Test
+	@TestInfo("LPD-75687")
+	public void testImportOrderByRank() throws Exception {
+
+		// First: list type definition
+
+		Group group = _stagingGroupHelper.fetchCompanyGroup(
+			TestPropsValues.getCompanyId());
+
+		ListTypeDefinition listTypeDefinition = _addListTypeDefinition();
+
+		ListTypeEntry[] listTypeEntries = _addListTypeEntries(
+			3, listTypeDefinition);
+
+		// Second: object definition
+
+		String picklistName = StringUtil.randomId();
+		String textFieldName = StringUtil.randomId();
+
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				Arrays.asList(
+					new PicklistObjectFieldBuilder(
+					).externalReferenceCode(
+						picklistName
+					).labelMap(
+						RandomTestUtil.randomLocaleStringMap()
+					).name(
+						picklistName
+					).listTypeDefinitionId(
+						listTypeDefinition.getListTypeDefinitionId()
+					).build(),
+					new TextObjectFieldBuilder(
+					).labelMap(
+						RandomTestUtil.randomLocaleStringMap()
+					).name(
+						StringUtil.randomId()
+					).required(
+						false
+					).build()));
+
+		// Third: object entries
+
+		ObjectEntry objectEntry = _addObjectEntry(
+			GroupConstants.DEFAULT_PARENT_GROUP_ID, objectDefinition,
+			(Map)HashMapBuilder.<String, Serializable>put(
+				picklistName, listTypeEntries[0].getKey()
+			).put(
+				textFieldName, RandomTestUtil.randomString()
+			).build());
+
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeListTypeDefinitions(
+		).withIncludeObjectDefinitions(
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		_objectEntryLocalService.deleteObjectEntry(objectEntry);
+
+		_objectFieldLocalService.deleteObjectField(
+			_objectFieldLocalService.fetchObjectField(
+				picklistName, objectDefinition.getObjectDefinitionId()));
+
+		_listTypeDefinitionLocalService.deleteListTypeDefinition(
+			listTypeDefinition);
+
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeListTypeDefinitions(
+		).withIncludeObjectDefinitions(
+		).withLARFile(
+			larFile
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		_assertListTypeDefinition(
+			listTypeDefinition, listTypeEntries.length, listTypeEntries);
+
+		Assert.assertNotNull(
+			_objectFieldLocalService.fetchObjectField(
+				picklistName, objectDefinition.getObjectDefinitionId()));
+
+		List<ObjectEntry> importedObjectEntries =
+			_objectEntryLocalService.getObjectEntries(
+				GroupConstants.DEFAULT_PARENT_GROUP_ID,
+				objectDefinition.getObjectDefinitionId(), QueryUtil.ALL_POS,
+				QueryUtil.ALL_POS);
+
+		Assert.assertEquals(
+			importedObjectEntries.toString(), 1, importedObjectEntries.size());
+
+		ObjectEntry importedObjectEntry = importedObjectEntries.get(0);
+
+		Assert.assertEquals(
+			listTypeEntries[0].getKey(),
+			MapUtil.getString(importedObjectEntry.getValues(), picklistName));
+	}
+
+	@Test
+	@TestInfo("LPD-70661")
+	public void testIsConfigurationEnabled() throws Exception {
+		_testIsConfigurationEnabled(false);
+		_testIsConfigurationEnabled(true);
+	}
+
+	@FeatureFlags(
+		featureFlags = {
+			@FeatureFlag(value = "LPD-34594"), @FeatureFlag(value = "LPD-69877")
+		}
+	)
+	@Test
+	public void testIsHiddenWithObjectDefinitionHierarchy() throws Exception {
+
+		// Allow standalone object entry setting is disabled
+
+		TreeTestUtil.createObjectDefinitionTree(
 			_objectDefinitionLocalService, _objectRelationshipLocalService,
 			true,
 			LinkedHashMapBuilder.put(
@@ -818,107 +2068,62 @@ public class BatchEnginePortletDataHandlerTest {
 				"AAA", new String[0]
 			).build());
 
-		ObjectDefinition objectDefinition =
+		ObjectDefinition objectDefinitionA =
 			_objectDefinitionLocalService.getObjectDefinition(
 				TestPropsValues.getCompanyId(), "C_A");
 
 		PortletDataHandler portletDataHandler =
 			_portletDataHandlerProvider.provide(
 				TestPropsValues.getCompanyId(),
-				objectDefinition.getPortletId());
+				objectDefinitionA.getPortletId());
 
-		PortletDataHandlerControl[] exportPortletDataHandlerControls =
-			portletDataHandler.getExportPortletDataHandlerControls();
+		Assert.assertFalse(portletDataHandler.isHidden());
 
-		Assert.assertEquals(
-			Arrays.toString(exportPortletDataHandlerControls), 1,
-			exportPortletDataHandlerControls.length);
+		ObjectDefinition objectDefinitionAA =
+			_objectDefinitionLocalService.getObjectDefinition(
+				TestPropsValues.getCompanyId(), "C_AA");
 
-		PortletDataHandlerControl exportPortletDataHandlerControl =
-			exportPortletDataHandlerControls[0];
+		ObjectDefinitionSetting objectDefinitionSetting =
+			_objectDefinitionSettingLocalService.fetchObjectDefinitionSetting(
+				objectDefinitionAA.getObjectDefinitionId(),
+				ObjectDefinitionSettingConstants.
+					NAME_ALLOW_STANDALONE_OBJECT_ENTRY);
 
-		List<String> subtitles = exportPortletDataHandlerControl.getSubtitles();
+		objectDefinitionSetting.setValue(StringPool.FALSE);
 
-		Assert.assertEquals(subtitles.toString(), 2, subtitles.size());
+		objectDefinitionSetting =
+			_objectDefinitionSettingLocalService.updateObjectDefinitionSetting(
+				objectDefinitionSetting);
 
-		TreeTestUtil.forEachNodeObjectDefinition(
-			tree.iterator(), _objectDefinitionLocalService,
-			nodeObjectDefinition -> {
-				if (nodeObjectDefinition.isRootNode()) {
-					return;
-				}
+		_objectDefinitionLocalService.deployObjectDefinition(
+			_objectDefinitionLocalService.getObjectDefinition(
+				objectDefinitionAA.getObjectDefinitionId()));
 
-				String modelResourceNamePrefix =
-					ResourceActionsUtil.getModelResourceNamePrefix();
+		portletDataHandler = _portletDataHandlerProvider.provide(
+			TestPropsValues.getCompanyId(), objectDefinitionAA.getPortletId());
 
-				Assert.assertTrue(
-					ListUtil.exists(
-						subtitles,
-						subtitle -> StringUtil.equals(
-							subtitle,
-							modelResourceNamePrefix +
-								nodeObjectDefinition.getResourceName())));
-			});
+		Assert.assertTrue(portletDataHandler.isHidden());
 
-		Assert.assertEquals(
-			"root-object", exportPortletDataHandlerControl.getTag());
+		// Allow standalone object entry setting is enabled
+
+		objectDefinitionSetting.setValue(StringPool.TRUE);
+
+		_objectDefinitionSettingLocalService.updateObjectDefinitionSetting(
+			objectDefinitionSetting);
+
+		_objectDefinitionLocalService.deployObjectDefinition(
+			_objectDefinitionLocalService.getObjectDefinition(
+				objectDefinitionAA.getObjectDefinitionId()));
+
+		portletDataHandler = _portletDataHandlerProvider.provide(
+			TestPropsValues.getCompanyId(), objectDefinitionAA.getPortletId());
+
+		Assert.assertFalse(portletDataHandler.isHidden());
 
 		TreeTestUtil.deleteObjectDefinitionHierarchy(
 			_objectDefinitionLocalService,
 			new String[] {"C_A", "C_AA", "C_AAA"}, _objectEntryLocalService,
 			_objectRelationshipLocalService);
-	}
-
-	@Test
-	@TestInfo("LPD-49421")
-	public void testImportIndividualDeletionsCompanyGroup() throws Exception {
-		Group group = _stagingGroupHelper.fetchCompanyGroup(
-			TestPropsValues.getCompanyId());
-
-		ObjectDefinition objectDefinition = _addObjectDefinition(
-			ObjectDefinitionConstants.SCOPE_COMPANY);
-
-		ObjectEntry[] objectEntries = _addObjectEntries(
-			3, GroupConstants.DEFAULT_PARENT_GROUP_ID, objectDefinition);
-
-		File larFile1 = _exportLayouts(
-			false, group.getGroupId(), false, new long[0], objectDefinition);
-
-		_deleteObjectEntries(objectEntries[0], objectEntries[1]);
-
-		File larFile2 = _exportLayouts(
-			true, group.getGroupId(), false, new long[0], objectDefinition);
-
-		_deleteObjectEntries(objectEntries[2]);
-
-		_importLayouts(
-			false, false, larFile1, group.getGroupId(), objectDefinition);
-
-		_assertObjectEntries(
-			false, objectDefinition.getObjectDefinitionId(), objectEntries);
-
-		_importLayouts(
-			false, false, larFile2, group.getGroupId(), objectDefinition);
-
-		_assertObjectEntries(
-			false, objectDefinition.getObjectDefinitionId(), objectEntries);
-
-		_importLayouts(
-			true, false, larFile2, group.getGroupId(), objectDefinition);
-
-		_assertObjectEntries(
-			false, objectDefinition.getObjectDefinitionId(), objectEntries[2]);
-		_assertNull(
-			objectDefinition.getObjectDefinitionId(), objectEntries[0],
-			objectEntries[1]);
-	}
-
-	@FeatureFlag("LPD-41367")
-	@Test
-	@TestInfo("LPD-70661")
-	public void testIsConfigurationEnabled() throws Exception {
-		_testIsConfigurationEnabled(false);
-		_testIsConfigurationEnabled(true);
 	}
 
 	@Test
@@ -932,7 +2137,12 @@ public class BatchEnginePortletDataHandlerTest {
 			_portletDataHandlerProvider.provide(
 				TestPropsValues.getCompanyId(), portletId));
 
-		try (SafeCloseable safeCloseable = _register(null, portletId)) {
+		try (SafeCloseable safeCloseable = _register(
+				new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+				).withPortletId(
+					portletId
+				).build())) {
+
 			PortletDataHandler portletDataHandler =
 				_portletDataHandlerProvider.provide(
 					TestPropsValues.getCompanyId(), portletId);
@@ -959,7 +2169,19 @@ public class BatchEnginePortletDataHandlerTest {
 
 	}
 
-	private DLFileEntry _addDLFileEntry(String content, long groupId)
+	private DepotEntry _addDepotEntry() throws Exception {
+		return _depotEntryLocalService.addDepotEntry(
+			HashMapBuilder.put(
+				LocaleUtil.getDefault(), RandomTestUtil.randomString()
+			).build(),
+			HashMapBuilder.put(
+				LocaleUtil.getDefault(), RandomTestUtil.randomString()
+			).build(),
+			DepotConstants.TYPE_ASSET_LIBRARY,
+			ServiceContextTestUtil.getServiceContext());
+	}
+
+	private DLFileEntry _addDLFileEntry(byte[] content, long groupId)
 		throws Exception {
 
 		FileEntry fileEntry = _dlAppLocalService.addFileEntry(
@@ -968,11 +2190,20 @@ public class BatchEnginePortletDataHandlerTest {
 				RandomTestUtil.randomString() + ".txt"),
 			ContentTypes.TEXT_PLAIN, RandomTestUtil.randomString(),
 			StringPool.BLANK, StringPool.BLANK, StringPool.BLANK,
-			new ByteArrayInputStream(content.getBytes()), 0, null, null, null,
+			new ByteArrayInputStream(content), 0, null, null, null,
 			ServiceContextTestUtil.getServiceContext());
 
 		return _dlFileEntryLocalService.getFileEntry(
 			fileEntry.getFileEntryId());
+	}
+
+	private FileEntry _addImageFileEntry(long groupId) throws Exception {
+		return _dlAppLocalService.addFileEntry(
+			null, TestPropsValues.getUserId(), groupId,
+			DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			StringUtil.randomString(), ContentTypes.IMAGE_JPEG,
+			FileUtil.getBytes(getClass(), "dependencies/image.jpg"), null, null,
+			null, ServiceContextTestUtil.getServiceContext());
 	}
 
 	private ListTypeDefinition _addListTypeDefinition() throws Exception {
@@ -1005,114 +2236,132 @@ public class BatchEnginePortletDataHandlerTest {
 
 		String objectDefinitionName = ObjectDefinitionTestUtil.getRandomName();
 
-		return ObjectDefinitionTestUtil.publishObjectDefinition(
-			objectDefinitionName,
-			Arrays.asList(
-				ObjectFieldUtil.createObjectField(
-					ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
-					ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
-					RandomTestUtil.randomString(),
-					_OBJECT_FIELD_NAME_ATTACHMENT_DOCS_AND_MEDIA,
-					Arrays.asList(
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.
-								NAME_ACCEPTED_FILE_EXTENSIONS
-						).value(
-							"txt"
-						).build(),
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.NAME_FILE_SOURCE
-						).value(
-							ObjectFieldSettingConstants.VALUE_DOCS_AND_MEDIA
-						).build(),
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.NAME_MAX_FILE_SIZE
-						).value(
-							"100"
-						).build()),
-					false),
-				ObjectFieldUtil.createObjectField(
-					ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
-					ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
-					RandomTestUtil.randomString(),
-					_OBJECT_FIELD_NAME_ATTACHMENT_SHOW_FILES_IN_DOCS_AND_MEDIA,
-					Arrays.asList(
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.
-								NAME_ACCEPTED_FILE_EXTENSIONS
-						).value(
-							"txt"
-						).build(),
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.NAME_FILE_SOURCE
-						).value(
-							ObjectFieldSettingConstants.VALUE_USER_COMPUTER
-						).build(),
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.
-								NAME_SHOW_FILES_IN_DOCS_AND_MEDIA
-						).value(
-							Boolean.TRUE.toString()
-						).build(),
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.
-								NAME_STORAGE_DL_FOLDER_PATH
-						).value(
-							StringPool.SLASH + objectDefinitionName
-						).build(),
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.NAME_MAX_FILE_SIZE
-						).value(
-							"100"
-						).build()),
-					false),
-				ObjectFieldUtil.createObjectField(
-					ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
-					ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
-					RandomTestUtil.randomString(),
-					_OBJECT_FIELD_NAME_ATTACHMENT_USER_COMPUTER,
-					Arrays.asList(
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.
-								NAME_ACCEPTED_FILE_EXTENSIONS
-						).value(
-							"txt"
-						).build(),
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.NAME_FILE_SOURCE
-						).value(
-							ObjectFieldSettingConstants.VALUE_USER_COMPUTER
-						).build(),
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.NAME_MAX_FILE_SIZE
-						).value(
-							"100"
-						).build()),
-					false),
-				ObjectFieldUtil.createObjectField(
-					ObjectFieldConstants.BUSINESS_TYPE_TEXT,
-					ObjectFieldConstants.DB_TYPE_STRING, true, true, null,
-					RandomTestUtil.randomString(), _OBJECT_FIELD_NAME_TEXT,
-					Arrays.asList(
-						new ObjectFieldSettingBuilder(
-						).name(
-							ObjectFieldSettingConstants.NAME_UNIQUE_VALUES
-						).value(
-							Boolean.TRUE.toString()
-						).build()),
-					false)),
-			scope);
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				objectDefinitionName,
+				Arrays.asList(
+					ObjectFieldUtil.createObjectField(
+						ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
+						ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
+						RandomTestUtil.randomString(),
+						_OBJECT_FIELD_NAME_ATTACHMENT_DOCS_AND_MEDIA,
+						Arrays.asList(
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.
+									NAME_ACCEPTED_FILE_EXTENSIONS
+							).value(
+								"txt"
+							).build(),
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.NAME_FILE_SOURCE
+							).value(
+								ObjectFieldSettingConstants.VALUE_DOCS_AND_MEDIA
+							).build(),
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.NAME_MAX_FILE_SIZE
+							).value(
+								"100"
+							).build()),
+						false),
+					ObjectFieldUtil.createObjectField(
+						ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
+						ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
+						RandomTestUtil.randomString(),
+						_OBJECT_FIELD_NAME_ATTACHMENT_SHOW_FILES_IN_DOCS_AND_MEDIA,
+						Arrays.asList(
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.
+									NAME_ACCEPTED_FILE_EXTENSIONS
+							).value(
+								"txt"
+							).build(),
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.NAME_FILE_SOURCE
+							).value(
+								ObjectFieldSettingConstants.
+									VALUE_USER_COMPUTER_TO_DOCS_AND_MEDIA
+							).build(),
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.NAME_MAX_FILE_SIZE
+							).value(
+								"100"
+							).build(),
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.
+									NAME_SHOW_FILES_IN_LIBRARY
+							).value(
+								Boolean.TRUE.toString()
+							).build(),
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.
+									NAME_STORAGE_DL_FOLDER_PATH
+							).value(
+								StringPool.SLASH + objectDefinitionName
+							).build()),
+						false),
+					ObjectFieldUtil.createObjectField(
+						ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT,
+						ObjectFieldConstants.DB_TYPE_LONG, true, false, null,
+						RandomTestUtil.randomString(),
+						_OBJECT_FIELD_NAME_ATTACHMENT_USER_COMPUTER,
+						Arrays.asList(
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.
+									NAME_ACCEPTED_FILE_EXTENSIONS
+							).value(
+								"txt"
+							).build(),
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.NAME_FILE_SOURCE
+							).value(
+								ObjectFieldSettingConstants.
+									VALUE_USER_COMPUTER_TO_DOCS_AND_MEDIA
+							).build(),
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.NAME_MAX_FILE_SIZE
+							).value(
+								"100"
+							).build()),
+						false),
+					ObjectFieldUtil.createObjectField(
+						ObjectFieldConstants.BUSINESS_TYPE_RICH_TEXT,
+						ObjectFieldConstants.DB_TYPE_CLOB, false, false, null,
+						RandomTestUtil.randomString(),
+						_OBJECT_FIELD_NAME_RICH_TEXT, false),
+					ObjectFieldUtil.createObjectField(
+						ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+						ObjectFieldConstants.DB_TYPE_STRING, true, true, null,
+						RandomTestUtil.randomString(), _OBJECT_FIELD_NAME_TEXT,
+						Arrays.asList(
+							new ObjectFieldSettingBuilder(
+							).name(
+								ObjectFieldSettingConstants.NAME_UNIQUE_VALUES
+							).value(
+								Boolean.TRUE.toString()
+							).build()),
+						false)),
+				scope);
+
+		if (Objects.equals(ObjectDefinitionConstants.SCOPE_DEPOT, scope)) {
+			_objectDefinitionSettingLocalService.addObjectDefinitionSetting(
+				objectDefinition.getUserId(),
+				objectDefinition.getObjectDefinitionId(),
+				ObjectDefinitionSettingConstants.NAME_ACCEPT_ALL_GROUPS,
+				StringPool.TRUE);
+		}
+
+		return objectDefinition;
 	}
 
 	private ObjectEntry[] _addObjectEntries(
@@ -1131,6 +2380,38 @@ public class BatchEnginePortletDataHandlerTest {
 
 	private ObjectEntry _addObjectEntry(
 			long groupId, ObjectDefinition objectDefinition,
+			Map<String, Serializable> values)
+		throws Exception {
+
+		return _objectEntryLocalService.addObjectEntry(
+			groupId, TestPropsValues.getUserId(),
+			objectDefinition.getObjectDefinitionId(),
+			ObjectEntryFolderConstants.PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
+			null, values, ServiceContextTestUtil.getServiceContext());
+	}
+
+	private ObjectEntry _addObjectEntry(
+			long groupId, ObjectDefinition objectDefinition,
+			ObjectEntryComment[] objectEntryComments,
+			Map<String, Serializable> values)
+		throws Exception {
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext();
+
+		serviceContext.setAttribute(
+			"objectEntryComments",
+			(Serializable)ListUtil.fromArray(objectEntryComments));
+
+		return _objectEntryLocalService.addObjectEntry(
+			groupId, TestPropsValues.getUserId(),
+			objectDefinition.getObjectDefinitionId(),
+			ObjectEntryFolderConstants.PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
+			null, values, serviceContext);
+	}
+
+	private ObjectEntry _addObjectEntry(
+			long groupId, ObjectDefinition objectDefinition,
 			Serializable objectFieldValue)
 		throws Exception {
 
@@ -1142,17 +2423,14 @@ public class BatchEnginePortletDataHandlerTest {
 			company.getGroupId());
 
 		FileEntry tempFileEntry1 = _addTempFileEntry(
-			objectDefinition,
-			_OBJECT_FIELD_VALUE_ATTACHMENT_SHOW_FILES_IN_DOCS_AND_MEDIA);
+			_OBJECT_FIELD_VALUE_ATTACHMENT_SHOW_FILES_IN_DOCS_AND_MEDIA,
+			objectDefinition);
 		FileEntry tempFileEntry2 = _addTempFileEntry(
-			objectDefinition, _OBJECT_FIELD_VALUE_ATTACHMENT_USER_COMPUTER);
+			_OBJECT_FIELD_VALUE_ATTACHMENT_USER_COMPUTER, objectDefinition);
 
-		return _objectEntryLocalService.addObjectEntry(
-			groupId, TestPropsValues.getUserId(),
-			objectDefinition.getObjectDefinitionId(),
-			ObjectEntryFolderConstants.PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
-			null,
-			HashMapBuilder.<String, Serializable>put(
+		return _addObjectEntry(
+			groupId, objectDefinition,
+			(Map)HashMapBuilder.<String, Serializable>put(
 				_OBJECT_FIELD_NAME_ATTACHMENT_DOCS_AND_MEDIA,
 				dlFileEntry.getFileEntryId()
 			).put(
@@ -1163,8 +2441,7 @@ public class BatchEnginePortletDataHandlerTest {
 				tempFileEntry2.getFileEntryId()
 			).put(
 				_OBJECT_FIELD_NAME_TEXT, objectFieldValue
-			).build(),
-			ServiceContextTestUtil.getServiceContext());
+			).build());
 	}
 
 	private ObjectField[] _addObjectFields(
@@ -1193,15 +2470,80 @@ public class BatchEnginePortletDataHandlerTest {
 	}
 
 	private FileEntry _addTempFileEntry(
-			ObjectDefinition objectDefinition, String tempFileName)
+			byte[] content, ObjectDefinition objectDefinition)
 		throws Exception {
 
 		return TempFileEntryUtil.addTempFileEntry(
 			TestPropsValues.getGroupId(), TestPropsValues.getUserId(),
 			objectDefinition.getPortletId(),
-			TempFileEntryUtil.getTempFileName(tempFileName + ".txt"),
-			FileUtil.createTempFile(tempFileName.getBytes()),
-			ContentTypes.TEXT_PLAIN);
+			TempFileEntryUtil.getTempFileName(
+				RandomTestUtil.randomString() + ".txt"),
+			FileUtil.createTempFile(content), ContentTypes.TEXT_PLAIN);
+	}
+
+	private void _assertComments(
+			ObjectDefinition objectDefinition, ObjectEntry objectEntry,
+			ObjectEntryComment... objectEntryComments)
+		throws Exception {
+
+		ObjectEntry importedObjectEntry =
+			_objectEntryLocalService.getObjectEntry(
+				objectEntry.getExternalReferenceCode(),
+				objectEntry.getGroupId(),
+				objectDefinition.getObjectDefinitionId());
+
+		long groupId = importedObjectEntry.getGroupId();
+
+		if (groupId == 0) {
+			groupId = objectEntry.getNonzeroGroupId();
+		}
+
+		for (ObjectEntryComment objectEntryComment : objectEntryComments) {
+			Comment importedComment = _commentManager.getComment(
+				groupId, objectEntryComment.getExternalReferenceCode());
+
+			Assert.assertEquals(
+				objectEntryComment.getExternalReferenceCode(),
+				importedComment.getExternalReferenceCode());
+			Assert.assertEquals(
+				objectEntryComment.getText(), importedComment.getBody());
+
+			if (Validator.isNull(
+					objectEntryComment.
+						getParentCommentExternalReferenceCode())) {
+
+				continue;
+			}
+
+			Comment importedParentComment = _commentManager.getComment(
+				groupId,
+				objectEntryComment.getParentCommentExternalReferenceCode());
+
+			Assert.assertEquals(
+				importedParentComment.getCommentId(),
+				importedComment.getParentCommentId());
+		}
+	}
+
+	private void _assertExportImportReportEntry(
+		long expectedClassNameId, long expectedClassPK,
+		String expectedExternalReferenceCode, long expectedGroupId,
+		String expectedModelNameLanguageKey, int expectedType,
+		ExportImportReportEntry exportImportReportEntry) {
+
+		Assert.assertEquals(
+			expectedExternalReferenceCode,
+			exportImportReportEntry.getClassExternalReferenceCode());
+		Assert.assertEquals(
+			expectedClassNameId, exportImportReportEntry.getClassNameId());
+		Assert.assertEquals(
+			expectedClassPK, exportImportReportEntry.getClassPK());
+		Assert.assertEquals(
+			expectedGroupId, exportImportReportEntry.getGroupId());
+		Assert.assertEquals(
+			expectedModelNameLanguageKey,
+			exportImportReportEntry.getModelNameLanguageKey());
+		Assert.assertEquals(expectedType, exportImportReportEntry.getType());
 	}
 
 	private void _assertListTypeDefinition(
@@ -1324,9 +2666,11 @@ public class BatchEnginePortletDataHandlerTest {
 					importedObjectEntry.getValues(),
 					_OBJECT_FIELD_NAME_ATTACHMENT_USER_COMPUTER));
 
-			Assert.assertEquals(
+			String content = StringUtil.read(dlFileEntry.getContentStream());
+
+			Assert.assertArrayEquals(
 				_OBJECT_FIELD_VALUE_ATTACHMENT_USER_COMPUTER,
-				StringUtil.read(dlFileEntry.getContentStream()));
+				content.getBytes());
 		}
 	}
 
@@ -1354,47 +2698,13 @@ public class BatchEnginePortletDataHandlerTest {
 		}
 	}
 
-	private File _exportLayouts(
-			boolean deletions, long groupId,
-			boolean includeLayoutSetLayoutsPortlet, boolean privateLayouts,
-			long[] layoutIds, Object... objects)
-		throws Exception {
-
-		return _exportImportLocalService.exportLayoutsAsFile(
-			_exportImportConfigurationLocalService.
-				addDraftExportImportConfiguration(
-					TestPropsValues.getUserId(),
-					ExportImportConfigurationConstants.TYPE_EXPORT_LAYOUT,
-					ExportImportConfigurationSettingsMapFactoryUtil.
-						buildExportLayoutSettingsMap(
-							TestPropsValues.getUser(), groupId, privateLayouts,
-							layoutIds,
-							_getExportImportParameterMap(
-								deletions, includeLayoutSetLayoutsPortlet,
-								Arrays.asList(objects)))));
-	}
-
-	private File _exportLayouts(
-			boolean deletions, long groupId, boolean privateLayouts,
-			long[] layoutIds, Object... objects)
-		throws Exception {
-
-		return _exportLayouts(
-			deletions, groupId, false, privateLayouts, layoutIds, objects);
-	}
-
-	private String _getBatchFileNameWithPath(String fileName, long groupId) {
-		return StringBundler.concat(
-			"group/", groupId, StringPool.FORWARD_SLASH, fileName);
-	}
-
 	private JSONArray _getClassExternalReferenceCodesJSONArray(
 			File file, long groupId)
 		throws Exception {
 
 		try (ZipFile zipFile = new ZipFile(file)) {
 			ZipEntry zipEntry = zipFile.getEntry(
-				_getBatchFileNameWithPath(
+				ExportImportTestUtil.getBatchFileNameWithPath(
 					"deletion-system-events.xml", groupId));
 
 			if (zipEntry == null) {
@@ -1418,21 +2728,20 @@ public class BatchEnginePortletDataHandlerTest {
 	}
 
 	private JSONArray _getExportedObjectEntriesJSONArray(
-			String className, File file, long groupId)
+			String fileNamePrefix, File file, long groupId)
 		throws Exception {
 
-		try (ZipFile zipFile = new ZipFile(file)) {
-			ZipEntry zipEntry = zipFile.getEntry(
-				_getBatchFileNameWithPath(className + ".json", groupId));
-
-			return JSONFactoryUtil.createJSONArray(
-				StringUtil.read(zipFile.getInputStream(zipEntry)));
+		try (InputStream inputStream = new FileInputStream(file)) {
+			return ExportImportTestUtil.getExportedObjectEntriesJSONArray(
+				fileNamePrefix, inputStream, groupId);
 		}
 	}
 
 	private Map<String, String[]> _getExportImportParameterMap(
-		boolean deletions, boolean includeLayoutSetLayoutsPortlet,
-		List<Object> objects) {
+		boolean deletions, boolean includeDocumentLibrary,
+		boolean includeLayoutSetLayoutsPortlet,
+		boolean includeListTypeDefinitions, boolean includeObjectDefinitions,
+		List<ObjectDefinition> objectDefinitions) {
 
 		Map<String, String[]> parameterMap = HashMapBuilder.put(
 			PortletDataHandlerKeys.DELETIONS,
@@ -1454,11 +2763,37 @@ public class BatchEnginePortletDataHandlerTest {
 			new String[] {Boolean.TRUE.toString()}
 		).put(
 			PortletDataHandlerKeys.PORTLET_DATA + "_" +
+				DLPortletKeys.DOCUMENT_LIBRARY_ADMIN,
+			() -> {
+				if (includeDocumentLibrary) {
+					return new String[] {Boolean.TRUE.toString()};
+				}
+
+				return null;
+			}
+		).put(
+			PortletDataHandlerKeys.PORTLET_DATA + "_" +
+				ObjectPortletKeys.LIST_TYPE_DEFINITIONS,
+			() -> {
+				if (includeListTypeDefinitions) {
+					return new String[] {Boolean.TRUE.toString()};
+				}
+
+				return null;
+			}
+		).put(
+			PortletDataHandlerKeys.PORTLET_DATA + "_" +
 				ObjectPortletKeys.OBJECT_DEFINITIONS,
-			new String[] {Boolean.TRUE.toString()}
+			() -> {
+				if (includeObjectDefinitions) {
+					return new String[] {Boolean.TRUE.toString()};
+				}
+
+				return null;
+			}
 		).put(
 			PortletDataHandlerKeys.PORTLET_DATA_CONTROL_DEFAULT,
-			new String[] {Boolean.FALSE.toString()}
+			new String[] {Boolean.TRUE.toString()}
 		).put(
 			PortletDataHandlerKeys.PORTLET_SETUP_ALL,
 			new String[] {Boolean.TRUE.toString()}
@@ -1474,61 +2809,62 @@ public class BatchEnginePortletDataHandlerTest {
 			}
 		).build();
 
-		for (Object object : objects) {
-			if (object instanceof ListTypeDefinition) {
+		for (ObjectDefinition objectDefinition : objectDefinitions) {
+			if (objectDefinition.isEnableComments()) {
 				parameterMap.put(
-					PortletDataHandlerKeys.PORTLET_DATA + "_" +
-						ObjectPortletKeys.LIST_TYPE_DEFINITIONS,
+					PortletDataHandlerKeys.COMMENTS,
 					new String[] {Boolean.TRUE.toString()});
 			}
-			else if (object instanceof ObjectDefinition objectDefinition) {
-				parameterMap.put(
-					PortletDataHandlerKeys.PORTLET_DATA + "_" +
-						objectDefinition.getPortletId(),
-					new String[] {Boolean.TRUE.toString()});
-			}
+
+			parameterMap.put(
+				PortletDataHandlerKeys.PORTLET_DATA + "_" +
+					objectDefinition.getPortletId(),
+				new String[] {Boolean.TRUE.toString()});
 		}
 
 		return parameterMap;
 	}
 
-	private String[] _getExternalReferenceCodes(ObjectEntry... objectEntries) {
-		String[] externalReferenceCodes = new String[objectEntries.length];
-
-		for (int i = 0; i < objectEntries.length; i++) {
-			externalReferenceCodes[i] =
-				objectEntries[i].getExternalReferenceCode();
-		}
-
-		return externalReferenceCodes;
-	}
-
 	private JSONArray _getExternalReferenceCodesJSONArray(
-			String className, File file, long groupId)
+			String fileNamePrefix, File file, long groupId)
 		throws Exception {
 
-		try (ZipFile zipFile = new ZipFile(file)) {
-			ZipEntry zipEntry = zipFile.getEntry(
-				_getBatchFileNameWithPath(
-					className + "_deletions.json", groupId));
+		JSONArray exportedJSONArray;
 
-			if (zipEntry == null) {
-				throw new FileNotFoundException();
-			}
-
-			JSONArray jsonArray1 = JSONFactoryUtil.createJSONArray();
-
-			JSONArray jsonArray2 = JSONFactoryUtil.createJSONArray(
-				StringUtil.read(zipFile.getInputStream(zipEntry)));
-
-			for (int i = 0; i < jsonArray2.length(); i++) {
-				JSONObject jsonObject = jsonArray2.getJSONObject(i);
-
-				jsonArray1.put(jsonObject.getString("externalReferenceCode"));
-			}
-
-			return jsonArray1;
+		try (InputStream inputStream = new FileInputStream(file)) {
+			exportedJSONArray =
+				ExportImportTestUtil.getExportedObjectEntriesJSONArray(
+					fileNamePrefix + "_deletions", inputStream, groupId);
 		}
+
+		if (exportedJSONArray == null) {
+			throw new FileNotFoundException();
+		}
+
+		JSONArray externalReferenceCodesJSONArray =
+			JSONFactoryUtil.createJSONArray();
+
+		for (int i = 0; i < exportedJSONArray.length(); i++) {
+			JSONObject jsonObject = exportedJSONArray.getJSONObject(i);
+
+			externalReferenceCodesJSONArray.put(
+				jsonObject.getString("externalReferenceCode"));
+		}
+
+		return externalReferenceCodesJSONArray;
+	}
+
+	private String _getFriendlyURL(FileEntry fileEntry) throws Exception {
+		FriendlyURLEntry friendlyURLEntry =
+			_friendlyURLEntryLocalService.getMainFriendlyURLEntry(
+				_portal.getClassNameId(FileEntry.class),
+				fileEntry.getFileEntryId());
+
+		return friendlyURLEntry.getUrlTitle();
+	}
+
+	private String _getImgTag(String previewURL) {
+		return String.format("<p><img alt=\"\" src=\"%s\" /></p>", previewURL);
 	}
 
 	private LogCapture _getLogCapture(boolean expectError) {
@@ -1572,68 +2908,45 @@ public class BatchEnginePortletDataHandlerTest {
 		return group.getGroupKey();
 	}
 
-	private ExportImportConfiguration _importLayouts(
-			boolean deletions, boolean expectError, File file, long groupId,
-			boolean includeLayoutSetLayoutsPortlet, boolean privateLayout,
-			Object... objects)
+	private String _getPreviewURL(FileEntry fileEntry) throws Exception {
+		return _dlURLHelper.getPreviewURL(
+			fileEntry, fileEntry.getFileVersion(), null, null, false, false);
+	}
+
+	private String _getPreviewURL(String fileEntryFriendlyURL, Group group)
 		throws Exception {
 
-		try (LogCapture logCapture = _getLogCapture(expectError)) {
-			ExportImportConfiguration exportImportConfiguration =
-				_exportImportConfigurationLocalService.
-					addDraftExportImportConfiguration(
-						TestPropsValues.getUserId(),
-						ExportImportConfigurationConstants.TYPE_IMPORT_LAYOUT,
-						ExportImportConfigurationSettingsMapFactoryUtil.
-							buildImportLayoutSettingsMap(
-								TestPropsValues.getUser(), groupId,
-								privateLayout, null,
-								_getExportImportParameterMap(
-									deletions, includeLayoutSetLayoutsPortlet,
-									Arrays.asList(objects))));
+		return _dlURLHelper.getPreviewURL(
+			fileEntryFriendlyURL, group.getFriendlyURL());
+	}
 
-			if (deletions) {
-				_exportImportLocalService.importLayoutsDataDeletions(
-					exportImportConfiguration, file);
-			}
+	private SafeCloseable _register(
+			TestExportImportVulcanBatchEngineTaskItemDelegate
+				testExportImportVulcanBatchEngineTaskItemDelegate)
+		throws Exception {
 
-			_exportImportLocalService.importLayouts(
-				exportImportConfiguration, file);
+		String portletId =
+			testExportImportVulcanBatchEngineTaskItemDelegate._portletId;
 
-			return exportImportConfiguration;
+		SafeCloseable safeCloseable1 = () -> {
+		};
+
+		if (ArrayUtil.isEmpty(
+				_bundleContext.getServiceReferences(
+					Portlet.class.getName(),
+					StringBundler.concat(
+						"(jakarta.portlet.name=", portletId, ")")))) {
+
+			safeCloseable1 = _registerServiceWithSafeCloseable(
+				Portlet.class,
+				new GenericPortlet() {
+				},
+				MapUtil.singletonDictionary("jakarta.portlet.name", portletId));
 		}
-	}
 
-	private ExportImportConfiguration _importLayouts(
-			boolean deletions, boolean expectError, File file, long groupId,
-			Object... objects)
-		throws Exception {
-
-		return _importLayouts(
-			deletions, expectError, file, groupId, false, false, objects);
-	}
-
-	private SafeCloseable _register(
-			Function<Filter, Page<TestItem>> function, String portletId)
-		throws Exception {
-
-		return _register(function, portletId, false);
-	}
-
-	private SafeCloseable _register(
-			Function<Filter, Page<TestItem>> function, String portletId,
-			boolean stagingSupported)
-		throws Exception {
-
-		SafeCloseable safeCloseable1 = _registerServiceWithSafeCloseable(
-			Portlet.class,
-			new GenericPortlet() {
-			},
-			MapUtil.singletonDictionary("jakarta.portlet.name", portletId));
 		SafeCloseable safeCloseable2 = _registerServiceWithSafeCloseable(
 			VulcanBatchEngineTaskItemDelegate.class,
-			new TestExportImportVulcanBatchEngineTaskItemDelegate(
-				function, portletId, stagingSupported),
+			testExportImportVulcanBatchEngineTaskItemDelegate,
 			HashMapDictionaryBuilder.put(
 				"batch.engine.task.item.delegate", "true"
 			).put(
@@ -1648,12 +2961,14 @@ public class BatchEnginePortletDataHandlerTest {
 				"export.import.vulcan.batch.engine.task.item.delegate", "true"
 			).build());
 
+		SafeCloseable finalSafeCloseable = safeCloseable1;
+
 		return () -> {
 			try {
 				safeCloseable2.close();
 			}
 			finally {
-				safeCloseable1.close();
+				finalSafeCloseable.close();
 			}
 		};
 	}
@@ -1661,15 +2976,55 @@ public class BatchEnginePortletDataHandlerTest {
 	private <S> SafeCloseable _registerServiceWithSafeCloseable(
 		Class<S> clazz, S service, Dictionary<String, ?> properties) {
 
-		Bundle bundle = FrameworkUtil.getBundle(
-			BatchEnginePortletDataHandlerTest.class);
-
-		BundleContext bundleContext = bundle.getBundleContext();
-
 		ServiceRegistration<S> serviceRegistration =
-			bundleContext.registerService(clazz, service, properties);
+			_bundleContext.registerService(clazz, service, properties);
 
 		return serviceRegistration::unregister;
+	}
+
+	private String _sanitize(
+			String content, Group group, ObjectDefinition objectDefinition)
+		throws Exception {
+
+		return SanitizerUtil.sanitize(
+			objectDefinition.getCompanyId(), group.getGroupId(),
+			TestPropsValues.getUserId(), objectDefinition.getClassName(), 0L,
+			ContentTypes.TEXT_HTML, content);
+	}
+
+	private void _testExportImportCompanyObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry deleteFileEntry,
+			BiFunction<FileEntry, Group, ObjectValuePair<String, Long>>
+				expectedReportEntryGroupIdExternalReferenceCodeBiFunction,
+			boolean expectedRecalculateURL, boolean exportFileEntries,
+			FileEntry fileEntry, boolean importFileEntries,
+			ObjectDefinition objectDefinition, Group sourceGroup)
+		throws Exception {
+
+		_testExportImportObjectEntriesWithRichTextAndURLs(
+			deleteFileEntry,
+			expectedReportEntryGroupIdExternalReferenceCodeBiFunction,
+			expectedRecalculateURL, exportFileEntries, fileEntry,
+			importFileEntries, objectDefinition, sourceGroup, sourceGroup);
+	}
+
+	private void _testExportImportDepotObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry deleteFileEntry,
+			BiFunction<FileEntry, Group, ObjectValuePair<String, Long>>
+				expectedReportEntryGroupIdExternalReferenceCodeBiFunction,
+			boolean expectedRecalculateURL, boolean exportFileEntries,
+			FileEntry fileEntry, boolean importFileEntries,
+			ObjectDefinition objectDefinition, Group sourceGroup)
+		throws Exception {
+
+		DepotEntry targetDepotEntry = _addDepotEntry();
+
+		_testExportImportObjectEntriesWithRichTextAndURLs(
+			deleteFileEntry,
+			expectedReportEntryGroupIdExternalReferenceCodeBiFunction,
+			expectedRecalculateURL, exportFileEntries, fileEntry,
+			importFileEntries, objectDefinition, sourceGroup,
+			targetDepotEntry.getGroup());
 	}
 
 	private void _testExportImportObjectEntriesToSameGroup(
@@ -1682,16 +3037,117 @@ public class BatchEnginePortletDataHandlerTest {
 			3, _getObjectEntryGroupId(group.getGroupId(), scope),
 			objectDefinition);
 
-		File larFile = _exportLayouts(
-			false, group.getGroupId(), false, new long[0], objectDefinition);
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
 
 		_deleteObjectEntries(objectEntries);
 
-		_importLayouts(
-			false, false, larFile, group.getGroupId(), objectDefinition);
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
 
 		_assertObjectEntries(
 			false, objectDefinition.getObjectDefinitionId(), objectEntries);
+	}
+
+	private void _testExportImportObjectEntriesWithComments(
+			Group group, String scope)
+		throws Exception {
+
+		ObjectDefinition objectDefinition = _addObjectDefinition(scope);
+
+		objectDefinition.setEnableComments(true);
+
+		objectDefinition = _objectDefinitionLocalService.updateObjectDefinition(
+			objectDefinition);
+
+		String objectEntryCommentExternalReferenceCode =
+			RandomTestUtil.randomString();
+
+		ObjectEntryComment objectEntryComment1 = new ObjectEntryComment(
+			objectEntryCommentExternalReferenceCode, null,
+			RandomTestUtil.randomString());
+
+		ObjectEntryComment objectEntryComment2 = new ObjectEntryComment(
+			RandomTestUtil.randomString(),
+			objectEntryCommentExternalReferenceCode,
+			RandomTestUtil.randomString());
+
+		ObjectEntryComment objectEntryComment3 = new ObjectEntryComment(
+			RandomTestUtil.randomString(), null, RandomTestUtil.randomString());
+
+		ObjectEntryComment[] objectEntryComments = {
+			objectEntryComment1, objectEntryComment2, objectEntryComment3
+		};
+
+		String objectEntryExternalReferenceCode = RandomTestUtil.randomString();
+
+		ObjectEntry objectEntry = _addObjectEntry(
+			_getObjectEntryGroupId(
+				group.getGroupId(), objectDefinition.getScope()),
+			objectDefinition, objectEntryComments,
+			(Map)HashMapBuilder.<String, Serializable>put(
+				"externalReferenceCode", objectEntryExternalReferenceCode
+			).build());
+
+		File larFile1 = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		_objectEntryLocalService.deleteObjectEntry(
+			objectEntry.getObjectEntryId());
+
+		objectEntry = _addObjectEntry(
+			_getObjectEntryGroupId(
+				group.getGroupId(), objectDefinition.getScope()),
+			objectDefinition, new ObjectEntryComment[] {objectEntryComment3},
+			(Map)HashMapBuilder.<String, Serializable>put(
+				"externalReferenceCode", objectEntryExternalReferenceCode
+			).build());
+
+		File larFile2 = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		_objectEntryLocalService.deleteObjectEntry(
+			objectEntry.getObjectEntryId());
+
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile1
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		_assertComments(objectDefinition, objectEntry, objectEntryComments);
+
+		new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile2
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		_assertComments(objectDefinition, objectEntry, objectEntryComments[2]);
 	}
 
 	private void _testExportImportObjectEntriesWithErrorReport(
@@ -1707,15 +3163,27 @@ public class BatchEnginePortletDataHandlerTest {
 		String originalExternalReferenceCode =
 			objectEntry.getExternalReferenceCode();
 
-		File file = _exportLayouts(
-			false, group.getGroupId(), false, new long[0], objectDefinition);
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
 
 		objectEntry.setExternalReferenceCode(StringUtil.randomString());
 
 		objectEntry = _objectEntryLocalService.updateObjectEntry(objectEntry);
 
-		ExportImportConfiguration exportImportConfiguration = _importLayouts(
-			false, true, file, group.getGroupId(), objectDefinition);
+		ExportImportConfiguration exportImportConfiguration =
+			new ExportImportExecutor(
+			).withExpectError(
+			).withGroupId(
+				group.getGroupId()
+			).withLARFile(
+				larFile
+			).withObjectEntries(
+				objectDefinition
+			).executeImport();
 
 		List<ExportImportReportEntry> exportImportReportEntries =
 			_exportImportReportEntryLocalService.getExportImportReportEntries(
@@ -1729,22 +3197,112 @@ public class BatchEnginePortletDataHandlerTest {
 		ExportImportReportEntry exportImportReportEntry =
 			exportImportReportEntries.get(0);
 
-		Assert.assertEquals(
-			originalExternalReferenceCode,
-			exportImportReportEntry.getClassExternalReferenceCode());
-		Assert.assertEquals(
+		_assertExportImportReportEntry(
 			_portal.getClassNameId(objectDefinition.getClassName()),
-			exportImportReportEntry.getClassNameId());
-		Assert.assertEquals(
-			objectEntry.getPrimaryKey(), exportImportReportEntry.getClassPK());
-		Assert.assertEquals(
-			objectEntry.getGroupId(), exportImportReportEntry.getGroupId());
-		Assert.assertEquals(
+			objectEntry.getPrimaryKey(), originalExternalReferenceCode,
+			objectEntry.getGroupId(),
 			"model.resource." + objectDefinition.getResourceName(),
-			exportImportReportEntry.getModelNameLanguageKey());
-		Assert.assertEquals(
 			ExportImportReportEntryConstants.TYPE_ERROR,
-			exportImportReportEntry.getType());
+			exportImportReportEntry);
+	}
+
+	private void
+			_testExportImportObjectEntriesWithIndividualDeletionsAndMissingPortlet(
+				Group group, String scope)
+		throws Exception {
+
+		List<ObjectField> objectFields = Collections.singletonList(
+			ObjectFieldUtil.createObjectField(
+				ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+				ObjectFieldConstants.DB_TYPE_STRING, true, true, null,
+				RandomTestUtil.randomString(), "textField", false));
+
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				ObjectDefinitionTestUtil.getRandomName(), objectFields, scope);
+
+		ObjectEntry[] objectEntries = new ObjectEntry[2];
+
+		for (int i = 0; i < 2; i++) {
+			objectEntries[i] = _addObjectEntry(
+				_getObjectEntryGroupId(group.getGroupId(), scope),
+				objectDefinition,
+				(Map)HashMapBuilder.<String, Serializable>put(
+					"textField", RandomTestUtil.randomString()
+				).build());
+		}
+
+		File larFile1 = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeObjectDefinitions(
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		_objectEntryLocalService.deleteObjectEntry(objectEntries[0]);
+
+		File larFile2 = new ExportImportExecutor(
+		).withDeletions(
+		).withGroupId(
+			group.getGroupId()
+		).withIncludeObjectDefinitions(
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+
+		ObjectDefinition targetObjectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				ObjectDefinitionTestUtil.getRandomName(), objectFields, scope);
+
+		targetObjectDefinition.setExternalReferenceCode(
+			objectDefinition.getExternalReferenceCode());
+
+		targetObjectDefinition =
+			_objectDefinitionLocalService.updateObjectDefinition(
+				targetObjectDefinition);
+
+		_objectDefinitionLocalService.deployObjectDefinition(
+			targetObjectDefinition);
+
+		new ExportImportExecutor(
+		).withExpectError(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile1
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		Assert.assertEquals(
+			2,
+			_objectEntryLocalService.getObjectEntriesCount(
+				targetObjectDefinition.getObjectDefinitionId()));
+
+		new ExportImportExecutor(
+		).withDeletions(
+		).withExpectError(
+		).withGroupId(
+			group.getGroupId()
+		).withLARFile(
+			larFile2
+		).withObjectEntries(
+			objectDefinition
+		).executeImport();
+
+		Assert.assertEquals(
+			1,
+			_objectEntryLocalService.getObjectEntriesCount(
+				targetObjectDefinition.getObjectDefinitionId()));
+
+		Assert.assertNull(
+			_objectEntryLocalService.fetchObjectEntry(
+				objectEntries[0].getExternalReferenceCode(),
+				objectEntries[0].getGroupId(),
+				objectDefinition.getObjectDefinitionId()));
 	}
 
 	private void _testExportImportObjectEntriesWithRelatedObjectEntries(
@@ -1777,13 +3335,19 @@ public class BatchEnginePortletDataHandlerTest {
 				TestPropsValues.getUserId());
 		}
 
-		File larFile = _exportLayouts(
-			false, group.getGroupId(), false, new long[0], objectDefinition1,
-			objectDefinition2);
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			group.getGroupId()
+		).withObjectEntries(
+			objectDefinition1
+		).withObjectEntries(
+			objectDefinition2
+		).executeExport();
 
 		JSONArray exportedObjectEntriesJSONArray =
 			_getExportedObjectEntriesJSONArray(
-				objectDefinition2.getName(), larFile, group.getGroupId());
+				objectDefinition2.getExternalReferenceCode(), larFile,
+				group.getGroupId());
 
 		if (Objects.equals(
 				ObjectRelationshipConstants.TYPE_MANY_TO_MANY, type)) {
@@ -1805,7 +3369,8 @@ public class BatchEnginePortletDataHandlerTest {
 				JSONCompareMode.NON_EXTENSIBLE);
 
 			exportedObjectEntriesJSONArray = _getExportedObjectEntriesJSONArray(
-				objectDefinition1.getName(), larFile, group.getGroupId());
+				objectDefinition1.getExternalReferenceCode(), larFile,
+				group.getGroupId());
 
 			JSONAssert.assertEquals(
 				JSONUtil.toJSONArray(
@@ -1844,8 +3409,14 @@ public class BatchEnginePortletDataHandlerTest {
 		_deleteObjectEntries(objectEntries2);
 
 		if (childFirst) {
-			_importLayouts(
-				false, false, larFile, group.getGroupId(), objectDefinition2);
+			new ExportImportExecutor(
+			).withGroupId(
+				group.getGroupId()
+			).withLARFile(
+				larFile
+			).withObjectEntries(
+				objectDefinition2
+			).executeImport();
 
 			_assertObjectEntries(
 				true, objectDefinition1.getObjectDefinitionId(),
@@ -1854,16 +3425,28 @@ public class BatchEnginePortletDataHandlerTest {
 				false, objectDefinition2.getObjectDefinitionId(),
 				objectEntries2);
 
-			_importLayouts(
-				false, false, larFile, group.getGroupId(), objectDefinition1);
+			new ExportImportExecutor(
+			).withGroupId(
+				group.getGroupId()
+			).withLARFile(
+				larFile
+			).withObjectEntries(
+				objectDefinition1
+			).executeImport();
 
 			_assertObjectEntries(
 				false, objectDefinition1.getObjectDefinitionId(),
 				objectEntries1);
 		}
 		else {
-			_importLayouts(
-				false, false, larFile, group.getGroupId(), objectDefinition1);
+			new ExportImportExecutor(
+			).withGroupId(
+				group.getGroupId()
+			).withLARFile(
+				larFile
+			).withObjectEntries(
+				objectDefinition1
+			).executeImport();
 
 			_assertObjectEntries(
 				false, objectDefinition1.getObjectDefinitionId(),
@@ -1897,8 +3480,14 @@ public class BatchEnginePortletDataHandlerTest {
 				}
 			}
 
-			_importLayouts(
-				false, false, larFile, group.getGroupId(), objectDefinition2);
+			new ExportImportExecutor(
+			).withGroupId(
+				group.getGroupId()
+			).withLARFile(
+				larFile
+			).withObjectEntries(
+				objectDefinition2
+			).executeImport();
 
 			_assertObjectEntries(
 				false, objectDefinition2.getObjectDefinitionId(),
@@ -1914,6 +3503,139 @@ public class BatchEnginePortletDataHandlerTest {
 			false, group, scope, type);
 		_testExportImportObjectEntriesWithRelatedObjectEntries(
 			true, group, scope, type);
+	}
+
+	private void _testExportImportObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry deleteFileEntry,
+			BiFunction<FileEntry, Group, ObjectValuePair<String, Long>>
+				expectedReportEntryGroupIdExternalReferenceCodeBiFunction,
+			boolean expectedRecalculateURL, boolean exportFileEntries,
+			FileEntry fileEntry, boolean importFileEntries,
+			ObjectDefinition objectDefinition, Group sourceGroup,
+			Group targetGroup)
+		throws Exception {
+
+		String imgTag = _getImgTag(_getPreviewURL(fileEntry));
+
+		ObjectEntry objectEntry = _addObjectEntry(
+			_getObjectEntryGroupId(
+				sourceGroup.getGroupId(), objectDefinition.getScope()),
+			objectDefinition,
+			(Map)HashMapBuilder.put(
+				_OBJECT_FIELD_NAME_RICH_TEXT,
+				_sanitize(imgTag, sourceGroup, objectDefinition)
+			).build());
+
+		// Keep it before removing the file entry
+
+		String fileEntryFriendlyURL = _getFriendlyURL(fileEntry);
+
+		if (deleteFileEntry == DeleteFileEntry.BEFORE_EXPORT) {
+			_dlAppLocalService.deleteFileEntry(fileEntry.getFileEntryId());
+		}
+
+		File larFile = new ExportImportExecutor(
+		).withGroupId(
+			sourceGroup.getGroupId()
+		).withIncludeDocumentLibrary(
+			exportFileEntries
+		).withObjectEntries(
+			objectDefinition
+		).executeExport();
+
+		if (deleteFileEntry == DeleteFileEntry.BEFORE_IMPORT) {
+			_dlAppLocalService.deleteFileEntry(fileEntry.getFileEntryId());
+		}
+
+		_objectEntryLocalService.deleteObjectEntry(
+			objectEntry.getObjectEntryId());
+
+		ExportImportConfiguration exportImportConfiguration =
+			new ExportImportExecutor(
+			).withGroupId(
+				targetGroup.getGroupId()
+			).withIncludeDocumentLibrary(
+				importFileEntries
+			).withLARFile(
+				larFile
+			).withObjectEntries(
+				objectDefinition
+			).executeImport();
+
+		List<ObjectEntry> objectEntriesList =
+			_objectEntryLocalService.getObjectEntries(
+				_getObjectEntryGroupId(
+					targetGroup.getGroupId(), objectDefinition.getScope()),
+				objectDefinition.getObjectDefinitionId(), QueryUtil.ALL_POS,
+				QueryUtil.ALL_POS);
+
+		Assert.assertEquals(
+			objectEntriesList.toString(), 1, objectEntriesList.size());
+
+		ObjectEntry importedObjectEntry = objectEntriesList.get(0);
+
+		String importedRichTextValue = MapUtil.getString(
+			importedObjectEntry.getValues(), _OBJECT_FIELD_NAME_RICH_TEXT);
+
+		String expectedImgTag = null;
+
+		if (expectedRecalculateURL) {
+			expectedImgTag = _getImgTag(
+				_getPreviewURL(fileEntryFriendlyURL, targetGroup));
+		}
+		else {
+			expectedImgTag = imgTag;
+		}
+
+		Assert.assertTrue(
+			importedRichTextValue.contains(
+				_sanitize(expectedImgTag, targetGroup, objectDefinition)));
+
+		List<ExportImportReportEntry> exportImportReportEntries =
+			_exportImportReportEntryLocalService.getExportImportReportEntries(
+				TestPropsValues.getCompanyId(),
+				exportImportConfiguration.getExportImportConfigurationId());
+
+		if (expectedReportEntryGroupIdExternalReferenceCodeBiFunction == null) {
+			Assert.assertTrue(exportImportReportEntries.isEmpty());
+		}
+		else {
+			Assert.assertEquals(
+				exportImportReportEntries.toString(), 1,
+				exportImportReportEntries.size());
+
+			long classNameId = _classNameLocalService.getClassNameId(
+				FileEntry.class);
+
+			ObjectValuePair<String, Long> objectValuePair =
+				expectedReportEntryGroupIdExternalReferenceCodeBiFunction.apply(
+					fileEntry, targetGroup);
+
+			_assertExportImportReportEntry(
+				classNameId, 0L, objectValuePair.getKey(),
+				objectValuePair.getValue(), FileEntry.class.getName(),
+				ExportImportReportEntryConstants.TYPE_EMPTY,
+				exportImportReportEntries.get(0));
+		}
+
+		_deleteObjectEntries(importedObjectEntry);
+	}
+
+	private void _testExportImportSiteObjectEntriesWithRichTextAndURLs(
+			DeleteFileEntry deleteFileEntry,
+			BiFunction<FileEntry, Group, ObjectValuePair<String, Long>>
+				expectedReportEntryGroupIdExternalReferenceCodeBiFunction,
+			boolean expectedRecalculateURL, boolean exportFileEntries,
+			FileEntry fileEntry, boolean importFileEntries,
+			ObjectDefinition objectDefinition, Group sourceGroup)
+		throws Exception {
+
+		_testExportImportObjectEntriesWithRichTextAndURLs(
+			deleteFileEntry,
+			expectedReportEntryGroupIdExternalReferenceCodeBiFunction,
+			expectedRecalculateURL, exportFileEntries, fileEntry,
+			importFileEntries, objectDefinition, sourceGroup,
+			GroupTestUtil.addGroup());
 	}
 
 	private void _testGetExportModelCount(
@@ -1966,7 +3688,12 @@ public class BatchEnginePortletDataHandlerTest {
 		String portletId = RandomTestUtil.randomString();
 
 		try (SafeCloseable safeCloseable = _register(
-				null, portletId, stagingSupported)) {
+				new TestExportImportVulcanBatchEngineTaskItemDelegateBuilder(
+				).withPortletId(
+					portletId
+				).withStagingSupported(
+					stagingSupported
+				).build())) {
 
 			Thread.sleep(1000);
 
@@ -1997,27 +3724,38 @@ public class BatchEnginePortletDataHandlerTest {
 	}
 
 	private static final String _OBJECT_FIELD_NAME_ATTACHMENT_DOCS_AND_MEDIA =
-		"x" + RandomTestUtil.randomString();
+		"xAttachment1" + RandomTestUtil.randomString();
 
 	private static final String
 		_OBJECT_FIELD_NAME_ATTACHMENT_SHOW_FILES_IN_DOCS_AND_MEDIA =
-			"x" + RandomTestUtil.randomString();
+			"xAttachment2" + RandomTestUtil.randomString();
 
 	private static final String _OBJECT_FIELD_NAME_ATTACHMENT_USER_COMPUTER =
-		"x" + RandomTestUtil.randomString();
+		"xAttachment3" + RandomTestUtil.randomString();
+
+	private static final String _OBJECT_FIELD_NAME_RICH_TEXT =
+		"xRichText" + RandomTestUtil.randomString();
 
 	private static final String _OBJECT_FIELD_NAME_TEXT =
-		"x" + RandomTestUtil.randomString();
+		"xText" + RandomTestUtil.randomString();
 
-	private static final String _OBJECT_FIELD_VALUE_ATTACHMENT_DOCS_AND_MEDIA =
-		RandomTestUtil.randomString();
+	private static final byte[] _OBJECT_FIELD_VALUE_ATTACHMENT_DOCS_AND_MEDIA =
+		DLTestUtil.randomTextFileBytes();
 
-	private static final String
+	private static final byte[]
 		_OBJECT_FIELD_VALUE_ATTACHMENT_SHOW_FILES_IN_DOCS_AND_MEDIA =
-			RandomTestUtil.randomString();
+			DLTestUtil.randomTextFileBytes();
 
-	private static final String _OBJECT_FIELD_VALUE_ATTACHMENT_USER_COMPUTER =
-		RandomTestUtil.randomString();
+	private static final byte[] _OBJECT_FIELD_VALUE_ATTACHMENT_USER_COMPUTER =
+		DLTestUtil.randomTextFileBytes();
+
+	private static BundleContext _bundleContext;
+	private static final BiFunction
+		<FileEntry, Group, ObjectValuePair<String, Long>>
+			_defaultReportEntryBiFunction =
+				(fileEntry, targetGroup) -> new ObjectValuePair<>(
+					fileEntry.getExternalReferenceCode(),
+					fileEntry.getGroupId());
 
 	@Inject
 	private BatchEngineImportTaskLocalService
@@ -2027,13 +3765,22 @@ public class BatchEnginePortletDataHandlerTest {
 	private ClassNameLocalService _classNameLocalService;
 
 	@Inject
+	private CommentManager _commentManager;
+
+	@Inject
 	private CompanyLocalService _companyLocalService;
+
+	@Inject
+	private DepotEntryLocalService _depotEntryLocalService;
 
 	@Inject
 	private DLAppLocalService _dlAppLocalService;
 
 	@Inject
 	private DLFileEntryLocalService _dlFileEntryLocalService;
+
+	@Inject
+	private DLURLHelper _dlURLHelper;
 
 	@Inject
 	private ExportImportConfigurationLocalService
@@ -2047,6 +3794,9 @@ public class BatchEnginePortletDataHandlerTest {
 		_exportImportReportEntryLocalService;
 
 	@Inject
+	private FriendlyURLEntryLocalService _friendlyURLEntryLocalService;
+
+	@Inject
 	private LayoutLocalService _layoutLocalService;
 
 	@Inject
@@ -2057,6 +3807,10 @@ public class BatchEnginePortletDataHandlerTest {
 
 	@Inject
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;
+
+	@Inject
+	private ObjectDefinitionSettingLocalService
+		_objectDefinitionSettingLocalService;
 
 	@Inject
 	private ObjectEntryLocalService _objectEntryLocalService;
@@ -2088,20 +3842,12 @@ public class BatchEnginePortletDataHandlerTest {
 				   VulcanBatchEngineTaskItemDelegate<TestItem> {
 
 		public TestExportImportVulcanBatchEngineTaskItemDelegate(
-			Function<Filter, Page<TestItem>> function, String portletId) {
-
-			_function = function;
-			_portletId = portletId;
-
-			_stagingSupported = true;
-		}
-
-		public TestExportImportVulcanBatchEngineTaskItemDelegate(
 			Function<Filter, Page<TestItem>> function, String portletId,
-			boolean stagingSupported) {
+			Integer rank, boolean stagingSupported) {
 
 			_function = function;
 			_portletId = portletId;
+			_rank = rank;
 			_stagingSupported = stagingSupported;
 		}
 
@@ -2134,8 +3880,18 @@ public class BatchEnginePortletDataHandlerTest {
 			return new ExportImportDescriptor() {
 
 				@Override
+				public String getKey() {
+					return _resourceClassName;
+				}
+
+				@Override
 				public String getLabelLanguageKey() {
 					return _modelClassName;
+				}
+
+				@Override
+				public Class getModelClass() {
+					return null;
 				}
 
 				@Override
@@ -2149,8 +3905,12 @@ public class BatchEnginePortletDataHandlerTest {
 				}
 
 				@Override
-				public String getResourceClassName() {
-					return _resourceClassName;
+				public int getRank() {
+					if (_rank != null) {
+						return _rank;
+					}
+
+					return ExportImportDescriptor.super.getRank();
 				}
 
 				@Override
@@ -2246,8 +4006,202 @@ public class BatchEnginePortletDataHandlerTest {
 		private final Function<Filter, Page<TestItem>> _function;
 		private final String _modelClassName = RandomTestUtil.randomString();
 		private final String _portletId;
+		private final Integer _rank;
 		private final String _resourceClassName = RandomTestUtil.randomString();
 		private final boolean _stagingSupported;
+
+	}
+
+	private static class
+		TestExportImportVulcanBatchEngineTaskItemDelegateBuilder {
+
+		public TestExportImportVulcanBatchEngineTaskItemDelegate build() {
+			if (_portletId == null) {
+				throw new IllegalArgumentException("Portlet ID is null");
+			}
+
+			return new TestExportImportVulcanBatchEngineTaskItemDelegate(
+				_function, _portletId, _rank, _stagingSupported);
+		}
+
+		public TestExportImportVulcanBatchEngineTaskItemDelegateBuilder
+			withFunction(Function<Filter, Page<TestItem>> function) {
+
+			_function = function;
+
+			return this;
+		}
+
+		public TestExportImportVulcanBatchEngineTaskItemDelegateBuilder
+			withPortletId(String portletId) {
+
+			_portletId = portletId;
+
+			return this;
+		}
+
+		public TestExportImportVulcanBatchEngineTaskItemDelegateBuilder
+			withRank(int rank) {
+
+			_rank = rank;
+
+			return this;
+		}
+
+		public TestExportImportVulcanBatchEngineTaskItemDelegateBuilder
+			withStagingSupported(boolean stagingSupported) {
+
+			_stagingSupported = stagingSupported;
+
+			return this;
+		}
+
+		private Function<Filter, Page<TestItem>> _function;
+		private String _portletId;
+		private Integer _rank;
+		private boolean _stagingSupported;
+
+	}
+
+	private enum DeleteFileEntry {
+
+		BEFORE_EXPORT, BEFORE_IMPORT
+
+	}
+
+	private class ExportImportExecutor {
+
+		public File executeExport() throws Exception {
+			return _exportImportLocalService.exportLayoutsAsFile(
+				_exportImportConfigurationLocalService.
+					addDraftExportImportConfiguration(
+						TestPropsValues.getUserId(),
+						ExportImportConfigurationConstants.TYPE_EXPORT_LAYOUT,
+						ExportImportConfigurationSettingsMapFactoryUtil.
+							buildExportLayoutSettingsMap(
+								TestPropsValues.getUser(), _groupId,
+								_privateLayouts,
+								ArrayUtil.toLongArray(_layoutIds),
+								_getExportImportParameterMap(
+									_deletions, _includeDocumentLibrary,
+									_includeLayoutSetLayouts,
+									_includeListTypeDefinitions,
+									_includeObjectDefinitions,
+									_objectDefinitions))));
+		}
+
+		public ExportImportConfiguration executeImport() throws Exception {
+			try (LogCapture logCapture = _getLogCapture(_expectError)) {
+				ExportImportConfiguration exportImportConfiguration =
+					_exportImportConfigurationLocalService.
+						addDraftExportImportConfiguration(
+							TestPropsValues.getUserId(),
+							ExportImportConfigurationConstants.
+								TYPE_IMPORT_LAYOUT,
+							ExportImportConfigurationSettingsMapFactoryUtil.
+								buildImportLayoutSettingsMap(
+									TestPropsValues.getUser(), _groupId,
+									_privateLayouts, null,
+									_getExportImportParameterMap(
+										_deletions, _includeDocumentLibrary,
+										_includeLayoutSetLayouts,
+										_includeListTypeDefinitions,
+										_includeObjectDefinitions,
+										_objectDefinitions)));
+
+				if (_deletions) {
+					_exportImportLocalService.importLayoutsDataDeletions(
+						exportImportConfiguration, _larFile);
+				}
+
+				_exportImportLocalService.importLayouts(
+					exportImportConfiguration, _larFile);
+
+				return exportImportConfiguration;
+			}
+		}
+
+		public ExportImportExecutor withDeletions() {
+			_deletions = true;
+
+			return this;
+		}
+
+		public ExportImportExecutor withExpectError() {
+			_expectError = true;
+
+			return this;
+		}
+
+		public ExportImportExecutor withGroupId(long groupId) {
+			_groupId = groupId;
+
+			return this;
+		}
+
+		public ExportImportExecutor withIncludeDocumentLibrary(
+			boolean includeDocumentLibrary) {
+
+			_includeDocumentLibrary = includeDocumentLibrary;
+
+			return this;
+		}
+
+		public ExportImportExecutor withIncludeLayoutSetLayouts() {
+			_includeLayoutSetLayouts = true;
+
+			return this;
+		}
+
+		public ExportImportExecutor withIncludeListTypeDefinitions() {
+			_includeListTypeDefinitions = true;
+
+			return this;
+		}
+
+		public ExportImportExecutor withIncludeObjectDefinitions() {
+			_includeObjectDefinitions = true;
+
+			return this;
+		}
+
+		public ExportImportExecutor withLARFile(File larFile) {
+			_larFile = larFile;
+
+			return this;
+		}
+
+		public ExportImportExecutor withLayoutId(long layoutId) {
+			_layoutIds.add(layoutId);
+
+			return this;
+		}
+
+		public ExportImportExecutor withObjectEntries(
+			ObjectDefinition objectDefinition) {
+
+			_objectDefinitions.add(objectDefinition);
+
+			return this;
+		}
+
+		public ExportImportExecutor withPrivateLayouts() {
+			_privateLayouts = true;
+
+			return this;
+		}
+
+		private boolean _deletions;
+		private boolean _expectError;
+		private long _groupId;
+		private boolean _includeDocumentLibrary;
+		private boolean _includeLayoutSetLayouts;
+		private boolean _includeListTypeDefinitions;
+		private boolean _includeObjectDefinitions;
+		private File _larFile;
+		private List<Long> _layoutIds = new ArrayList<>();
+		private List<ObjectDefinition> _objectDefinitions = new ArrayList<>();
+		private boolean _privateLayouts;
 
 	}
 

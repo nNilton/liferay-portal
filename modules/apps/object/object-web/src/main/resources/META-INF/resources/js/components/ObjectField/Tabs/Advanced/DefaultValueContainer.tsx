@@ -68,19 +68,18 @@ type InputAsValueFieldComponents = {
 };
 
 const InputAsValueFieldComponents: Partial<InputAsValueFieldComponents> = {
-	...(Liferay.FeatureFlags['LPD-46451'] && {
-		Boolean: BooleanDefaultValueSelect,
-		Date: DateDefaultValueInput,
-		DateTime: DateDefaultValueInput,
-		Decimal: NumericDefaultValueInput,
-		Integer: NumericDefaultValueInput,
-		LongInteger: NumericDefaultValueInput,
-		LongText: TextDefaultValueInput,
-		PrecisionDecimal: NumericDefaultValueInput,
-		RichText: RichTextDefaultValue,
-		Text: TextDefaultValueInput,
-	}),
+	Boolean: BooleanDefaultValueSelect,
+	Date: DateDefaultValueInput,
+	DateTime: DateDefaultValueInput,
+	Decimal: NumericDefaultValueInput,
+	Integer: NumericDefaultValueInput,
+	LongInteger: NumericDefaultValueInput,
+	LongText: TextDefaultValueInput,
+	PhoneNumber: TextDefaultValueInput,
 	Picklist: ListTypeDefaultValueSelect,
+	PrecisionDecimal: NumericDefaultValueInput,
+	RichText: RichTextDefaultValue,
+	Text: TextDefaultValueInput,
 };
 
 export function DefaultValueContainer({
@@ -197,29 +196,32 @@ export function DefaultValueContainer({
 				</ClayForm.Group>
 			)}
 
-			{defaultValueToggleEnabled && !values.state && (
-				<ClayButton.Group>
-					<ClayButton
-						className={classNames({
-							active:
-								defaultValueTypeSelection === 'inputAsValue',
-						})}
-						displayType="secondary"
-						onClick={() => {
-							setDefaultValueTypeSelection('inputAsValue');
-							setValues({
-								objectFieldSettings: getUpdatedDefaultValueType(
-									values,
-									'inputAsValue'
-								),
-							});
-						}}
-						size="sm"
-					>
-						{Liferay.Language.get('input-as-value')}
-					</ClayButton>
+			{defaultValueSidebarElements &&
+				defaultValueToggleEnabled &&
+				!values.state && (
+					<ClayButton.Group>
+						<ClayButton
+							className={classNames({
+								active:
+									defaultValueTypeSelection ===
+									'inputAsValue',
+							})}
+							displayType="secondary"
+							onClick={() => {
+								setDefaultValueTypeSelection('inputAsValue');
+								setValues({
+									objectFieldSettings:
+										getUpdatedDefaultValueType(
+											values,
+											'inputAsValue'
+										),
+								});
+							}}
+							size="sm"
+						>
+							{Liferay.Language.get('input-as-value')}
+						</ClayButton>
 
-					{defaultValueSidebarElements && (
 						<ClayButton
 							className={classNames({
 								active:
@@ -243,9 +245,8 @@ export function DefaultValueContainer({
 						>
 							{Liferay.Language.get('expression-builder')}
 						</ClayButton>
-					)}
-				</ClayButton.Group>
-			)}
+					</ClayButton.Group>
+				)}
 
 			{defaultValueToggleEnabled &&
 				defaultValueTypeSelection === 'inputAsValue' &&

@@ -4,39 +4,34 @@
  */
 
 import {
-	ObjectDefinitionAPI,
 	ObjectRelationship,
 	ObjectRelationshipAPI,
 } from '@liferay/object-admin-rest-client-js';
 import {expect, mergeTests} from '@playwright/test';
 
-import {applicationsMenuPageTest} from '../../../fixtures/applicationsMenuPageTest';
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
 import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
+import {globalMenuPagesTest} from '../../../fixtures/globalMenuPagesTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {productMenuPageTest} from '../../../fixtures/productMenuPageTest';
 import {uiElementsPageTest} from '../../../fixtures/uiElementsTest';
 import {getRandomInt} from '../../../utils/getRandomInt';
+import {normalizeRestPath} from '../../../utils/normalizeRestPath';
 import performLogin, {
 	performLogout,
 	userData,
 } from '../../../utils/performLogin';
 import {getTempDir} from '../../../utils/temp';
-import {readFileFromZip} from '../../../utils/zip';
+import {checkInZip, readFileFromZip} from '../../../utils/zip';
 import {companyExportImportPageTest} from './fixtures/companyExportImportPagesTest';
 import {exportImportPagesTest} from './fixtures/exportImportPagesTest';
 import {toDateRangeDate, toDateRangeTime} from './utils/dateRangeUtil';
-import {objectDefitionRequestData} from './utils/objectDefitionRequestData';
 
 export const test = mergeTests(
-	applicationsMenuPageTest,
 	companyExportImportPageTest,
 	dataApiHelpersTest,
 	exportImportPagesTest,
-	featureFlagsTest({
-		'LPD-35443': {enabled: true},
-		'LPD-35914': {enabled: true},
-	}),
+	globalMenuPagesTest,
 	loginTest(),
 	productMenuPageTest,
 	uiElementsPageTest
@@ -46,8 +41,8 @@ const rootModelTest = mergeTests(
 	test,
 	featureFlagsTest({
 		'LPD-34594': {enabled: true},
-		'LPD-35914': {enabled: true},
-	})
+	}),
+	globalMenuPagesTest
 );
 
 rootModelTest.describe(
@@ -55,12 +50,7 @@ rootModelTest.describe(
 	() => {
 		rootModelTest(
 			'can distinguish root model object definitions in export/import',
-			async ({
-				apiHelpers,
-				applicationsMenuPage,
-				exportImportPage,
-				page,
-			}) => {
+			async ({apiHelpers, exportImportPage, globalMenuPage, page}) => {
 				const objectRelationships: ObjectRelationship[] = [];
 				const objectRelationshipAPIClient =
 					await apiHelpers.buildRestClient(ObjectRelationshipAPI);
@@ -185,13 +175,16 @@ rootModelTest.describe(
 						'c/' + objectDefinitionC.name.toLowerCase() + 's'
 					);
 
-					const objectDefinitionRootCheckbox = page.getByLabel(
-						new RegExp(
-							`${objectDefinitionA.label.en_US}\\s*Root Object`
-						)
+					const objectDefinitionRootCheckbox = page.getByRole(
+						'checkbox',
+						{
+							name: new RegExp(
+								`^${objectDefinitionA.label.en_US}:?`
+							),
+						}
 					);
 
-					await applicationsMenuPage.goToExport();
+					await globalMenuPage.goToApplications('Export');
 
 					await exportImportPage.newExportButton.click();
 
@@ -203,15 +196,15 @@ rootModelTest.describe(
 						)
 					).toBeVisible();
 
-					await applicationsMenuPage.goToExport();
+					await globalMenuPage.goToApplications('Export');
 
 					const filePath = await exportImportPage.export({
 						portletLabels: [
-							`${objectDefinitionA.name} Root Object 1 Items`,
+							`${objectDefinitionA.name}: Root Object 1 Items`,
 						],
 					});
 
-					await applicationsMenuPage.goToImport();
+					await globalMenuPage.goToApplications('Import');
 
 					await exportImportPage.newImportButton.click();
 
@@ -247,58 +240,62 @@ rootModelTest.describe(
 
 test('cannot export site scoped custom object entries at instance level', async ({
 	apiHelpers,
-	applicationsMenuPage,
+	globalMenuPage,
 	page,
 }) => {
-	const objectActionAPIClient =
-		await apiHelpers.buildRestClient(ObjectDefinitionAPI);
+	const objectDefinition =
+		await apiHelpers.objectAdmin.postRandomObjectDefinition({
+			scope: 'site',
+			status: {code: 0},
+		});
 
-	const {body: objectDefinition} =
-		await objectActionAPIClient.postObjectDefinition(
-			objectDefitionRequestData({scope: 'site'})
-		);
-
-	apiHelpers.data.push({id: objectDefinition.id, type: 'objectDefinition'});
+	apiHelpers.data.push({
+		id: objectDefinition.id,
+		type: 'objectDefinition',
+	});
 
 	await apiHelpers.objectEntry.postObjectEntry(
-		{externalReferenceCode: '', name: 'test'},
-		'c/tests/scopes/Guest'
+		{externalReferenceCode: '', textField: objectDefinition.name},
+		`${normalizeRestPath(objectDefinition.restContextPath)}/scopes/Guest`
 	);
 
-	await applicationsMenuPage.goToExport();
+	await globalMenuPage.goToApplications('Export');
 
 	await page.getByTestId('creationMenuNewButton').nth(1).click();
 
-	await expect(page.getByLabel('Tests')).toBeHidden();
+	await expect(page.getByLabel(`${objectDefinition.name}`)).toBeHidden();
 });
 
 test('can export custom object entries at instance level with date filter', async ({
 	apiHelpers,
-	applicationsMenuPage,
 	exportImportPage,
+	globalMenuPage,
 }) => {
-	const objectActionAPIClient =
-		await apiHelpers.buildRestClient(ObjectDefinitionAPI);
+	const objectDefinition =
+		await apiHelpers.objectAdmin.postRandomObjectDefinition({
+			status: {code: 0},
+		});
 
-	const {body: objectDefinition} =
-		await objectActionAPIClient.postObjectDefinition(
-			objectDefitionRequestData()
-		);
-
-	apiHelpers.data.push({id: objectDefinition.id, type: 'objectDefinition'});
-
-	await apiHelpers.objectEntry.postObjectEntry(
-		{externalReferenceCode: '', name: 'test'},
-		'c/tests'
-	);
-
-	await applicationsMenuPage.goToExport();
-
-	const exportFilePath1 = await exportImportPage.export({
-		portletLabels: ['Tests 1 Items'],
+	apiHelpers.data.push({
+		id: objectDefinition.id,
+		type: 'objectDefinition',
 	});
 
-	const content1 = await readFileFromZip('C_Test.json', exportFilePath1);
+	await apiHelpers.objectEntry.postObjectEntry(
+		{externalReferenceCode: '', textField: objectDefinition.name},
+		`${normalizeRestPath(objectDefinition.restContextPath)}`
+	);
+
+	await globalMenuPage.goToApplications('Export');
+
+	const exportFilePath1 = await exportImportPage.export({
+		portletLabels: [`${objectDefinition.name} 1 Items`],
+	});
+
+	const content1 = await readFileFromZip(
+		`${objectDefinition.externalReferenceCode}.json`,
+		exportFilePath1
+	);
 
 	const json1 = JSON.parse(content1);
 
@@ -312,7 +309,7 @@ test('can export custom object entries at instance level with date filter', asyn
 
 	startDate.setDate(startDate.getDate() - 2);
 
-	await applicationsMenuPage.goToExport();
+	await globalMenuPage.goToApplications('Export');
 
 	const exportFilePath2 = await exportImportPage.export({
 		dateFilter: {
@@ -321,23 +318,27 @@ test('can export custom object entries at instance level with date filter', asyn
 			startDate: toDateRangeDate(startDate),
 			startTime: toDateRangeTime(startDate),
 		},
-		portletLabels: ['Tests 1 Items'],
+		portletLabels: [`${objectDefinition.name} 1 Items`],
 	});
 
-	const content2 = await readFileFromZip('C_Test.json', exportFilePath2);
+	await expect(
+		checkInZip(
+			exportFilePath2,
+			`${objectDefinition.externalReferenceCode}.json`
+		)
+	).resolves.toBe(false);
 
-	const json2 = JSON.parse(content2);
-
-	expect(json2.length).toBe(0);
-
-	await applicationsMenuPage.goToExport();
+	await globalMenuPage.goToApplications('Export');
 
 	const exportFilePath3 = await exportImportPage.export({
 		dateFilter: {rangeLast: '12 Hours'},
-		portletLabels: ['Tests 1 Items'],
+		portletLabels: [`${objectDefinition.name} 1 Items`],
 	});
 
-	const content3 = await readFileFromZip('C_Test.json', exportFilePath3);
+	const content3 = await readFileFromZip(
+		`${objectDefinition.externalReferenceCode}.json`,
+		exportFilePath3
+	);
 
 	const json3 = JSON.parse(content3);
 
@@ -346,28 +347,28 @@ test('can export custom object entries at instance level with date filter', asyn
 
 test('can export new default and custom task name', async ({
 	apiHelpers,
-	applicationsMenuPage,
 	exportImportPage,
+	globalMenuPage,
 }) => {
-	const objectActionAPIClient =
-		await apiHelpers.buildRestClient(ObjectDefinitionAPI);
+	const objectDefinition =
+		await apiHelpers.objectAdmin.postRandomObjectDefinition({
+			status: {code: 0},
+		});
 
-	const {body: objectDefinition} =
-		await objectActionAPIClient.postObjectDefinition(
-			objectDefitionRequestData()
-		);
-
-	apiHelpers.data.push({id: objectDefinition.id, type: 'objectDefinition'});
+	apiHelpers.data.push({
+		id: objectDefinition.id,
+		type: 'objectDefinition',
+	});
 
 	await apiHelpers.objectEntry.postObjectEntry(
-		{externalReferenceCode: '', name: 'test'},
-		'c/tests'
+		{externalReferenceCode: '', textField: objectDefinition.name},
+		`${normalizeRestPath(objectDefinition.restContextPath)}`
 	);
 
-	await applicationsMenuPage.goToExport();
+	await globalMenuPage.goToApplications('Export');
 
 	const defaultExportFilePath = await exportImportPage.export({
-		portletLabels: ['Tests 1 Items'],
+		portletLabels: [`${objectDefinition.name} 1 Items`],
 	});
 
 	expect(defaultExportFilePath).toMatch(
@@ -376,46 +377,49 @@ test('can export new default and custom task name', async ({
 
 	const taskName = 'CustomTaskName';
 
-	await applicationsMenuPage.goToExport();
+	await globalMenuPage.goToApplications('Export');
 
 	const customExportFilePath = await exportImportPage.export({
-		portletLabels: ['Tests 1 Items'],
+		portletLabels: [`${objectDefinition.name} 1 Items`],
 		taskName,
 	});
 
 	expect(customExportFilePath).toMatch(
-		new RegExp(`^${getTempDir()}${taskName}-`)
+		new RegExp(`^${getTempDir()}${taskName}\\.lar$`)
 	);
 });
 
 test('can export custom object entries at instance level with permissions', async ({
 	apiHelpers,
-	applicationsMenuPage,
 	exportImportPage,
+	globalMenuPage,
 }) => {
-	const objectActionAPIClient =
-		await apiHelpers.buildRestClient(ObjectDefinitionAPI);
+	const objectDefinition =
+		await apiHelpers.objectAdmin.postRandomObjectDefinition({
+			status: {code: 0},
+		});
 
-	const {body: objectDefinition} =
-		await objectActionAPIClient.postObjectDefinition(
-			objectDefitionRequestData()
-		);
-
-	apiHelpers.data.push({id: objectDefinition.id, type: 'objectDefinition'});
+	apiHelpers.data.push({
+		id: objectDefinition.id,
+		type: 'objectDefinition',
+	});
 
 	await apiHelpers.objectEntry.postObjectEntry(
-		{externalReferenceCode: '', name: 'test'},
-		'c/tests'
+		{externalReferenceCode: '', textField: objectDefinition.name},
+		`${normalizeRestPath(objectDefinition.restContextPath)}`
 	);
 
-	await applicationsMenuPage.goToExport();
+	await globalMenuPage.goToApplications('Export');
 
 	const exportFilePath = await exportImportPage.export({
 		includePermissions: true,
-		portletLabels: ['Tests 1 Items'],
+		portletLabels: [`${objectDefinition.name} 1 Items`],
 	});
 
-	const content = await readFileFromZip('C_Test.json', exportFilePath);
+	const content = await readFileFromZip(
+		`${objectDefinition.externalReferenceCode}.json`,
+		exportFilePath
+	);
 
 	const json = JSON.parse(content);
 
@@ -425,34 +429,40 @@ test('can export custom object entries at instance level with permissions', asyn
 
 test('can see corresponding elements at instance level', async ({
 	apiHelpers,
-	applicationsMenuPage,
 	companyExportImportPage,
+	globalMenuPage,
 	uiElementsPage,
 }) => {
-	const objectActionAPIClient =
-		await apiHelpers.buildRestClient(ObjectDefinitionAPI);
-	const {body: objectDefinition} =
-		await objectActionAPIClient.postObjectDefinition(
-			objectDefitionRequestData()
-		);
-	apiHelpers.data.push({id: objectDefinition.id, type: 'objectDefinition'});
+	const objectDefinition =
+		await apiHelpers.objectAdmin.postRandomObjectDefinition({
+			status: {code: 0},
+		});
 
-	await apiHelpers.objectEntry.postObjectEntry({name: 'test'}, 'c/tests');
+	apiHelpers.data.push({
+		id: objectDefinition.id,
+		type: 'objectDefinition',
+	});
 
-	await applicationsMenuPage.goToExport();
+	await apiHelpers.objectEntry.postObjectEntry(
+		{externalReferenceCode: '', textField: objectDefinition.name},
+		`${normalizeRestPath(objectDefinition.restContextPath)}`
+	);
+
+	await globalMenuPage.goToApplications('Export');
 	await uiElementsPage.clickNewButton();
 	await expect(
 		companyExportImportPage.page.getByText('Comments, Ratings')
 	).not.toBeVisible();
 
-	await expect(
-		companyExportImportPage.page.getByText('Tests 1 Items')
-	).not.toBeVisible();
+	await companyExportImportPage.exportImportPage.expectPortletCounts(
+		objectDefinition.name,
+		{counts: {items: 1}}
+	);
 
-	await companyExportImportPage.page.getByLabel('Tests').click();
-
 	await expect(
-		companyExportImportPage.page.getByText('C_Test Change')
+		companyExportImportPage.page.getByText(
+			`${objectDefinition.externalReferenceCode} Change`
+		)
 	).not.toBeVisible();
 
 	await expect(
@@ -463,8 +473,8 @@ test('can see corresponding elements at instance level', async ({
 test(
 	'can see the Deletions label at the instance level',
 	{tag: ['@LPD-37317']},
-	async ({applicationsMenuPage, exportImportPage, uiElementsPage}) => {
-		await applicationsMenuPage.goToExport();
+	async ({exportImportPage, globalMenuPage, uiElementsPage}) => {
+		await globalMenuPage.goToApplications('Export');
 		await uiElementsPage.clickNewButton();
 
 		const deletionsLabelText =
@@ -478,8 +488,8 @@ test(
 
 test('Can/not view Export menu item in Application menu depending on permissions', async ({
 	apiHelpers,
-	applicationsMenuPage,
 	exportImportPage,
+	globalMenuPage,
 	page,
 }) => {
 	const companyId = await page.evaluate(() => {
@@ -547,14 +557,18 @@ test('Can/not view Export menu item in Application menu depending on permissions
 
 	await performLogin(page, user1.alternateName);
 
-	await applicationsMenuPage.goToApplicationsMenu();
+	await globalMenuPage.goToApplications();
 
-	const exportUrl =
-		await applicationsMenuPage.exportMenuItem.getAttribute('href');
+	const exportMenuItem = page.getByRole('menuitem', {
+		exact: true,
+		name: 'Export',
+	});
 
-	await expect(applicationsMenuPage.exportMenuItem).toBeVisible();
+	const exportUrl = await exportMenuItem.getAttribute('href');
 
-	await applicationsMenuPage.goToExport();
+	await expect(exportMenuItem).toBeVisible();
+
+	await globalMenuPage.goToApplications('Export');
 
 	await expect(exportImportPage.newExportButton).toBeVisible();
 
@@ -562,11 +576,145 @@ test('Can/not view Export menu item in Application menu depending on permissions
 
 	await performLogin(page, user2.alternateName);
 
-	await expect(applicationsMenuPage.applicationsMenuTabButton).toBeHidden();
+	await expect(globalMenuPage.globalMenuButton).toBeHidden();
 
 	// Try to access the Export page directly using the stored URL
 
 	await page.goto(exportUrl);
 
 	await expect(exportImportPage.newExportButton).toBeHidden();
+});
+
+test(
+	'Reset date filters when exporting',
+	{tag: '@LPD-78925'},
+	async ({exportImportPage}) => {
+		await exportImportPage.goToExport();
+
+		await exportImportPage.newExportButton.click();
+
+		await exportImportPage.rangeDateRangeRadioButton.click();
+
+		const endDate = new Date('2026-01-02 08:00');
+
+		await exportImportPage.rangeDateRangeEndDate.fill(
+			toDateRangeDate(endDate)
+		);
+		await exportImportPage.rangeDateRangeEndTime.fill(
+			toDateRangeTime(endDate)
+		);
+
+		const startDate = new Date('2026-01-01 08:00');
+
+		await exportImportPage.rangeDateRangeStartDate.fill(
+			toDateRangeDate(startDate)
+		);
+		await exportImportPage.rangeDateRangeStartTime.fill(
+			toDateRangeTime(startDate)
+		);
+
+		await exportImportPage.refreshCountsLink.click();
+
+		await expect(exportImportPage.rangeDateRangeEndDate).toBeEnabled();
+		await expect(exportImportPage.rangeDateRangeEndDate).toHaveValue(
+			toDateRangeDate(endDate)
+		);
+		await expect(exportImportPage.rangeDateRangeStartDate).toBeEnabled();
+		await expect(exportImportPage.rangeDateRangeStartDate).toHaveValue(
+			toDateRangeDate(startDate)
+		);
+
+		await exportImportPage.allRadioButton.click();
+
+		await exportImportPage.refreshCountsLink.click();
+
+		await expect(exportImportPage.rangeDateRangeEndDate).toBeEnabled();
+		await expect(exportImportPage.rangeDateRangeEndDate).not.toHaveValue(
+			toDateRangeDate(endDate)
+		);
+		await expect(exportImportPage.rangeDateRangeStartDate).toBeEnabled();
+		await expect(exportImportPage.rangeDateRangeStartDate).not.toHaveValue(
+			toDateRangeDate(endDate)
+		);
+
+		await exportImportPage.rangeDateRangeRadioButton.click();
+
+		await expect(exportImportPage.rangeDateRangeEndDate).toBeEnabled();
+		await expect(exportImportPage.rangeDateRangeEndDate).not.toHaveValue(
+			toDateRangeDate(endDate)
+		);
+		await expect(exportImportPage.rangeDateRangeStartDate).toBeEnabled();
+		await expect(exportImportPage.rangeDateRangeStartDate).not.toHaveValue(
+			toDateRangeDate(endDate)
+		);
+	}
+);
+
+test('Can see deletion counts at instance level', async ({
+	apiHelpers,
+	companyExportImportPage,
+	globalMenuPage,
+	uiElementsPage,
+}) => {
+	const objectDefinition =
+		await apiHelpers.objectAdmin.postRandomObjectDefinition({
+			status: {code: 0},
+		});
+
+	apiHelpers.data.push({
+		id: objectDefinition.id,
+		type: 'objectDefinition',
+	});
+
+	const applicationName = `${normalizeRestPath(objectDefinition.restContextPath)}`;
+
+	const objectEntry1 = await apiHelpers.objectEntry.postObjectEntry(
+		{textField: objectDefinition.name},
+		applicationName
+	);
+
+	const objectEntry2 = await apiHelpers.objectEntry.postObjectEntry(
+		{textField: objectDefinition.name},
+		applicationName
+	);
+
+	await globalMenuPage.goToApplications('Export');
+	await uiElementsPage.clickNewButton();
+
+	await companyExportImportPage.exportImportPage.deletionsLabel.check();
+
+	await companyExportImportPage.exportImportPage.expectPortletCounts(
+		objectDefinition.name,
+		{counts: {items: 2}}
+	);
+
+	await apiHelpers.objectEntry.deleteObjectEntry(
+		applicationName,
+		String(objectEntry1.id)
+	);
+
+	await companyExportImportPage.exportImportPage.refreshCountsLink.click();
+
+	await companyExportImportPage.exportImportPage.expectPortletCounts(
+		objectDefinition.name,
+		{counts: {deletions: 1, items: 1}}
+	);
+
+	await apiHelpers.objectEntry.deleteObjectEntry(
+		applicationName,
+		String(objectEntry2.id)
+	);
+
+	await companyExportImportPage.exportImportPage.refreshCountsLink.click();
+
+	await companyExportImportPage.exportImportPage.expectPortletCounts(
+		objectDefinition.name,
+		{counts: {deletions: 2}}
+	);
+
+	await companyExportImportPage.exportImportPage.deletionsLabel.uncheck();
+
+	await companyExportImportPage.exportImportPage.expectPortletDeletionsHidden(
+		objectDefinition.name
+	);
 });

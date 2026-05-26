@@ -1,6 +1,7 @@
 @component-name = "portal-headless"
 definition {
 
+	property browser.chrome.version = "139.0";
 	property ci.retries.disabled = "true";
 	property portal.release = "true";
 	property portal.upstream = "true";
@@ -551,9 +552,7 @@ definition {
 		property custom.properties = "feature.flag.LPS-174417=true";
 
 		task ("Given: Add new site template and new site based on this site template") {
-			SiteTemplates.addCP(
-				disablePropagation = "true",
-				siteTemplateName = "Site Template Name");
+			SiteTemplates.addCP(siteTemplateName = "Site Template Name");
 
 			Site.openSitesAdmin();
 
@@ -728,9 +727,7 @@ definition {
 		property custom.properties = "feature.flag.LPS-174417=true";
 
 		task ("Given: Add new site base on template") {
-			SiteTemplates.addCP(
-				disablePropagation = "true",
-				siteTemplateName = "Site Template Name");
+			SiteTemplates.addCP(siteTemplateName = "Site Template Name");
 
 			Site.openSitesAdmin();
 
@@ -787,9 +784,7 @@ definition {
 		property custom.properties = "feature.flag.LPS-174417=true";
 
 		task ("Given: Add new site based on the new site template and disable poropagation") {
-			SiteTemplates.addCP(
-				disablePropagation = "true",
-				siteTemplateName = "Site Template Name");
+			SiteTemplates.addCP(siteTemplateName = "Site Template Name");
 
 			Site.openSitesAdmin();
 
@@ -890,9 +885,7 @@ definition {
 		property custom.properties = "feature.flag.LPS-174417=true";
 
 		task ("Given: Add new site based on the new site template and disable poropagation") {
-			SiteTemplates.addCP(
-				disablePropagation = "true",
-				siteTemplateName = "Site Template Name");
+			SiteTemplates.addCP(siteTemplateName = "Site Template Name");
 
 			Site.openSitesAdmin();
 
@@ -996,9 +989,7 @@ definition {
 		property custom.properties = "feature.flag.LPS-174417=true";
 
 		task ("Given: Add new site template and new site based on this site template") {
-			SiteTemplates.addCP(
-				disablePropagation = "true",
-				siteTemplateName = "Site Template Name");
+			SiteTemplates.addCP(siteTemplateName = "Site Template Name");
 
 			Site.openSitesAdmin();
 
@@ -1408,9 +1399,7 @@ definition {
 		property custom.properties = "feature.flag.LPS-174417=true";
 
 		task ("Given: Add new site based on the new site template and disable poropagation") {
-			SiteTemplates.addCP(
-				disablePropagation = "true",
-				siteTemplateName = "Site Template Name");
+			SiteTemplates.addCP(siteTemplateName = "Site Template Name");
 
 			Site.openSitesAdmin();
 

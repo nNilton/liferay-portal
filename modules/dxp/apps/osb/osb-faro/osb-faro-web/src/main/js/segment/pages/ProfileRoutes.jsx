@@ -29,7 +29,9 @@ import {formatUTCDate} from 'shared/util/date';
 import {getMatchedRoute, Routes, SEGMENTS, toRoute} from 'shared/util/router';
 import {Segment} from 'shared/util/records';
 import {SegmentStates, SegmentTypes} from 'shared/util/constants';
+import {sub} from 'shared/util/lang';
 import {Switch, useParams} from 'react-router-dom';
+import {Text} from '@clayui/core';
 import {useRequest} from 'shared/hooks/useRequest';
 
 const Overview = lazy(() =>
@@ -161,6 +163,11 @@ export const SegmentProfileRoutes = () => {
 	};
 
 	const isBatch = segmentDetails.segmentType === SegmentTypes.Batch;
+	const lastUpdateMessage = sub(Liferay.Language.get('last-update-x'), [
+		formatUTCDate(segmentDetails.dateModified, 'MMM DD, YYYY hh:mm a')
+			.replace('am', 'a.m.')
+			.replace('pm', 'p.m.')
+	]);
 
 	return (
 		<BasePage
@@ -188,21 +195,14 @@ export const SegmentProfileRoutes = () => {
 				<BasePage.Row>
 					<BasePage.Header.TitleSection
 						className='mb-3'
-						subtitle={
-							!isBatch &&
-							`Last update: ${formatUTCDate(
-								segmentDetails.dateModified,
-								'MMM DD, YYYY hh:mm a'
-							)
-								.replace('am', 'a.m.')
-								.replace('pm', 'p.m.')}`
-						}
+						subtitle={segment.externalReferenceCode}
 						title={title}
 					>
 						<Label display='secondary' size='lg' uppercase>
 							{SEGMENTS_LANGUAGE_MAP[segmentDetails.segmentType]}
 						</Label>
 					</BasePage.Header.TitleSection>
+
 					{isBatch && (
 						<BasePage.Header.Section>
 							<BasePage.Header.PageActions
@@ -228,6 +228,7 @@ export const SegmentProfileRoutes = () => {
 						</BasePage.Header.Section>
 					)}
 				</BasePage.Row>
+
 				{isBatch && (
 					<BasePage.Header.NavBar
 						items={NAV_ITEMS}
@@ -236,18 +237,19 @@ export const SegmentProfileRoutes = () => {
 				)}
 			</BasePage.Header>
 
-			{isBatch && getMatchedRoute(NAV_ITEMS) === Routes.CONTACTS_SEGMENT && (
-				<BasePage.SubHeader>
-					<div className='d-flex justify-content-end w-100'>
-						<DownloadPDFReport
-							disabled={false}
-							showDateRange={false}
-							subtitle={selectedChannel?.name}
-							title={title}
-						/>
-					</div>
-				</BasePage.SubHeader>
-			)}
+			{isBatch &&
+				getMatchedRoute(NAV_ITEMS) === Routes.CONTACTS_SEGMENT && (
+					<BasePage.SubHeader>
+						<div className='d-flex justify-content-end w-100'>
+							<DownloadPDFReport
+								disabled={false}
+								showDateRange={false}
+								subtitle={selectedChannel?.name}
+								title={title}
+							/>
+						</div>
+					</BasePage.SubHeader>
+				)}
 
 			{isBatch &&
 				getMatchedRoute(NAV_ITEMS) ===
@@ -268,10 +270,18 @@ export const SegmentProfileRoutes = () => {
 
 			{!isBatch && (
 				<BasePage.SubHeader>
-					<div className='d-flex justify-content-end w-100'>
+					<div className='align-items-center d-flex justify-content-end w-100'>
+						<Text color='secondary' size={3}>
+							{lastUpdateMessage}
+						</Text>
+
+						<span className='mr-2 ml-3'>{'|'}</span>
+
 						<DownloadReportDropdown
 							className='button-root'
+							label={Liferay.Language.get('real-time-segment')}
 							segmentId={segment.id}
+							subtitle={lastUpdateMessage}
 							title={segmentDetails.name}
 						/>
 

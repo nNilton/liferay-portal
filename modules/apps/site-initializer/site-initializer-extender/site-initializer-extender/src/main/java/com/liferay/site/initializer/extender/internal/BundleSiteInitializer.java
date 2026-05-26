@@ -28,6 +28,7 @@ import com.liferay.asset.list.model.AssetListEntry;
 import com.liferay.asset.list.service.AssetListEntryLocalService;
 import com.liferay.asset.list.util.comparator.ClassNameModelResourceComparator;
 import com.liferay.asset.util.AssetRendererFactoryWrapper;
+import com.liferay.batch.engine.unit.BatchEngineUnitThreadLocal;
 import com.liferay.blogs.model.BlogsEntry;
 import com.liferay.client.extension.constants.ClientExtensionEntryConstants;
 import com.liferay.client.extension.service.ClientExtensionEntryLocalService;
@@ -193,6 +194,7 @@ import com.liferay.portal.kernel.util.NaturalOrderStringComparator;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PortletKeys;
 import com.liferay.portal.kernel.util.ReleaseInfo;
+import com.liferay.portal.kernel.util.ScopeUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.TextFormatter;
@@ -260,6 +262,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
 import org.osgi.framework.wiring.BundleWiring;
 
 /**
@@ -536,6 +539,11 @@ public class BundleSiteInitializer implements SiteInitializer {
 		}
 
 		try {
+			BundleContext bundleContext = _siteBundle.getBundleContext();
+
+			BatchEngineUnitThreadLocal.setFileName(
+				String.valueOf(bundleContext.getBundle()));
+
 			_initialize(groupId);
 		}
 		catch (Exception exception) {
@@ -544,6 +552,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 			throw new InitializationException(exception);
 		}
 		finally {
+			BatchEngineUnitThreadLocal.setFileName(StringPool.BLANK);
 			ServiceContextThreadLocal.popServiceContext();
 		}
 
@@ -654,7 +663,11 @@ public class BundleSiteInitializer implements SiteInitializer {
 			serviceContext, _servletContext);
 	}
 
-	private void _addAccounts(ServiceContext serviceContext) throws Exception {
+	private void _addAccounts(
+			ServiceContext serviceContext,
+			Map<String, String> stringUtilReplaceValues)
+		throws Exception {
+
 		String json = SiteInitializerUtil.read(
 			"/site-initializer/accounts.json", _servletContext);
 
@@ -680,8 +693,21 @@ public class BundleSiteInitializer implements SiteInitializer {
 				continue;
 			}
 
-			accountResource.putAccountByExternalReferenceCode(
+			account = accountResource.putAccountByExternalReferenceCode(
 				account.getExternalReferenceCode(), account);
+
+			AccountEntry accountEntry =
+				_accountEntryLocalService.
+					getAccountEntryByExternalReferenceCode(
+						account.getExternalReferenceCode(),
+						serviceContext.getCompanyId());
+
+			Group group = _groupLocalService.getGroup(
+				accountEntry.getAccountEntryGroupId());
+
+			stringUtilReplaceValues.put(
+				"ACCOUNT_ENTRY_GROUP_ERC:" + account.getExternalReferenceCode(),
+				group.getExternalReferenceCode());
 		}
 	}
 
@@ -1017,21 +1043,23 @@ public class BundleSiteInitializer implements SiteInitializer {
 				Keyword existingKeyword = null;
 
 				if (groupId != 0) {
-					existingKeyword =
+					Page<Keyword> page =
 						keywordResource.getAssetLibraryKeywordsPage(
 							groupId, null, null,
 							keywordResource.toFilter(
 								"name eq '" + keyword.getName() + "'"),
-							null, null
-						).fetchFirstItem();
+							null, null);
+
+					existingKeyword = page.fetchFirstItem();
 				}
 				else {
-					existingKeyword = keywordResource.getSiteKeywordsPage(
+					Page<Keyword> page = keywordResource.getSiteKeywordsPage(
 						groupId, null, null,
 						keywordResource.toFilter(
 							"name eq '" + keyword.getName() + "'"),
-						null, null
-					).fetchFirstItem();
+						null, null);
+
+					existingKeyword = page.fetchFirstItem();
 
 					groupId = serviceContext.getScopeGroupId();
 				}
@@ -1365,15 +1393,20 @@ public class BundleSiteInitializer implements SiteInitializer {
 				accountEntryRestrictedObjectDefinitions.entrySet()) {
 
 			com.liferay.object.model.ObjectDefinition
-				serviceBuilderObjectDefinition =
-					_objectDefinitionLocalService.fetchObjectDefinition(
-						serviceContext.getCompanyId(), "C_" + entry.getKey());
+				serviceBuilderObjectDefinition = _fetchObjectDefinition(
+					serviceContext.getCompanyId(), entry.getKey());
+
+			if (serviceBuilderObjectDefinition == null) {
+				continue;
+			}
+
+			ObjectDefinition objectDefinition = entry.getValue();
 
 			com.liferay.object.model.ObjectField serviceBuilderObjectField =
 				_objectFieldLocalService.fetchObjectField(
 					serviceBuilderObjectDefinition.getObjectDefinitionId(),
-					entry.getValue(
-					).getAccountEntryRestrictedObjectFieldName());
+					objectDefinition.
+						getAccountEntryRestrictedObjectFieldName());
 
 			if (serviceBuilderObjectDefinition.isDefaultStorageType()) {
 				_objectDefinitionLocalService.enableAccountEntryRestricted(
@@ -1493,6 +1526,9 @@ public class BundleSiteInitializer implements SiteInitializer {
 		).put(
 			"classNameIds", StringUtil.merge(classNameIdStrings, ",")
 		).put(
+			"classTypeIds" + assetRendererFactoryName,
+			assetListJSONObject.getString("assetEntrySubtypeId")
+		).put(
 			"groupIds", String.valueOf(serviceContext.getScopeGroupId())
 		).build();
 
@@ -1537,14 +1573,98 @@ public class BundleSiteInitializer implements SiteInitializer {
 		}
 
 		if (assetListEntry == null) {
-			_assetListEntryLocalService.addDynamicAssetListEntry(
-				assetListJSONObject.getString("externalReferenceCode"),
-				serviceContext.getUserId(), serviceContext.getScopeGroupId(),
-				assetListJSONObject.getString("title"),
-				UnicodePropertiesBuilder.create(
-					map, true
-				).buildString(),
-				serviceContext);
+			String type = assetListJSONObject.getString("type");
+
+			if (StringUtil.equals(type, "manual")) {
+				List<Long> assetEntryIds = new ArrayList<>();
+				Set<Long> assetEntryClassNameIds = new HashSet<>();
+				Map<String, Set<Long>> classTypeIdsMap = new HashMap<>();
+
+				Object[] assetListEntryObjects = JSONUtil.toObjectArray(
+					assetListJSONObject.getJSONArray("assetListEntries"));
+
+				for (Object assetListEntryObject : assetListEntryObjects) {
+					JSONObject assetListEntryJSONObject =
+						(JSONObject)assetListEntryObject;
+
+					AssetEntry assetEntry = _assetEntryLocalService.fetchEntry(
+						_portal.getClassNameId(
+							assetListEntryJSONObject.getString("className")),
+						assetListEntryJSONObject.getLong("classPK"));
+
+					if (assetEntry == null) {
+						continue;
+					}
+
+					AssetRendererFactory<?> assetRendererFactory =
+						AssetRendererFactoryRegistryUtil.
+							getAssetRendererFactoryByClassNameId(
+								assetEntry.getClassNameId());
+
+					if ((assetRendererFactory == null) ||
+						!assetRendererFactory.isSelectable()) {
+
+						continue;
+					}
+
+					assetEntryIds.add(assetEntry.getEntryId());
+					assetEntryClassNameIds.add(assetEntry.getClassNameId());
+
+					if (!assetRendererFactory.isSupportsClassTypes()) {
+						continue;
+					}
+
+					String manualAssetRendererFactoryName =
+						_getAssetRendererFactoryName(
+							assetRendererFactory.getClassName());
+
+					classTypeIdsMap.computeIfAbsent(
+						manualAssetRendererFactoryName, key -> new HashSet<>()
+					).add(
+						assetEntry.getClassTypeId()
+					);
+				}
+
+				Map<String, String> typeSettings = new HashMap<>(map);
+
+				typeSettings.put("anyAssetType", String.valueOf(Boolean.FALSE));
+				typeSettings.put(
+					"classNameIds", StringUtil.merge(assetEntryClassNameIds));
+				typeSettings.put(
+					"groupIds",
+					String.valueOf(serviceContext.getScopeGroupId()));
+
+				classTypeIdsMap.forEach(
+					(manualAssetRendererFactoryName, assetEntryClassTypeId) ->
+						typeSettings.put(
+							"classTypeIds" + manualAssetRendererFactoryName,
+							StringUtil.merge(assetEntryClassTypeId)));
+
+				assetListEntry =
+					_assetListEntryLocalService.addManualAssetListEntry(
+						assetListJSONObject.getString("externalReferenceCode"),
+						serviceContext.getUserId(),
+						serviceContext.getScopeGroupId(),
+						assetListJSONObject.getString("title"),
+						ArrayUtil.toLongArray(assetEntryIds), serviceContext);
+
+				_assetListEntryLocalService.updateAssetListEntryTypeSettings(
+					assetListEntry.getAssetListEntryId(), 0,
+					UnicodePropertiesBuilder.create(
+						typeSettings, true
+					).buildString());
+			}
+			else {
+				_assetListEntryLocalService.addDynamicAssetListEntry(
+					assetListJSONObject.getString("externalReferenceCode"),
+					serviceContext.getUserId(),
+					serviceContext.getScopeGroupId(),
+					assetListJSONObject.getString("title"),
+					UnicodePropertiesBuilder.create(
+						map, true
+					).buildString(),
+					serviceContext);
+			}
 		}
 		else {
 			_assetListEntryLocalService.updateAssetListEntry(
@@ -2388,6 +2508,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 					FileUtil.getShortFileName(resourcePath));
 			}
 
+			articleId = StringUtil.toUpperCase(StringUtil.trim(articleId));
+
 			Map<Locale, String> titleMap = Collections.singletonMap(
 				LocaleUtil.getSiteDefault(), jsonObject.getString("name"));
 
@@ -2475,6 +2597,10 @@ public class BundleSiteInitializer implements SiteInitializer {
 							JournalArticle.class.getName());
 					}
 				});
+
+			stringUtilReplaceValues.put(
+				"JOURNAL_ARTICLE_ID:" + finalJournalArticle.getArticleId(),
+				String.valueOf(finalJournalArticle.getResourcePrimKey()));
 		}
 	}
 
@@ -3251,9 +3377,9 @@ public class BundleSiteInitializer implements SiteInitializer {
 			JSONObject jsonObject = _jsonFactory.createJSONObject(json);
 
 			com.liferay.object.model.ObjectDefinition objectDefinition =
-				_objectDefinitionLocalService.fetchObjectDefinition(
+				_fetchObjectDefinition(
 					serviceContext.getCompanyId(),
-					"C_" + jsonObject.getString("objectDefinitionName"));
+					jsonObject.getString("objectDefinitionName"));
 
 			if (objectDefinition == null) {
 				continue;
@@ -3300,6 +3426,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 					continue;
 				}
 
+				String objectDefinitionName = objectDefinition.getName();
 				com.liferay.object.model.ObjectEntry serviceBuilderObjectEntry =
 					_objectEntryLocalService.getObjectEntry(
 						objectEntry.getId());
@@ -3314,7 +3441,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 								serviceBuilderObjectEntry.
 									getExternalReferenceCode();
 							title = StringBundler.concat(
-								objectDefinition.getName(), StringPool.SPACE,
+								objectDefinitionName, StringPool.SPACE,
 								serviceBuilderObjectEntry.getObjectEntryId());
 						}
 					});
@@ -3837,6 +3964,16 @@ public class BundleSiteInitializer implements SiteInitializer {
 			stringUtilReplaceValues.put(
 				"SEGMENTS_ENTRY_ID:" + segmentsEntry.getSegmentsEntryKey(),
 				String.valueOf(segmentsEntry.getSegmentsEntryId()));
+			stringUtilReplaceValues.put(
+				"SEGMENTS_ENTRY_ERC:" + segmentsEntry.getSegmentsEntryKey(),
+				segmentsEntry.getExternalReferenceCode());
+			stringUtilReplaceValues.put(
+				"SEGMENTS_ENTRY_SCOPE_ERC:" +
+					segmentsEntry.getSegmentsEntryKey(),
+				GetterUtil.getString(
+					ScopeUtil.getItemScopeExternalReferenceCode(
+						segmentsEntry.getGroupId(),
+						serviceContext.getScopeGroupId())));
 		}
 	}
 
@@ -4491,7 +4628,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 				_segmentsExperienceLocalService.appendSegmentsExperience(
 					serviceContext.getUserId(),
 					serviceContext.getScopeGroupId(),
-					jsonObject.getLong("segmentsEntryId"),
+					jsonObject.getString("segmentsEntryERC"),
+					jsonObject.getString("segmentsEntryScopeERC"),
 					draftLayout.getPlid(),
 					SiteInitializerUtil.toMap(
 						jsonObject.getString("name_i18n")),
@@ -4601,8 +4739,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 			}
 
 			_configurationProvider.saveGroupConfiguration(
-				serviceContext.getScopeGroupId(), jsonObject.getString("pid"),
-				properties);
+				serviceContext.getCompanyId(), serviceContext.getScopeGroupId(),
+				jsonObject.getString("pid"), properties);
 		}
 	}
 
@@ -4904,11 +5042,13 @@ public class BundleSiteInitializer implements SiteInitializer {
 			).build();
 
 		for (String resourcePath : resourcePaths) {
+			String json = _replace(
+				SiteInitializerUtil.read(
+					resourcePath + "workflow-definition.json", _servletContext),
+				stringUtilReplaceValues);
+
 			JSONObject workflowDefinitionJSONObject =
-				_jsonFactory.createJSONObject(
-					SiteInitializerUtil.read(
-						resourcePath + "workflow-definition.json",
-						_servletContext));
+				_jsonFactory.createJSONObject(json);
 
 			workflowDefinitionJSONObject.put(
 				"content",
@@ -5059,7 +5199,8 @@ public class BundleSiteInitializer implements SiteInitializer {
 		R addAccountGroupsR = new R(
 			"addAccountGroups", () -> _addAccountGroups(serviceContext));
 		R addAccountsR = new R(
-			"addAccounts", () -> _addAccounts(serviceContext));
+			"addAccounts",
+			() -> _addAccounts(serviceContext, stringUtilReplaceValues));
 		R addAccountsOrganizationsR = new R(
 			"addAccountsOrganizations",
 			() -> _addAccountsOrganizations(serviceContext));
@@ -5252,7 +5393,11 @@ public class BundleSiteInitializer implements SiteInitializer {
 			addAccountsR, _dependsOn(addOrUpdateExpandoColumnsR)
 		).put(
 			addAssetListEntriesR,
-			_dependsOn(addOrUpdateDDMStructuresR, publishObjectDefinitionsR)
+			_dependsOn(
+				addOrUpdateBlogPostingsR, addOrUpdateDDMStructuresR,
+				addOrUpdateDocumentsR, addOrUpdateJournalArticlesR,
+				addOrUpdateKnowledgeBaseArticlesR, addOrUpdateObjectEntriesR,
+				publishObjectDefinitionsR)
 		).put(
 			addCPDefinitionsR,
 			_dependsOn(addOrUpdateLayoutsR, addOrUpdateObjectEntriesR)
@@ -5384,7 +5529,7 @@ public class BundleSiteInitializer implements SiteInitializer {
 		).put(
 			addUserRolesR, _dependsOn(addOrUpdateRolesR, addUserAccountsR)
 		).put(
-			addWorkflowDefinitionsR, _dependsOn(addOrUpdateRolesR)
+			addWorkflowDefinitionsR, _dependsOn(addAccountsR, addOrUpdateRolesR)
 		).put(
 			publishObjectDefinitionsR, _dependsOn(addOrUpdateObjectFieldsR)
 		).put(
@@ -5396,6 +5541,22 @@ public class BundleSiteInitializer implements SiteInitializer {
 
 	private List<R> _dependsOn(R... rArray) {
 		return ListUtil.fromArray(rArray);
+	}
+
+	private com.liferay.object.model.ObjectDefinition _fetchObjectDefinition(
+		long companyId, String name) {
+
+		com.liferay.object.model.ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.fetchObjectDefinition(
+				companyId, "C_" + name);
+
+		if (objectDefinition == null) {
+			objectDefinition =
+				_objectDefinitionLocalService.fetchObjectDefinition(
+					companyId, name);
+		}
+
+		return objectDefinition;
 	}
 
 	private long[] _getAssetCategoryIds(

@@ -7,7 +7,7 @@ import Button from '@clayui/button';
 
 import BackLink from '../../../../components/BackLink';
 import i18n from '../../../../i18n';
-import PaymentStatus from '../PaymentStatus/PaymentStatus';
+import PaymentStatus from '../PaymentStatus/PaymentStatusBadge';
 
 type DetailsHeaderProps = {
 	backLink: string;
@@ -31,7 +31,7 @@ const DetailsHeader = ({
 					{i18n.translate('back-to-last-transaction')}
 				</BackLink>
 
-				<h2>{title}</h2>
+				<h2 className="mt-2">{title}</h2>
 
 				<PaymentStatus paymentStatus={paymentStatusCode} />
 			</div>

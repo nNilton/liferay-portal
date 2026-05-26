@@ -6,7 +6,6 @@
 import {expect, mergeTests} from '@playwright/test';
 import path from 'node:path';
 
-import {applicationsMenuPageTest} from '../../../../fixtures/applicationsMenuPageTest';
 import {commercePagesTest} from '../../../../fixtures/commercePagesTest';
 import {dataApiHelpersTest} from '../../../../fixtures/dataApiHelpersTest';
 import {displayPageTemplatesPagesTest} from '../../../../fixtures/displayPageTemplatesPagesTest';
@@ -31,13 +30,11 @@ import {
 } from '../../utils/commerce';
 
 export const test = mergeTests(
-	applicationsMenuPageTest,
 	commercePagesTest,
 	dataApiHelpersTest,
 	displayPageTemplatesPagesTest,
 	featureFlagsTest({
 		'LPD-20379': {enabled: true},
-		'LPD-58472': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
 	isolatedSiteTest,
@@ -236,7 +233,6 @@ test(
 
 			const [fileChooser] = await Promise.all([
 				page.waitForEvent('filechooser'),
-
 				dropZoneArea.click(),
 			]);
 
@@ -299,7 +295,7 @@ test(
 				await expect(
 					(
 						await commerceThemeClassicOrdersPage.orderItemsTableRow(
-							3,
+							4,
 							productWithUploadOption.productOptions[0].name[
 								'en_US'
 							]
@@ -447,13 +443,13 @@ test(
 						scope: 1,
 					},
 					{
-						actionIds: ['MANAGE_INVENTORY'],
+						actionIds: ['VIEW_INVENTORIES'],
 						primaryKey: companyId,
 						resourceName: 'com.liferay.commerce.inventory',
 						scope: 1,
 					},
 					{
-						actionIds: ['VIEW'],
+						actionIds: ['DELETE', 'PERMISSIONS', 'UPDATE', 'VIEW'],
 						primaryKey: companyId,
 						resourceName:
 							'com.liferay.commerce.inventory.model.CommerceInventoryWarehouse',
@@ -479,7 +475,8 @@ test(
 					},
 					{
 						actionIds: [
-							'MANAGE_COMMERCE_PRODUCT_MEASUREMENT_UNITS',
+							'ADD_COMMERCE_PRODUCT_MEASUREMENT_UNIT',
+							'VIEW_COMMERCE_PRODUCT_MEASUREMENT_UNITS',
 						],
 						primaryKey: companyId,
 						resourceName: 'com.liferay.commerce.product',
@@ -487,8 +484,9 @@ test(
 					},
 					{
 						actionIds: [
+							'ADD_COMMERCE_SHIPMENT',
 							'MANAGE_ALL_ACCOUNTS',
-							'MANAGE_COMMERCE_SHIPMENTS',
+							'VIEW_COMMERCE_SHIPMENTS',
 						],
 						primaryKey: companyId,
 						resourceName: 'com.liferay.commerce.shipment',
@@ -511,6 +509,13 @@ test(
 						primaryKey: companyId,
 						resourceName:
 							'com.liferay.commerce.product.model.CommerceChannel',
+						scope: 1,
+					},
+					{
+						actionIds: ['VIEW'],
+						primaryKey: companyId,
+						resourceName:
+							'com.liferay.commerce.product.model.CPMeasurementUnit',
 						scope: 1,
 					},
 				],
@@ -833,7 +838,7 @@ test(
 
 				const optionValuesColumn = (
 					await commerceThemeClassicOrdersPage.orderItemsTableRow(
-						2,
+						3,
 						'option-checkbox-key'
 					)
 				).column;
@@ -847,7 +852,7 @@ test(
 				await expect(
 					(
 						await commerceThemeClassicOrdersPage.orderItemsTableRow(
-							3,
+							4,
 							product1.name['en_US'],
 							true
 						)
@@ -1412,7 +1417,7 @@ test(
 				await expect(
 					(
 						await commerceThemeClassicOrdersPage.orderItemsTableRow(
-							3,
+							4,
 							product2.name['en_US'],
 							true
 						)

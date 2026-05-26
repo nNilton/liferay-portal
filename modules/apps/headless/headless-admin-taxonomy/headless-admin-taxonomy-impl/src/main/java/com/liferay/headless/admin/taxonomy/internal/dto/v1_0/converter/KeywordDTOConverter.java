@@ -62,6 +62,15 @@ public class KeywordDTOConverter implements DTOConverter<AssetTag, Keyword> {
 
 							return new AssetLibrary() {
 								{
+									setExternalReferenceCode(
+										() -> {
+											if (depotEntryGroup == null) {
+												return null;
+											}
+
+											return depotEntryGroup.
+												getExternalReferenceCode();
+										});
 									setId(assetTagGroupRel::getGroupId);
 									setName(
 										() -> {
@@ -84,6 +93,15 @@ public class KeywordDTOConverter implements DTOConverter<AssetTag, Keyword> {
 												dtoConverterContext.
 													isAcceptAllLanguages(),
 												depotEntryGroup.getNameMap());
+										});
+									setScopeKey(
+										() -> {
+											if (depotEntryGroup == null) {
+												return null;
+											}
+
+											return depotEntryGroup.
+												getGroupKey();
 										});
 								}
 							};

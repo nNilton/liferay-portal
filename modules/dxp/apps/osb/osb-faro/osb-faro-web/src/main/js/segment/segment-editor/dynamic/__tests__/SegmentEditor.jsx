@@ -3,7 +3,13 @@ import mockStore from 'test/mock-store';
 import React from 'react';
 import SegmentEditor, {validateSegmentEditor} from '../index';
 import {BrowserRouter} from 'react-router-dom';
-import {cleanup, render} from '@testing-library/react';
+import {
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+	waitFor
+} from '@testing-library/react';
 import {DndProvider} from 'react-dnd';
 import {HTML5Backend} from 'react-dnd-html5-backend';
 import {Provider} from 'react-redux';
@@ -11,6 +17,10 @@ import {Segment} from 'shared/util/records';
 import {SegmentStates} from 'shared/util/constants';
 
 jest.mock('segment/segment-editor/dynamic/criteria-sidebar/index');
+
+jest.mock('uuid', () => ({
+	v4: () => '00000000-0000-0000-0000-000000000000'
+}));
 
 jest.unmock('react-dom');
 
@@ -36,7 +46,7 @@ describe('SegmentEditor', () => {
 	});
 
 	it('should render with error message', () => {
-		const {getByText} = render(
+		render(
 			<Provider store={mockStore()}>
 				<BrowserRouter>
 					<DndProvider backend={HTML5Backend}>
@@ -58,7 +68,111 @@ describe('SegmentEditor', () => {
 			</Provider>
 		);
 
-		expect(getByText('Error:')).not.toBeNull();
+		expect(screen.getByText('Error:')).not.toBeNull();
+	});
+
+	it('renders the realtime segment with sequential card disabled', () => {
+		render(
+			<Provider store={mockStore()}>
+				<BrowserRouter>
+					<DndProvider backend={HTML5Backend}>
+						<SegmentEditor
+							channelId='321'
+							groupId='23'
+							type='REAL_TIME'
+						/>
+					</DndProvider>
+				</BrowserRouter>
+			</Provider>
+		);
+
+		expect(screen.getByText('Order')).toBeInTheDocument();
+		expect(screen.getByTestId('toggle-switch-input')).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				'When this is enabled, the second event must come after the first event, with any number of events in between. When this is disabled, events can be completed in any order.'
+			)
+		).toBeInTheDocument();
+
+		expect(
+			screen.getByText(
+				'Drag and drop criterion from the right to add rules.'
+			)
+		).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				'Drag and drop over an existing criteria to form groups.'
+			)
+		).toBeInTheDocument();
+	});
+
+	it('renders the realtime segment with sequential card and user enable it', async () => {
+		render(
+			<Provider store={mockStore()}>
+				<BrowserRouter>
+					<DndProvider backend={HTML5Backend}>
+						<SegmentEditor
+							channelId='321'
+							groupId='23'
+							type='REAL_TIME'
+						/>
+					</DndProvider>
+				</BrowserRouter>
+			</Provider>
+		);
+
+		expect(screen.getByText('Order')).toBeInTheDocument();
+		expect(screen.getByTestId('toggle-switch-input')).toBeInTheDocument();
+
+		expect(
+			screen.getByText(
+				'When this is enabled, the second event must come after the first event, with any number of events in between. When this is disabled, events can be completed in any order.'
+			)
+		).toBeInTheDocument();
+
+		fireEvent.click(screen.getByTestId('toggle-switch-input'));
+
+		await waitFor(() => {
+			expect(
+				screen.queryByText(
+					'Drag and drop criterion from the right to add rules.'
+				)
+			).toBeInTheDocument();
+
+			expect(
+				screen.queryByText(
+					'Drag and drop over an existing criteria to form groups.'
+				)
+			).not.toBeInTheDocument();
+		});
+	});
+
+	it('shows the Segment ERC popover with the description and the slug rule', () => {
+		render(
+			<Provider store={mockStore()}>
+				<BrowserRouter>
+					<DndProvider backend={HTML5Backend}>
+						<SegmentEditor
+							channelId='321'
+							groupId='23'
+							type='BATCH'
+						/>
+					</DndProvider>
+				</BrowserRouter>
+			</Provider>
+		);
+
+		expect(
+			screen.getByText(
+				'Unique key for referencing the segment definition.'
+			)
+		).toBeInTheDocument();
+
+		expect(
+			screen.getByText(
+				'ERC must contain only lowercase letters, numbers, hyphens, and underscores.'
+			)
+		).toBeInTheDocument();
 	});
 });
 

@@ -167,8 +167,9 @@ public class CustomFDSSerializer
 			tokenResolutionsJSONObject
 		);
 
-		List<ObjectEntry> objectEntries = getSortedRelatedObjectEntries(
-			fdsName, httpServletRequest, (Predicate)null, "tableSectionsOrder",
+		List<ObjectEntry> objectEntries = getRelatedObjectEntries(
+			fdsName, httpServletRequest, (Predicate)null,
+			"dataSetToDataSetCardsSections", "dataSetToDataSetListSections",
 			"dataSetToDataSetTableSections");
 
 		if (objectEntries == null) {
@@ -320,6 +321,16 @@ public class CustomFDSSerializer
 	}
 
 	@Override
+	public JSONArray serializeGroupedFilters(
+		String fdsName, HttpServletRequest httpServletRequest) {
+
+		// TODO LPD-70111
+
+		return _systemFDSSerializer.serializeGroupedFilters(
+			fdsName, httpServletRequest);
+	}
+
+	@Override
 	public boolean serializeHideManagementBarInEmptyState(
 		String fdsName, HttpServletRequest httpServletRequest) {
 
@@ -429,7 +440,7 @@ public class CustomFDSSerializer
 			() -> {
 				String[] listOfItemsPerPage = StringUtil.split(
 					String.valueOf(properties.get("listOfItemsPerPage")),
-					StringPool.COMMA_AND_SPACE);
+					StringPool.COMMA);
 
 				if (ArrayUtil.isNotEmpty(listOfItemsPerPage)) {
 					return JSONUtil.toJSONArray(
@@ -472,6 +483,16 @@ public class CustomFDSSerializer
 			fdsName, httpServletRequest);
 
 		return String.valueOf(properties.get("propsTransformer"));
+	}
+
+	@Override
+	public boolean serializeShowSearch(
+		String fdsName, HttpServletRequest httpServletRequest) {
+
+		Map<String, Object> properties = getDataSetObjectEntryProperties(
+			fdsName, httpServletRequest);
+
+		return GetterUtil.getBoolean(properties.get("showSearch"), true);
 	}
 
 	@Override
@@ -835,21 +856,18 @@ public class CustomFDSSerializer
 		Predicate<ObjectEntry> predicate, String propertyKey,
 		String... relationshipNames) {
 
-		ObjectEntry objectEntry = _getObjectEntry(
-			externalReferenceCode, _getObjectDefinition(httpServletRequest));
-
 		List<ObjectEntry> objectEntries = getRelatedObjectEntries(
 			externalReferenceCode, httpServletRequest, predicate,
 			relationshipNames);
 
-		objectEntries.sort(
-			new ObjectEntryComparator(
-				ListUtil.toList(
-					ListUtil.fromString(
-						MapUtil.getString(
-							objectEntry.getProperties(), propertyKey),
-						StringPool.COMMA),
-					GetterUtil::getLong)));
+		ObjectEntry objectEntry = _getObjectEntry(
+			externalReferenceCode, _getObjectDefinition(httpServletRequest));
+
+		List<String> externalReferenceCodes = ListUtil.fromString(
+			MapUtil.getString(objectEntry.getProperties(), propertyKey),
+			StringPool.COMMA);
+
+		objectEntries.sort(new ObjectEntryComparator(externalReferenceCodes));
 
 		return objectEntries;
 	}
@@ -876,6 +894,27 @@ public class CustomFDSSerializer
 		).put(
 			"year", calendar.get(Calendar.YEAR)
 		);
+	}
+
+	private Object _getListTypeEntryKey(
+		String entityFieldType, ListTypeEntry listTypeEntry) {
+
+		String key = listTypeEntry.getKey();
+
+		if (Objects.equals(entityFieldType, FDSEntityFieldTypes.INTEGER)) {
+			try {
+				return Integer.valueOf(key);
+			}
+			catch (NumberFormatException numberFormatException) {
+				if (_log.isWarnEnabled()) {
+					_log.warn(
+						"Invalid list type entry key: " + key,
+						numberFormatException);
+				}
+			}
+		}
+
+		return key;
 	}
 
 	private ObjectDefinition _getObjectDefinition(
@@ -978,7 +1017,7 @@ public class CustomFDSSerializer
 		return GetterUtil.getString(properties.get("type"));
 	}
 
-	private boolean _isActive(ObjectEntry objectEntry) {
+	private Boolean _isActive(ObjectEntry objectEntry) {
 		Map<String, Object> properties = objectEntry.getProperties();
 
 		return (boolean)properties.get("active");
@@ -1016,7 +1055,9 @@ public class CustomFDSSerializer
 
 		String type = MapUtil.getString(properties, "type");
 
-		if (Objects.equals(type, "date") || Objects.equals(type, "date-time")) {
+		if (Objects.equals(type, "date") || Objects.equals(type, "date-time") ||
+			Objects.equals(type, "date_time")) {
+
 			return _serializeFilterDateOrDateTime(fieldName, properties, type);
 		}
 
@@ -1052,7 +1093,17 @@ public class CustomFDSSerializer
 		return JSONUtil.put(
 			"clientExtensionFilterURL", fdsFilterCET.getURL()
 		).put(
-			"entityFieldType", FDSEntityFieldTypes.STRING
+			"entityFieldType",
+			() -> {
+				String entityFieldType = String.valueOf(
+					properties.get("entityFieldType"));
+
+				if (Validator.isNotNull(entityFieldType)) {
+					return entityFieldType;
+				}
+
+				return FDSEntityFieldTypes.STRING;
+			}
 		).put(
 			"id", fieldName
 		).put(
@@ -1139,11 +1190,18 @@ public class CustomFDSSerializer
 			}
 		}
 
+		String entityFieldType = String.valueOf(
+			properties.get("entityFieldType"));
+
 		JSONObject jsonObject = JSONUtil.put(
 			"autocompleteEnabled", true
 		).put(
 			"entityFieldType",
 			() -> {
+				if (Validator.isNotNull(entityFieldType)) {
+					return entityFieldType;
+				}
+
 				if (_isCollection(
 						String.valueOf(properties.get("fieldName")),
 						sourceType)) {
@@ -1156,7 +1214,9 @@ public class CustomFDSSerializer
 		).put(
 			"id",
 			() -> {
-				if (!Objects.equals(sourceType, "OBJECT_PICKLIST")) {
+				if (!Objects.equals(sourceType, "OBJECT_PICKLIST") ||
+					Validator.isNotNull(entityFieldType)) {
+
 					return fieldName;
 				}
 
@@ -1232,7 +1292,8 @@ public class CustomFDSSerializer
 					listTypeEntry.getName(
 						PortalUtil.getLocale(httpServletRequest))
 				).put(
-					"value", listTypeEntry.getKey()
+					"value",
+					() -> _getListTypeEntryKey(entityFieldType, listTypeEntry)
 				))
 		).put(
 			"preloadedData",
@@ -1263,7 +1324,9 @@ public class CustomFDSSerializer
 								listTypeEntry.getName(
 									PortalUtil.getLocale(httpServletRequest))
 							).put(
-								"value", listTypeEntry.getKey()
+								"value",
+								() -> _getListTypeEntryKey(
+									entityFieldType, listTypeEntry)
 							));
 					}
 				}
@@ -1329,24 +1392,26 @@ public class CustomFDSSerializer
 	private static class ObjectEntryComparator
 		implements Comparator<ObjectEntry> {
 
-		public ObjectEntryComparator(List<Long> ids) {
-			_ids = ids;
+		public ObjectEntryComparator(List<String> externalReferenceCodes) {
+			_externalReferenceCodes = externalReferenceCodes;
 		}
 
 		@Override
-		public int compare(
-			ObjectEntry dataSetObjectEntry1, ObjectEntry dataSetObjectEntry2) {
+		public int compare(ObjectEntry objectEntry1, ObjectEntry objectEntry2) {
+			String externalReferenceCode1 =
+				objectEntry1.getExternalReferenceCode();
+			String externalReferenceCode2 =
+				objectEntry2.getExternalReferenceCode();
 
-			long id1 = dataSetObjectEntry1.getId();
-			long id2 = dataSetObjectEntry2.getId();
-
-			int index1 = _ids.indexOf(id1);
-			int index2 = _ids.indexOf(id2);
+			int index1 = _externalReferenceCodes.indexOf(
+				externalReferenceCode1);
+			int index2 = _externalReferenceCodes.indexOf(
+				externalReferenceCode2);
 
 			if ((index1 == -1) && (index2 == -1)) {
-				Date date = dataSetObjectEntry1.getDateCreated();
+				Date date = objectEntry1.getDateCreated();
 
-				return date.compareTo(dataSetObjectEntry2.getDateCreated());
+				return date.compareTo(objectEntry2.getDateCreated());
 			}
 
 			if (index1 == -1) {
@@ -1357,10 +1422,10 @@ public class CustomFDSSerializer
 				return -1;
 			}
 
-			return Long.compare(index1, index2);
+			return Integer.compare(index1, index2);
 		}
 
-		private final List<Long> _ids;
+		private final List<String> _externalReferenceCodes;
 
 	}
 

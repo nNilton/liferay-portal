@@ -6,9 +6,10 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {apiHelpersTest} from '../../../../fixtures/apiHelpersTest';
-import {applicationsMenuPageTest} from '../../../../fixtures/applicationsMenuPageTest';
 import {commercePagesTest} from '../../../../fixtures/commercePagesTest';
 import {dataApiHelpersTest} from '../../../../fixtures/dataApiHelpersTest';
+import {globalMenuPagesTest} from '../../../../fixtures/globalMenuPagesTest';
+import {isolatedSiteTest} from '../../../../fixtures/isolatedSiteTest';
 import {loginTest} from '../../../../fixtures/loginTest';
 import {getRandomInt} from '../../../../utils/getRandomInt';
 import getRandomString from '../../../../utils/getRandomString';
@@ -21,9 +22,10 @@ import {miniumSetUp} from '../../utils/commerce';
 
 export const test = mergeTests(
 	apiHelpersTest,
-	applicationsMenuPageTest,
 	commercePagesTest,
 	dataApiHelpersTest,
+	globalMenuPagesTest,
+	isolatedSiteTest,
 	loginTest()
 );
 
@@ -36,11 +38,9 @@ test(
 		commerceAdminOrdersPage,
 		page,
 	}) => {
-		const site = await apiHelpers.headlessSite.createSite({
+		const site = await apiHelpers.headlessAdminSite.postSite({
 			name: getRandomString(),
 		});
-
-		apiHelpers.data.push({id: site.id, type: 'site'});
 
 		const channel =
 			await apiHelpers.headlessCommerceAdminChannel.postChannel({
@@ -191,11 +191,9 @@ test('LPD-26244 Split order items are shown on admin order details page when sho
 	commerceAdminOrderDetailsPage,
 	commerceAdminOrdersPage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
-
-	apiHelpers.data.push({id: site.id, type: 'site'});
 
 	const channel = await apiHelpers.headlessCommerceAdminChannel.postChannel({
 		siteGroupId: site.id,
@@ -326,11 +324,9 @@ test(
 		commerceAdminShipmentsPage,
 		page,
 	}) => {
-		const site = await apiHelpers.headlessSite.createSite({
+		const site = await apiHelpers.headlessAdminSite.postSite({
 			name: getRandomString(),
 		});
-
-		apiHelpers.data.push({id: site.id, type: 'site'});
 
 		const channel =
 			await apiHelpers.headlessCommerceAdminChannel.postChannel({
@@ -587,14 +583,14 @@ test(
 
 test('COMMERCE-11888. As a supplier user, I can edit the order details, payments and shipments', async ({
 	apiHelpers,
-	applicationsMenuPage,
 	commerceAdminChannelDetailsPage,
 	commerceAdminChannelsPage,
 	commerceAdminOrderDetailsPage,
 	commerceAdminOrdersPage,
+	globalMenuPage,
 	page,
 }) => {
-	test.setTimeout(180000);
+	test.setTimeout(120000);
 
 	const {channel} = await miniumSetUp(apiHelpers);
 
@@ -753,7 +749,7 @@ test('COMMERCE-11888. As a supplier user, I can edit the order details, payments
 	await performLogout(page);
 	await performLoginViaApi({page, screenName: 'demo.unprivileged'});
 
-	await applicationsMenuPage.goToCommerceOrders(false);
+	await globalMenuPage.goToCommerce('Orders');
 
 	await (
 		await commerceAdminOrdersPage.tableRowLink({
@@ -839,6 +835,10 @@ test('COMMERCE-11888. As a supplier user, I can edit the order details, payments
 		)
 	).click();
 
+	await expect(
+		commerceAdminOrderDetailsPage.selectPaymentTerms
+	).toBeVisible();
+
 	await commerceAdminOrderDetailsPage.selectPaymentTerms.click();
 	await commerceAdminOrderDetailsPage.selectPaymentTerms.selectOption(
 		paymentTerm1.id.toString()
@@ -887,9 +887,15 @@ test('COMMERCE-11888. As a supplier user, I can edit the order details, payments
 
 	await commerceAdminOrderDetailsPage.orderSummaryLink.click();
 
+	await expect(
+		commerceAdminOrderDetailsPage.orderSummarySubtotalInput
+	).toBeVisible();
+
 	await commerceAdminOrderDetailsPage.orderSummarySubtotalInput.fill('2');
 
 	await commerceAdminOrderDetailsPage.orderSummarySaveButton.click();
+
+	await page.waitForLoadState('domcontentloaded');
 
 	await expect(
 		await commerceAdminOrderDetailsPage.orderSummarySubtotal
@@ -948,11 +954,9 @@ test('LPD-30856 Can update order status by deleting unshipped items', async ({
 	commerceAdminShipmentsPage,
 	page,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
-
-	apiHelpers.data.push({id: site.id, type: 'site'});
 
 	const channel = await apiHelpers.headlessCommerceAdminChannel.postChannel({
 		siteGroupId: site.id,
@@ -1076,7 +1080,7 @@ test('LPD-30856 Can update order status by deleting unshipped items', async ({
 		)
 	).check();
 	await commerceAdminShipmentsPage.shipmentsItemSubmitButton.click();
-	await commerceAdminShipmentsPage.productEllipsis.click();
+	await commerceAdminShipmentsPage.productEllipsis(sku1.sku).click();
 	await commerceAdminShipmentsPage.editProductMenuItem.click();
 	await commerceAdminShipmentsPage.addQuantityInShipment.fill('1');
 	await commerceAdminShipmentsPage.editProductSaveButton.click();
@@ -1141,11 +1145,9 @@ test('COMMERCE-7982 Can Edit Order Measurement Unit', async ({
 	commerceAdminOrdersPage,
 	page,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
-
-	apiHelpers.data.push({id: site.id, type: 'site'});
 
 	const channel = await apiHelpers.headlessCommerceAdminChannel.postChannel({
 		siteGroupId: site.id,
@@ -1256,3 +1258,122 @@ test('COMMERCE-7982 Can Edit Order Measurement Unit', async ({
 		await commerceAdminOrderDetailsPage.orderItemQuantityColumn('1 meters')
 	).toBeVisible();
 });
+
+test(
+	'Ability to Recalculate an Order in the Order Management Panel',
+	{tag: ['@LPD-74671']},
+	async ({
+		apiHelpers,
+		commerceAdminOrderDetailsPage,
+		commerceAdminOrdersPage,
+		page,
+		site,
+	}) => {
+		const channel =
+			await apiHelpers.headlessCommerceAdminChannel.postChannel({
+				siteGroupId: site.id,
+			});
+
+		const catalog =
+			await apiHelpers.headlessCommerceAdminCatalog.postCatalog();
+
+		const product =
+			await apiHelpers.headlessCommerceAdminCatalog.postProduct({
+				catalogId: catalog.id,
+				name: {en_US: 'Product'},
+			});
+
+		const productSkus = await apiHelpers.headlessCommerceAdminCatalog
+			.getProduct(product.productId)
+			.then((product) => {
+				return product.skus;
+			});
+
+		const sku = productSkus[0];
+
+		const account = await apiHelpers.headlessAdminUser.postAccount({
+			name: getRandomString(),
+			type: 'business',
+		});
+
+		await apiHelpers.headlessAdminUser.assignUserToAccountByEmailAddress(
+			account.id,
+			['test@liferay.com']
+		);
+
+		const address =
+			await apiHelpers.headlessCommerceAdminAccount.postAddress(
+				account.id,
+				{
+					regionISOCode: 'LA',
+				}
+			);
+
+		const warehouse =
+			await apiHelpers.headlessCommerceAdminInventoryApiHelper.postWarehouses(
+				{
+					active: true,
+					latitude: getRandomInt(),
+					longitude: getRandomInt(),
+					warehouseItems: [
+						{
+							quantity: 1,
+							sku: sku.sku,
+						},
+					],
+				}
+			);
+
+		await apiHelpers.headlessCommerceAdminInventoryApiHelper.postWarehousesChannels(
+			warehouse.id,
+			channel.id
+		);
+
+		const order = await apiHelpers.headlessCommerceAdminOrder.postOrder({
+			accountId: account.id,
+			billingAddressId: address.id,
+			channelId: channel.id,
+			orderItems: [
+				{
+					quantity: 1,
+					skuId: sku.id,
+				},
+			],
+			orderStatus: '1',
+			paymentMethod: 'money-order',
+			paymentStatus: '2',
+			shippingAddressId: address.id,
+			shippingMethod: 'by-weight',
+			shippingOption: 'standard-option',
+		});
+
+		await commerceAdminOrdersPage.goto();
+
+		await (
+			await commerceAdminOrdersPage.tableRowLink({
+				colIndex: 1,
+				rowValue: order.id,
+			})
+		).click();
+
+		await expect(
+			commerceAdminOrderDetailsPage.recalculateButton
+		).toBeVisible();
+
+		await expect(async () => {
+			await commerceAdminOrderDetailsPage.recalculateButton.click();
+			await expect(
+				commerceAdminOrderDetailsPage.recalculateOrderSummaryModalTitle
+			).toBeVisible();
+			await expect(
+				commerceAdminOrderDetailsPage.recalculateOrderSummaryModalCancelButton
+			).toBeVisible();
+			await expect(
+				commerceAdminOrderDetailsPage.recalculateOrderSummaryModalContinueButton
+			).toBeVisible();
+			await commerceAdminOrderDetailsPage.recalculateOrderSummaryModalContinueButton.click();
+		}).toPass();
+
+		await waitForAlert(page);
+	}
+);

@@ -18,6 +18,7 @@ import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
@@ -52,19 +53,23 @@ public abstract class BaseDisplayContextTestCase {
 		mockHttpServletRequest = getMockHttpServletRequest();
 
 		themeDisplay = getThemeDisplay(mockHttpServletRequest);
+
+		mockHttpServletRequest.setAttribute(
+			WebKeys.THEME_DISPLAY, themeDisplay);
 	}
 
 	protected ObjectDefinition addCustomObjectDefinition(
-			long objectFolderId, boolean active, boolean enableObjectEntryDraft,
+			long objectFolderId, boolean active, boolean enableComments,
+			boolean enableObjectEntryDraft,
 			List<ObjectDefinitionSetting> objectDefinitionSettings,
 			String scope, int status)
 		throws Exception {
 
 		ObjectDefinition objectDefinition =
 			objectDefinitionLocalService.addCustomObjectDefinition(
-				null, TestPropsValues.getUserId(), objectFolderId, null, false,
-				true, false, true, enableObjectEntryDraft, false, false, false,
-				null,
+				null, TestPropsValues.getUserId(), objectFolderId, null, true,
+				enableComments, true, false, true, enableObjectEntryDraft,
+				false, false, false, null,
 				Collections.singletonMap(
 					LocaleUtil.getDefault(), RandomTestUtil.randomString()),
 				ObjectDefinitionTestUtil.getRandomName(), null, null,
@@ -119,6 +124,17 @@ public abstract class BaseDisplayContextTestCase {
 
 	protected ObjectDefinition addCustomObjectDefinition(
 			long objectFolderId, boolean active, boolean enableObjectEntryDraft,
+			List<ObjectDefinitionSetting> objectDefinitionSettings,
+			String scope, int status)
+		throws Exception {
+
+		return addCustomObjectDefinition(
+			objectFolderId, active, false, enableObjectEntryDraft,
+			objectDefinitionSettings, scope, status);
+	}
+
+	protected ObjectDefinition addCustomObjectDefinition(
+			long objectFolderId, boolean active, boolean enableObjectEntryDraft,
 			String scope, int status)
 		throws Exception {
 
@@ -130,11 +146,19 @@ public abstract class BaseDisplayContextTestCase {
 	protected MockHttpServletRequest getMockHttpServletRequest()
 		throws Exception {
 
-		return getMockHttpServletRequest(null);
+		return getMockHttpServletRequest(null, TestPropsValues.getUser());
 	}
 
 	protected MockHttpServletRequest getMockHttpServletRequest(
 			ObjectEntryFolder objectEntryFolder)
+		throws Exception {
+
+		return getMockHttpServletRequest(
+			objectEntryFolder, TestPropsValues.getUser());
+	}
+
+	protected MockHttpServletRequest getMockHttpServletRequest(
+			ObjectEntryFolder objectEntryFolder, User user)
 		throws Exception {
 
 		MockHttpServletRequest mockHttpServletRequest =
@@ -146,13 +170,27 @@ public abstract class BaseDisplayContextTestCase {
 		}
 
 		mockHttpServletRequest.setAttribute(
-			WebKeys.THEME_DISPLAY, getThemeDisplay(mockHttpServletRequest));
+			WebKeys.THEME_DISPLAY,
+			getThemeDisplay(mockHttpServletRequest, user));
 
 		return mockHttpServletRequest;
 	}
 
+	protected MockHttpServletRequest getMockHttpServletRequest(User user)
+		throws Exception {
+
+		return getMockHttpServletRequest(null, user);
+	}
+
 	protected ThemeDisplay getThemeDisplay(
 			HttpServletRequest httpServletRequest)
+		throws Exception {
+
+		return getThemeDisplay(httpServletRequest, TestPropsValues.getUser());
+	}
+
+	protected ThemeDisplay getThemeDisplay(
+			HttpServletRequest httpServletRequest, User user)
 		throws Exception {
 
 		ThemeDisplay themeDisplay = new ThemeDisplay();
@@ -171,12 +209,12 @@ public abstract class BaseDisplayContextTestCase {
 		themeDisplay.setPermissionChecker(
 			PermissionThreadLocal.getPermissionChecker());
 		themeDisplay.setPortalURL("http://localhost:8080");
-		themeDisplay.setRealUser(TestPropsValues.getUser());
+		themeDisplay.setRealUser(user);
 		themeDisplay.setRequest(httpServletRequest);
 		themeDisplay.setScopeGroupId(group.getGroupId());
 		themeDisplay.setSiteGroupId(group.getGroupId());
 		themeDisplay.setURLCurrent("http://localhost:8080/currentURL");
-		themeDisplay.setUser(TestPropsValues.getUser());
+		themeDisplay.setUser(user);
 
 		return themeDisplay;
 	}

@@ -147,8 +147,10 @@ public class FreeMarkerFragmentEntryProcessorTest {
 		DefaultFragmentEntryProcessorContext
 			defaultFragmentEntryProcessorContext =
 				new DefaultFragmentEntryProcessorContext(
+					_serviceContext.getCompanyId(),
 					_serviceContext.getRequest(), new MockHttpServletResponse(),
-					null, LocaleUtil.getDefault());
+					LocaleUtil.getDefault(), null,
+					_serviceContext.getScopeGroupId());
 
 		defaultFragmentEntryProcessorContext.setFragmentElementId("elementId");
 
@@ -176,7 +178,6 @@ public class FreeMarkerFragmentEntryProcessorTest {
 		fragmentEntryLink.setGroupId(fragmentEntry.getGroupId());
 		fragmentEntryLink.setFragmentEntryERC(
 			fragmentEntry.getExternalReferenceCode());
-		fragmentEntryLink.setFragmentEntryScopeERC(fragmentEntry.getScopeERC());
 		fragmentEntryLink.setHtml(fragmentEntry.getHtml());
 
 		Assert.assertEquals(
@@ -185,9 +186,10 @@ public class FreeMarkerFragmentEntryProcessorTest {
 				_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 					fragmentEntryLink,
 					new DefaultFragmentEntryProcessorContext(
+						_serviceContext.getCompanyId(),
 						_serviceContext.getRequest(),
-						new MockHttpServletResponse(), null,
-						LocaleUtil.getDefault()))));
+						new MockHttpServletResponse(), LocaleUtil.getDefault(),
+						null, _serviceContext.getScopeGroupId()))));
 	}
 
 	@Test
@@ -243,9 +245,10 @@ public class FreeMarkerFragmentEntryProcessorTest {
 				_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 					fragmentEntryLink,
 					new DefaultFragmentEntryProcessorContext(
+						_serviceContext.getCompanyId(),
 						_serviceContext.getRequest(),
-						new MockHttpServletResponse(), null,
-						LocaleUtil.getDefault()))));
+						new MockHttpServletResponse(), LocaleUtil.getDefault(),
+						null, _serviceContext.getScopeGroupId()))));
 
 		MockHttpServletRequest mockHttpServletRequest =
 			_getMockHttpServletRequest();
@@ -258,8 +261,9 @@ public class FreeMarkerFragmentEntryProcessorTest {
 				_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 					fragmentEntryLink,
 					new DefaultFragmentEntryProcessorContext(
-						mockHttpServletRequest, new MockHttpServletResponse(),
-						null, LocaleUtil.getDefault()))));
+						_serviceContext.getCompanyId(), mockHttpServletRequest,
+						new MockHttpServletResponse(), LocaleUtil.getDefault(),
+						null, _serviceContext.getScopeGroupId()))));
 	}
 
 	@Test
@@ -279,8 +283,10 @@ public class FreeMarkerFragmentEntryProcessorTest {
 				_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 					fragmentEntryLink,
 					new DefaultFragmentEntryProcessorContext(
+						_serviceContext.getCompanyId(),
 						_serviceContext.getRequest(),
-						new MockHttpServletResponse(), null, null))));
+						new MockHttpServletResponse(), null, null,
+						_serviceContext.getScopeGroupId()))));
 	}
 
 	@Test
@@ -301,8 +307,10 @@ public class FreeMarkerFragmentEntryProcessorTest {
 						"fragment_entry_with_configuration.html",
 						new HashMap<>()),
 					new DefaultFragmentEntryProcessorContext(
+						_serviceContext.getCompanyId(),
 						_serviceContext.getRequest(),
-						new MockHttpServletResponse(), null, null))));
+						new MockHttpServletResponse(), null, null,
+						_serviceContext.getScopeGroupId()))));
 	}
 
 	@Test
@@ -364,8 +372,10 @@ public class FreeMarkerFragmentEntryProcessorTest {
 							"collectionselector_dynamic_collection.html",
 						new HashMap<>()),
 					new DefaultFragmentEntryProcessorContext(
+						_serviceContext.getCompanyId(),
 						_serviceContext.getRequest(),
-						new MockHttpServletResponse(), null, null))));
+						new MockHttpServletResponse(), null, null,
+						_serviceContext.getScopeGroupId()))));
 	}
 
 	@Test
@@ -403,8 +413,9 @@ public class FreeMarkerFragmentEntryProcessorTest {
 		DefaultFragmentEntryProcessorContext
 			defaultFragmentEntryProcessorContext =
 				new DefaultFragmentEntryProcessorContext(
+					_serviceContext.getCompanyId(),
 					_serviceContext.getRequest(), new MockHttpServletResponse(),
-					null, null);
+					null, null, _serviceContext.getScopeGroupId());
 
 		Assert.assertEquals(
 			_getProcessedHTML(
@@ -525,8 +536,9 @@ public class FreeMarkerFragmentEntryProcessorTest {
 		DefaultFragmentEntryProcessorContext
 			defaultFragmentEntryProcessorContext =
 				new DefaultFragmentEntryProcessorContext(
+					_serviceContext.getCompanyId(),
 					_serviceContext.getRequest(), new MockHttpServletResponse(),
-					null, null);
+					null, null, _serviceContext.getScopeGroupId());
 
 		journalArticle = _journalArticleLocalService.getArticle(
 			journalArticle.getId());
@@ -638,27 +650,33 @@ public class FreeMarkerFragmentEntryProcessorTest {
 				_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 					fragmentEntryLink,
 					new DefaultFragmentEntryProcessorContext(
+						_serviceContext.getCompanyId(),
 						_serviceContext.getRequest(),
-						new MockHttpServletResponse(), Constants.VIEW,
-						LocaleUtil.fromLanguageId("en_US")))),
+						new MockHttpServletResponse(),
+						LocaleUtil.fromLanguageId("en_US"), Constants.VIEW,
+						_serviceContext.getScopeGroupId()))),
 			CoreMatchers.containsString("Style - dark"));
 		Assert.assertThat(
 			_getProcessedHTML(
 				_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 					fragmentEntryLink,
 					new DefaultFragmentEntryProcessorContext(
+						_serviceContext.getCompanyId(),
 						_serviceContext.getRequest(),
-						new MockHttpServletResponse(), Constants.VIEW,
-						LocaleUtil.fromLanguageId("es_ES")))),
+						new MockHttpServletResponse(),
+						LocaleUtil.fromLanguageId("es_ES"), Constants.VIEW,
+						_serviceContext.getScopeGroupId()))),
 			CoreMatchers.containsString("Style - light"));
 		Assert.assertThat(
 			_getProcessedHTML(
 				_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 					fragmentEntryLink,
 					new DefaultFragmentEntryProcessorContext(
+						_serviceContext.getCompanyId(),
 						_serviceContext.getRequest(),
-						new MockHttpServletResponse(), Constants.VIEW,
-						LocaleUtil.fromLanguageId("fr_FR")))),
+						new MockHttpServletResponse(),
+						LocaleUtil.fromLanguageId("fr_FR"), Constants.VIEW,
+						_serviceContext.getScopeGroupId()))),
 			CoreMatchers.containsString("Style - dark"));
 	}
 
@@ -683,8 +701,10 @@ public class FreeMarkerFragmentEntryProcessorTest {
 			_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 				fragmentEntryLink,
 				new DefaultFragmentEntryProcessorContext(
+					_serviceContext.getCompanyId(),
 					_serviceContext.getRequest(), new MockHttpServletResponse(),
-					null, LocaleUtil.getDefault())));
+					LocaleUtil.getDefault(), null,
+					_serviceContext.getScopeGroupId())));
 	}
 
 	@Rule

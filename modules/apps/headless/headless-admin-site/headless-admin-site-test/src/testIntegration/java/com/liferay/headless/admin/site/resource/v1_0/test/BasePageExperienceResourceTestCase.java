@@ -35,6 +35,7 @@ import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.FastDateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.odata.entity.EntityField;
@@ -106,7 +107,8 @@ public abstract class BasePageExperienceResourceTestCase {
 			_testCompanyAdminUser.getEmailAddress(),
 			PropsValues.DEFAULT_ADMIN_PASSWORD
 		).endpoint(
-			testCompany.getVirtualHostname(), 8080, "http"
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
 		).locale(
 			LocaleUtil.getDefault()
 		).build();
@@ -116,7 +118,8 @@ public abstract class BasePageExperienceResourceTestCase {
 			_testCompanyAdminUser.getEmailAddress(),
 			PropsValues.DEFAULT_ADMIN_PASSWORD
 		).endpoint(
-			testCompany.getVirtualHostname(), 8080, "http"
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
 		).locale(
 			LocaleUtil.getDefault()
 		).build();
@@ -181,7 +184,7 @@ public abstract class BasePageExperienceResourceTestCase {
 		pageExperience.setExternalReferenceCode(regex);
 		pageExperience.setKey(regex);
 		pageExperience.setPageSpecificationExternalReferenceCode(regex);
-		pageExperience.setSegmentExternalReferenceCode(regex);
+		pageExperience.setUuid(regex);
 
 		String json = PageExperienceSerDes.toJSON(pageExperience);
 
@@ -193,8 +196,7 @@ public abstract class BasePageExperienceResourceTestCase {
 		Assert.assertEquals(regex, pageExperience.getKey());
 		Assert.assertEquals(
 			regex, pageExperience.getPageSpecificationExternalReferenceCode());
-		Assert.assertEquals(
-			regex, pageExperience.getSegmentExternalReferenceCode());
+		Assert.assertEquals(regex, pageExperience.getUuid());
 	}
 
 	@Test
@@ -510,7 +512,8 @@ public abstract class BasePageExperienceResourceTestCase {
 			_testCompanyAdminUser.getEmailAddress(),
 			PropsValues.DEFAULT_ADMIN_PASSWORD
 		).endpoint(
-			testCompany.getVirtualHostname(), 8080, "http"
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
 		).parameters(
 			parameters
 		).build();
@@ -649,14 +652,6 @@ public abstract class BasePageExperienceResourceTestCase {
 				continue;
 			}
 
-			if (Objects.equals("pageRules", additionalAssertFieldName)) {
-				if (pageExperience.getPageRules() == null) {
-					valid = false;
-				}
-
-				continue;
-			}
-
 			if (Objects.equals(
 					"pageSpecificationExternalReferenceCode",
 					additionalAssertFieldName)) {
@@ -679,10 +674,18 @@ public abstract class BasePageExperienceResourceTestCase {
 			}
 
 			if (Objects.equals(
-					"segmentExternalReferenceCode",
+					"segmentItemExternalReference",
 					additionalAssertFieldName)) {
 
-				if (pageExperience.getSegmentExternalReferenceCode() == null) {
+				if (pageExperience.getSegmentItemExternalReference() == null) {
+					valid = false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals("uuid", additionalAssertFieldName)) {
+				if (pageExperience.getUuid() == null) {
 					valid = false;
 				}
 
@@ -855,17 +858,6 @@ public abstract class BasePageExperienceResourceTestCase {
 				continue;
 			}
 
-			if (Objects.equals("pageRules", additionalAssertFieldName)) {
-				if (!Objects.deepEquals(
-						pageExperience1.getPageRules(),
-						pageExperience2.getPageRules())) {
-
-					return false;
-				}
-
-				continue;
-			}
-
 			if (Objects.equals(
 					"pageSpecificationExternalReferenceCode",
 					additionalAssertFieldName)) {
@@ -894,12 +886,22 @@ public abstract class BasePageExperienceResourceTestCase {
 			}
 
 			if (Objects.equals(
-					"segmentExternalReferenceCode",
+					"segmentItemExternalReference",
 					additionalAssertFieldName)) {
 
 				if (!Objects.deepEquals(
-						pageExperience1.getSegmentExternalReferenceCode(),
-						pageExperience2.getSegmentExternalReferenceCode())) {
+						pageExperience1.getSegmentItemExternalReference(),
+						pageExperience2.getSegmentItemExternalReference())) {
+
+					return false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals("uuid", additionalAssertFieldName)) {
+				if (!Objects.deepEquals(
+						pageExperience1.getUuid(), pageExperience2.getUuid())) {
 
 					return false;
 				}
@@ -1117,11 +1119,6 @@ public abstract class BasePageExperienceResourceTestCase {
 				"Invalid entity field " + entityFieldName);
 		}
 
-		if (entityFieldName.equals("pageRules")) {
-			throw new IllegalArgumentException(
-				"Invalid entity field " + entityFieldName);
-		}
-
 		if (entityFieldName.equals("pageSpecificationExternalReferenceCode")) {
 			Object object =
 				pageExperience.getPageSpecificationExternalReferenceCode();
@@ -1175,8 +1172,13 @@ public abstract class BasePageExperienceResourceTestCase {
 			return sb.toString();
 		}
 
-		if (entityFieldName.equals("segmentExternalReferenceCode")) {
-			Object object = pageExperience.getSegmentExternalReferenceCode();
+		if (entityFieldName.equals("segmentItemExternalReference")) {
+			throw new IllegalArgumentException(
+				"Invalid entity field " + entityFieldName);
+		}
+
+		if (entityFieldName.equals("uuid")) {
+			Object object = pageExperience.getUuid();
 
 			String value = String.valueOf(object);
 
@@ -1234,7 +1236,9 @@ public abstract class BasePageExperienceResourceTestCase {
 			).toString(),
 			"application/json");
 		httpInvoker.httpMethod(HttpInvoker.HttpMethod.POST);
-		httpInvoker.path("http://localhost:8080/o/graphql");
+		httpInvoker.path(
+			"http://localhost:" + PortalUtil.getPortalServerPort(false) +
+				"/o/graphql");
 		httpInvoker.userNameAndPassword(
 			"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD);
 
@@ -1272,8 +1276,7 @@ public abstract class BasePageExperienceResourceTestCase {
 				pageSpecificationExternalReferenceCode = StringUtil.toLowerCase(
 					RandomTestUtil.randomString());
 				priority = RandomTestUtil.randomInt();
-				segmentExternalReferenceCode = StringUtil.toLowerCase(
-					RandomTestUtil.randomString());
+				uuid = StringUtil.toLowerCase(RandomTestUtil.randomString());
 			}
 		};
 	}
@@ -1521,3 +1524,4 @@ public abstract class BasePageExperienceResourceTestCase {
 		_pageExperienceResource;
 
 }
+// LIFERAY-REST-BUILDER-HASH:-822358989

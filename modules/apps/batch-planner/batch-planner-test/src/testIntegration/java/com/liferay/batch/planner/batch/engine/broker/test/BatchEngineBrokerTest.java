@@ -126,6 +126,7 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MimeTypesUtil;
 import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.kernel.util.Validator;
@@ -502,10 +503,10 @@ public class BatchEngineBrokerTest {
 		Company company = _companyLocalService.getCompany(
 			TestPropsValues.getCompanyId());
 
-		Group globalGroup = company.getGroup();
+		Group companyGroup = company.getGroup();
 
 		_testImportExportSiteScopeObjectEntryCSV(
-			globalGroup.getGroupId(),
+			companyGroup.getGroupId(),
 			_objectDefinition1.getExternalReferenceCode(), _OBJECT_ENTRY_ERC_3);
 
 		// New group
@@ -532,10 +533,10 @@ public class BatchEngineBrokerTest {
 		Company company = _companyLocalService.getCompany(
 			TestPropsValues.getCompanyId());
 
-		Group globalGroup = company.getGroup();
+		Group companyGroup = company.getGroup();
 
 		_testImportExportSiteScopeObjectEntryJSON(
-			globalGroup.getGroupId(), _OBJECT_ENTRY_ERC_3);
+			companyGroup.getGroupId(), _OBJECT_ENTRY_ERC_3);
 
 		// New group
 
@@ -625,8 +626,11 @@ public class BatchEngineBrokerTest {
 				new BigDecimal(0.1234567891234567, MathContext.DECIMAL64)
 			).put(
 				"testRichTextField",
-				"<p>Test text</p>\n<p>\n  <img alt=\"\" height=\"202\" " +
-					"src=\"http://localhost:8080/image/company_logo\">\n</p>"
+				StringBundler.concat(
+					"<p>Test text</p>\n<p>\n  <img alt=\"\" height=\"202\" ",
+					"src=\"http://localhost:",
+					PortalUtil.getPortalServerPort(false),
+					"/image/company_logo\">\n</p>")
 			).put(
 				"testTextField", "Lorem Ipsum"
 			).build(),
@@ -1223,7 +1227,7 @@ public class BatchEngineBrokerTest {
 
 		ObjectDefinition objectDefinition =
 			_objectDefinitionLocalService.addCustomObjectDefinition(
-				null, user.getUserId(), 0, null, false, true, false, true,
+				null, user.getUserId(), 0, null, true, false, true, false, true,
 				false, false, false, false, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 				name, null, null,

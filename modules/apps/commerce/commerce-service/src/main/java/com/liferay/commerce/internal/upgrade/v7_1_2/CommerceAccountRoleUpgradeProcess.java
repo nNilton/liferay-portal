@@ -55,58 +55,57 @@ public class CommerceAccountRoleUpgradeProcess extends UpgradeProcess {
 					"select distinct UserGroupRole.ctCollectionId, ",
 					"UserGroupRole.roleId from UserGroupRole inner join Role_ ",
 					"on Role_.roleId = UserGroupRole.roleId inner join Group_ ",
-					"on Group_.classNameId = '",
-					_classNameLocalService.getClassNameId(AccountEntry.class),
-					"' and Group_.groupId = UserGroupRole.groupId where ",
-					"Role_.type_ = ?"));
+					"on Group_.classNameId = ? and Group_.groupId = ",
+					"UserGroupRole.groupId where Role_.type_ = ?"));
 			PreparedStatement preparedStatement2 =
 				AutoBatchPreparedStatementUtil.autoBatch(
 					connection,
 					"update Role_ set classNameId = ?, classPK = ?, type_ = " +
 						"? where ctCollectionId = ? and roleId = ?")) {
 
-			preparedStatement1.setInt(1, RoleConstants.TYPE_SITE);
+			preparedStatement1.setLong(
+				1, _classNameLocalService.getClassNameId(AccountEntry.class));
+			preparedStatement1.setInt(2, RoleConstants.TYPE_SITE);
 
 			try (ResultSet resultSet = preparedStatement1.executeQuery()) {
 				while (resultSet.next()) {
-					long roleId = resultSet.getLong(2);
+					long roleId = resultSet.getLong("roleId");
 
 					if (_hasNonaccountEntryGroup(roleId)) {
 						AccountRole accountRole = _copyToAccountRole(roleId);
 
 						_updateUserGroupRole(accountRole.getRoleId(), roleId);
+
+						continue;
 					}
-					else {
-						preparedStatement2.setLong(
-							1,
-							_classNameLocalService.getClassNameId(
-								AccountRole.class));
 
-						Role role = _roleLocalService.getRole(roleId);
+					preparedStatement2.setLong(
+						1,
+						_classNameLocalService.getClassNameId(
+							AccountRole.class));
 
-						AccountRole accountRole =
-							_accountRoleLocalService.createAccountRole(
-								increment());
+					Role role = _roleLocalService.getRole(roleId);
 
-						accountRole.setCompanyId(role.getCompanyId());
-						accountRole.setAccountEntryId(
-							AccountConstants.ACCOUNT_ENTRY_ID_DEFAULT);
-						accountRole.setRoleId(role.getRoleId());
+					AccountRole accountRole =
+						_accountRoleLocalService.createAccountRole(increment());
 
-						accountRole = _accountRoleLocalService.addAccountRole(
-							accountRole);
+					accountRole.setCompanyId(role.getCompanyId());
+					accountRole.setAccountEntryId(
+						AccountConstants.ACCOUNT_ENTRY_ID_DEFAULT);
+					accountRole.setRoleId(role.getRoleId());
 
-						preparedStatement2.setLong(
-							2, accountRole.getAccountRoleId());
+					accountRole = _accountRoleLocalService.addAccountRole(
+						accountRole);
 
-						preparedStatement2.setInt(
-							3, RoleConstants.TYPE_ACCOUNT);
-						preparedStatement2.setLong(
-							4, resultSet.getLong("ctCollectionId"));
-						preparedStatement2.setLong(5, roleId);
+					preparedStatement2.setLong(
+						2, accountRole.getAccountRoleId());
 
-						preparedStatement2.addBatch();
-					}
+					preparedStatement2.setInt(3, RoleConstants.TYPE_ACCOUNT);
+					preparedStatement2.setLong(
+						4, resultSet.getLong("ctCollectionId"));
+					preparedStatement2.setLong(5, roleId);
+
+					preparedStatement2.addBatch();
 				}
 
 				preparedStatement2.executeBatch();
@@ -166,11 +165,14 @@ public class CommerceAccountRoleUpgradeProcess extends UpgradeProcess {
 						_resourcePermissionLocalService.
 							updateResourcePermission(resourcePermission);
 				}
+
+				continue;
 			}
-			else if ((resourcePermission.getScope() ==
-						ResourceConstants.SCOPE_GROUP_TEMPLATE) ||
-					 (resourcePermission.getScope() ==
-						 ResourceConstants.SCOPE_INDIVIDUAL)) {
+
+			if ((resourcePermission.getScope() ==
+					ResourceConstants.SCOPE_GROUP_TEMPLATE) ||
+				(resourcePermission.getScope() ==
+					ResourceConstants.SCOPE_INDIVIDUAL)) {
 
 				_copyResourcePermission(
 					resourcePermission, accountRole.getRoleId());
@@ -183,11 +185,11 @@ public class CommerceAccountRoleUpgradeProcess extends UpgradeProcess {
 	private boolean _hasNonaccountEntryGroup(long roleId) throws Exception {
 		try (PreparedStatement preparedStatement = connection.prepareStatement(
 				StringBundler.concat(
-					"select count(*) from (select distinct UserGroupRole.",
-					"groupId from UserGroupRole inner join Group_ on Group_.",
-					"classNameId != ? and Group_.groupId = UserGroupRole.",
-					"groupId where UserGroupRole.roleId = ? union select ",
-					"distinct UserGroupGroupRole.groupId from ",
+					"select count(*) as count from (select distinct ",
+					"UserGroupRole.groupId from UserGroupRole inner join ",
+					"Group_ on Group_.classNameId != ? and Group_.groupId = ",
+					"UserGroupRole.groupId where UserGroupRole.roleId = ? ",
+					"union select distinct UserGroupGroupRole.groupId from ",
 					"UserGroupGroupRole inner join Group_ on Group_.",
 					"classNameId != ? and Group_.groupId = UserGroupGroupRole.",
 					"groupId where UserGroupGroupRole.roleId = ?) as count"))) {
@@ -201,9 +203,7 @@ public class CommerceAccountRoleUpgradeProcess extends UpgradeProcess {
 
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
-					int count = resultSet.getInt(1);
-
-					if (count > 0) {
+					if (resultSet.getLong("count") > 0) {
 						return true;
 					}
 				}

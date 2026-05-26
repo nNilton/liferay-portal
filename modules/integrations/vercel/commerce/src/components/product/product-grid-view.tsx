@@ -25,26 +25,21 @@ export default function ProductGridView({product}: ProductGridViewProps) {
 					<Image
 						alt={product.name}
 						className="duration-300 group-hover:scale-105 h-48 object-cover transition-transform w-full"
-						height={48}
+						height={120}
 						onError={handleImageError}
 						quality={100}
 						src={product.urlImage}
-						unoptimized
-						width={48}
+						width={120}
 					/>
 
 					{skuDetails.available && (
-						<Badge className="absolute bg-slate-500 bg-success left-3 text-white top-3">
+						<Badge className="absolute bg-slate-500 left-3 text-white top-3">
 							AVAILABLE
 						</Badge>
 					)}
 				</div>
 
 				<div className="p-4 space-y-3">
-					<div className="text-sm">
-						{product.externalReferenceCode}
-					</div>
-
 					<h3 className="font-medium group-hover:text-primary text-foreground transition-colors truncate">
 						{product.name}
 					</h3>

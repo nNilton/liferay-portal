@@ -5,41 +5,72 @@
 
 import {Locator, Page, expect} from '@playwright/test';
 
+import {clickAndExpectToBeVisible} from '../../utils/clickAndExpectToBeVisible';
 import {waitForAlert} from '../../utils/waitForAlert';
-import {ApplicationsMenuPage} from '../product-navigation-applications-menu/ApplicationsMenuPage';
+import {waitForPageToBeLoaded} from '../../utils/waitForPageToBeLoaded';
+import {GlobalMenuPage} from '../product-navigation-applications-menu/GlobalMenuPage';
 
 export class SystemSettingsPage {
-	private applicationsMenuPage;
+	private readonly globalMenuPage: GlobalMenuPage;
 	readonly page: Page;
 	readonly saveButton: Locator;
 
 	constructor(page: Page) {
 		this.page = page;
-		this.applicationsMenuPage = new ApplicationsMenuPage(page);
+		this.globalMenuPage = new GlobalMenuPage(page);
 		this.saveButton = page
 			.getByRole('button', {name: 'Save'})
 			.or(page.getByRole('button', {name: 'Update'}));
 	}
 
 	async goto() {
-		await this.applicationsMenuPage.goToSystemSettings();
+		await this.globalMenuPage.goToControlPanel('System Settings');
 	}
 
-	async goToSystemSetting(categoryKey: string, configurationName: string) {
-		await this.goto();
+	async goToSystemSetting(
+		categoryKey: string,
+		configurationName: string,
+		sectionName?: string
+	) {
+		await this.globalMenuPage.goToHome();
+		await this.globalMenuPage.goToControlPanel('System Settings');
+
+		if (
+			await this.page
+				.getByRole('tab', {name: 'Close Product Menu'})
+				.isVisible()
+		) {
+			await this.page
+				.getByRole('tab', {name: 'Close Product Menu'})
+				.click();
+		}
+
 		await this.page
 			.getByRole('link', {
 				exact: true,
 				name: categoryKey,
 			})
 			.click();
-		await this.page
+
+		let parent: Locator | Page = this.page;
+
+		if (sectionName) {
+			parent = this.page
+				.locator('div')
+				.filter({hasText: sectionName})
+				.locator('+ div')
+				.getByRole('menubar');
+		}
+
+		await parent
 			.getByRole('menuitem', {
 				exact: true,
 				name: configurationName,
 			})
 			.first()
 			.click();
+
+		await waitForPageToBeLoaded(this.page);
 	}
 
 	async assertOptionVisible(options: {
@@ -68,6 +99,20 @@ export class SystemSettingsPage {
 		const checkbox = this.page.getByLabel(label).first();
 		await expect(checkbox).toBeVisible();
 		checked ? await checkbox.check() : await checkbox.uncheck();
+	}
+
+	async clickOnAction(actionName: string) {
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: this.page.getByRole('menuitem', {name: actionName}),
+			trigger: this.page.getByRole('button', {name: 'Actions'}),
+		});
+	}
+
+	async resetToDefaultValues() {
+		await this.clickOnAction('Reset Default Values');
+
+		await waitForAlert(this.page);
 	}
 
 	async saveAndWaitForAlert({

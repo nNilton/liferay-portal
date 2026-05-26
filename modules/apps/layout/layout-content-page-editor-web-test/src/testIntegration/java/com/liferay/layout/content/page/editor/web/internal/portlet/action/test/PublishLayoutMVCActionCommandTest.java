@@ -43,13 +43,16 @@ import com.liferay.layout.util.structure.LayoutStructure;
 import com.liferay.layout.util.structure.LayoutStructureItem;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutConstants;
+import com.liferay.portal.kernel.model.ResourceConstants;
+import com.liferay.portal.kernel.model.ResourcePermission;
+import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.portlet.PortletPreferencesFactory;
 import com.liferay.portal.kernel.search.Document;
@@ -57,14 +60,18 @@ import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.PortletPreferencesLocalService;
+import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
+import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.service.permission.PortletPermissionUtil;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.test.util.ResourcePermissionTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
@@ -74,6 +81,7 @@ import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PortletKeys;
+import com.liferay.portal.kernel.util.ScopeUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
@@ -428,64 +436,57 @@ public class PublishLayoutMVCActionCommandTest {
 		User user = UserTestUtil.addCompanyAdminUser(
 			_companyLocalService.getCompany(_group.getCompanyId()));
 
-		try {
-			ServiceContext serviceContext =
-				ServiceContextTestUtil.getServiceContext(
-					_group.getGroupId(), user.getUserId());
+		Layout originalLayout = _layoutLocalService.addLayout(
+			null, user.getUserId(), _group.getGroupId(), false,
+			LayoutConstants.DEFAULT_PARENT_LAYOUT_ID,
+			RandomTestUtil.randomString(), StringPool.BLANK, StringPool.BLANK,
+			LayoutConstants.TYPE_PORTLET, false, StringPool.BLANK,
+			ServiceContextTestUtil.getServiceContext(
+				_group.getGroupId(), user.getUserId()));
 
-			ServiceContextThreadLocal.pushServiceContext(serviceContext);
+		Assert.assertEquals(user.getUserId(), originalLayout.getUserId());
+		Assert.assertTrue(originalLayout.isTypePortlet());
 
-			Layout originalLayout = _layoutLocalService.addLayout(
-				null, user.getUserId(), _group.getGroupId(), false,
-				LayoutConstants.DEFAULT_PARENT_LAYOUT_ID,
-				RandomTestUtil.randomString(), StringPool.BLANK,
-				StringPool.BLANK, LayoutConstants.TYPE_PORTLET, false,
-				StringPool.BLANK, serviceContext);
-
-			Assert.assertEquals(user.getUserId(), originalLayout.getUserId());
-			Assert.assertTrue(originalLayout.isTypePortlet());
-
-			serviceContext = ServiceContextTestUtil.getServiceContext(
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext(
 				_group.getGroupId(), TestPropsValues.getUserId());
 
-			ServiceContextThreadLocal.pushServiceContext(serviceContext);
+		ServiceContextThreadLocal.pushServiceContext(serviceContext);
 
-			_deleteUser(user, serviceContext);
+		_deleteUser(user, serviceContext);
 
-			_bulkLayoutConverter.convertLayout(originalLayout.getPlid());
+		_bulkLayoutConverter.convertLayout(originalLayout.getPlid());
 
-			originalLayout = _layoutLocalService.getLayout(
-				originalLayout.getPlid());
+		originalLayout = _layoutLocalService.getLayout(
+			originalLayout.getPlid());
 
-			Assert.assertTrue(originalLayout.isTypePortlet());
+		Assert.assertTrue(originalLayout.isTypePortlet());
 
-			Layout conversionDraftLayout = originalLayout.fetchDraftLayout();
+		Layout conversionDraftLayout = originalLayout.fetchDraftLayout();
 
-			Assert.assertNotNull(conversionDraftLayout);
-			Assert.assertEquals(
-				TestPropsValues.getUserId(), conversionDraftLayout.getUserId());
-			Assert.assertTrue(conversionDraftLayout.isTypeContent());
+		Assert.assertNotNull(conversionDraftLayout);
+		Assert.assertEquals(
+			TestPropsValues.getUserId(), conversionDraftLayout.getUserId());
+		Assert.assertTrue(conversionDraftLayout.isTypeContent());
 
-			ContentLayoutTestUtil.publishLayout(
-				conversionDraftLayout, originalLayout);
+		ContentLayoutTestUtil.publishLayout(
+			conversionDraftLayout, originalLayout);
 
-			originalLayout = _layoutLocalService.getLayout(
-				originalLayout.getPlid());
+		originalLayout = _layoutLocalService.getLayout(
+			originalLayout.getPlid());
 
-			Assert.assertTrue(originalLayout.isPublished());
-			Assert.assertTrue(originalLayout.isTypeContent());
+		Assert.assertTrue(originalLayout.isPublished());
+		Assert.assertTrue(originalLayout.isTypeContent());
 
-			Layout draftLayout = originalLayout.fetchDraftLayout();
+		Layout draftLayout = originalLayout.fetchDraftLayout();
 
-			Assert.assertNotNull(draftLayout);
-			Assert.assertEquals(
-				conversionDraftLayout.getPlid(), draftLayout.getPlid());
+		Assert.assertNotNull(draftLayout);
+		Assert.assertEquals(
+			conversionDraftLayout.getPlid(), draftLayout.getPlid());
 
-			Assert.assertTrue(draftLayout.isApproved());
-		}
-		finally {
-			ServiceContextThreadLocal.popServiceContext();
-		}
+		Assert.assertTrue(draftLayout.isApproved());
+
+		ServiceContextThreadLocal.popServiceContext();
 	}
 
 	@Test
@@ -493,35 +494,30 @@ public class PublishLayoutMVCActionCommandTest {
 	public void testPublishedLayoutFragmentEntryLinkWithFreeMarkerEmbeddedPortlet()
 		throws Exception {
 
-		ServiceContext serviceContext =
+		ServiceContextThreadLocal.pushServiceContext(
 			ServiceContextTestUtil.getServiceContext(
-				_group.getGroupId(), TestPropsValues.getUserId());
+				_group.getGroupId(), TestPropsValues.getUserId()));
 
-		try {
-			ServiceContextThreadLocal.pushServiceContext(serviceContext);
+		_assertPublishedLayoutFragmentEntryLinkWithFreeMarkerEmbeddedPortlet(
+			new String[] {
+				StringBundler.concat(
+					"<div class=\"fragment_1\">[@liferay_portlet.runtime ",
+					"portletName=\"com_liferay_journal_content_web_",
+					"portlet_JournalContentPortlet\" ",
+					"instanceId=\"myInstanceId0\" persistSettings=false /]",
+					"</div>"),
+				StringBundler.concat(
+					"<div class=\"fragment_1\">[@liferay_portlet",
+					"[\"runtime\"] portletName=\"com_liferay_journal_",
+					"content_web_portlet_JournalContentPortlet\" ",
+					"instanceId=\"myInstanceId1\" persistSettings=false /]",
+					"</div>")
+			},
+			(index, namespace) -> PortletIdCodec.encode(
+				JournalContentPortletKeys.JOURNAL_CONTENT,
+				"myInstanceId" + index));
 
-			_assertPublishedLayoutFragmentEntryLinkWithFreeMarkerEmbeddedPortlet(
-				new String[] {
-					StringBundler.concat(
-						"<div class=\"fragment_1\">[@liferay_portlet.runtime ",
-						"portletName=\"com_liferay_journal_content_web_",
-						"portlet_JournalContentPortlet\" ",
-						"instanceId=\"myInstanceId0\" persistSettings=false /]",
-						"</div>"),
-					StringBundler.concat(
-						"<div class=\"fragment_1\">[@liferay_portlet",
-						"[\"runtime\"] portletName=\"com_liferay_journal_",
-						"content_web_portlet_JournalContentPortlet\" ",
-						"instanceId=\"myInstanceId1\" persistSettings=false /]",
-						"</div>")
-				},
-				(index, namespace) -> PortletIdCodec.encode(
-					JournalContentPortletKeys.JOURNAL_CONTENT,
-					"myInstanceId" + index));
-		}
-		finally {
-			ServiceContextThreadLocal.popServiceContext();
-		}
+		ServiceContextThreadLocal.popServiceContext();
 	}
 
 	@Test
@@ -529,34 +525,29 @@ public class PublishLayoutMVCActionCommandTest {
 	public void testPublishedLayoutFragmentEntryLinkWithFreeMarkerEmbeddedPortletAndDynamicInstanceId()
 		throws Exception {
 
-		ServiceContext serviceContext =
+		ServiceContextThreadLocal.pushServiceContext(
 			ServiceContextTestUtil.getServiceContext(
-				_group.getGroupId(), TestPropsValues.getUserId());
+				_group.getGroupId(), TestPropsValues.getUserId()));
 
-		try {
-			ServiceContextThreadLocal.pushServiceContext(serviceContext);
+		_assertPublishedLayoutFragmentEntryLinkWithFreeMarkerEmbeddedPortlet(
+			new String[] {
+				StringBundler.concat(
+					"<div class=\"fragment_1\">[@liferay_portlet.runtime ",
+					"portletName=\"com_liferay_journal_content_web_",
+					"portlet_JournalContentPortlet\" ",
+					"instanceId=\"fragmentEntryLinkNamespace\" ",
+					"persistSettings=false /]</div>"),
+				StringBundler.concat(
+					"<div class=\"fragment_2\">[@liferay_portlet",
+					"[\"runtime\"] portletName=\"com_liferay_journal_",
+					"content_web_portlet_JournalContentPortlet\" ",
+					"instanceId=\"fragmentEntryLinkNamespace\" ",
+					"persistSettings=false /]</div>")
+			},
+			(index, namespace) -> PortletIdCodec.encode(
+				JournalContentPortletKeys.JOURNAL_CONTENT, namespace));
 
-			_assertPublishedLayoutFragmentEntryLinkWithFreeMarkerEmbeddedPortlet(
-				new String[] {
-					StringBundler.concat(
-						"<div class=\"fragment_1\">[@liferay_portlet.runtime ",
-						"portletName=\"com_liferay_journal_content_web_",
-						"portlet_JournalContentPortlet\" ",
-						"instanceId=\"fragmentEntryLinkNamespace\" ",
-						"persistSettings=false /]</div>"),
-					StringBundler.concat(
-						"<div class=\"fragment_2\">[@liferay_portlet",
-						"[\"runtime\"] portletName=\"com_liferay_journal_",
-						"content_web_portlet_JournalContentPortlet\" ",
-						"instanceId=\"fragmentEntryLinkNamespace\" ",
-						"persistSettings=false /]</div>")
-				},
-				(index, namespace) -> PortletIdCodec.encode(
-					JournalContentPortletKeys.JOURNAL_CONTENT, namespace));
-		}
-		finally {
-			ServiceContextThreadLocal.popServiceContext();
-		}
+		ServiceContextThreadLocal.popServiceContext();
 	}
 
 	@Test
@@ -689,6 +680,50 @@ public class PublishLayoutMVCActionCommandTest {
 				LAYOUT_CONTENT_PAGE_EDITOR_WEB_NONINSTANCEABLE_TEST_PORTLET);
 	}
 
+	@Test
+	@TestInfo("LPD-67269")
+	public void testResourcePermissionIsCopiedWhenLayoutIsPublished()
+		throws Exception {
+
+		FragmentEntryLink fragmentEntryLink = _addPortletToLayout();
+
+		JSONObject editableValuesJSONObject =
+			fragmentEntryLink.getEditableValuesJSONObject();
+
+		String encodedPortletId = PortletIdCodec.encode(
+			LayoutContentPageEditorWebPortletKeys.
+				LAYOUT_CONTENT_PAGE_EDITOR_WEB_TEST_PORTLET,
+			editableValuesJSONObject.getString("instanceId"));
+
+		Role guestRole = _roleLocalService.getRole(
+			_group.getCompanyId(), RoleConstants.GUEST);
+
+		ResourcePermission sourceResourcePermission =
+			ResourcePermissionTestUtil.addResourcePermission(
+				0L,
+				LayoutContentPageEditorWebPortletKeys.
+					LAYOUT_CONTENT_PAGE_EDITOR_WEB_TEST_PORTLET,
+				PortletPermissionUtil.getPrimaryKey(
+					_draftLayout.getPlid(), encodedPortletId),
+				guestRole.getRoleId(), ResourceConstants.SCOPE_INDIVIDUAL);
+
+		ContentLayoutTestUtil.publishLayout(_draftLayout, _layout);
+
+		ResourcePermission targetResourcePermission =
+			_resourcePermissionLocalService.getResourcePermission(
+				_group.getCompanyId(),
+				LayoutContentPageEditorWebPortletKeys.
+					LAYOUT_CONTENT_PAGE_EDITOR_WEB_TEST_PORTLET,
+				ResourceConstants.SCOPE_INDIVIDUAL,
+				PortletPermissionUtil.getPrimaryKey(
+					_layout.getPlid(), encodedPortletId),
+				guestRole.getRoleId());
+
+		Assert.assertEquals(
+			sourceResourcePermission.getActionIds(),
+			targetResourcePermission.getActionIds());
+	}
+
 	private FragmentEntryLink _addFragmentEntryLink(
 			String editableValues, long fragmentCollectionId, String html,
 			String parentItemId, ServiceContext serviceContext)
@@ -708,25 +743,22 @@ public class PublishLayoutMVCActionCommandTest {
 				editableValues, fragmentEntry.getCss(),
 				fragmentEntry.getConfiguration(),
 				fragmentEntry.getExternalReferenceCode(),
-				fragmentEntry.getScopeERC(), fragmentEntry.getHtml(),
-				fragmentEntry.getJs(), _draftLayout,
+				ScopeUtil.getItemScopeExternalReferenceCode(
+					fragmentEntry.getGroupId(), _draftLayout.getGroupId()),
+				fragmentEntry.getHtml(), fragmentEntry.getJs(), _draftLayout,
 				fragmentEntry.getFragmentEntryKey(), fragmentEntry.getType(),
 				parentItemId, 0, _segmentsExperienceId);
 
 		ServiceContextThreadLocal.pushServiceContext(serviceContext);
 
-		try {
-			for (FragmentEntryLinkListener fragmentEntryLinkListener :
-					_fragmentEntryLinkListenerRegistry.
-						getFragmentEntryLinkListeners()) {
+		for (FragmentEntryLinkListener fragmentEntryLinkListener :
+				_fragmentEntryLinkListenerRegistry.
+					getFragmentEntryLinkListeners()) {
 
-				fragmentEntryLinkListener.onAddFragmentEntryLink(
-					fragmentEntryLink);
-			}
+			fragmentEntryLinkListener.onAddFragmentEntryLink(fragmentEntryLink);
 		}
-		finally {
-			ServiceContextThreadLocal.popServiceContext();
-		}
+
+		ServiceContextThreadLocal.popServiceContext();
 
 		return fragmentEntryLink;
 	}
@@ -753,8 +785,9 @@ public class PublishLayoutMVCActionCommandTest {
 		return ContentLayoutTestUtil.addFragmentEntryLinkToLayout(
 			"{}", fragmentEntry.getCss(), fragmentEntry.getConfiguration(),
 			fragmentEntry.getExternalReferenceCode(),
-			fragmentEntry.getScopeERC(), fragmentEntry.getHtml(),
-			fragmentEntry.getJs(), _draftLayout,
+			ScopeUtil.getItemScopeExternalReferenceCode(
+				fragmentEntry.getGroupId(), _draftLayout.getGroupId()),
+			fragmentEntry.getHtml(), fragmentEntry.getJs(), _draftLayout,
 			fragmentEntry.getFragmentEntryKey(), fragmentEntry.getType(), null,
 			0, _segmentsExperienceId);
 	}
@@ -893,7 +926,7 @@ public class PublishLayoutMVCActionCommandTest {
 	}
 
 	private void _deleteUser(User user, ServiceContext serviceContext)
-		throws PortalException {
+		throws Exception {
 
 		_userLocalService.updateStatus(
 			user, WorkflowConstants.STATUS_INACTIVE, serviceContext);
@@ -1049,6 +1082,12 @@ public class PublishLayoutMVCActionCommandTest {
 
 	@Inject
 	private PortletPreferencesLocalService _portletPreferencesLocalService;
+
+	@Inject
+	private ResourcePermissionLocalService _resourcePermissionLocalService;
+
+	@Inject
+	private RoleLocalService _roleLocalService;
 
 	private long _segmentsExperienceId;
 

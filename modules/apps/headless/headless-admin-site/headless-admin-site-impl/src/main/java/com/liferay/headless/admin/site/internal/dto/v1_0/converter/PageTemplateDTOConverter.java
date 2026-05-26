@@ -11,6 +11,7 @@ import com.liferay.headless.admin.site.dto.v1_0.PageTemplate;
 import com.liferay.headless.admin.site.dto.v1_0.PageTemplateSet;
 import com.liferay.headless.admin.site.dto.v1_0.WidgetPageTemplate;
 import com.liferay.headless.admin.site.dto.v1_0.WidgetPageTemplateSettings;
+import com.liferay.headless.admin.site.dto.v1_0.util.ThumbnailURLReferenceUtil;
 import com.liferay.headless.admin.site.internal.dto.v1_0.util.AssetUtil;
 import com.liferay.headless.admin.site.internal.resource.v1_0.util.NavigationSettingsUtil;
 import com.liferay.headless.admin.user.dto.v1_0.Creator;
@@ -31,6 +32,7 @@ import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterContext;
+import com.liferay.portal.vulcan.fields.NestedFieldsSupplier;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 
 import org.osgi.service.component.annotations.Component;
@@ -60,13 +62,16 @@ public class PageTemplateDTOConverter
 		if (layoutPageTemplateEntry.getType() ==
 				LayoutPageTemplateEntryTypeConstants.BASIC) {
 
-			return _getContentPageTemplate(layoutPageTemplateEntry);
+			return _getContentPageTemplate(
+				dtoConverterContext, layoutPageTemplateEntry);
 		}
 
-		return _getWidgetPageTemplate(layoutPageTemplateEntry);
+		return _getWidgetPageTemplate(
+			dtoConverterContext, layoutPageTemplateEntry);
 	}
 
 	private PageTemplate _getContentPageTemplate(
+			DTOConverterContext dtoConverterContext,
 			LayoutPageTemplateEntry layoutPageTemplateEntry)
 		throws Exception {
 
@@ -103,18 +108,27 @@ public class PageTemplateDTOConverter
 						layoutPageTemplateEntry.getPlid()));
 				setName(layoutPageTemplateEntry::getName);
 				setPageTemplateSet(
-					() -> _getPageTemplateSet(layoutPageTemplateEntry));
+					() -> _getPageTemplateSet(
+						dtoConverterContext, layoutPageTemplateEntry));
 				setPageTemplateSettings(
 					() -> new ContentPageTemplateSettings() {
 						{
 							setType(Type.CONTENT_PAGE_TEMPLATE_SETTINGS);
 						}
 					});
-				setTaxonomyCategoryItemExternalReferences(
-					() -> AssetUtil.getTaxonomyCategoryItemExternalReferences(
+				setTaxonomyCategoryBriefs(
+					() -> AssetUtil.getTaxonomyCategoryBriefs(
 						Layout.class.getName(),
 						layoutPageTemplateEntry.getPlid(),
 						layoutPageTemplateEntry.getGroupId()));
+				setThumbnailURLReference(
+					() -> NestedFieldsSupplier.supply(
+						"thumbnailURLReference",
+						fieldName ->
+							ThumbnailURLReferenceUtil.
+								getFileEntryThumbnailURLReference(
+									layoutPageTemplateEntry.
+										getPreviewFileEntryId())));
 				setType(() -> Type.CONTENT_PAGE_TEMPLATE);
 				setUuid(layoutPageTemplateEntry::getUuid);
 			}
@@ -122,6 +136,7 @@ public class PageTemplateDTOConverter
 	}
 
 	private PageTemplateSet _getPageTemplateSet(
+			DTOConverterContext dtoConverterContext,
 			LayoutPageTemplateEntry layoutPageTemplateEntry)
 		throws Exception {
 
@@ -135,10 +150,12 @@ public class PageTemplateDTOConverter
 			return null;
 		}
 
-		return _pageTemplateSetDTOConverter.toDTO(layoutPageTemplateCollection);
+		return _pageTemplateSetDTOConverter.toDTO(
+			dtoConverterContext, layoutPageTemplateCollection);
 	}
 
 	private PageTemplate _getWidgetPageTemplate(
+			DTOConverterContext dtoConverterContext,
 			LayoutPageTemplateEntry layoutPageTemplateEntry)
 		throws Exception {
 
@@ -196,14 +213,23 @@ public class PageTemplateDTOConverter
 					() -> LocalizedMapUtil.getI18nMap(
 						true, layoutPrototype.getNameMap()));
 				setPageTemplateSet(
-					() -> _getPageTemplateSet(layoutPageTemplateEntry));
+					() -> _getPageTemplateSet(
+						dtoConverterContext, layoutPageTemplateEntry));
 				setPageTemplateSettings(
 					() -> _getWidgetPageTemplateSettings(layout));
-				setTaxonomyCategoryItemExternalReferences(
-					() -> AssetUtil.getTaxonomyCategoryItemExternalReferences(
+				setTaxonomyCategoryBriefs(
+					() -> AssetUtil.getTaxonomyCategoryBriefs(
 						Layout.class.getName(),
 						layoutPageTemplateEntry.getPlid(),
 						layoutPageTemplateEntry.getGroupId()));
+				setThumbnailURLReference(
+					() -> NestedFieldsSupplier.supply(
+						"thumbnailURLReference",
+						fieldName ->
+							ThumbnailURLReferenceUtil.
+								getFileEntryThumbnailURLReference(
+									layoutPageTemplateEntry.
+										getPreviewFileEntryId())));
 				setType(() -> Type.WIDGET_PAGE_TEMPLATE);
 				setUuid(layoutPageTemplateEntry::getUuid);
 			}

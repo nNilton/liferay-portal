@@ -90,11 +90,13 @@ public class StylesFragmentEntryProcessorTest {
 		Document document = _getDocument(html);
 
 		_stylesDocumentFragmentEntryProcessor.processFragmentEntryLinkHTML(
-			fragmentEntryLink, document,
+			document, fragmentEntryLink,
 			new DefaultFragmentEntryProcessorContext(
+				fragmentEntryLink.getCompanyId(),
 				_getMockHttpServletRequest(layoutStructure), null,
+				LocaleUtil.getMostRelevantLocale(),
 				FragmentEntryLinkConstants.EDIT,
-				LocaleUtil.getMostRelevantLocale()));
+				fragmentEntryLink.getGroupId()));
 
 		String layoutStructureItemUniqueCssClass =
 			fragmentStyledLayoutStructureItem.getUniqueCssClass();

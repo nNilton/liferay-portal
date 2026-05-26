@@ -3,44 +3,55 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {dateUtils} from 'frontend-js-web';
+
+import {IAssetObjectEntry} from '../../../common/types/AssetType';
 import {
-	ISearchAssetObjectEntry,
-	ISearchAssetTypeInformation,
-} from '../../../common/types/AssetType';
-import {ASSET_TYPE, L_CONTENTS, L_FILES} from './constants';
+	ASSET_TYPE,
+	ASSET_TYPE_ERC,
+	L_CMS_CONTENT_STRUCTURES,
+	L_CMS_FILE_TYPES,
+} from './constants';
 
-export function getBaseAssetInformation({
-	actions: {
-		get: {href},
-	},
-	embedded: {
-		externalReferenceCode,
-		id,
-		objectEntryFolderExternalReferenceCode,
-		title,
-		title_i18n,
-	},
-}: ISearchAssetObjectEntry): ISearchAssetTypeInformation {
-	const baseAssetInfo: ISearchAssetTypeInformation = {
-		externalReferenceCode,
-		id,
-		objectEntryFolderExternalReferenceCode,
-		title,
-		title_i18n,
-	};
+export function formatDate(date: string): string {
+	return dateUtils.format(new Date(date), 'P p');
+}
 
-	if (href.includes('object-entry-folders')) {
-		baseAssetInfo.icon = 'folder';
-		baseAssetInfo.type = ASSET_TYPE.FOLDER;
+export function getAssetType(objectEntry: IAssetObjectEntry): string {
+	const {
+		systemProperties: {
+			objectDefinitionBrief: {
+				objectFolderExternalReferenceCode:
+					objectFolderExternalReferenceCode = '',
+			} = {},
+		} = {},
+	} = objectEntry;
+
+	if (
+		objectFolderExternalReferenceCode ===
+			ASSET_TYPE_ERC.BASIC_WEB_CONTENT ||
+		objectFolderExternalReferenceCode === L_CMS_CONTENT_STRUCTURES
+	) {
+		return ASSET_TYPE.CONTENTS;
 	}
-	else if (objectEntryFolderExternalReferenceCode === L_FILES) {
-		baseAssetInfo.icon = 'document-image';
-		baseAssetInfo.type = ASSET_TYPE.FILES;
-	}
-	else if (objectEntryFolderExternalReferenceCode === L_CONTENTS) {
-		baseAssetInfo.icon = 'forms';
-		baseAssetInfo.type = ASSET_TYPE.CONTENTS;
+	else if (
+		objectFolderExternalReferenceCode === ASSET_TYPE_ERC.BASIC_DOCUMENT ||
+		objectFolderExternalReferenceCode === L_CMS_FILE_TYPES
+	) {
+		return ASSET_TYPE.FILES;
 	}
 
-	return baseAssetInfo;
+	return ASSET_TYPE.FOLDER;
+}
+
+export function getAssetLanguages(
+	title_i18n: {[key: string]: string} = {}
+): string[] {
+	const assetLanguages = Object.keys(title_i18n);
+
+	if (assetLanguages.length) {
+		return Object.keys(title_i18n).map((key) => key.replace('_', '-'));
+	}
+
+	return [];
 }

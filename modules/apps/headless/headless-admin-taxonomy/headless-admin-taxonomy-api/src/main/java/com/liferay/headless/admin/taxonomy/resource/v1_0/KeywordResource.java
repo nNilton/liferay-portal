@@ -98,6 +98,13 @@ public interface KeywordResource {
 			com.liferay.portal.kernel.search.Sort[] sorts)
 		throws Exception;
 
+	public Keyword patchSiteKeyword(Long siteId, Keyword keyword)
+		throws Exception;
+
+	public Keyword patchSiteKeywordByExternalReferenceCode(
+			Long siteId, String externalReferenceCode, Keyword keyword)
+		throws Exception;
+
 	public Keyword postAssetLibraryKeyword(Long assetLibraryId, Keyword keyword)
 		throws Exception;
 
@@ -254,3 +261,4 @@ public interface KeywordResource {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-1131872106

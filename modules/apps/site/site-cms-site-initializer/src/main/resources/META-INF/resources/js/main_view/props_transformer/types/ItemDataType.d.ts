@@ -8,6 +8,7 @@ interface ItemData {
 		copy: Action;
 		'copy-replace': Action;
 		delete: Action;
+		duplicate: Action;
 		expire: Action;
 		get: Action;
 		'get-by-scope': Action;
@@ -30,6 +31,7 @@ interface ItemData {
 		externalReferenceCode: string;
 		file?: any;
 		id: number;
+		keywords?: string[];
 		objectEntryFolderExternalReferenceCode?: string;
 		objectEntryFolderId: number;
 		parentObjectEntryFolderExternalReferenceCode?: string;

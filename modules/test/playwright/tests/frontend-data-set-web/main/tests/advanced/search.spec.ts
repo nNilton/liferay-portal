@@ -6,15 +6,18 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {apiHelpersTest} from '../../../../../fixtures/apiHelpersTest';
+import {dataSetManagerApiHelpersTest} from '../../../../../fixtures/dataSetManagerApiHelpersTest';
 import {featureFlagsTest} from '../../../../../fixtures/featureFlagsTest';
 import {isolatedSiteTest} from '../../../../../fixtures/isolatedSiteTest';
 import {loginTest} from '../../../../../fixtures/loginTest';
+import getDataSetResourceURL from '../../../../../utils/getDataSetResourceURL';
 import getRandomString from '../../../../../utils/getRandomString';
-import {EFDSVisualizationMode, waitForFDS} from '../../../../../utils/waitFor';
+import {waitForFDS} from '../../../../../utils/waitFor';
 import {fdsSamplePageTest} from '../../fixtures/fdsSamplePageTest';
 
 const test = mergeTests(
 	apiHelpersTest,
+	dataSetManagerApiHelpersTest,
 	fdsSamplePageTest,
 	featureFlagsTest({
 		'LPS-178052': {enabled: true},
@@ -24,50 +27,27 @@ const test = mergeTests(
 );
 
 test.beforeEach(async ({fdsSamplePage, page, site}) => {
-	await fdsSamplePage.setupFDSSampleWidget({site});
+	await fdsSamplePage.setupFDSSampleWidget({
+		fragmentKeys: ['advanced-search-fds-sample'],
+		site,
+	});
 
 	await fdsSamplePage.selectTab('Advanced');
 
-	await waitForFDS({page, visualizationMode: EFDSVisualizationMode.TABLE});
-});
-
-test('Check Search clear button', async ({fdsSamplePage}) => {
-	const searchInput = fdsSamplePage.managementToolbar.searchInput;
-	const searchValue = getRandomString();
-
-	await test.step('Fill search input', async () => {
-		await searchInput.fill(searchValue);
-
-		await expect(searchInput).toHaveValue(searchValue);
-	});
-
-	await test.step('Clean search text by the input clear button', async () => {
-		const searchInputBox = await searchInput.boundingBox();
-
-		await searchInput.click({
-			position: {
-				x: searchInputBox.width - 10,
-				y: searchInputBox.height / 2,
-			},
-		});
-	});
-
-	await test.step('Check that input is empty', async () => {
-		await expect(searchInput).toHaveValue('');
-	});
+	await waitForFDS({page});
 });
 
 test(
-	'Check behavior of search',
+	'Search behavior',
 	{
-		tag: ['@LPD-56876', '@LPD-63092'],
+		tag: ['@LPD-54150', '@LPD-56876', '@LPD-63092'],
 	},
 	async ({fdsSamplePage, page}) => {
+		const searchInput = fdsSamplePage.managementToolbar.searchInput;
+
 		await test.step('The total results label and search resume are displayed when a search is made', async () => {
 			await test.step('Search for "Sample55"', async () => {
-				await fdsSamplePage.managementToolbar.searchInput.fill(
-					'Sample55'
-				);
+				await searchInput.fill('Sample55');
 
 				await fdsSamplePage.managementToolbar.searchButton.click();
 			});
@@ -109,9 +89,7 @@ test(
 			});
 
 			await test.step('Check the search bar input is blank', async () => {
-				await expect(
-					fdsSamplePage.managementToolbar.searchInput
-				).toBeEmpty();
+				await expect(searchInput).toBeEmpty();
 			});
 
 			await test.step('Check the search resume label is not displayed', async () => {
@@ -127,14 +105,11 @@ test(
 
 				await waitForFDS({
 					page,
-					visualizationMode: EFDSVisualizationMode.TABLE,
 				});
 			});
 
 			await test.step('Search for "Sample" and wait for the search to finish', async () => {
-				await fdsSamplePage.managementToolbar.searchInput.fill(
-					'Sample'
-				);
+				await searchInput.fill('Sample');
 
 				await fdsSamplePage.managementToolbar.searchButton.click();
 
@@ -157,5 +132,173 @@ test(
 				).toBeVisible();
 			});
 		});
+
+		await test.step('Check Search clear button', async () => {
+			const searchValue = getRandomString();
+
+			await test.step('Fill search input', async () => {
+				await searchInput.fill(searchValue);
+
+				await expect(searchInput).toHaveValue(searchValue);
+			});
+
+			await test.step('Clean search text by the input clear button', async () => {
+				const searchInputBox = await searchInput.boundingBox();
+
+				await searchInput.click({
+					position: {
+						x: searchInputBox.width - 10,
+						y: searchInputBox.height / 2,
+					},
+				});
+			});
+
+			await test.step('Check that input is empty', async () => {
+				await expect(searchInput).toHaveValue('');
+			});
+		});
+
+		await test.step('Global FDS state integration', async () => {
+			const fragmentInput = page.getByPlaceholder(
+				'Search in Advanced tab of'
+			);
+			const fragmentButton = page.getByTestId(
+				'advancedSearchFDSSampleButton'
+			);
+
+			await test.step('Search in fragment results with search in FDS', async () => {
+				const sampleSearchText = getRandomString();
+
+				await fragmentInput.fill(sampleSearchText);
+
+				await fragmentButton.click();
+
+				await expect(searchInput).toHaveValue(sampleSearchText);
+			});
+
+			await test.step('Search in FDS UI reflects in fragment', async () => {
+				const sampleSearchText = getRandomString();
+
+				await searchInput.fill(sampleSearchText);
+
+				await fdsSamplePage.managementToolbar.searchButton.click();
+
+				await expect(fragmentInput).toHaveValue(sampleSearchText);
+			});
+
+			await test.step('Clear search in FDS UI reflects in fragment', async () => {
+				const sampleSearchText = getRandomString();
+
+				await searchInput.fill(sampleSearchText);
+
+				await fdsSamplePage.managementToolbar.searchButton.click();
+
+				await waitForFDS({
+					empty: true,
+					page,
+				});
+
+				await expect(fragmentInput).toHaveValue(sampleSearchText);
+
+				await fdsSamplePage.activeFiltersToolbar.clearSearchButton.click();
+
+				await expect(fragmentInput).toHaveValue('');
+			});
+
+			await test.step('Clear all in FDS UI reflects in fragment', async () => {
+				const sampleSearchText = getRandomString();
+
+				await searchInput.fill(sampleSearchText);
+
+				await fdsSamplePage.managementToolbar.searchButton.click();
+
+				await waitForFDS({
+					empty: true,
+					page,
+				});
+
+				await expect(fragmentInput).toHaveValue(sampleSearchText);
+
+				await fdsSamplePage.activeFiltersToolbar.clearButton.click();
+
+				await expect(fragmentInput).toHaveValue('');
+			});
+
+			await test.step('Search in FDS URL config reflects in fragment', async () => {
+				const sampleSearchText = getRandomString();
+
+				await searchInput.fill(sampleSearchText);
+
+				await fdsSamplePage.managementToolbar.searchButton.click();
+
+				await waitForFDS({
+					empty: true,
+					page,
+				});
+
+				// FDS URL config will be set after page reload
+
+				await page.reload();
+
+				await waitForFDS({
+					empty: true,
+					page,
+				});
+
+				await expect(fragmentInput).toHaveValue(sampleSearchText);
+			});
+		});
 	}
 );
+
+test('Search Bar is shown/hidden according to FDS configuration', async ({
+	dataSetManagerApiHelpers,
+	fdsSamplePage,
+	page,
+}) => {
+	const erc =
+		'com_liferay_frontend_data_set_sample_web_internal_portlet_FDSSamplePortlet-advanced';
+
+	await test.step('Check that the search bar is shown by default', async () => {
+		await expect(fdsSamplePage.managementToolbar.searchInput).toBeVisible();
+	});
+
+	await test.step('If exists, update Advanced Sample DataSet to disable search bar. Otherwise, create it with disabled search bar', async () => {
+		const response = await dataSetManagerApiHelpers.getResponse(
+			getDataSetResourceURL({dataSetERC: erc})
+		);
+
+		if (response.ok()) {
+			await dataSetManagerApiHelpers.updateDataSet({
+				erc,
+				showSearch: false,
+			});
+		}
+		else {
+			await dataSetManagerApiHelpers.createDataSet({
+				erc,
+				label: 'Advanced Sample',
+				restApplication: '/c/fdssamples',
+				restEndpoint: '/',
+				restSchema: 'FDSSample',
+				showSearch: false,
+				snapshotsEnabled: true,
+			});
+		}
+	});
+
+	await test.step('Check search bar is not shown anymore', async () => {
+		await page.reload();
+
+		await expect(
+			fdsSamplePage.managementToolbar.searchInput
+		).not.toBeVisible();
+	});
+
+	await test.step('Reset FDS configuration', async () => {
+		await dataSetManagerApiHelpers.updateDataSet({
+			erc,
+			showSearch: true,
+		});
+	});
+});

@@ -43,6 +43,23 @@ public abstract class BaseParentBuild extends BaseBuild implements ParentBuild {
 	}
 
 	@Override
+	public void addDownstreamBuild(Build build) {
+		if (build == null) {
+			return;
+		}
+
+		if (_downstreamBuilds == null) {
+			getDownstreamBuilds();
+		}
+
+		if (build.isBuildCached() && _downstreamBuilds.contains(build)) {
+			return;
+		}
+
+		_downstreamBuilds.add(build);
+	}
+
+	@Override
 	public void addDownstreamBuilds(Map<String, String> urlAxisNames) {
 		if (urlAxisNames.isEmpty()) {
 			return;
@@ -88,10 +105,18 @@ public abstract class BaseParentBuild extends BaseBuild implements ParentBuild {
 							}
 							catch (RuntimeException runtimeException) {
 								if (!isFromArchive()) {
+									String shortStackTrace =
+										JenkinsResultsParserUtil.getStackTrace(
+											runtimeException, 10);
+
+									System.out.println(
+										"WARNING: Build object failure:\n" +
+											shortStackTrace);
+
 									NotificationUtil.sendSlackNotification(
-										runtimeException.getMessage() +
-											"\nBuild URL: " +
-												thisBuild.getBuildURL(),
+										JenkinsResultsParserUtil.combine(
+											shortStackTrace, "\nBuild URL: ",
+											thisBuild.getBuildURL()),
 										"ci-notifications",
 										"Build object failure");
 								}
@@ -587,22 +612,6 @@ public abstract class BaseParentBuild extends BaseBuild implements ParentBuild {
 
 	protected BaseParentBuild(String buildURL, Build parentBuild) {
 		super(buildURL, parentBuild);
-	}
-
-	protected void addDownstreamBuild(Build build) {
-		if (build == null) {
-			return;
-		}
-
-		if (_downstreamBuilds == null) {
-			getDownstreamBuilds();
-		}
-
-		if (build.isBuildCached() && _downstreamBuilds.contains(build)) {
-			return;
-		}
-
-		_downstreamBuilds.add(build);
 	}
 
 	protected void addDownstreamBuilds(Collection<Build> builds) {

@@ -6,11 +6,16 @@
 const LIFERAY_CONTENT_PATH = process.env.LIFERAY_CONTENT_PATH || '';
 const LIFERAY_HOST = process.env.LIFERAY_HOST || '';
 const LIFERAY_LANGUAGES = process.env.LIFERAY_LANGUAGES || 'en-US';
+const LIFERAY_SPACE_ID = process.env.LIFERAY_SPACE_ID || '';
 
 export const liferay = {
 	contentEndpoints: {
-		getContentURL: () => {
-			return `${LIFERAY_HOST}${LIFERAY_CONTENT_PATH}`;
+		getEventURL: (id: number) => {
+			return `${LIFERAY_HOST}${LIFERAY_CONTENT_PATH}/${id}`;
+		},
+
+		getEventsURL: () => {
+			return `${LIFERAY_HOST}${LIFERAY_CONTENT_PATH}/scopes/${LIFERAY_SPACE_ID}`;
 		},
 	},
 
@@ -48,6 +53,16 @@ export const liferay = {
 		}
 
 		return documentPath;
+	},
+
+	getMissingEnvVars: () => {
+		const required = [
+			'LIFERAY_CONTENT_PATH',
+			'LIFERAY_HOST',
+			'LIFERAY_SPACE_ID',
+		];
+
+		return required.filter((key) => !process.env[key]);
 	},
 
 	getSupportedLanguages: () => {

@@ -1,5 +1,5 @@
 /**
- * SPDX-FileCopyrightText: (c) 2025 Liferay, Inc. https://liferay.com
+ * SPDX-FileCopyrightText: (c) 2026 Liferay, Inc. https://liferay.com
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
@@ -8,25 +8,44 @@ import {Locator, Page, expect} from '@playwright/test';
 import {clickAndExpectToBeVisible} from '../../utils/clickAndExpectToBeVisible';
 import {waitForAlert} from '../../utils/waitForAlert';
 import {waitForPageToBeLoaded} from '../../utils/waitForPageToBeLoaded';
-import {ApplicationsMenuPage} from '../product-navigation-applications-menu/ApplicationsMenuPage';
+import {GlobalMenuPage} from '../product-navigation-applications-menu/GlobalMenuPage';
+import {ProductMenuPage} from '../product-navigation-control-menu-web/ProductMenuPage';
 
 export class InstanceSettingsPage {
 	readonly actionsButton: Locator;
-	readonly applicationsMenuPage: ApplicationsMenuPage;
+	readonly globalMenuPage: GlobalMenuPage;
 	readonly page: Page;
+	readonly productMenuPage: ProductMenuPage;
 	readonly saveButton: Locator;
 
 	constructor(page: Page) {
 		this.actionsButton = page.getByRole('button', {name: 'Actions'});
-		this.applicationsMenuPage = new ApplicationsMenuPage(page);
+		this.globalMenuPage = new GlobalMenuPage(page);
 		this.page = page;
+		this.productMenuPage = new ProductMenuPage(page);
 		this.saveButton = page
 			.getByRole('button', {name: 'Save'})
 			.or(page.getByRole('button', {name: 'Update'}));
 	}
 
-	async goto(forceReload = true) {
-		await this.applicationsMenuPage.goToInstanceSettings(forceReload);
+	async goto({
+		forceReload = true,
+		useProductMenu = false,
+	}: {forceReload?: boolean; useProductMenu?: boolean} = {}) {
+		if (useProductMenu) {
+			await this.productMenuPage.goToPortlet({
+				category: 'Configuration',
+				panel: 'Control Panel',
+				portlet: 'Instance Settings',
+			});
+		}
+		else {
+			if (forceReload) {
+				await this.globalMenuPage.goToHome();
+			}
+
+			await this.globalMenuPage.goToControlPanel('Instance Settings');
+		}
 	}
 
 	async checkOption(label: string, checked: boolean) {
@@ -79,9 +98,10 @@ export class InstanceSettingsPage {
 		categoryKey: string,
 		configurationName: string,
 		forceReload = true,
-		sectionName?: string
+		sectionName?: string,
+		useProductMenu?: boolean
 	) {
-		await this.goto(forceReload);
+		await this.goto({forceReload, useProductMenu});
 
 		await this.page
 			.getByRole('link', {

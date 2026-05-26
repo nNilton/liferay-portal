@@ -6,12 +6,10 @@
 package com.liferay.staging.internal;
 
 import com.liferay.exportimport.kernel.lar.ExportImportHelper;
-import com.liferay.exportimport.kernel.lar.PortletDataHandler;
 import com.liferay.exportimport.kernel.staging.StagingURLHelper;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.lang.ThreadContextClassLoaderUtil;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
@@ -22,7 +20,6 @@ import com.liferay.portal.kernel.security.auth.HttpPrincipal;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.GroupLocalService;
-import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
@@ -30,8 +27,6 @@ import com.liferay.portal.service.http.GroupServiceHttp;
 import com.liferay.staging.StagingGroupHelper;
 import com.liferay.staging.internal.constants.CompanyGroupConstants;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
@@ -45,10 +40,6 @@ public class StagingGroupHelperImpl implements StagingGroupHelper {
 
 	@Override
 	public Group fetchCompanyGroup(long companyId) {
-		if (!FeatureFlagManagerUtil.isEnabled(companyId, "LPD-35914")) {
-			return null;
-		}
-
 		return _groupLocalService.fetchFriendlyURLGroup(
 			companyId, CompanyGroupConstants.FRIENDLY_URL);
 	}
@@ -348,34 +339,16 @@ public class StagingGroupHelperImpl implements StagingGroupHelper {
 			return true;
 		}
 
-		List<Portlet> dataSiteLevelPortlets = Collections.emptyList();
+		Portlet dataSiteLevelPortlet =
+			_exportImportHelper.getDataSiteLevelPortlet(
+				className, group.getCompanyId(), true);
 
-		try {
-			dataSiteLevelPortlets =
-				_exportImportHelper.getDataSiteLevelPortlets(
-					group.getCompanyId(), true);
-		}
-		catch (Exception exception) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(exception);
-			}
-
+		if (dataSiteLevelPortlet == null) {
 			return true;
 		}
 
-		for (Portlet dataSiteLevelPortlet : dataSiteLevelPortlets) {
-			PortletDataHandler portletDataHandler =
-				dataSiteLevelPortlet.getPortletDataHandlerInstance();
-
-			if (ArrayUtil.contains(
-					portletDataHandler.getClassNames(), className)) {
-
-				return isStagedPortlet(
-					groupId, dataSiteLevelPortlet.getRootPortletId());
-			}
-		}
-
-		return true;
+		return isStagedPortlet(
+			groupId, dataSiteLevelPortlet.getRootPortletId());
 	}
 
 	@Override

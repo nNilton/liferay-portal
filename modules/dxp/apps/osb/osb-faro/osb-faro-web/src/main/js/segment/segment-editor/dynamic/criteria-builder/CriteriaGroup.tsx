@@ -86,6 +86,7 @@ interface ICriteriaGroupProps {
 	parentGroupId?: string;
 	root?: boolean;
 	segmentType: SegmentTypes;
+	sequential: boolean;
 }
 
 class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
@@ -93,16 +94,18 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 		root: false
 	};
 
-	private NestedCriteriaGroupWithDrag;
+	private NestedCriteriaGroupWithDrag: React.ComponentType<any>;
 
-	constructor(props) {
+	constructor(props: ICriteriaGroupProps) {
 		super(props);
 
-		this.NestedCriteriaGroupWithDrag = withDragSource(CriteriaGroup);
+		this.NestedCriteriaGroupWithDrag = withDragSource(
+			CriteriaGroup
+		) as React.ComponentType<any>;
 	}
 
 	@autobind
-	handleConjunctionClick(event) {
+	handleConjunctionClick(event: React.MouseEvent) {
 		event.preventDefault();
 
 		const {criteria, onChange} = this.props;
@@ -132,7 +135,7 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 	 * @memberof CriteriaGroup
 	 */
 	@autobind
-	handleCriterionAdd(index, criterion) {
+	handleCriterionAdd(index: number, criterion: Criterion) {
 		const {criteria, onChange, root} = this.props;
 
 		const {
@@ -145,7 +148,7 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 			value
 		} = criterion;
 
-		const operators = getSupportedOperatorsFromType(type);
+		const operators = getSupportedOperatorsFromType(type ?? '');
 
 		const newCriterion = {
 			operatorName: operatorName || operators[0].name,
@@ -162,16 +165,20 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 				conjunctionName: Conjunctions.And,
 				criteriaGroupId: generateGroupId(),
 				items: [newCriterion]
-			} as CriterionGroup);
+			} as unknown as CriterionGroup);
 		} else {
 			onChange({
 				...criteria,
-				items: insertAtIndex(criteria.items, index, newCriterion)
+				items: insertAtIndex(
+					criteria.items,
+					index,
+					newCriterion as unknown as Criterion
+				)
 			});
 		}
 	}
 
-	handleCriterionChange(index) {
+	handleCriterionChange(index: number) {
 		return (newCriterion: Criterion | Criterion[]) => {
 			const {
 				criteria: {conjunctionName, criteriaGroupId, items},
@@ -193,12 +200,14 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 	}
 
 	@autobind
-	handleCriterionDelete(index) {
+	handleCriterionDelete(index: number) {
 		const {criteria, onChange} = this.props;
 
 		onChange({
 			...criteria,
-			items: criteria.items.filter((fItem, fIndex) => fIndex !== index)
+			items: criteria.items.filter(
+				(_fItem: unknown, fIndex: number) => fIndex !== index
+			)
 		});
 	}
 
@@ -208,7 +217,7 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 		return criteria ? !criteria.items.length : true;
 	}
 
-	renderConjunction(index) {
+	renderConjunction(index: number) {
 		const {criteria, criteriaGroupId, id, onMove} = this.props;
 
 		return (
@@ -238,15 +247,9 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 		);
 	}
 
-	renderCriterion(criterion, index) {
-		const {
-			channelId,
-			criteriaGroupId,
-			groupId,
-			id,
-			onMove,
-			segmentType
-		} = this.props;
+	renderCriterion(criterion: Criterion | CriterionGroup, index: number) {
+		const {channelId, criteriaGroupId, groupId, id, onMove, segmentType} =
+			this.props;
 
 		const criterionGroup = isCriterionGroup(criterion);
 
@@ -306,10 +309,12 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 			dragging,
 			id,
 			onMove,
-			root
+			root,
+			sequential
 		} = this.props;
 
 		const classes = getCN(
+			'sheet',
 			{
 				'criteria-group-root': criteria
 			},
@@ -321,51 +326,50 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 		const singleRow =
 			criteria && criteria.items && criteria.items.length === 1;
 
+		if (this.isCriteriaEmpty()) {
+			return (
+				<EmptyDropZone
+					id={id}
+					onCriterionAdd={this.handleCriterionAdd}
+					sequential={sequential}
+				/>
+			);
+		}
+
 		return connectDragPreview(
 			<div className={classes}>
-				{this.isCriteriaEmpty() ? (
-					<EmptyDropZone
+				<>
+					<DropZone
+						criteriaGroupId={criteriaGroupId}
+						dropIndex={0}
 						id={id}
 						onCriterionAdd={this.handleCriterionAdd}
+						onMove={onMove}
 					/>
-				) : (
-					<>
-						<DropZone
-							criteriaGroupId={criteriaGroupId}
-							dropIndex={0}
-							id={id}
-							onCriterionAdd={this.handleCriterionAdd}
-							onMove={onMove}
-						/>
 
-						{singleRow &&
-							!root &&
-							connectDragSource(
-								<div className='criteria-group-drag-icon drag-icon'>
-									<ClayIcon
-										className='icon-root'
-										symbol='drag'
-									/>
-								</div>
-							)}
+					{singleRow &&
+						!root &&
+						connectDragSource(
+							<div className='criteria-group-drag-icon drag-icon'>
+								<ClayIcon className='icon-root' symbol='drag' />
+							</div>
+						)}
 
-						{isCriterionGroup(criteria) &&
-							criteria.items.map((criterion, index) => (
-								<Fragment
-									key={`${criteriaGroupId}-${
-										isCriterionGroup(criterion)
-											? criterion.criteriaGroupId
-											: criterion.rowId
-									}`}
-								>
-									{index !== 0 &&
-										this.renderConjunction(index)}
+					{isCriterionGroup(criteria) &&
+						criteria.items.map((criterion, index) => (
+							<Fragment
+								key={`${criteriaGroupId}-${
+									isCriterionGroup(criterion)
+										? criterion.criteriaGroupId
+										: criterion.rowId
+								}`}
+							>
+								{index !== 0 && this.renderConjunction(index)}
 
-									{this.renderCriterion(criterion, index)}
-								</Fragment>
-							))}
-					</>
-				)}
+								{this.renderCriterion(criterion, index)}
+							</Fragment>
+						))}
+				</>
 			</div>
 		);
 	}

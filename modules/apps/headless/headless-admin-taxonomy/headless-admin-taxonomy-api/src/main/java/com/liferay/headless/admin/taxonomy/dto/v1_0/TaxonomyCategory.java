@@ -723,6 +723,47 @@ public class TaxonomyCategory implements Serializable {
 	private Supplier<ParentTaxonomyVocabulary>
 		_parentTaxonomyVocabularySupplier;
 
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "The path of the category."
+	)
+	public String getPath() {
+		if (_pathSupplier != null) {
+			path = _pathSupplier.get();
+
+			_pathSupplier = null;
+		}
+
+		return path;
+	}
+
+	public void setPath(String path) {
+		this.path = path;
+
+		_pathSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setPath(UnsafeSupplier<String, Exception> pathUnsafeSupplier) {
+		_pathSupplier = () -> {
+			try {
+				return pathUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(description = "The path of the category.")
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected String path;
+
+	@JsonIgnore
+	private Supplier<String> _pathSupplier;
+
 	@io.swagger.v3.oas.annotations.media.Schema
 	@Valid
 	public com.liferay.portal.vulcan.permission.Permission[] getPermissions() {
@@ -1000,6 +1041,47 @@ public class TaxonomyCategory implements Serializable {
 
 	@JsonIgnore
 	private Supplier<Long> _taxonomyVocabularyIdSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "The UUID of the category."
+	)
+	public String getUuid() {
+		if (_uuidSupplier != null) {
+			uuid = _uuidSupplier.get();
+
+			_uuidSupplier = null;
+		}
+
+		return uuid;
+	}
+
+	public void setUuid(String uuid) {
+		this.uuid = uuid;
+
+		_uuidSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setUuid(UnsafeSupplier<String, Exception> uuidUnsafeSupplier) {
+		_uuidSupplier = () -> {
+			try {
+				return uuidUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(description = "The UUID of the category.")
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String uuid;
+
+	@JsonIgnore
+	private Supplier<String> _uuidSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "A write-only property that specifies the category's default permissions."
@@ -1313,6 +1395,22 @@ public class TaxonomyCategory implements Serializable {
 			sb.append(String.valueOf(parentTaxonomyVocabulary));
 		}
 
+		String path = getPath();
+
+		if (path != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"path\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(path));
+
+			sb.append("\"");
+		}
+
 		com.liferay.portal.vulcan.permission.Permission[] permissions =
 			getPermissions();
 
@@ -1409,6 +1507,22 @@ public class TaxonomyCategory implements Serializable {
 			sb.append("\"taxonomyVocabularyId\": ");
 
 			sb.append(taxonomyVocabularyId);
+		}
+
+		String uuid = getUuid();
+
+		if (uuid != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"uuid\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(uuid));
+
+			sb.append("\"");
 		}
 
 		ViewableBy viewableBy = getViewableBy();
@@ -1564,3 +1678,4 @@ public class TaxonomyCategory implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
+// LIFERAY-REST-BUILDER-HASH:764984963

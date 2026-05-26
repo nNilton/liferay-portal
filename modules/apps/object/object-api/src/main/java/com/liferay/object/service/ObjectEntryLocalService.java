@@ -260,6 +260,9 @@ public interface ObjectEntryLocalService
 	public ObjectEntry fetchObjectEntry(long objectEntryId);
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public ObjectEntry fetchObjectEntry(long groupId, long objectDefinitionId);
+
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public ObjectEntry fetchObjectEntry(
 		long groupId, ObjectDefinition objectDefinition, String urlTitle);
 
@@ -510,6 +513,12 @@ public interface ObjectEntryLocalService
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public int getValuesListCount(
+			long companyId, Long[] groupIds, Long[] objectDefinitionIds,
+			Predicate predicate)
+		throws PortalException;
+
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public int getValuesListCount(
 			Long[] groupIds, long companyId, long userId,
 			long objectDefinitionId, Predicate predicate,
 			boolean preferApproved, String search)
@@ -617,3 +626,4 @@ public interface ObjectEntryLocalService
 		throws PortalException;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-404821026

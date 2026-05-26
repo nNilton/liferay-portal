@@ -13,6 +13,7 @@ interface ICriteriaBuilderProps {
 	id?: string;
 	onChange: (items: Criteria) => void;
 	segmentType: SegmentTypes;
+	sequential: boolean;
 }
 
 class CriteriaBuilder extends React.Component<ICriteriaBuilderProps> {
@@ -85,7 +86,7 @@ class CriteriaBuilder extends React.Component<ICriteriaBuilderProps> {
 		startIndex: number,
 		destGroupId: string,
 		destIndex: number,
-		criterion: Criterion,
+		criterion: Criterion | CriterionGroup,
 		replace?: boolean
 	): void {
 		const newCriteria = this.searchAndUpdateCriteria(
@@ -116,7 +117,7 @@ class CriteriaBuilder extends React.Component<ICriteriaBuilderProps> {
 		destGroupId: string,
 		destIndex: number,
 		addCriterion: Criteria,
-		replace
+		replace?: boolean
 	): CriterionGroup {
 		let updatedCriteriaItems = criteria.items;
 
@@ -156,7 +157,8 @@ class CriteriaBuilder extends React.Component<ICriteriaBuilderProps> {
 	}
 
 	render() {
-		const {channelId, criteria, groupId, id, segmentType} = this.props;
+		const {channelId, criteria, groupId, id, segmentType, sequential} =
+			this.props;
 
 		return (
 			<div className='criteria-builder-root'>
@@ -167,9 +169,13 @@ class CriteriaBuilder extends React.Component<ICriteriaBuilderProps> {
 					groupId={groupId}
 					id={id}
 					onChange={this.handleCriteriaChange}
-					onMove={this.handleCriterionMove}
+					onMove={
+						this
+							.handleCriterionMove as import('../utils/types').OnMove
+					}
 					root
 					segmentType={segmentType}
+					sequential={sequential}
 				/>
 			</div>
 		);

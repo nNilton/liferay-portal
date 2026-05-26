@@ -55,14 +55,17 @@ public class ImportStagedModelExceptionHandlerImpl
 			groupId = 0;
 		}
 
-		_exportImportReportEntryLocalService.addErrorExportImportReportEntry(
-			groupId, portletDataContext.getCompanyId(), externalReferenceCode,
-			ExportImportClassedModelUtil.getClassNameId(stagedModel),
-			ExportImportClassedModelUtil.getClassPK(stagedModel),
-			GetterUtil.getLong(portletDataContext.getExportImportProcessId()),
-			portletDataException.getMessage(),
-			_getErrorStackTrace(portletDataException), modelClass.getName(),
-			ExportImportReportEntryUtil.getOrigin());
+		_exportImportReportEntryLocalService.
+			getOrAddErrorExportImportReportEntry(
+				groupId, portletDataContext.getCompanyId(),
+				externalReferenceCode,
+				ExportImportClassedModelUtil.getClassNameId(stagedModel),
+				ExportImportClassedModelUtil.getClassPK(stagedModel),
+				GetterUtil.getLong(
+					portletDataContext.getExportImportProcessId()),
+				portletDataException.getMessage(),
+				_getErrorStackTrace(portletDataException),
+				modelClass.getName());
 	}
 
 	private String _getErrorStackTrace(Throwable throwable) {

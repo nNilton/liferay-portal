@@ -16,7 +16,6 @@ import {sub} from 'frontend-js-web';
 import React, {useCallback, useEffect, useState} from 'react';
 
 import AssignToModalContent from '../home/modal/AssignToModalContent';
-import TransitionWorkflowStateModalContent from '../home/modal/TransitionWorkflowStateModalContent';
 import UpdateDueDateModalContent from '../home/modal/UpdateDueDateModalContent';
 
 import '../../../css/home/Home.scss';
@@ -142,55 +141,12 @@ export default function ViewWorkflowTasks({
 			image: '',
 			title: Liferay.Language.get('no-tasks'),
 		},
+		hideManagementBarInEmptyState: true,
 		id,
 		items: workflowTasks.items,
 		itemsActions:
 			selectedItem.value === 'assigned-to-me'
 				? [
-						{
-							data: {
-								id: 'approve',
-							},
-							label: Liferay.Language.get('approve'),
-							onClick: ({itemData}: any) => {
-								openCMSModal({
-									contentComponent: ({
-										closeModal,
-									}: {
-										closeModal: () => void;
-									}) =>
-										TransitionWorkflowStateModalContent({
-											closeModal,
-											loadData: getWorkflowTasks,
-											transitionName: 'approve',
-											workflowTaskId: Number(itemData.id),
-										}),
-									size: 'md',
-								});
-							},
-						},
-						{
-							data: {
-								id: 'reject',
-							},
-							label: Liferay.Language.get('reject'),
-							onClick: ({itemData}: any) => {
-								openCMSModal({
-									contentComponent: ({
-										closeModal,
-									}: {
-										closeModal: () => void;
-									}) =>
-										TransitionWorkflowStateModalContent({
-											closeModal,
-											loadData: getWorkflowTasks,
-											transitionName: 'reject',
-											workflowTaskId: Number(itemData.id),
-										}),
-									size: 'md',
-								});
-							},
-						},
 						{
 							data: {
 								id: 'assignTo',
@@ -327,7 +283,11 @@ export default function ViewWorkflowTasks({
 	return (
 		<div className="container-fluid-max p-2 p-sm-3">
 			<div className="align-items-center d-flex justify-content-between mb-4">
-				<span className="font-weight-semi-bold mr-3 text-4">
+				<span
+					aria-level={2}
+					className="font-weight-semi-bold mr-3 text-4"
+					role="heading"
+				>
 					{Liferay.Language.get('my-workflow-tasks')}
 				</span>
 

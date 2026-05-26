@@ -9,11 +9,11 @@ import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.portal.configuration.test.util.CompanyConfigurationTemporarySwapper;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
-import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
@@ -56,7 +56,7 @@ public class SegmentsEntryRetrieverTest {
 
 	@Before
 	public void setUp() throws Exception {
-		_group = GroupTestUtil.addGroup();
+		_group = _groupLocalService.getGroup(TestPropsValues.getGroupId());
 
 		_user = UserTestUtil.addUser(_group.getGroupId());
 	}
@@ -76,7 +76,7 @@ public class SegmentsEntryRetrieverTest {
 
 			long[] segmentsEntryIds =
 				_segmentsEntryRetriever.getSegmentsEntryIds(
-					_group.getGroupId(), _user.getUserId(), null, new long[0]);
+					_group.getGroupId(), _user.getUserId(), null);
 
 			Assert.assertEquals(
 				Arrays.toString(segmentsEntryIds), 2, segmentsEntryIds.length);
@@ -123,7 +123,7 @@ public class SegmentsEntryRetrieverTest {
 	@Test
 	public void testGetSegmentsEntryIdsWithoutSegmentsEntry() throws Exception {
 		long[] segmentsEntryIds = _segmentsEntryRetriever.getSegmentsEntryIds(
-			_group.getGroupId(), _user.getUserId(), null, new long[0]);
+			_group.getGroupId(), _user.getUserId(), null);
 
 		Assert.assertEquals(
 			Arrays.toString(segmentsEntryIds), 1, segmentsEntryIds.length);
@@ -175,15 +175,17 @@ public class SegmentsEntryRetrieverTest {
 
 		try {
 			return _segmentsEntryRetriever.getSegmentsEntryIds(
-				_group.getGroupId(), _user.getUserId(), null, new long[0]);
+				_group.getGroupId(), _user.getUserId(), null);
 		}
 		finally {
 			ServiceContextThreadLocal.popServiceContext();
 		}
 	}
 
-	@DeleteAfterTestRun
 	private Group _group;
+
+	@Inject
+	private GroupLocalService _groupLocalService;
 
 	@Inject
 	private SegmentsEntryRetriever _segmentsEntryRetriever;

@@ -376,6 +376,20 @@ public class LayoutLocalServiceWrapper
 	}
 
 	@Override
+	public Layout convertEmptyLayout(
+			long userId, long plid,
+			java.util.Map<java.util.Locale, String> nameMap, String type,
+			long classNameId, long classPK,
+			String masterLayoutPageTemplateEntryERC,
+			ServiceContext serviceContext)
+		throws Exception {
+
+		return _layoutLocalService.convertEmptyLayout(
+			userId, plid, nameMap, type, classNameId, classPK,
+			masterLayoutPageTemplateEntryERC, serviceContext);
+	}
+
+	@Override
 	public Layout copyLayout(
 			long userId, long groupId, boolean privateLayout,
 			java.util.Map<java.util.Locale, String> nameMap, boolean hidden,
@@ -1307,22 +1321,6 @@ public class LayoutLocalServiceWrapper
 			groupId, keywords, types, statuses, start, end, orderByComparator);
 	}
 
-	@Override
-	public java.util.List<Layout> getLayoutsByLayoutPrototypeUuid(
-		String layoutPrototypeUuid) {
-
-		return _layoutLocalService.getLayoutsByLayoutPrototypeUuid(
-			layoutPrototypeUuid);
-	}
-
-	@Override
-	public int getLayoutsByLayoutPrototypeUuidCount(
-		String layoutPrototypeUuid) {
-
-		return _layoutLocalService.getLayoutsByLayoutPrototypeUuidCount(
-			layoutPrototypeUuid);
-	}
-
 	/**
 	 * Returns all the layouts matching the UUID and company.
 	 *
@@ -1517,11 +1515,12 @@ public class LayoutLocalServiceWrapper
 	@Override
 	public Layout getOrAddEmptyLayout(
 			String externalReferenceCode, long userId, long groupId,
-			ServiceContext serviceContext)
+			boolean privateLayout, ServiceContext serviceContext)
 		throws Exception {
 
 		return _layoutLocalService.getOrAddEmptyLayout(
-			externalReferenceCode, userId, groupId, serviceContext);
+			externalReferenceCode, userId, groupId, privateLayout,
+			serviceContext);
 	}
 
 	/**
@@ -1650,6 +1649,14 @@ public class LayoutLocalServiceWrapper
 
 		return _layoutLocalService.hasLayouts(
 			groupId, privateLayout, parentLayoutId);
+	}
+
+	@Override
+	public boolean hasLayouts(
+		long groupId, String portletLayoutPageTemplateEntryERC) {
+
+		return _layoutLocalService.hasLayouts(
+			groupId, portletLayoutPageTemplateEntryERC);
 	}
 
 	@Override
@@ -1803,6 +1810,13 @@ public class LayoutLocalServiceWrapper
 		throws com.liferay.portal.kernel.exception.PortalException {
 
 		return _layoutLocalService.updateIconImage(plid, bytes);
+	}
+
+	@Override
+	public Layout updateIconImageId(long plid, long iconImageId)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _layoutLocalService.updateIconImageId(plid, iconImageId);
 	}
 
 	/**
@@ -2311,3 +2325,4 @@ public class LayoutLocalServiceWrapper
 	private LayoutLocalService _layoutLocalService;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:642695721

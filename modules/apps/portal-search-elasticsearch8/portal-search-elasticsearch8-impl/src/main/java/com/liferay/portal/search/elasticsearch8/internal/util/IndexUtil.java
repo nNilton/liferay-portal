@@ -86,6 +86,57 @@ public class IndexUtil {
 		return dynamicTemplates;
 	}
 
+	public static List<NamedValue<DynamicTemplate>> getDynamicTemplatesMap(
+		JSONObject mappingsJSONObject) {
+
+		JSONArray dynamicTemplatesJSONArray = mappingsJSONObject.getJSONArray(
+			"dynamic_templates");
+
+		if (dynamicTemplatesJSONArray == null) {
+			return null;
+		}
+
+		JsonpMapper jsonpMapper = JsonpUtil.getJsonpMapper();
+
+		JsonProvider jsonProvider = jsonpMapper.jsonProvider();
+
+		List<NamedValue<DynamicTemplate>> dynamicTemplates = new ArrayList<>();
+
+		for (int i = 0; i < dynamicTemplatesJSONArray.length(); i++) {
+			JSONObject dynamicTemplateJSONObject =
+				dynamicTemplatesJSONArray.getJSONObject(i);
+
+			for (String dynamicTemplateName :
+					dynamicTemplateJSONObject.keySet()) {
+
+				JSONObject templateJSONObject =
+					dynamicTemplateJSONObject.getJSONObject(
+						dynamicTemplateName);
+
+				_convertElasticearchDynamicTemplate(templateJSONObject);
+
+				String dynamicTemplateString = templateJSONObject.toString();
+
+				try (InputStream inputStream = new ByteArrayInputStream(
+						dynamicTemplateString.getBytes(
+							StandardCharsets.UTF_8))) {
+
+					dynamicTemplates.add(
+						new NamedValue<DynamicTemplate>(
+							dynamicTemplateName,
+							DynamicTemplate._DESERIALIZER.deserialize(
+								jsonProvider.createParser(inputStream),
+								jsonpMapper)));
+				}
+				catch (IOException ioException) {
+					throw new RuntimeException(ioException);
+				}
+			}
+		}
+
+		return dynamicTemplates;
+	}
+
 	public static Map<String, Property> getPropertiesMap(
 		JSONObject mappingsJSONObject) {
 
@@ -125,17 +176,16 @@ public class IndexUtil {
 	public static JSONArray mergeDynamicTemplates(
 		JSONArray jsonArray1, JSONArray jsonArray2) {
 
-		LinkedHashMap<String, JSONObject> linkedHashMap = new LinkedHashMap<>();
+		Map<String, JSONObject> map = new LinkedHashMap<>();
 
-		_putAll(jsonArray1, linkedHashMap);
-
-		_putAll(jsonArray2, linkedHashMap);
+		_putAll(jsonArray1, map);
+		_putAll(jsonArray2, map);
 
 		JSONArray jsonArray3 = JSONFactoryUtil.createJSONArray();
 
 		JSONObject defaultTemplateJSONObject = null;
 
-		for (Map.Entry<String, JSONObject> entry : linkedHashMap.entrySet()) {
+		for (Map.Entry<String, JSONObject> entry : map.entrySet()) {
 			String key = entry.getKey();
 
 			if (key.equals("template_")) {
@@ -153,7 +203,7 @@ public class IndexUtil {
 		return jsonArray3;
 	}
 
-	public static void mergeToJsonObject(
+	public static void mergeToJSONObject(
 		JSONObject jsonObject, JSONObject mergeJSONObject) {
 
 		if ((jsonObject == null) || (mergeJSONObject == null)) {
@@ -171,9 +221,10 @@ public class IndexUtil {
 			if ((object1 instanceof JSONObject) &&
 				(object2 instanceof JSONObject)) {
 
-				mergeToJsonObject((JSONObject)object1, (JSONObject)object2);
+				mergeToJSONObject((JSONObject)object1, (JSONObject)object2);
 			}
-			else if ((object1 instanceof JSONArray) &&
+			else if (key.equals("dynamic_templates") &&
+					 (object1 instanceof JSONArray) &&
 					 (object2 instanceof JSONArray)) {
 
 				jsonObject.put(
@@ -184,6 +235,26 @@ public class IndexUtil {
 			else {
 				jsonObject.put(key, mergeJSONObject.get(key));
 			}
+		}
+	}
+
+	private static void _convertElasticearchDynamicTemplate(
+		JSONObject templateJSONObject) {
+
+		JSONObject mappingJSONObject = templateJSONObject.getJSONObject(
+			"mapping");
+
+		if (mappingJSONObject.has("dims")) {
+			int dims = mappingJSONObject.getInt("dims");
+
+			mappingJSONObject.remove("dims");
+			mappingJSONObject.put("dimension", dims);
+		}
+
+		String type = mappingJSONObject.getString("type");
+
+		if (StringUtil.equals(type, "dense_vector")) {
+			mappingJSONObject.put("type", "knn_vector");
 		}
 	}
 

@@ -856,10 +856,11 @@ public class CTCollectionLocalServiceImpl
 			DataSource dataSource = ctPersistence.getDataSource();
 
 			try (Connection connection = dataSource.getConnection();
+
 				PreparedStatement preparedStatement =
 					connection.prepareStatement(
 						StringBundler.concat(
-							"select count(*) from ",
+							"select count(*) as count from ",
 							ctPersistence.getTableName(),
 							" where ctCollectionId = ? and status not in (",
 							StringUtil.merge(
@@ -871,12 +872,8 @@ public class CTCollectionLocalServiceImpl
 				preparedStatement.setLong(1, ctCollectionId);
 
 				try (ResultSet resultSet = preparedStatement.executeQuery()) {
-					if (resultSet.next()) {
-						int count = resultSet.getInt(1);
-
-						if (count > 0) {
-							return true;
-						}
+					if (resultSet.next() && (resultSet.getLong("count") > 0)) {
+						return true;
 					}
 				}
 			}
@@ -1035,16 +1032,6 @@ public class CTCollectionLocalServiceImpl
 			null, undoCTCollection.getCompanyId(), userId,
 			undoCTCollection.getCtRemoteId(), name, description);
 
-		CTPreferences ctPreferences =
-			_ctPreferencesLocalService.getCTPreferences(
-				undoCTCollection.getCompanyId(), userId);
-
-		ctPreferences.setCtCollectionId(newCTCollection.getCtCollectionId());
-		ctPreferences.setPreviousCtCollectionId(
-			CTConstants.CT_COLLECTION_ID_PRODUCTION);
-
-		_ctPreferencesPersistence.update(ctPreferences);
-
 		List<CTEntry> publishedCTEntries =
 			_ctEntryPersistence.findByCtCollectionId(
 				undoCTCollection.getCtCollectionId());
@@ -1104,8 +1091,7 @@ public class CTCollectionLocalServiceImpl
 
 			ctEntry.setChangeType(changeType);
 
-			ctServiceCopier.addCTEntry(
-				_ctEntryLocalService.updateCTEntry(ctEntry));
+			ctServiceCopier.addCTEntry(_ctEntryPersistence.update(ctEntry));
 		}
 
 		try {
@@ -1140,6 +1126,16 @@ public class CTCollectionLocalServiceImpl
 		}
 
 		_ctServiceRegistry.onAfterCopy(undoCTCollection, newCTCollection);
+
+		CTPreferences ctPreferences =
+			_ctPreferencesLocalService.getCTPreferences(
+				undoCTCollection.getCompanyId(), userId);
+
+		ctPreferences.setCtCollectionId(newCTCollection.getCtCollectionId());
+		ctPreferences.setPreviousCtCollectionId(
+			CTConstants.CT_COLLECTION_ID_PRODUCTION);
+
+		_ctPreferencesPersistence.update(ctPreferences);
 
 		return newCTCollection;
 	}
@@ -1444,7 +1440,7 @@ public class CTCollectionLocalServiceImpl
 
 			ctEntry.setCtCollectionId(toCTCollectionId);
 
-			_ctEntryLocalService.updateCTEntry(ctEntry);
+			_ctEntryPersistence.update(ctEntry);
 		}
 
 		CTPersistence<?> ctPersistence = ctService.getCTPersistence();

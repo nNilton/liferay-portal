@@ -75,6 +75,27 @@ public class ContentPageSpecification
 
 	protected PageExperience[] pageExperiences;
 
+	public Settings getSettings() {
+		return settings;
+	}
+
+	public void setSettings(Settings settings) {
+		this.settings = settings;
+	}
+
+	public void setSettings(
+		UnsafeSupplier<Settings, Exception> settingsUnsafeSupplier) {
+
+		try {
+			settings = settingsUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected Settings settings;
+
 	@Override
 	public ContentPageSpecification clone() throws CloneNotSupportedException {
 		return (ContentPageSpecification)super.clone();
@@ -108,3 +129,4 @@ public class ContentPageSpecification
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-541870816

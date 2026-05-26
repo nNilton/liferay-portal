@@ -155,6 +155,8 @@ Layout selLayout = layoutsSEODisplayContext.getSelLayout();
 							</div>
 
 							<aui:input id="openGraphImageFileEntryId" name="openGraphImageFileEntryId" type="hidden" />
+							<aui:input id="openGraphImageFileEntryERC" name="openGraphImageFileEntryERC" type="hidden" />
+							<aui:input id="openGraphImageFileEntryScopeERC" name="openGraphImageFileEntryScopeERC" type="hidden" />
 						</div>
 
 						<div class="form-group">
@@ -164,10 +166,10 @@ Layout selLayout = layoutsSEODisplayContext.getSelLayout();
 
 									<span>
 										<clay:icon
-											aria-label='<%= LanguageUtil.get(request, "preview-help") %>'
+											aria-label='<%= LanguageUtil.get(request, "the-image-ratio-might-change-depending-on-where-the-URL-is-posted") %>'
 											cssClass="lfr-portal-tooltip ml-1"
 											symbol="question-circle-full"
-											title='<%= LanguageUtil.get(request, "preview-help") %>'
+											title='<%= LanguageUtil.get(request, "the-image-ratio-might-change-depending-on-where-the-URL-is-posted") %>'
 										/>
 									</span>
 								</div>

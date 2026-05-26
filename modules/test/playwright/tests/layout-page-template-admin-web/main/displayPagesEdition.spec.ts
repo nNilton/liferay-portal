@@ -9,10 +9,10 @@ import {
 } from '@liferay/object-admin-rest-client-js';
 import {expect, mergeTests} from '@playwright/test';
 
-import {applicationsMenuPageTest} from '../../../fixtures/applicationsMenuPageTest';
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
 import {displayPageTemplatesPagesTest} from '../../../fixtures/displayPageTemplatesPagesTest';
 import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
+import {globalMenuPagesTest} from '../../../fixtures/globalMenuPagesTest';
 import {isolatedSiteTest} from '../../../fixtures/isolatedSiteTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {pageEditorPagesTest} from '../../../fixtures/pageEditorPagesTest';
@@ -21,7 +21,6 @@ import {ApiHelpers} from '../../../helpers/ApiHelpers';
 import {clickAndExpectToBeHidden} from '../../../utils/clickAndExpectToBeHidden';
 import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisible';
 import getRandomString from '../../../utils/getRandomString';
-import {getWebContentStructureId} from '../../../utils/structured-content/getBasicWebContentStructureId';
 import {waitForAlert} from '../../../utils/waitForAlert';
 import {pagesPagesTest} from '../../layout-admin-web/main/fixtures/pagesPagesTest';
 import {
@@ -32,7 +31,7 @@ import {getObjectERC} from '../../setup/page-management-site/main/utils/getObjec
 import {goToObjectEntity} from '../../setup/page-management-site/main/utils/goToObjectEntity';
 
 const test = mergeTests(
-	applicationsMenuPageTest,
+	globalMenuPagesTest,
 	dataApiHelpersTest,
 	displayPageTemplatesPagesTest,
 	featureFlagsTest({
@@ -54,17 +53,11 @@ async function addDefaultAnimalDisplayPageTemplate(
 		'com.liferay.journal.model.JournalArticle'
 	);
 
-	const animalWebContentStructureId = await getWebContentStructureId(
-		apiHelpers,
-		site.id,
-		ANIMAL_DDM_STRUCTURE_KEY
-	);
-
 	const displayPage =
 		await apiHelpers.jsonWebServicesLayoutPageTemplateEntry.addDisplayPageLayoutPageTemplateEntry(
 			{
 				classNameId: className.classNameId,
-				classTypeId: String(animalWebContentStructureId),
+				classTypeKey: ANIMAL_DDM_STRUCTURE_KEY,
 				groupId: site.id,
 				name: displayPageTemplateName,
 			}
@@ -544,7 +537,7 @@ test.describe('Image Resolution', () => {
 				await apiHelpers.jsonWebServicesLayoutPageTemplateEntry.addDisplayPageLayoutPageTemplateEntry(
 					{
 						classNameId: className.classNameId,
-						classTypeId: '0',
+						classTypeKey: 'BASIC-DOCUMENT',
 						groupId: pageManagementSite.id,
 						name: displayPageTemplateName,
 					}
@@ -998,8 +991,8 @@ test.describe('Object Display page', () => {
 		{tag: '@LPS-165556'},
 		async ({
 			apiHelpers,
-			applicationsMenuPage,
 			displayPageTemplatesPage,
+			globalMenuPage,
 			page,
 			pageEditorPage,
 			site,
@@ -1176,7 +1169,7 @@ test.describe('Object Display page', () => {
 
 			// Check object entry was created
 
-			await applicationsMenuPage.goToControlPanel();
+			await globalMenuPage.goToControlPanel();
 
 			page.getByRole('menuitem', {
 				exact: true,
@@ -1675,6 +1668,122 @@ test.describe('Object Display page', () => {
 			await expect(
 				page.getByRole('textbox', {name: 'Release Date'})
 			).toHaveValue('2020-03-02T05:15');
+		}
+	);
+
+	test(
+		'Map display page template link in a button',
+		{
+			tag: '@LPD-76509',
+		},
+		async ({
+			apiHelpers,
+			displayPageTemplatesPage,
+			page,
+			pageEditorPage,
+			pageManagementSite,
+		}) => {
+
+			// Create display page template for Lemon
+
+			const objectDefinitionAPIClient =
+				await apiHelpers.buildRestClient(ObjectDefinitionAPI);
+
+			const objectDefinitionResponse =
+				await objectDefinitionAPIClient.getObjectDefinitionByExternalReferenceCode(
+					getObjectERC('Lemon')
+				);
+
+			const objectDefinitionClassName =
+				objectDefinitionResponse.body.className;
+
+			const jsonWebServicesClassName =
+				apiHelpers.jsonWebServicesClassName;
+
+			const className = await jsonWebServicesClassName.fetchClassName(
+				objectDefinitionClassName
+			);
+
+			const displayPageTemplateName = getRandomString();
+
+			const layoutPageTemplateEntryService =
+				apiHelpers.jsonWebServicesLayoutPageTemplateEntry;
+
+			const displayPageTemplate =
+				await layoutPageTemplateEntryService.addDisplayPageLayoutPageTemplateEntry(
+					{
+						classNameId: className.classNameId,
+						groupId: pageManagementSite.id,
+						name: displayPageTemplateName,
+					}
+				);
+
+			// Create a lemon object entry
+
+			const objectEntryApi = apiHelpers.objectEntry;
+
+			const lemonEntryName = 'lemonSize-' + getRandomString();
+
+			const lemonObjectEntry = await objectEntryApi.postObjectEntry(
+				{
+					lemonHistory: 'one',
+					lemonSize: lemonEntryName,
+					lemonWeight: 5,
+				},
+				'c/lemons',
+				pageManagementSite.key
+			);
+
+			// Edit display page template and map button link
+
+			await displayPageTemplatesPage.goto(
+				pageManagementSite.friendlyUrlPath
+			);
+
+			await displayPageTemplatesPage.editTemplate(
+				displayPageTemplateName
+			);
+
+			await pageEditorPage.addFragment('Basic Components', 'Button');
+
+			await pageEditorPage.mapEditableLink({
+				editableId: 'link',
+				fragmentName: 'Button',
+				linkConfiguration: {
+					mappingConfiguration: {
+						mapping: {
+							field: displayPageTemplateName,
+						},
+						source: 'structure',
+					},
+					type: 'Mapped URL',
+				},
+			});
+
+			await displayPageTemplatesPage.publishTemplate();
+
+			// Go to display page and validate link
+
+			await page.goto(
+				`/web${pageManagementSite.friendlyUrlPath}/e/${displayPageTemplateName}/${className.classNameId}/${lemonObjectEntry.id}`
+			);
+
+			const buttonLink = page.getByRole('link', {name: 'Go somewhere'});
+
+			await expect(buttonLink).toBeVisible();
+
+			const buttonHref = await buttonLink.getAttribute('href');
+
+			expect(buttonHref).toContain(
+				`/e/${displayPageTemplateName}/${className.classNameId}/${lemonObjectEntry.id}`
+			);
+
+			// Delete display page template
+
+			await layoutPageTemplateEntryService.deleteLayoutPageTemplateEntry({
+				layoutPageTemplateEntryId:
+					displayPageTemplate.layoutPageTemplateEntryId,
+			});
 		}
 	);
 });

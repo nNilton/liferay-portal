@@ -119,6 +119,10 @@ public interface ObjectDefinitionSettingLocalService
 	public ObjectDefinitionSetting deleteObjectDefinitionSetting(
 		ObjectDefinitionSetting objectDefinitionSetting);
 
+	public void deleteObjectDefinitionSettingByObjectDefinitionId(
+			long objectDefinitionId)
+		throws PortalException;
+
 	/**
 	 * @throws PortalException
 	 */
@@ -205,6 +209,10 @@ public interface ObjectDefinitionSettingLocalService
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public ObjectDefinitionSetting fetchObjectDefinitionSetting(
 		long objectDefinitionId, String name);
+
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public ObjectDefinitionSetting fetchObjectDefinitionSetting(
+		long companyId, String name, String value);
 
 	/**
 	 * Returns the object definition setting with the matching UUID and company.
@@ -319,3 +327,4 @@ public interface ObjectDefinitionSettingLocalService
 		ObjectDefinitionSetting objectDefinitionSetting);
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:1347008793

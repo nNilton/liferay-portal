@@ -28,7 +28,7 @@ const DXP = ({hasComplimentaryKey}) => {
 		<div className="mr-4">
 			<ActivationKeysTable
 				hasComplimentaryKey={hasComplimentaryKey}
-				initialFilter="(startswith(productName,'DXP') or startswith(productName,'Digital'))"
+				initialFilter="(startswith(productName,'DXP') or startswith(productName,'Digital') or startswith(productName,'Liferay Self-Hosted'))"
 				oAuthToken={oAuthToken}
 				productName="DXP"
 				project={project}
@@ -41,7 +41,7 @@ const DXP = ({hasComplimentaryKey}) => {
 						'select-the-liferay-dxp-version-for-your-developer-key-to-download'
 					)}
 					dxpVersion={project.dxpVersion}
-					listType={LIST_TYPES.developerKeyDXPVersion}
+					listType={LIST_TYPES.dxpMajorVersion}
 					oAuthToken={oAuthToken}
 					productName="DXP"
 					projectName={project.name}

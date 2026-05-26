@@ -14,6 +14,9 @@ import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.module.framework.ModuleServiceLifecycle;
+import com.liferay.portal.kernel.search.BooleanClause;
+import com.liferay.portal.kernel.search.BooleanClauseOccur;
+import com.liferay.portal.kernel.search.BooleanQuery;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Hits;
 import com.liferay.portal.kernel.search.Indexer;
@@ -21,6 +24,8 @@ import com.liferay.portal.kernel.search.IndexerRegistryUtil;
 import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.search.SearchException;
 import com.liferay.portal.kernel.search.Sort;
+import com.liferay.portal.kernel.search.filter.BooleanFilter;
+import com.liferay.portal.kernel.search.filter.TermsFilter;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
@@ -92,6 +97,24 @@ public class DepotEntryAdminSearchProvider {
 			depotEntrySearch.getTotal());
 
 		return groupSearch;
+	}
+
+	private BooleanClause[] _getBooleanClauses() {
+		BooleanQuery booleanQuery = new BooleanQuery();
+
+		BooleanFilter booleanFilter = new BooleanFilter();
+
+		TermsFilter termsFilter = new TermsFilter(Field.STAGING_GROUP);
+
+		termsFilter.addValue("false");
+
+		booleanFilter.add(termsFilter, BooleanClauseOccur.MUST);
+
+		booleanQuery.setPreBooleanFilter(booleanFilter);
+
+		return new BooleanClause[] {
+			new BooleanClause<>(booleanQuery, BooleanClauseOccur.MUST)
+		};
 	}
 
 	private DepotEntrySearch _getDepotEntrySearch(
@@ -167,6 +190,7 @@ public class DepotEntryAdminSearchProvider {
 		SearchContext searchContext = new SearchContext();
 
 		searchContext.setAttribute(Field.TYPE, depotEntryType);
+		searchContext.setBooleanClauses(_getBooleanClauses());
 
 		ThemeDisplay themeDisplay = (ThemeDisplay)portletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);

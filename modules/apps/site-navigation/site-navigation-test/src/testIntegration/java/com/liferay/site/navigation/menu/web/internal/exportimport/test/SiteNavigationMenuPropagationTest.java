@@ -16,6 +16,7 @@ import com.liferay.portal.kernel.model.LayoutSet;
 import com.liferay.portal.kernel.model.LayoutSetPrototype;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalService;
+import com.liferay.portal.kernel.service.LayoutSetLocalService;
 import com.liferay.portal.kernel.service.PortletPreferencesLocalService;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -76,20 +77,11 @@ public class SiteNavigationMenuPropagationTest {
 		_layout = _layoutLocalService.getFriendlyURLLayout(
 			_group.getGroupId(), false, _prototypeLayout.getFriendlyURL());
 
-		_layout.setLayoutPrototypeUuid(_prototypeLayout.getUuid());
-		_layout.setLayoutPrototypeLinkEnabled(true);
-
-		_layout = _layoutLocalService.updateLayout(_layout);
-
 		_siteNavigationMenu1 = SiteNavigationMenuTestUtil.addSiteNavigationMenu(
 			layoutSetPrototypeGroup, RandomTestUtil.randomString());
 
 		_siteNavigationMenu2 = SiteNavigationMenuTestUtil.addSiteNavigationMenu(
 			layoutSetPrototypeGroup, RandomTestUtil.randomString());
-
-		SiteNavigationMenuTestUtil.addSiteNavigationMenu(
-			_siteNavigationMenu1.getExternalReferenceCode(), _group,
-			_siteNavigationMenu1.getName());
 
 		_portletId = _addSiteNavigationMenuWidgetToPage(
 			_siteNavigationMenu1.getExternalReferenceCode());
@@ -129,27 +121,8 @@ public class SiteNavigationMenuPropagationTest {
 	}
 
 	@Test
-	public void testSiteTemplatePropagationWhenSiteNavigationMenuDoesNotExist()
-		throws Exception {
-
-		LayoutTestUtil.updateLayoutPortletPreference(
-			_prototypeLayout, _portletId,
-			"siteNavigationMenuExternalReferenceCode",
-			_siteNavigationMenu2.getExternalReferenceCode());
-
-		_propagateLayout();
-
-		_assertSiteNavigationMenuExternalReferenceCode(
-			_siteNavigationMenu1.getExternalReferenceCode(), StringPool.BLANK);
-	}
-
-	@Test
 	public void testSiteTemplatePropagationWithDifferentSiteNavigationMenu()
 		throws Exception {
-
-		SiteNavigationMenuTestUtil.addSiteNavigationMenu(
-			_siteNavigationMenu2.getExternalReferenceCode(), _group,
-			_siteNavigationMenu2.getName());
 
 		LayoutTestUtil.updateLayoutPortletPreference(
 			_prototypeLayout, _portletId,
@@ -246,8 +219,17 @@ public class SiteNavigationMenuPropagationTest {
 
 		MergeLayoutPrototypesThreadLocal.setSkipMerge(false);
 
-		_sites.mergeLayoutSetPrototypeLayouts(
-			_group, _group.getPublicLayoutSet());
+		LayoutSet layoutSet = _group.getPublicLayoutSet();
+
+		UnicodeProperties settingsUnicodeProperties =
+			layoutSet.getSettingsProperties();
+
+		settingsUnicodeProperties.remove(Sites.LAST_MERGE_TIME);
+		settingsUnicodeProperties.remove(Sites.LAST_MERGE_VERSION);
+
+		layoutSet = _layoutSetLocalService.updateLayoutSet(layoutSet);
+
+		_sites.mergeLayoutSetPrototypeLayouts(_group, layoutSet);
 	}
 
 	@Inject
@@ -258,6 +240,9 @@ public class SiteNavigationMenuPropagationTest {
 
 	@Inject
 	private LayoutLocalService _layoutLocalService;
+
+	@Inject
+	private LayoutSetLocalService _layoutSetLocalService;
 
 	private LayoutSetPrototype _layoutSetPrototype;
 	private String _portletId;

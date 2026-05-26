@@ -95,6 +95,7 @@ import com.liferay.portal.kernel.portlet.PortletProviderUtil;
 import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.security.permission.ResourceActions;
@@ -288,6 +289,7 @@ public class ContentManagerImpl implements ContentManager {
 
 			ListObjectReference listObjectReference =
 				listObjectReferenceFactory.getListObjectReference(
+					themeDisplay.getCompanyId(), themeDisplay.getScopeGroupId(),
 					collectionJSONObject);
 
 			Class<? extends ListObjectReference> listObjectReferenceClass =
@@ -812,28 +814,33 @@ public class ContentManagerImpl implements ContentManager {
 		String redirect) {
 
 		try {
-			return PortletURLBuilder.create(
-				PortletProviderUtil.getPortletURL(
-					httpServletRequest, AssetListEntry.class.getName(),
-					PortletProvider.Action.EDIT)
-			).setRedirect(
-				redirect
-			).setBackURL(
-				redirect
-			).setParameter(
-				"assetListEntryId", assetListEntry.getAssetListEntryId()
-			).setParameter(
-				"backURLTitle",
-				() -> {
-					ThemeDisplay themeDisplay =
-						(ThemeDisplay)httpServletRequest.getAttribute(
-							WebKeys.THEME_DISPLAY);
+			ThemeDisplay themeDisplay =
+				(ThemeDisplay)httpServletRequest.getAttribute(
+					WebKeys.THEME_DISPLAY);
 
-					Layout layout = themeDisplay.getLayout();
+			if (_assetListEntryModelResourcePermission.contains(
+					themeDisplay.getPermissionChecker(), assetListEntry,
+					ActionKeys.UPDATE)) {
 
-					return layout.getName(themeDisplay.getLocale());
-				}
-			).buildString();
+				return PortletURLBuilder.create(
+					PortletProviderUtil.getPortletURL(
+						httpServletRequest, AssetListEntry.class.getName(),
+						PortletProvider.Action.EDIT)
+				).setRedirect(
+					redirect
+				).setBackURL(
+					redirect
+				).setParameter(
+					"assetListEntryId", assetListEntry.getAssetListEntryId()
+				).setParameter(
+					"backURLTitle",
+					() -> {
+						Layout layout = themeDisplay.getLayout();
+
+						return layout.getName(themeDisplay.getLocale());
+					}
+				).buildString();
+			}
 		}
 		catch (PortalException portalException) {
 			if (_log.isDebugEnabled()) {
@@ -847,11 +854,11 @@ public class ContentManagerImpl implements ContentManager {
 	private String _getAssetListEntryPermissionsURL(
 		AssetListEntry assetListEntry, HttpServletRequest httpServletRequest) {
 
-		ThemeDisplay themeDisplay =
-			(ThemeDisplay)httpServletRequest.getAttribute(
-				WebKeys.THEME_DISPLAY);
-
 		try {
+			ThemeDisplay themeDisplay =
+				(ThemeDisplay)httpServletRequest.getAttribute(
+					WebKeys.THEME_DISPLAY);
+
 			if (_assetListEntryModelResourcePermission.contains(
 					themeDisplay.getPermissionChecker(), assetListEntry,
 					ActionKeys.PERMISSIONS)) {
@@ -885,7 +892,7 @@ public class ContentManagerImpl implements ContentManager {
 				_segmentsEntryRetriever.getSegmentsEntryIds(
 					_portal.getScopeGroupId(httpServletRequest),
 					_portal.getUserId(httpServletRequest),
-					_requestContextMapper.map(httpServletRequest), new long[0]),
+					_requestContextMapper.map(httpServletRequest)),
 				StringPool.BLANK);
 
 		long[] allTagIds = assetEntryQuery.getAllTagIds();
@@ -1193,6 +1200,7 @@ public class ContentManagerImpl implements ContentManager {
 			LayoutDisplayPageProvider<?> layoutDisplayPageProvider =
 				_layoutDisplayPageProviderRegistry.
 					getLayoutDisplayPageProviderByClassName(
+						layoutClassedModelUsage.getCompanyId(),
 						layoutClassedModelUsage.getClassName());
 
 			if (layoutDisplayPageProvider == null) {
@@ -1273,7 +1281,8 @@ public class ContentManagerImpl implements ContentManager {
 
 		LayoutDisplayPageProvider<?> layoutDisplayPageProvider =
 			_layoutDisplayPageProviderRegistry.
-				getLayoutDisplayPageProviderByClassName(className);
+				getLayoutDisplayPageProviderByClassName(
+					CompanyThreadLocal.getCompanyId(), className);
 
 		if (layoutDisplayPageProvider == null) {
 			return;

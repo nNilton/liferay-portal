@@ -4,15 +4,22 @@
  */
 
 import ClayModal from '@clayui/modal';
-import {openToast} from 'frontend-js-components-web';
+import {
+	FileData,
+	MultipleFileUploader,
+	UploadBatchesCallback,
+	UploadMessages,
+	openToast,
+} from 'frontend-js-components-web';
+import {sub} from 'frontend-js-web';
 import React from 'react';
 
-import {AssetLibrary} from '../../common/types/AssetLibrary';
-import MultipleFileUploader, {
-	UploadMessages,
-} from '../multiple_file_uploader/MultipleFileUploader';
+import ApiHelper from '../../common/services/ApiHelper';
 
 const VALID_EXTENSIONS = '.xliff,.xlf,.zip';
+
+const sequentialUploadBatches: UploadBatchesCallback = (files) =>
+	files.map((file) => [file]);
 
 const IMPORT_MESSAGES: UploadMessages = {
 	anotherFileButton: Liferay.Language.get('import-another-file'),
@@ -24,32 +31,97 @@ const IMPORT_MESSAGES: UploadMessages = {
 	xFilesNotUploaded: Liferay.Language.get('x-files-could-not-be-imported'),
 };
 
+interface FailedImportMessage {
+	container: string;
+	errorMessage: string;
+	fileName: string;
+}
+
+interface ImportTranslationResultData {
+	failureMessagesJSON: string[];
+	successMessages: string[];
+}
+
 export default function ImportTranslationModalContent({
-	groupId,
+	actionLink,
+	itemName,
 	loadData,
 	onModalClose,
+	translationsAPIURL,
 }: {
-	groupId: number;
+	actionLink: string;
+	itemName: string;
 	loadData?: () => void;
 	onModalClose: () => void;
+	translationsAPIURL: string;
 }) {
-	const uploadRequest = async () => {
-		return true;
+	const getItemLink = () => {
+		return `<a href="${actionLink}" class="alert-link lead"><strong>${itemName}</strong></a>`;
+	};
+
+	const uploadRequest = async ({fileData}: {fileData: FileData}) => {
+		const formData = new FormData();
+
+		formData.append('file', fileData.file);
+
+		const response =
+			await ApiHelper.postFormData<ImportTranslationResultData>(
+				formData,
+				translationsAPIURL
+			);
+
+		const failureMessagesJSON = response.data?.failureMessagesJSON ?? [];
+		const successFiles = response.data?.successMessages ?? [];
+
+		if (!failureMessagesJSON.length) {
+			return {
+				successFiles,
+			};
+		}
+
+		return {
+			errors: failureMessagesJSON.map((item) => {
+				const jsonItem = JSON.parse(item) as FailedImportMessage;
+
+				return {
+					errorMessage: jsonItem.errorMessage,
+					name: jsonItem.fileName,
+				};
+			}),
+			multipleErrors: true,
+			successFiles,
+		};
 	};
 
 	const onUploadComplete = ({
 		failedFiles,
 		successFiles,
 	}: {
-		assetLibrary: AssetLibrary | null;
 		failedFiles: string[];
 		successFiles: string[];
 	}) => {
 		if (successFiles.length) {
 			loadData?.();
 
+			let toastMessage;
+
+			if (successFiles.length === 1) {
+				toastMessage = sub(
+					Liferay.Language.get(
+						'x-file-was-successfully-imported-x-is-now-published-with-new-translations'
+					),
+					['1', getItemLink()]
+				);
+			}
+			else {
+				toastMessage = sub(
+					Liferay.Language.get('x-files-were-successfully-imported'),
+					[String(successFiles.length)]
+				);
+			}
+
 			openToast({
-				message: 'suscess',
+				message: toastMessage,
 				type: 'success',
 			});
 		}
@@ -68,15 +140,14 @@ export default function ImportTranslationModalContent({
 			</ClayModal.Header>
 
 			<MultipleFileUploader
-				assetLibraries={[]}
 				buttonLabel={Liferay.Language.get('import')}
 				description={Liferay.Language.get(
 					'please-upload-your-translation-files'
 				)}
-				groupId={groupId}
 				messages={IMPORT_MESSAGES}
 				onModalClose={onModalClose}
 				onUploadComplete={onUploadComplete}
+				uploadBatches={sequentialUploadBatches}
 				uploadRequest={uploadRequest}
 				validExtensions={VALID_EXTENSIONS}
 			/>

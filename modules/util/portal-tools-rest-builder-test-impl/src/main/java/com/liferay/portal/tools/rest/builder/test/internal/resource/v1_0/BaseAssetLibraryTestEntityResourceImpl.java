@@ -5,6 +5,7 @@
 
 package com.liferay.portal.tools.rest.builder.test.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.petra.function.UnsafeBiConsumer;
 import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.function.UnsafeFunction;
@@ -240,8 +241,40 @@ public abstract class BaseAssetLibraryTestEntityResourceImpl
 			Map<String, Serializable> parameters)
 		throws Exception {
 
-		throw new UnsupportedOperationException(
-			"This method needs to be implemented");
+		UnsafeFunction
+			<AssetLibraryTestEntity, AssetLibraryTestEntity, Exception>
+				assetLibraryTestEntityUnsafeFunction =
+					assetLibraryTestEntity -> {
+						if (parameters.containsKey("assetLibraryId")) {
+							deleteAssetLibraryAssetLibraryTestEntityByExternalReferenceCode(
+								(Long)parameters.get("assetLibraryId"),
+								assetLibraryTestEntity.
+									getExternalReferenceCode());
+
+							return assetLibraryTestEntity;
+						}
+
+						throw new UnsupportedOperationException(
+							"Unable to delete by external reference code or ID");
+					};
+
+		if (contextBatchUnsafeBiConsumer != null) {
+			contextBatchUnsafeBiConsumer.accept(
+				assetLibraryTestEntities, assetLibraryTestEntityUnsafeFunction);
+		}
+		else if (contextBatchUnsafeConsumer != null) {
+			contextBatchUnsafeConsumer.accept(
+				assetLibraryTestEntities,
+				assetLibraryTestEntityUnsafeFunction::apply);
+		}
+		else {
+			for (AssetLibraryTestEntity assetLibraryTestEntity :
+					assetLibraryTestEntities) {
+
+				assetLibraryTestEntityUnsafeFunction.apply(
+					assetLibraryTestEntity);
+			}
+		}
 	}
 
 	public Set<String> getAvailableCreateStrategies() {
@@ -303,6 +336,15 @@ public abstract class BaseAssetLibraryTestEntityResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -883,3 +925,4 @@ public abstract class BaseAssetLibraryTestEntityResourceImpl
 		LogFactoryUtil.getLog(BaseAssetLibraryTestEntityResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:-2065653968

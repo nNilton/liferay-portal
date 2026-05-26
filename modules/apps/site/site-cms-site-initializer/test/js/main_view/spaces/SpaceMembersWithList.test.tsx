@@ -12,8 +12,8 @@ import {
 	UserAccount,
 	UserGroup,
 } from '../../../../src/main/resources/META-INF/resources/js/common/types/UserAccount';
-import {SelectOptions} from '../../../../src/main/resources/META-INF/resources/js/main_view/spaces/SpaceMembersInputWithSelect';
 import {SPACE_MEMBER_ROLE_NAME} from '../../../../src/main/resources/META-INF/resources/js/main_view/spaces/SpaceMembersPermissionSelect';
+import {SelectOptions} from '../../../../src/main/resources/META-INF/resources/js/main_view/spaces/SpaceMembersSelectOptions';
 import {
 	SpaceMembersWithList,
 	SpaceMembersWithListProps,
@@ -127,6 +127,7 @@ describe('SpaceMembersWithList', () => {
 	const mockLoadMore = jest.fn();
 	const mockRemoveMember = jest.fn();
 	const mockUpdateMemberRoles = jest.fn();
+	const mockSearch = jest.fn();
 
 	const {ResizeObserver: ResizeObserverOriginal} = window;
 
@@ -142,9 +143,11 @@ describe('SpaceMembersWithList', () => {
 			addMember: mockAddMember,
 			loadMore: mockLoadMore,
 			removeMember: mockRemoveMember,
+			search: mockSearch,
 			state: {
 				groups: {items: testUserGroups, lastPage: 1},
 				isFetching: false,
+				isSearching: false,
 				roles: mockRoles,
 				users: {items: testUsers, lastPage: 1},
 			},
@@ -281,7 +284,10 @@ describe('SpaceMembersWithList', () => {
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledWith(
-				expect.stringContaining(`id+ne+%271%27+and+id+ne+%272%27`)
+				expect.stringContaining(`id+ne+%271%27+and+id+ne+%272%27`),
+				expect.objectContaining({
+					headers: expect.any(Object),
+				})
 			);
 		});
 
@@ -316,7 +322,10 @@ describe('SpaceMembersWithList', () => {
 			expect(mockFetch).toHaveBeenCalledWith(
 				expect.stringContaining(
 					`userGroupId+ne+%271%27+and+userGroupId+ne+%272%27`
-				)
+				),
+				expect.objectContaining({
+					headers: expect.any(Object),
+				})
 			);
 		});
 
@@ -440,34 +449,57 @@ describe('SpaceMembersWithList', () => {
 	});
 
 	describe('When hasAssignMembersPermission is false', () => {
-		it('renders the add members input as disabled', async () => {
-			await act(async () => {
-				render(
-					<SpaceMembersWithList
-						{...props}
-						hasAssignMembersPermission={false}
-					/>
-				);
-			});
+		const propsWithNoPermission = {
+			...props,
+			hasAssignMembersPermission: false,
+		};
+
+		beforeEach(() => {
+			mockSearch.mockClear();
+		});
+
+		it('renders a searcheable list instead of the add members input', () => {
+			render(<SpaceMembersWithList {...propsWithNoPermission} />);
 
 			expect(
-				screen.getByRole('combobox', {
-					name: 'add-people-to-collaborate',
+				screen.queryByPlaceholderText('enter-name-or-email')
+			).not.toBeInTheDocument();
+
+			expect(
+				screen.getByRole('textbox', {
+					name: /search-for-name-or-email/i,
 				})
 			).toBeInTheDocument();
+		});
 
-			expect(
-				screen.getByPlaceholderText('enter-name-or-email')
-			).toBeDisabled();
+		it('calls search when typing in the search input', async () => {
+			jest.useFakeTimers();
+
+			render(<SpaceMembersWithList {...propsWithNoPermission} />);
+
+			const searchInput = screen.getByRole('textbox', {
+				name: /search-for-name-or-email/i,
+			});
+			const searchText = 'test';
+
+			await userEvent.type(searchInput, searchText, {delay: null});
+
+			expect(mockSearch).not.toHaveBeenCalled();
+
+			act(() => {
+				jest.runAllTimers();
+			});
+
+			expect(mockSearch).toHaveBeenCalledWith(
+				SelectOptions.USERS,
+				searchText
+			);
+
+			jest.useRealTimers();
 		});
 
 		it('does not render the remove button for members', async () => {
-			render(
-				<SpaceMembersWithList
-					{...props}
-					hasAssignMembersPermission={false}
-				/>
-			);
+			render(<SpaceMembersWithList {...propsWithNoPermission} />);
 
 			await waitFor(() => {
 				expect(screen.getByText(testUsers[1].name)).toBeInTheDocument();

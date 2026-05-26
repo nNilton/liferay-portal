@@ -48,13 +48,20 @@
 			<rtexprvalue>true</rtexprvalue>
 		</attribute>
 		<attribute>
+			<description></description>
+			<name>data</name>
+			<required>false</required>
+			<rtexprvalue>true</rtexprvalue>
+			<type>java.util.Map</type>
+		</attribute>
+		<attribute>
 			<description>The number of deletions. It is displayed after the label when it is greater than zero.</description>
 			<name>deletions</name>
 			<required>false</required>
 			<rtexprvalue>true</rtexprvalue>
 		</attribute>
 		<attribute>
-			<description>The language key of the checkbox's description text. It is displayed after the label.</description>
+			<description>The checkbox's description text. It is displayed below the checkbox</description>
 			<name>description</name>
 			<required>false</required>
 			<rtexprvalue>true</rtexprvalue>
@@ -96,25 +103,19 @@
 			<rtexprvalue>true</rtexprvalue>
 		</attribute>
 		<attribute>
-			<description>The language keys of the checkbox's subtitles.</description>
-			<name>subtitles</name>
-			<required>false</required>
-			<rtexprvalue>true</rtexprvalue>
-		</attribute>
-		<attribute>
-			<description>The language key of the checkbox's suggestion text. It is displayed after the label.</description>
+			<description></description>
 			<name>suggestion</name>
 			<required>false</required>
 			<rtexprvalue>true</rtexprvalue>
 		</attribute>
 		<attribute>
-			<description>The language key of the checkbox's tag.</description>
+			<description></description>
 			<name>tag</name>
 			<required>false</required>
 			<rtexprvalue>true</rtexprvalue>
 		</attribute>
 		<attribute>
-			<description>The language key of the checkbox's warning text. It is displayed after the suggestion.</description>
+			<description></description>
 			<name>warning</name>
 			<required>false</required>
 			<rtexprvalue>true</rtexprvalue>

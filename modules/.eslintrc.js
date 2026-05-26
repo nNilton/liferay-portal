@@ -33,7 +33,6 @@ const config = {
 		svg4everybody: true,
 		themeDisplay: true,
 	},
-	ignorePatterns: ['!*'],
 	overrides: [
 		{
 			env: {
@@ -70,6 +69,7 @@ const config = {
 				'@testing-library/user-event',
 				'alloy-ui',
 				'buffer',
+				'execa',
 				'fs',
 				'path',
 				'process',

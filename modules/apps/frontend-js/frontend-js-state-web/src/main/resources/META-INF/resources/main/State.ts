@@ -91,6 +91,12 @@ const State = {
 	 * to the `useLiferayState()` hook and other conveniences.
 	 */
 	__unsafe__: {
+		getAtomOrSelectorKey(
+			key: string
+		): Atom<unknown> | Selector<unknown> | null {
+			return atoms.get(key) || selectors.get(key) || null;
+		},
+
 		readKey(key: string): unknown {
 			if (process.env.NODE_ENV === 'development') {
 				if (!warnings.readKey.has(key)) {
@@ -494,6 +500,8 @@ const State = {
 function isAtom(value: unknown): value is Atom<any> {
 	return Object.hasOwnProperty.call(value, ATOM);
 }
+
+window.Liferay.State = State;
 
 /**
  * Boilerplate to satisfy TypeScript and prevent: "TS2669: Augmentations

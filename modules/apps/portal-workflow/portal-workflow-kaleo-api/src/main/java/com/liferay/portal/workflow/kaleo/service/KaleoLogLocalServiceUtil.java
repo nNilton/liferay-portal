@@ -120,6 +120,17 @@ public class KaleoLogLocalServiceUtil {
 			kaleoInstanceToken, departingKaleoNode, serviceContext);
 	}
 
+	public static KaleoLog addNodeUsageMetadataKaleoLog(
+			com.liferay.portal.workflow.kaleo.model.KaleoInstanceToken
+				kaleoInstanceToken,
+			Map<String, Serializable> workflowContext,
+			com.liferay.portal.kernel.service.ServiceContext serviceContext)
+		throws PortalException {
+
+		return getService().addNodeUsageMetadataKaleoLog(
+			kaleoInstanceToken, workflowContext, serviceContext);
+	}
+
 	public static KaleoLog addTaskAssignmentKaleoLog(
 			List
 				<com.liferay.portal.workflow.kaleo.model.
@@ -484,3 +495,4 @@ public class KaleoLogLocalServiceUtil {
 			KaleoLogLocalServiceUtil.class, KaleoLogLocalService.class);
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:1389648775

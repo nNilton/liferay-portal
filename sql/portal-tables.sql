@@ -293,6 +293,7 @@ create table Country (
 	mvccVersion LONG default 0 not null,
 	ctCollectionId LONG default 0 not null,
 	uuid_ VARCHAR(75) null,
+	externalReferenceCode VARCHAR(75) null,
 	defaultLanguageId VARCHAR(75) null,
 	countryId LONG not null,
 	companyId LONG,
@@ -313,6 +314,7 @@ create table Country (
 	subjectToVAT BOOLEAN,
 	zipRequired BOOLEAN,
 	lastPublishDate DATE null,
+	status INTEGER,
 	primary key (countryId, ctCollectionId)
 );
 
@@ -696,8 +698,9 @@ create table Layout (
 	faviconFileEntryERC VARCHAR(75) null,
 	faviconFileEntryScopeERC VARCHAR(75) null,
 	masterLPTEERC VARCHAR(75) null,
-	layoutPrototypeUuid VARCHAR(75) null,
-	layoutPrototypeLinkEnabled BOOLEAN,
+	portletLPTEERC VARCHAR(75) null,
+	portletLPTESERC VARCHAR(75) null,
+	portletLPTELE BOOLEAN,
 	layoutSetPrototypeLayoutERC VARCHAR(75) null,
 	publishDate DATE null,
 	lastPublishDate DATE null,
@@ -1145,6 +1148,7 @@ create table Region (
 	mvccVersion LONG default 0 not null,
 	ctCollectionId LONG default 0 not null,
 	uuid_ VARCHAR(75) null,
+	externalReferenceCode VARCHAR(75) null,
 	defaultLanguageId VARCHAR(75) null,
 	regionId LONG not null,
 	companyId LONG,
@@ -1158,6 +1162,7 @@ create table Region (
 	position DOUBLE,
 	regionCode VARCHAR(75) null,
 	lastPublishDate DATE null,
+	status INTEGER,
 	primary key (regionId, ctCollectionId)
 );
 
@@ -1468,6 +1473,7 @@ create table Ticket (
 	classPK LONG,
 	key_ VARCHAR(255) null,
 	type_ INTEGER,
+	emailAddress VARCHAR(254) null,
 	extraInfo TEXT null,
 	expirationDate DATE null
 );
@@ -1547,6 +1553,7 @@ create table UserGroup (
 	name VARCHAR(255) null,
 	description STRING null,
 	addedByLDAPImport BOOLEAN,
+	status INTEGER,
 	primary key (userGroupId, ctCollectionId)
 );
 

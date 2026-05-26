@@ -227,7 +227,7 @@ long usedMemory = totalMemory - runtime.freeMemory();
 							<p class="list-group-title text-truncate">
 								<liferay-ui:message key="<%= systemDataCleanup.getLabel() %>" />
 
-								<span aria-label="<%= LanguageUtil.get(request, systemDataCleanup.getHelpLabel()) %>" class="lfr-portal-tooltip" tabindex="0" title="<%= LanguageUtil.get(request, systemDataCleanup.getHelpLabel()) %>">
+								<span aria-label="<%= LanguageUtil.get(request, systemDataCleanup.getHelpLabel()) %>" class="lfr-portal-tooltip pl-2" tabindex="0" title="<%= LanguageUtil.get(request, systemDataCleanup.getHelpLabel()) %>">
 									<clay:icon
 										symbol="question-circle-full"
 									/>
@@ -249,7 +249,7 @@ long usedMemory = totalMemory - runtime.freeMemory();
 						<p class="list-group-title text-truncate">
 							<liferay-ui:message key="reset-preview-and-thumbnail-files-for-documents-and-media" />
 
-							<span aria-label="<%= LanguageUtil.get(request, "reset-preview-and-thumbnail-files-for-documents-and-media-help") %>" class="lfr-portal-tooltip" tabindex="0" title="<%= LanguageUtil.get(request, "reset-preview-and-thumbnail-files-for-documents-and-media-help") %>">
+							<span aria-label="<%= LanguageUtil.get(request, "reset-preview-and-thumbnail-files-for-documents-and-media-help") %>" class="lfr-portal-tooltip pl-2" tabindex="0" title="<%= LanguageUtil.get(request, "reset-preview-and-thumbnail-files-for-documents-and-media-help") %>">
 								<clay:icon
 									symbol="question-circle-full"
 								/>
@@ -266,7 +266,7 @@ long usedMemory = totalMemory - runtime.freeMemory();
 						<p class="list-group-title text-truncate">
 							<liferay-ui:message key="clean-up-permissions" />
 
-							<span aria-label="<%= LanguageUtil.get(request, "clean-up-permissions-help") %>" class="lfr-portal-tooltip" tabindex="0" title="<%= LanguageUtil.get(request, "clean-up-permissions-help") %>">
+							<span aria-label="<%= LanguageUtil.get(request, "clean-up-permissions-help") %>" class="lfr-portal-tooltip pl-2" tabindex="0" title="<%= LanguageUtil.get(request, "clean-up-permissions-help") %>">
 								<clay:icon
 									symbol="question-circle-full"
 								/>
@@ -283,7 +283,7 @@ long usedMemory = totalMemory - runtime.freeMemory();
 						<p class="list-group-title text-truncate">
 							<liferay-ui:message key="clean-up-orphaned-page-revision-portlet-preferences" />
 
-							<span aria-label="<%= LanguageUtil.get(request, "clean-up-orphaned-page-revision-portlet-preferences-help") %>" class="lfr-portal-tooltip" tabindex="0" title="<%= LanguageUtil.get(request, "clean-up-orphaned-page-revision-portlet-preferences-help") %>">
+							<span aria-label="<%= LanguageUtil.get(request, "clean-up-orphaned-page-revision-portlet-preferences-help") %>" class="lfr-portal-tooltip pl-2" tabindex="0" title="<%= LanguageUtil.get(request, "clean-up-orphaned-page-revision-portlet-preferences-help") %>">
 								<clay:icon
 									symbol="question-circle-full"
 								/>
@@ -300,7 +300,7 @@ long usedMemory = totalMemory - runtime.freeMemory();
 						<p class="list-group-title text-truncate">
 							<liferay-ui:message key="clean-up-orphaned-theme-portlet-preferences" />
 
-							<span aria-label="<%= LanguageUtil.get(request, "clean-up-orphaned-theme-portlet-preferences-help") %>" class="lfr-portal-tooltip" tabindex="0" title="<%= LanguageUtil.get(request, "clean-up-orphaned-theme-portlet-preferences-help") %>">
+							<span aria-label="<%= LanguageUtil.get(request, "clean-up-orphaned-theme-portlet-preferences-help") %>" class="lfr-portal-tooltip pl-2" tabindex="0" title="<%= LanguageUtil.get(request, "clean-up-orphaned-theme-portlet-preferences-help") %>">
 								<clay:icon
 									symbol="question-circle-full"
 								/>
@@ -316,7 +316,15 @@ long usedMemory = totalMemory - runtime.freeMemory();
 		</aui:fieldset>
 
 		<%
-		List<DataCleanup> moduleDataCleanups = DataCleanupUtil.getModuleDataCleanups();
+		List<DataCleanup> moduleDataCleanups = TransformUtil.transform(
+			DataCleanupUtil.getModuleDataCleanups(),
+			moduleDataCleanup -> {
+				if (!moduleDataCleanup.isEnabled() || (ReleaseLocalServiceUtil.fetchRelease(moduleDataCleanup.getServletContextName()) != null)) {
+					return moduleDataCleanup;
+				}
+
+				return null;
+			});
 		%>
 
 		<c:if test="<%= ListUtil.isNotEmpty(moduleDataCleanups) %>">
@@ -336,9 +344,6 @@ long usedMemory = totalMemory - runtime.freeMemory();
 
 					<%
 					for (DataCleanup moduleDataCleanup : moduleDataCleanups) {
-						if (moduleDataCleanup.isEnabled() && (ReleaseLocalServiceUtil.fetchRelease(moduleDataCleanup.getServletContextName()) == null)) {
-							continue;
-						}
 					%>
 
 						<li class="list-group-item list-group-item-flex">
@@ -346,7 +351,7 @@ long usedMemory = totalMemory - runtime.freeMemory();
 								<p class="list-group-title text-truncate">
 									<liferay-ui:message key="<%= moduleDataCleanup.getLabel() %>" />
 
-									<span aria-label="<%= LanguageUtil.get(request, moduleDataCleanup.getHelpLabel()) %>" class="lfr-portal-tooltip" tabindex="0" title="<%= LanguageUtil.get(request, moduleDataCleanup.getHelpLabel()) %>">
+									<span aria-label="<%= LanguageUtil.get(request, moduleDataCleanup.getHelpLabel()) %>" class="lfr-portal-tooltip pl-2" tabindex="0" title="<%= LanguageUtil.get(request, moduleDataCleanup.getHelpLabel()) %>">
 										<clay:icon
 											symbol="question-circle-full"
 										/>
@@ -375,7 +380,7 @@ long usedMemory = totalMemory - runtime.freeMemory();
 							<p class="list-group-title text-truncate">
 								<liferay-ui:message key="regenerate-preview-of-audio-files-in-documents-and-media" />
 
-								<span aria-label="<%= LanguageUtil.get(request, "regenerate-preview-of-audio-files-in-documents-and-media-help") %>" class="lfr-portal-tooltip" tabindex="0" title="<%= LanguageUtil.get(request, "regenerate-preview-of-audio-files-in-documents-and-media-help") %>">
+								<span aria-label="<%= LanguageUtil.get(request, "regenerate-preview-of-audio-files-in-documents-and-media-help") %>" class="lfr-portal-tooltip pl-2" tabindex="0" title="<%= LanguageUtil.get(request, "regenerate-preview-of-audio-files-in-documents-and-media-help") %>">
 									<clay:icon
 										symbol="question-circle-full"
 									/>
@@ -403,7 +408,7 @@ long usedMemory = totalMemory - runtime.freeMemory();
 							<p class="list-group-title text-truncate">
 								<liferay-ui:message key="regenerate-preview-and-thumbnail-of-openoffice-files-in-documents-and-media" />
 
-								<span aria-label="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-openoffice-files-in-documents-and-media-help") %>" class="lfr-portal-tooltip" tabindex="0" title="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-pdf-files-in-documents-and-media-help") %>">
+								<span aria-label="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-openoffice-files-in-documents-and-media-help") %>" class="lfr-portal-tooltip pl-2" tabindex="0" title="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-pdf-files-in-documents-and-media-help") %>">
 									<clay:icon
 										symbol="question-circle-full"
 									/>
@@ -430,7 +435,7 @@ long usedMemory = totalMemory - runtime.freeMemory();
 						<p class="list-group-title text-truncate">
 							<liferay-ui:message key="regenerate-preview-and-thumbnail-of-pdf-files-in-documents-and-media" />
 
-							<span aria-label="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-pdf-files-in-documents-and-media-help") %>" class="lfr-portal-tooltip" tabindex="0" title="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-pdf-files-in-documents-and-media-help") %>">
+							<span aria-label="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-pdf-files-in-documents-and-media-help") %>" class="lfr-portal-tooltip pl-2" tabindex="0" title="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-pdf-files-in-documents-and-media-help") %>">
 								<clay:icon
 									symbol="question-circle-full"
 								/>
@@ -457,7 +462,7 @@ long usedMemory = totalMemory - runtime.freeMemory();
 							<p class="list-group-title text-truncate">
 								<liferay-ui:message key="regenerate-preview-and-thumbnail-of-video-files-in-documents-and-media" />
 
-								<span aria-label="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-video-files-in-documents-and-media-help") %>" class="lfr-portal-tooltip" tabindex="0" title="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-video-files-in-documents-and-media-help") %>">
+								<span aria-label="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-video-files-in-documents-and-media-help") %>" class="lfr-portal-tooltip pl-2" tabindex="0" title="<%= LanguageUtil.get(request, "regenerate-preview-and-thumbnail-of-video-files-in-documents-and-media-help") %>">
 									<clay:icon
 										symbol="question-circle-full"
 									/>

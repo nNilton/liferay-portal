@@ -1,5 +1,5 @@
 /**
- * SPDX-FileCopyrightText: (c) 2000 Liferay, Inc. https://liferay.com
+ * SPDX-FileCopyrightText: (c) 2026 Liferay, Inc. https://liferay.com
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
@@ -17,11 +17,14 @@ export async function clickAndExpectToBeVisible({
 	trigger: Locator;
 }) {
 	await expect(async () => {
-		if (!(await target.isVisible()) && (await trigger.isVisible())) {
-			await trigger.click();
+		try {
+			await expect(target).toBeVisible({timeout});
 		}
+		catch {
+			await trigger.click({timeout});
 
-		await expect(target).toBeVisible({timeout});
+			await expect(target).toBeVisible({timeout});
+		}
 
 		if (autoClick) {
 			await target.click();

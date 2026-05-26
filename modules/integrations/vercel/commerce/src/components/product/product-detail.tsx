@@ -10,6 +10,7 @@ import {ChevronLeft, ChevronRight} from 'lucide-react';
 import Image from 'next/image';
 import {useState} from 'react';
 
+import PreviewHTML from '../../components/preview-html';
 import {Attachment, Product} from '../../types/product';
 import {getSkuDetails, handleImageError} from '../../utils/product';
 import {Badge} from '../ui/badge';
@@ -49,9 +50,8 @@ const ProductDetail = ({product}: {product: Product}) => {
 									className="aspect-square object-cover rounded-lg w-full"
 									height={500}
 									onError={handleImageError}
-									quality={500}
+									quality={100}
 									src={images[selectedImageIndex].src}
-									unoptimized
 									width={480}
 								/>
 
@@ -93,7 +93,6 @@ const ProductDetail = ({product}: {product: Product}) => {
 										onError={handleImageError}
 										quality={100}
 										src={image.src}
-										unoptimized
 										width={16}
 									/>
 								</button>
@@ -118,7 +117,7 @@ const ProductDetail = ({product}: {product: Product}) => {
 
 							<span className="text-sm">
 								Only {skuDetails.availability?.stockQuantity}
-								&nbsp; left in stock
+								&nbsp;left in stock
 							</span>
 						</div>
 					)}
@@ -149,11 +148,7 @@ const ProductDetail = ({product}: {product: Product}) => {
 						)}
 					</div>
 
-					<div
-						dangerouslySetInnerHTML={{
-							__html: product.description ?? '',
-						}}
-					/>
+					<PreviewHTML content={product.description ?? ''} />
 
 					{!!skuDetails.skuUnitOfMeasures?.length && (
 						<ProductUOM uom={skuDetails?.skuUnitOfMeasures} />

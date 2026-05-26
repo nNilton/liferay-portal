@@ -8,29 +8,188 @@ resource "helm_release" "argocd" {
 	name="argocd"
 	namespace=var.argocd_namespace
 	repository="https://argoproj.github.io/argo-helm"
-	upgrade_install=true
-	values=[
-		yamlencode(
+	values=concat(
+		[yamlencode(
 			{
-				installCRDs=true
-				server={
+				applicationSet={
 					resources={
+						limits={
+							memory="768Mi"
+						}
 						requests={
-							cpu="100m"
+							cpu="15m"
 							memory="128Mi"
 						}
+					}
+				}
+				configs={
+					cm={
+						"admin.enabled"=var.argocd_sso_config.enable_admin_login
+						"application.resourceTrackingMethod"="annotation"
+						"controller.diff.timeout"="120s"
+						"kustomize.buildOptions"="--enable-helm"
+						"resource.customizations.health.aws.liferay.com_LiferayInfrastructure"=file("${path.module}/health-aws.liferay.com_LiferayInfrastructure.lua")
+						"resource.customizations.ignoreDifferences.all"=yamlencode(
+							{
+								jsonPointers=["/metadata/labels/apiextensions.crossplane.io~1composite"]
+								managedFieldsManagers=[
+									"apiextensions.crossplane.io/composite",
+									"crossplane",
+									"kube-controller-manager",
+								]
+							})
+						"resource.customizations.ignoreDifferences.aws.liferay.com_LiferayInfrastructure"=yamlencode(
+							{
+								jsonPointers=[
+									"/spec/database/snapshotIdentifier",
+									"/spec/restorePhase",
+									"/spec/targetActiveDataPlane",
+									"/status/atProvider",
+									"/status/internalMetadata",
+								]
+							})
+						"resource.exclusions"=yamlencode(
+							[
+								{
+									apiGroups=["*"]
+									kinds=["ProviderConfigUsage"]
+								},
+								{
+									apiGroups=["apiextensions.crossplane.io"]
+									kinds=["ManagedResourceDefinition"]
+								},
+							])
+					}
+					params={
+						"server.insecure"="true"
+					}
+				}
+				controller={
+					resources={
 						limits={
-							cpu="200m"
+							memory="8Gi"
+						}
+						requests={
+							cpu="109m"
+							memory="1.5Gi"
+						}
+					}
+				}
+				dex={
+					resources={
+						limits={
+							memory="768Mi"
+						}
+						requests={
+							cpu="15m"
+							memory="128Mi"
+						}
+					}
+				}
+				global={
+					networkPolicy={
+						create=true
+					}
+				}
+				installCRDs=true
+				notifications={
+					resources={
+						limits={
 							memory="256Mi"
+						}
+						requests={
+							cpu="15m"
+							memory="128Mi"
+						}
+					}
+				}
+				redis={
+					resources={
+						limits={
+							memory="256Mi"
+						}
+						requests={
+							cpu="15m"
+							memory="128Mi"
+						}
+					}
+				}
+				repoServer={
+					resources={
+						limits={
+							memory="1.5Gi"
+						}
+						requests={
+							cpu="15m"
+							memory="128Mi"
+						}
+					}
+				}
+				server={
+					livenessProbe={
+						initialDelaySeconds=90
+						timeoutSeconds=5
+					}
+					readinessProbe={
+						initialDelaySeconds=60
+						timeoutSeconds=5
+					}
+					resources={
+						limits={
+							memory="768Mi"
+						}
+						requests={
+							cpu="15m"
+							memory="128Mi"
 						}
 					}
 					service={
 						type="ClusterIP"
 					}
 				}
-			}),
-	]
-	version="9.1.5"
+			})],
+		var.argocd_sso_config.enable_saml_sso ? [
+			yamlencode({
+				configs={
+					cm={
+						"dex.config"=yamlencode({
+							connectors=[{
+								config={
+									caData="$customer-idp-saml:caData"
+									emailAttr="email"
+									entityIssuer="$customer-idp-saml:entityIssuer"
+									groupsAttr="groups"
+									redirectURI="$customer-idp-saml:redirectURI"
+									ssoURL="$customer-idp-saml:ssoURL"
+									usernameAttr="name"
+								}
+								id="customer-idp"
+								name="SAML"
+								type="saml"
+							}]
+						})
+					}
+					rbac={
+						"policy.csv"=join("\n", [
+							"g, customer-idp:liferay-argocd-role-admin, role:liferay-admin",
+							"g, customer-idp:liferay-argocd-role-guest, role:liferay-guest",
+							"p, role:liferay-admin, accounts, *, *, allow",
+							"p, role:liferay-admin, applications, *, */*, allow",
+							"p, role:liferay-admin, clusters, *, *, allow",
+							"p, role:liferay-admin, projects, *, *, allow",
+							"p, role:liferay-admin, repositories, *, *, allow",
+							"p, role:liferay-guest, applications, get, */*, allow",
+							"p, role:liferay-guest, clusters, get, *, allow",
+							"p, role:liferay-guest, projects, get, *, allow",
+							"p, role:liferay-guest, repositories, get, *, allow",
+						])
+						"policy.default"="role:liferay-guest"
+					}
+				}
+			})
+		] : [],
+	)
+	version=var.argocd_helm_chart_version
 	wait=true
 }
 resource "kubernetes_namespace" "argocd" {

@@ -78,6 +78,14 @@ public class SegmentsEntryServiceUtil {
 		getService().deleteSegmentsEntryClassPKs(segmentsEntryId, classPKs);
 	}
 
+	public static SegmentsEntry fetchSegmentsEntryByExternalReferenceCode(
+			String segmentsEntryERC, long groupId)
+		throws PortalException {
+
+		return getService().fetchSegmentsEntryByExternalReferenceCode(
+			segmentsEntryERC, groupId);
+	}
+
 	/**
 	 * Returns the OSGi service identifier.
 	 *
@@ -99,14 +107,34 @@ public class SegmentsEntryServiceUtil {
 			groupId, start, end, orderByComparator);
 	}
 
+	public static List<SegmentsEntry> getSegmentsEntries(
+		long groupId, String source, int start, int end,
+		OrderByComparator<SegmentsEntry> orderByComparator) {
+
+		return getService().getSegmentsEntries(
+			groupId, source, start, end, orderByComparator);
+	}
+
 	public static int getSegmentsEntriesCount(long groupId) {
 		return getService().getSegmentsEntriesCount(groupId);
+	}
+
+	public static int getSegmentsEntriesCount(long groupId, String source) {
+		return getService().getSegmentsEntriesCount(groupId, source);
 	}
 
 	public static SegmentsEntry getSegmentsEntry(long segmentsEntryId)
 		throws PortalException {
 
 		return getService().getSegmentsEntry(segmentsEntryId);
+	}
+
+	public static SegmentsEntry getSegmentsEntryByExternalReferenceCode(
+			String segmentsEntryERC, long groupId)
+		throws PortalException {
+
+		return getService().getSegmentsEntryByExternalReferenceCode(
+			segmentsEntryERC, groupId);
 	}
 
 	public static com.liferay.portal.kernel.search.BaseModelSearchResult
@@ -141,3 +169,4 @@ public class SegmentsEntryServiceUtil {
 			SegmentsEntryServiceUtil.class, SegmentsEntryService.class);
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:2133663031

@@ -6,7 +6,7 @@
 import {FrameLocator, Locator, Page, expect} from '@playwright/test';
 
 import {waitForAlert} from '../../../utils/waitForAlert';
-import {ApplicationsMenuPage} from '../../product-navigation-applications-menu/ApplicationsMenuPage';
+import {GlobalMenuPage} from '../../product-navigation-applications-menu/GlobalMenuPage';
 import {searchTableRowByValue} from '../commerceDNDTablePage';
 
 export class CommerceAdminChannelDetailsPage {
@@ -17,7 +17,7 @@ export class CommerceAdminChannelDetailsPage {
 	readonly addTaxRateSettingsFrame: FrameLocator;
 	readonly allowMultishippingToggle: Locator;
 	readonly allowRequestAQuote: Locator;
-	readonly applicationsMenuPage: ApplicationsMenuPage;
+	readonly globalMenuPage: GlobalMenuPage;
 	readonly byAddressCountryChoiceBox: Locator;
 	readonly byAddressRegionChoiceBox: Locator;
 	readonly byAddressTaxCategoryChoiceBox: Locator;
@@ -27,7 +27,8 @@ export class CommerceAdminChannelDetailsPage {
 	readonly channelNameLink: (channelName: string) => Locator;
 	readonly closeSidePanelFrame: (
 		isNestedFrame: boolean,
-		tableName: string
+		tableName: string,
+		depth?: number
 	) => Promise<Locator>;
 	readonly commerceChannelHealthChecksTable: Locator;
 	readonly commerceChannelHealthChecksTableRow: (
@@ -51,9 +52,11 @@ export class CommerceAdminChannelDetailsPage {
 		isNestedFrame: boolean,
 		tableName: string
 	) => Promise<Locator>;
+	readonly errorMessage: (text: string) => Locator;
 	readonly frameSaveButton: (
 		isNestedFrame: boolean,
-		tableName: string
+		tableName: string,
+		depth?: number
 	) => Promise<Locator>;
 	readonly generalCommerceAdminChannelTableLink: (
 		name: string
@@ -64,6 +67,7 @@ export class CommerceAdminChannelDetailsPage {
 	) => Promise<Locator>;
 	readonly guestCheckoutToggle: Locator;
 	readonly isActive: Locator;
+	readonly linkSupplierSelect: Locator;
 	readonly linkTab: (tabName: string) => Locator;
 	readonly maxOpenOrderAccountInput: Locator;
 	readonly page: Page;
@@ -80,6 +84,10 @@ export class CommerceAdminChannelDetailsPage {
 	) => Promise<Locator>;
 	readonly shippingOptionsTab: (tableName: string) => Promise<Locator>;
 	readonly shippingOptionSettingsTab: (tableName: string) => Promise<Locator>;
+	readonly shippingOptionsSettingsTableLink: (
+		shippingOptionName: string,
+		tableName: string
+	) => Promise<Locator>;
 	readonly shippingOptionsTableLink: (
 		shippingOptionName: string,
 		tableName: string
@@ -95,16 +103,33 @@ export class CommerceAdminChannelDetailsPage {
 		buttonName: string,
 		tableName: string
 	) => Promise<Locator>;
+	readonly sidePanelFrameBodyHTML: (tableName: string) => Promise<string>;
 	readonly sidePanelFrameInput: (
 		input: string,
+		tableName: string
+	) => Promise<Locator>;
+	readonly sidePanelFrameNavLink: (
+		navItem: string,
+		tableName: string
+	) => Promise<Locator>;
+	readonly sidePanelFrameDeleteMenuItem: (
 		tableName: string
 	) => Promise<Locator>;
 	readonly sidePanelFrameEditMenuItem: (
 		tableName: string
 	) => Promise<Locator>;
-	readonly sidePanelNestedFrame: (tableName: string) => Promise<FrameLocator>;
+	readonly sidePanelFrameAddButton: (tableName: string) => Promise<Locator>;
+	readonly sidePanelNestedFrame: (
+		tableName: string,
+		depth?: number
+	) => Promise<FrameLocator>;
 	readonly sidePanelNestedFrameAmountInput: (
 		tableName: string
+	) => Promise<Locator>;
+	readonly sidePanelNestedFrameInput: (
+		label: string,
+		tableName: string,
+		depth?: number
 	) => Promise<Locator>;
 	readonly sidePanelFrameLocator: FrameLocator;
 	readonly sidePanelNestedCloseButton: Locator;
@@ -145,13 +170,13 @@ export class CommerceAdminChannelDetailsPage {
 		this.allowRequestAQuote = page.getByLabel(
 			'Allow Request a Quote on a Fully Priced Cart'
 		);
-		this.applicationsMenuPage = new ApplicationsMenuPage(page);
+		this.globalMenuPage = new GlobalMenuPage(page);
 		this.byAddressTaxCategoryChoiceBox =
 			this.addTaxRateSettingsFrame.getByText('Tax Category');
 		this.byAddressCountryChoiceBox =
-			this.addTaxRateSettingsFrame.getByText('Country');
+			this.addTaxRateSettingsFrame.getByLabel('Country');
 		this.byAddressRegionChoiceBox =
-			this.addTaxRateSettingsFrame.getByText('Region');
+			this.addTaxRateSettingsFrame.getByLabel('Region');
 		this.categoryDisplayPageTab = page.getByRole('link', {
 			name: 'Category Display Pages',
 		});
@@ -206,10 +231,11 @@ export class CommerceAdminChannelDetailsPage {
 		this.guestCheckoutToggle = page.getByLabel('Guest Checkout');
 		this.closeSidePanelFrame = async (
 			isNestedFrame: boolean,
-			tableName: string
+			tableName: string,
+			depth: number = 1
 		) => {
 			if (isNestedFrame) {
-				return (await this.sidePanelNestedFrame(tableName))
+				return (await this.sidePanelNestedFrame(tableName, depth))
 					.locator('.btn')
 					.first();
 			}
@@ -254,15 +280,17 @@ export class CommerceAdminChannelDetailsPage {
 				eligibilityOption
 			);
 		};
+		this.errorMessage = (text: string) =>
+			page.locator('.alert-danger').filter({hasText: text});
 		this.frameSaveButton = async (
 			isNestedFrame: boolean,
-			tableName: string
+			tableName: string,
+			depth: number = 1
 		) => {
 			if (isNestedFrame) {
-				return (await this.sidePanelNestedFrame(tableName)).getByRole(
-					'button',
-					{name: 'Save'}
-				);
+				return (
+					await this.sidePanelNestedFrame(tableName, depth)
+				).getByRole('button', {name: 'Save'});
 			}
 
 			return (await this.sidePanelFrame(tableName)).getByRole('button', {
@@ -284,6 +312,9 @@ export class CommerceAdminChannelDetailsPage {
 		};
 		this.sidePanelFrameLocator = page.frameLocator('.is-visible iframe');
 		this.isActive = this.sidePanelFrameLocator.getByLabel('Active');
+		this.linkSupplierSelect = page.locator(
+			'select[name$="accountEntryId"]'
+		);
 		this.linkTab = (tabName) =>
 			page.getByRole('link', {exact: true, name: tabName});
 		this.maxOpenOrderAccountInput = page.getByLabel(
@@ -314,9 +345,23 @@ export class CommerceAdminChannelDetailsPage {
 			});
 		};
 		this.shippingOptionSettingsTab = async (tableName: string) => {
-			return (await this.sidePanelFrame(tableName)).getByRole('link', {
-				name: 'Shipping Option Settings',
-			});
+			return (await this.sidePanelNestedFrame(tableName)).getByRole(
+				'link',
+				{
+					name: 'Shipping Option Settings',
+				}
+			);
+		};
+		this.shippingOptionsSettingsTableLink = async (
+			shippingOptionName: string,
+			tableName: string
+		) => {
+			return (await this.sidePanelNestedFrame(tableName)).getByRole(
+				'link',
+				{
+					name: shippingOptionName,
+				}
+			);
 		};
 		this.shippingOptionsTableLink = async (
 			shippingOptionName: string,
@@ -367,11 +412,31 @@ export class CommerceAdminChannelDetailsPage {
 				{exact: true, name: buttonName}
 			);
 		};
+		this.sidePanelFrameBodyHTML = async (tableName: string) => {
+			return (await this.sidePanelFrame(tableName))
+				.locator('body')
+				.innerHTML();
+		};
 		this.sidePanelFrameInput = async (
 			inputName: string,
 			tableName: string
 		) => {
 			return (await this.sidePanelFrame(tableName)).getByLabel(inputName);
+		};
+		this.sidePanelFrameNavLink = async (
+			navItem: string,
+			tableName: string
+		) => {
+			return (await this.sidePanelFrame(tableName)).getByRole('link', {
+				exact: true,
+				name: navItem,
+			});
+		};
+		this.sidePanelFrameDeleteMenuItem = async (tableName: string) => {
+			return (await this.sidePanelFrame(tableName)).getByRole(
+				'menuitem',
+				{name: 'Delete'}
+			);
 		};
 		this.sidePanelFrameEditMenuItem = async (tableName: string) => {
 			return (await this.sidePanelFrame(tableName)).getByRole(
@@ -379,15 +444,34 @@ export class CommerceAdminChannelDetailsPage {
 				{name: 'Edit'}
 			);
 		};
-		this.sidePanelNestedFrame = async (tableName: string) => {
-			return (await this.sidePanelFrame(tableName)).frameLocator(
-				'iframe'
-			);
+		this.sidePanelNestedFrame = async (
+			tableName: string,
+			depth: number = 1
+		) => {
+			let frame = await this.sidePanelFrame(tableName);
+
+			for (let i = 0; i < depth; i++) {
+				frame = frame.frameLocator('iframe');
+			}
+
+			return frame;
+		};
+		this.sidePanelFrameAddButton = async (tableName: string) => {
+			return (await this.sidePanelFrame(tableName))
+				.getByTestId('managementToolbar')
+				.locator('[data-testid="fdsCreationActionButton"]');
+		};
+		this.sidePanelNestedFrameInput = async (
+			label: string,
+			tableName: string,
+			depth: number = 1
+		) => {
+			return (
+				await this.sidePanelNestedFrame(tableName, depth)
+			).getByLabel(label);
 		};
 		this.sidePanelNestedFrameAmountInput = async (tableName: string) => {
-			return (await this.sidePanelNestedFrame(tableName)).getByLabel(
-				'Amount'
-			);
+			return this.sidePanelNestedFrameInput('Amount', tableName);
 		};
 		this.page = page;
 		this.placeHolderTerm = async (
@@ -447,6 +531,26 @@ export class CommerceAdminChannelDetailsPage {
 		await (await this.closeSidePanelFrame(false, tableName)).click();
 	}
 
+	async activatePaymentMethod(name: string, description: string) {
+		const tableName = 'Payment Methods';
+
+		await (await this.generalCommerceAdminChannelTableLink(name)).click();
+
+		await this.sidePanelFrameLocator
+			.getByLabel('Description', {exact: true})
+			.fill(description);
+
+		if (!(await this.isActive.isChecked())) {
+			await this.isActive.check();
+		}
+
+		await (await this.frameSaveButton(false, tableName)).click();
+
+		await waitForAlert(await this.sidePanelFrame(tableName));
+
+		await (await this.closeSidePanelFrame(false, tableName)).click();
+	}
+
 	async deactivateChannelConfiguration(name: string, tableName: string) {
 		const isActiveCheckbox = await this.isActive;
 
@@ -464,33 +568,36 @@ export class CommerceAdminChannelDetailsPage {
 	async addFlatRateShippingOption(
 		name: string,
 		amount?: string,
-		description?: string
+		description?: string,
+		priority?: string
 	) {
 		const tableName = 'Shipping Methods';
 		await (
 			await this.generalCommerceAdminChannelTableLink('Flat Rate')
 		).click();
 		await (await this.shippingOptionsTab(tableName)).click();
-		await (await this.sidePanelFrame(tableName))
-			.getByTestId('managementToolbar')
-			.locator('[data-testid="fdsCreationActionButton"]')
-			.click();
-		await (await this.sidePanelNestedFrame(tableName))
-			.getByLabel('Name')
-			.fill(name);
+		await (await this.sidePanelFrameAddButton(tableName)).click();
+		await (
+			await this.sidePanelNestedFrameInput('Name', tableName)
+		).fill(name);
 		if (description) {
-			await (await this.sidePanelNestedFrame(tableName))
-				.getByLabel('Description')
-				.fill(description);
+			await (
+				await this.sidePanelNestedFrameInput('Description', tableName)
+			).fill(description);
 		}
 		if (amount) {
-			await (await this.sidePanelNestedFrame(tableName))
-				.getByLabel('Amount')
-				.fill(amount);
+			await (
+				await this.sidePanelNestedFrameInput('Amount', tableName)
+			).fill(amount);
 		}
-		await (await this.sidePanelNestedFrame(tableName))
-			.getByLabel('Key')
-			.fill(name);
+		if (priority) {
+			await (
+				await this.sidePanelNestedFrameInput('Priority', tableName)
+			).fill(priority);
+		}
+		await (
+			await this.sidePanelNestedFrameInput('Key', tableName)
+		).fill(name);
 		await (await this.frameSaveButton(true, tableName)).click();
 		await waitForAlert(await this.sidePanelNestedFrame('Shipping Methods'));
 		await (
@@ -507,15 +614,13 @@ export class CommerceAdminChannelDetailsPage {
 			await this.generalCommerceAdminChannelTableLink('Variable Rate')
 		).click();
 		(await this.shippingOptionsTab(tableName)).click();
-		await (await this.sidePanelFrame(tableName))
-			.getByText('Add Shipping Option')
-			.click();
-		await (await this.sidePanelNestedFrame(tableName))
-			.getByLabel('Name')
-			.fill(name);
-		await (await this.sidePanelNestedFrame(tableName))
-			.getByLabel('Key')
-			.fill(name);
+		await (await this.sidePanelFrameAddButton(tableName)).click();
+		await (
+			await this.sidePanelNestedFrameInput('Name', tableName)
+		).fill(name);
+		await (
+			await this.sidePanelNestedFrameInput('Key', tableName)
+		).fill(name);
 		await (await this.frameSaveButton(true, tableName)).click();
 		await waitForAlert(await this.sidePanelNestedFrame('Shipping Methods'));
 		await (
@@ -528,31 +633,56 @@ export class CommerceAdminChannelDetailsPage {
 
 	async addVariableRateShippingOptionSetting(
 		optionName: string,
-		subtotalPercentagePrice?: string
+		subtotalPercentagePrice?: string,
+		fixedPrice?: string,
+		weightTo?: string
 	) {
 		const tableName = 'Shipping Methods';
 		await (
 			await this.generalCommerceAdminChannelTableLink('Variable Rate')
 		).click();
-		(await this.shippingOptionSettingsTab(tableName)).click();
-		await (await this.sidePanelFrame(tableName))
+		await (await this.shippingOptionsTab(tableName)).click();
+		await (
+			await this.shippingOptionsTableLink(optionName, tableName)
+		).click();
+		await (await this.detailsButton(tableName)).click();
+		await (await this.shippingOptionSettingsTab(tableName)).click();
+		await (await this.sidePanelNestedFrame(tableName))
 			.getByText('Add Shipping Option Setting')
 			.click();
-		await (await this.sidePanelNestedFrame(tableName))
-			.getByLabel('Shipping Option')
-			.selectOption(optionName);
 
 		if (subtotalPercentagePrice) {
-			await (await this.sidePanelNestedFrame(tableName))
-				.getByLabel('Subtotal Percentage Price')
-				.fill(subtotalPercentagePrice);
+			await (
+				await this.sidePanelNestedFrameInput(
+					'Subtotal Percentage Price',
+					tableName,
+					2
+				)
+			).fill(subtotalPercentagePrice);
 		}
 
-		await (await this.frameSaveButton(true, tableName)).click();
-		await waitForAlert(await this.sidePanelNestedFrame('Shipping Methods'));
+		if (fixedPrice) {
+			await (await this.sidePanelNestedFrame(tableName, 2))
+				.getByLabel('Fixed Price', {exact: true})
+				.fill(fixedPrice);
+		}
+
+		if (weightTo) {
+			await (
+				await this.sidePanelNestedFrameInput('Weight To', tableName, 2)
+			).fill(weightTo);
+		}
+
+		await (await this.frameSaveButton(true, tableName, 2)).click();
+		await waitForAlert(
+			await this.sidePanelNestedFrame('Shipping Methods', 2)
+		);
+		await (
+			await this.closeSidePanelFrame(true, 'Shipping Methods', 2)
+		).click();
 	}
 
-	async addFixedTaxRate(amount: string, name: string) {
+	async addFixedTaxRate(amount: string, name: string, percentage = false) {
 		const tableName = 'Tax Calculations';
 
 		await (
@@ -562,6 +692,13 @@ export class CommerceAdminChannelDetailsPage {
 		await expect(await this.activeToggle(tableName)).toBeVisible();
 
 		await (await this.activeToggle(tableName)).check();
+
+		if (percentage) {
+			await (await this.sidePanelFrame(tableName))
+				.getByLabel('Percentage')
+				.check();
+		}
+
 		await (await this.frameSaveButton(false, tableName)).click();
 
 		await (await this.taxRatesTab(tableName)).click();
@@ -570,7 +707,9 @@ export class CommerceAdminChannelDetailsPage {
 		await expect(this.taxCategoryChoiceBox).toBeVisible();
 
 		await this.taxCategoryChoiceBox.selectOption(name);
-		await this.addTaxRateFrame.getByLabel('Amount').fill(amount);
+		await this.addTaxRateFrame
+			.getByLabel(percentage ? 'Rate' : 'Amount')
+			.fill(amount);
 		await this.taxRateFrameSubmitButton.click();
 
 		await this.page.reload();
@@ -598,20 +737,35 @@ export class CommerceAdminChannelDetailsPage {
 		await (await this.activeToggle(tableName)).check();
 		await (await this.frameSaveButton(false, tableName)).click();
 
+		await waitForAlert(this.sidePanelFrameLocator);
+
 		await (await this.taxRateSettingsTab(tableName)).click();
 		await (await this.addTaxRateSettingButton(tableName)).click();
 
 		await expect(this.byAddressTaxCategoryChoiceBox).toBeVisible();
 
 		await this.byAddressTaxCategoryChoiceBox.selectOption(name);
-		await this.addTaxRateSettingsFrame.getByLabel('Amount').fill(amount);
-		await this.byAddressCountryChoiceBox.selectOption(country);
-		await this.byAddressRegionChoiceBox.selectOption(region);
-		await this.addTaxRateSettingsFrame.getByLabel('Zip').fill(zip);
+		const amountField = this.addTaxRateSettingsFrame.getByLabel('Amount');
+
+		await amountField.fill(amount);
+
+		await this.byAddressCountryChoiceBox.focus();
+
+		await expect(this.byAddressCountryChoiceBox).toBeFocused();
+
+		await this.byAddressCountryChoiceBox.selectOption({label: country});
+
+		await this.byAddressRegionChoiceBox.focus();
+
+		await expect(this.byAddressRegionChoiceBox).toBeFocused();
+
+		await this.byAddressRegionChoiceBox.selectOption({label: region});
+
+		const zipField = this.addTaxRateSettingsFrame.getByLabel('Zip');
+
+		await zipField.fill(zip);
 
 		await this.taxRateFrameSettingsSubmitButton.click();
-
-		await this.page.reload();
 
 		await expect(
 			await this.generalCommerceAdminChannelTableLink('By Address')
@@ -679,32 +833,32 @@ export class CommerceAdminChannelDetailsPage {
 		shippingOption?: string
 	) {
 		let isNestedFrame: boolean;
+
 		if (tableName === 'Payment Methods') {
 			isNestedFrame = false;
+
 			await (await this.eligibilityTab(isNestedFrame, tableName)).click();
-			await (
-				await this.eligibilityOptionButton(
-					eligibilityOption,
-					isNestedFrame,
-					tableName
-				)
-			).click();
 
-			await expect(
-				await this.placeHolderTerm(
-					isNestedFrame,
-					tableName,
-					'Find a Payment Term'
-				)
-			).toBeVisible();
+			const eligibilityButton = await this.eligibilityOptionButton(
+				eligibilityOption,
+				isNestedFrame,
+				tableName
+			);
 
-			await (
-				await this.placeHolderTerm(
-					isNestedFrame,
-					tableName,
-					'Find a Payment Term'
-				)
-			).fill(entryName);
+			await expect(eligibilityButton).toBeVisible();
+
+			await eligibilityButton.click();
+
+			const placeholderInput = await this.placeHolderTerm(
+				isNestedFrame,
+				tableName,
+				'Find a Payment Term'
+			);
+
+			await expect(placeholderInput).toBeVisible();
+
+			await placeholderInput.fill(entryName);
+
 			await (await this.selectButton(isNestedFrame, tableName)).click();
 			await (
 				await this.frameSaveButton(isNestedFrame, tableName)
@@ -716,35 +870,39 @@ export class CommerceAdminChannelDetailsPage {
 		}
 		else if (tableName === 'Shipping Methods') {
 			isNestedFrame = true;
+
 			await (await this.shippingOptionsTab(tableName)).click();
 			await (
 				await this.shippingOptionsTableLink(shippingOption, tableName)
 			).click();
 			await (await this.detailsButton(tableName)).click();
 			await (await this.eligibilityTab(isNestedFrame, tableName)).click();
-			await (
-				await this.eligibilityOptionButton(
-					eligibilityOption,
-					isNestedFrame,
-					tableName
-				)
-			).click();
 
-			await expect(
-				await this.placeHolderTerm(
-					isNestedFrame,
-					tableName,
-					'Find a Delivery Term'
-				)
-			).toBeVisible();
+			const eligibilityButton = await this.eligibilityOptionButton(
+				eligibilityOption,
+				isNestedFrame,
+				tableName
+			);
 
-			await (
-				await this.placeHolderTerm(
-					isNestedFrame,
-					tableName,
-					'Find a Delivery Term'
-				)
-			).fill(entryName);
+			await expect(eligibilityButton).toBeVisible();
+
+			await eligibilityButton.click();
+
+			const placeholderText =
+				eligibilityOption === 'Specific Order Types'
+					? 'Find an Order Type'
+					: 'Find a Delivery Term';
+
+			const placeholderInput = await this.placeHolderTerm(
+				isNestedFrame,
+				tableName,
+				placeholderText
+			);
+
+			await expect(placeholderInput).toBeVisible();
+
+			await placeholderInput.fill(entryName);
+
 			await (await this.selectButton(isNestedFrame, tableName)).click();
 			await (
 				await this.frameSaveButton(isNestedFrame, tableName)
@@ -756,10 +914,8 @@ export class CommerceAdminChannelDetailsPage {
 		}
 	}
 
-	async goto(checkTabVisibility = true) {
-		await this.applicationsMenuPage.goToCommerceChannels(
-			checkTabVisibility
-		);
+	async goto() {
+		await this.globalMenuPage.goToCommerce('Channels');
 	}
 
 	async goToCategoryDisplayPages() {

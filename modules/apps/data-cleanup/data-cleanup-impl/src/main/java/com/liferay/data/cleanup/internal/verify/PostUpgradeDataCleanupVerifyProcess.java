@@ -5,12 +5,21 @@
 
 package com.liferay.data.cleanup.internal.verify;
 
+import com.liferay.document.library.kernel.store.Store;
+import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.portal.kernel.dependency.manager.DependencyManagerSyncUtil;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.module.framework.ModuleServiceLifecycle;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
+import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
 import com.liferay.portal.kernel.service.ServiceComponentLocalService;
+import com.liferay.portal.kernel.util.ClassUtil;
 import com.liferay.portal.kernel.util.ListUtil;
+import com.liferay.portal.kernel.util.LoggingTimer;
+import com.liferay.portal.search.index.IndexInformation;
+import com.liferay.portal.search.index.IndexNameBuilder;
 import com.liferay.portal.tools.DBUpgrader;
 import com.liferay.portal.verify.VerifyException;
 import com.liferay.portal.verify.VerifyProcess;
@@ -48,7 +57,14 @@ public class PostUpgradeDataCleanupVerifyProcess extends VerifyProcess {
 		for (PostUpgradeDataCleanupProcess postUpgradeDataCleanupProcess :
 				_getPostUpgradeDataCleanupProcesses()) {
 
-			postUpgradeDataCleanupProcess.cleanUp();
+			try (LoggingTimer loggingTimer = new LoggingTimer(
+					ClassUtil.getClassName(postUpgradeDataCleanupProcess))) {
+
+				postUpgradeDataCleanupProcess.cleanUp();
+			}
+			catch (Exception exception) {
+				_log.error(exception);
+			}
 		}
 	}
 
@@ -57,23 +73,45 @@ public class PostUpgradeDataCleanupVerifyProcess extends VerifyProcess {
 
 		return ListUtil.fromArray(
 			new ClassNamePostUpgradeDataCleanupProcess(
-				_classNameLocalService, connection),
+				_classNameLocalService, _companyLocalService, connection,
+				_objectDefinitionLocalService),
 			new ResourceActionPostUpgradeDataCleanupProcess(
 				connection, _resourceActionLocalService),
+			new SearchIndexPostUpgradeDataCleanupProcess(
+				_indexInformation, _indexNameBuilder),
 			new ServiceComponentPostUpgradeDataCleanupProcess(
-				connection, _serviceComponentLocalService));
+				connection, _serviceComponentLocalService),
+			new StorePostUpgradeDataCleanupProcess(_store));
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		PostUpgradeDataCleanupVerifyProcess.class);
 
 	@Reference
 	private ClassNameLocalService _classNameLocalService;
 
+	@Reference
+	private CompanyLocalService _companyLocalService;
+
+	@Reference
+	private IndexInformation _indexInformation;
+
+	@Reference
+	private IndexNameBuilder _indexNameBuilder;
+
 	@Reference(target = ModuleServiceLifecycle.PORTLETS_INITIALIZED)
 	private ModuleServiceLifecycle _moduleServiceLifecycle;
+
+	@Reference
+	private ObjectDefinitionLocalService _objectDefinitionLocalService;
 
 	@Reference
 	private ResourceActionLocalService _resourceActionLocalService;
 
 	@Reference
 	private ServiceComponentLocalService _serviceComponentLocalService;
+
+	@Reference(target = "(default=true)")
+	private Store _store;
 
 }

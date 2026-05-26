@@ -8,7 +8,6 @@ import {createReadStream} from 'fs';
 import path from 'path';
 
 import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
-import {applicationsMenuPageTest} from '../../../fixtures/applicationsMenuPageTest';
 import {collectionsPagesTest} from '../../../fixtures/collectionsPagesTest';
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
 import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
@@ -39,10 +38,9 @@ import getPageDefinition from './utils/getPageDefinition';
 const test = mergeTests(
 	apiHelpersTest,
 	dataApiHelpersTest,
-	applicationsMenuPageTest,
 	collectionsPagesTest,
 	featureFlagsTest({
-		'LPD-11235': {enabled: true},
+		'LPD-11235': {enabled: false},
 		'LPS-169837': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
@@ -58,6 +56,7 @@ const test = mergeTests(
 const testWithCKEditor4 = mergeTests(
 	apiHelpersTest,
 	featureFlagsTest({
+		'LPD-11235': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
 	isolatedSiteTest,
@@ -1215,12 +1214,33 @@ test.describe('Page Contents Panel', () => {
 				'.page-editor__page-contents__page-content'
 			);
 
+			const waitForJournalEditor = async ({
+				timeout,
+			}: {
+				timeout: number;
+			}) => {
+				await page.getByLabel('Select a language').waitFor({timeout});
+
+				await Promise.all(
+					(await page.getByLabel('Rich Text Editor').all()).map(
+						(editor) => editor.waitFor({timeout})
+					)
+				);
+
+				await page
+					.locator('.journal-article-button-row')
+					.waitFor({timeout});
+
+				await journalPage.articleTitleInput.waitFor({timeout});
+			};
+
 			await expect(async () => {
 				await hoverAndExpectToBeVisible({
 					autoClick: true,
 					target: content.getByLabel(
 						`Actions for ${basicWebContentTitle}`
 					),
+					timeout: 1000,
 					trigger: content,
 				});
 
@@ -1228,44 +1248,42 @@ test.describe('Page Contents Panel', () => {
 					.getByRole('menuitem', {
 						name: 'Edit',
 					})
-					.waitFor();
+					.waitFor({timeout: 1000});
 
 				await page
 					.getByRole('menuitem', {
 						name: 'Edit',
 					})
-					.click();
+					.click({timeout: 1000});
 
 				await page.waitForURL(
-					/com_liferay_journal_web_portlet_JournalPortlet/
+					/com_liferay_journal_web_portlet_JournalPortlet/,
+					{timeout: 3000}
 				);
 
-				await expect(
-					page.locator('.article-content-content')
-				).toBeVisible({
-					timeout: 1000,
-				});
+				waitForJournalEditor({timeout: 3000});
 			}).toPass();
-
-			await page.getByLabel('Select a language').waitFor();
 
 			const newTitle = getRandomString();
 
-			await journalPage.articleTitleInput.waitFor();
-
-			await journalPage.articleTitleInput.fill(newTitle);
-
 			await expect(async () => {
-				if (
-					await page
+				await page.reload();
+
+				await waitForJournalEditor({timeout: 3000});
+
+				await journalPage.articleTitleInput.fill(newTitle, {
+					timeout: 1000,
+				});
+
+				await clickAndExpectToBeHidden({
+					target: page
 						.locator('.journal-article-button-row')
-						.isVisible()
-				) {
-					await page
+						.getByRole('button', {exact: true, name: 'Publish'}),
+					timeout: 2000,
+					trigger: page
 						.locator('.journal-article-button-row')
-						.getByRole('button', {exact: true, name: 'Publish'})
-						.click({timeout: 500});
-				}
+						.getByRole('button', {exact: true, name: 'Publish'}),
+				});
 
 				await expect(page.locator('.page-editor')).toBeVisible({
 					timeout: 2000,

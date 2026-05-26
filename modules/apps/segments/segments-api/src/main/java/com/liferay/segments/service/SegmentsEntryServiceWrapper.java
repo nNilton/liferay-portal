@@ -82,6 +82,15 @@ public class SegmentsEntryServiceWrapper
 			segmentsEntryId, classPKs);
 	}
 
+	@Override
+	public SegmentsEntry fetchSegmentsEntryByExternalReferenceCode(
+			String segmentsEntryERC, long groupId)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _segmentsEntryService.fetchSegmentsEntryByExternalReferenceCode(
+			segmentsEntryERC, groupId);
+	}
+
 	/**
 	 * Returns the OSGi service identifier.
 	 *
@@ -108,8 +117,23 @@ public class SegmentsEntryServiceWrapper
 	}
 
 	@Override
+	public java.util.List<SegmentsEntry> getSegmentsEntries(
+		long groupId, String source, int start, int end,
+		com.liferay.portal.kernel.util.OrderByComparator<SegmentsEntry>
+			orderByComparator) {
+
+		return _segmentsEntryService.getSegmentsEntries(
+			groupId, source, start, end, orderByComparator);
+	}
+
+	@Override
 	public int getSegmentsEntriesCount(long groupId) {
 		return _segmentsEntryService.getSegmentsEntriesCount(groupId);
+	}
+
+	@Override
+	public int getSegmentsEntriesCount(long groupId, String source) {
+		return _segmentsEntryService.getSegmentsEntriesCount(groupId, source);
 	}
 
 	@Override
@@ -117,6 +141,15 @@ public class SegmentsEntryServiceWrapper
 		throws com.liferay.portal.kernel.exception.PortalException {
 
 		return _segmentsEntryService.getSegmentsEntry(segmentsEntryId);
+	}
+
+	@Override
+	public SegmentsEntry getSegmentsEntryByExternalReferenceCode(
+			String segmentsEntryERC, long groupId)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _segmentsEntryService.getSegmentsEntryByExternalReferenceCode(
+			segmentsEntryERC, groupId);
 	}
 
 	@Override
@@ -157,3 +190,4 @@ public class SegmentsEntryServiceWrapper
 	private SegmentsEntryService _segmentsEntryService;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-16920795

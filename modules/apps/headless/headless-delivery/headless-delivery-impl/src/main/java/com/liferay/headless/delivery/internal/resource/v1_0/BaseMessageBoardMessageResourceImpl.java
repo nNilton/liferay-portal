@@ -5,6 +5,7 @@
 
 package com.liferay.headless.delivery.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.headless.delivery.dto.v1_0.DefaultValue;
 import com.liferay.headless.delivery.dto.v1_0.MessageBoardMessage;
 import com.liferay.headless.delivery.dto.v1_0.Rating;
@@ -2048,9 +2049,37 @@ public abstract class BaseMessageBoardMessageResourceImpl
 
 		UnsafeFunction<MessageBoardMessage, MessageBoardMessage, Exception>
 			messageBoardMessageUnsafeFunction = messageBoardMessage -> {
-				deleteMessageBoardMessage(messageBoardMessage.getId());
+				if (messageBoardMessage.getId() != null) {
+					try {
+						deleteMessageBoardMessage(messageBoardMessage.getId());
 
-				return messageBoardMessage;
+						return messageBoardMessage;
+					}
+					catch (Exception exception) {
+						if (messageBoardMessage.getExternalReferenceCode() !=
+								null) {
+
+							if (parameters.containsKey("siteId")) {
+								deleteSiteMessageBoardMessageByExternalReferenceCode(
+									(Long)parameters.get("siteId"),
+									messageBoardMessage.
+										getExternalReferenceCode());
+
+								return messageBoardMessage;
+							}
+						}
+					}
+				}
+				else if (parameters.containsKey("siteId")) {
+					deleteSiteMessageBoardMessageByExternalReferenceCode(
+						(Long)parameters.get("siteId"),
+						messageBoardMessage.getExternalReferenceCode());
+
+					return messageBoardMessage;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
 			};
 
 		if (contextBatchUnsafeBiConsumer != null) {
@@ -2136,6 +2165,15 @@ public abstract class BaseMessageBoardMessageResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -2947,3 +2985,4 @@ public abstract class BaseMessageBoardMessageResourceImpl
 		LogFactoryUtil.getLog(BaseMessageBoardMessageResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:565963369

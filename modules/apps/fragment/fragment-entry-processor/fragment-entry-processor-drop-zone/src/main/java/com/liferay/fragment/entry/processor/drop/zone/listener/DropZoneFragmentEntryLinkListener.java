@@ -13,6 +13,7 @@ import com.liferay.fragment.processor.FragmentEntryProcessorRegistry;
 import com.liferay.layout.page.template.model.LayoutPageTemplateStructure;
 import com.liferay.layout.page.template.service.LayoutPageTemplateStructureLocalService;
 import com.liferay.layout.page.template.util.CheckUnlockedLayoutThreadLocal;
+import com.liferay.layout.util.UpdateLayoutStatusThreadLocal;
 import com.liferay.layout.util.structure.DeletedLayoutStructureItem;
 import com.liferay.layout.util.structure.FragmentDropZoneLayoutStructureItem;
 import com.liferay.layout.util.structure.LayoutStructure;
@@ -155,9 +156,10 @@ public class DropZoneFragmentEntryLinkListener
 			_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 				fragmentEntryLink,
 				new DefaultFragmentEntryProcessorContext(
-					httpServletRequest, httpServletResponse,
+					fragmentEntryLink.getCompanyId(), httpServletRequest,
+					httpServletResponse, serviceContext.getLocale(),
 					FragmentEntryLinkConstants.EDIT,
-					serviceContext.getLocale()));
+					fragmentEntryLink.getGroupId()));
 
 		Document document = _getDocument(processedHTML);
 
@@ -417,9 +419,12 @@ public class DropZoneFragmentEntryLinkListener
 		}
 
 		if (update) {
-			try (SafeCloseable safeCloseable =
+			try (SafeCloseable safeCloseable1 =
 					CheckUnlockedLayoutThreadLocal.
-						setCheckUnlockedLayoutWithSafeCloseable(false)) {
+						setCheckUnlockedLayoutWithSafeCloseable(false);
+				SafeCloseable safeCloseable2 =
+					UpdateLayoutStatusThreadLocal.
+						setUpdateLayoutStatusWithSafeCloseable(false)) {
 
 				_layoutPageTemplateStructureLocalService.
 					updateLayoutPageTemplateStructureData(
@@ -536,9 +541,10 @@ public class DropZoneFragmentEntryLinkListener
 			_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 				fragmentEntryLink,
 				new DefaultFragmentEntryProcessorContext(
-					httpServletRequest, httpServletResponse,
+					fragmentEntryLink.getCompanyId(), httpServletRequest,
+					httpServletResponse, serviceContext.getLocale(),
 					FragmentEntryLinkConstants.EDIT,
-					serviceContext.getLocale()));
+					fragmentEntryLink.getGroupId()));
 
 		Document document = _getDocument(processedHTML);
 

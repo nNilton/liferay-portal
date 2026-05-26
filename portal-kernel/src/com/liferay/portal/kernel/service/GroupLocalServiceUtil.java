@@ -1325,6 +1325,21 @@ public class GroupLocalServiceUtil {
 			userId, start, end, orderByComparator);
 	}
 
+	public static List<Group> getUserGroups(
+			com.liferay.portal.kernel.model.User user, boolean inherit)
+		throws PortalException {
+
+		return getService().getUserGroups(user, inherit);
+	}
+
+	public static List<Group> getUserGroups(
+			com.liferay.portal.kernel.model.User user, boolean inherit,
+			int start, int end)
+		throws PortalException {
+
+		return getService().getUserGroups(user, inherit, start, end);
+	}
+
 	public static int getUserGroupsCount(long userId) {
 		return getService().getUserGroupsCount(userId);
 	}
@@ -1353,6 +1368,12 @@ public class GroupLocalServiceUtil {
 		List<com.liferay.portal.kernel.model.UserGroup> userGroups) {
 
 		return getService().getUserGroupsRelatedGroups(userGroups);
+	}
+
+	public static Map<Long, long[]> getUserInheritedSiteGroupIds(
+		long companyId) {
+
+		return getService().getUserInheritedSiteGroupIds(companyId);
 	}
 
 	/**
@@ -1482,6 +1503,10 @@ public class GroupLocalServiceUtil {
 
 	public static boolean isLiveGroupActive(Group group) {
 		return getService().isLiveGroupActive(group);
+	}
+
+	public static boolean isMaintenanceMode(Group group) {
+		return getService().isMaintenanceMode(group);
 	}
 
 	/**
@@ -2627,3 +2652,4 @@ public class GroupLocalServiceUtil {
 	private static volatile GroupLocalService _service;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-857218033

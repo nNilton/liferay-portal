@@ -16,6 +16,7 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.MapUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 
@@ -48,8 +49,9 @@ public class ExportImportTaskResourceTestUtil {
 		httpInvoker.httpMethod(HttpInvoker.HttpMethod.POST);
 
 		String path = StringBundler.concat(
-			"http://localhost:8080/o/headless-batch-engine/v1.0/export-task/",
-			className, "/JSON?siteId=", groupId);
+			"http://localhost:", PortalUtil.getPortalServerPort(false),
+			"/o/headless-batch-engine/v1.0/export-task/", className,
+			"/JSON?siteId=", groupId);
 
 		if (MapUtil.isNotEmpty(parameters)) {
 			for (Map.Entry<String, String> entry : parameters.entrySet()) {
@@ -74,9 +76,13 @@ public class ExportImportTaskResourceTestUtil {
 		while (true) {
 			exportTask = ExportTaskSerDes.toDTO(
 				_invoke(
-					"http://localhost:8080/o/headless-batch-engine/v1.0" +
-						"/export-task/by-external-reference-code/" +
-							externalReferenceCode));
+					"localhost",
+					StringBundler.concat(
+						"http://localhost:",
+						PortalUtil.getPortalServerPort(false),
+						"/o/headless-batch-engine/v1.0/export-task",
+						"/by-external-reference-code/",
+						externalReferenceCode)));
 
 			if (Objects.equals(
 					exportTask.getExecuteStatusAsString(), "COMPLETED")) {
@@ -97,9 +103,10 @@ public class ExportImportTaskResourceTestUtil {
 		httpInvoker.httpMethod(HttpInvoker.HttpMethod.GET);
 		httpInvoker.path(
 			StringBundler.concat(
-				"http://localhost:8080/o/headless-batch-engine/v1.0",
-				"/export-task/by-external-reference-code/",
-				externalReferenceCode, "/content"));
+				"http://localhost:", PortalUtil.getPortalServerPort(false),
+				"/o/headless-batch-engine/v1.0/export-task",
+				"/by-external-reference-code/", externalReferenceCode,
+				"/content"));
 		httpInvoker.userNameAndPassword(
 			"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD);
 
@@ -132,15 +139,27 @@ public class ExportImportTaskResourceTestUtil {
 			Map<String, String> parameters)
 		throws Exception {
 
+		executeImportTask(
+			className, createStrategy, groupId, "localhost",
+			importCreatorStrategy, json, parameters);
+	}
+
+	public static void executeImportTask(
+			String className, String createStrategy, long groupId, String host,
+			String importCreatorStrategy, String json,
+			Map<String, String> parameters)
+		throws Exception {
+
 		HttpInvoker httpInvoker = HttpInvoker.newHttpInvoker();
 
 		httpInvoker.body(json, "application/json");
 		httpInvoker.httpMethod(HttpInvoker.HttpMethod.POST);
 
 		String path = StringBundler.concat(
-			"http://localhost:8080/o/headless-batch-engine/v1.0/import-task/",
-			className, "?createStrategy=", createStrategy,
-			"&importCreatorStrategy=", importCreatorStrategy);
+			"http://", host, ":", PortalUtil.getPortalServerPort(false),
+			"/o/headless-batch-engine/v1.0/import-task/", className,
+			"?createStrategy=", createStrategy, "&importCreatorStrategy=",
+			importCreatorStrategy);
 
 		if (MapUtil.isNotEmpty(parameters)) {
 			for (Map.Entry<String, String> entry : parameters.entrySet()) {
@@ -155,8 +174,15 @@ public class ExportImportTaskResourceTestUtil {
 
 		httpInvoker.path(path);
 
-		httpInvoker.userNameAndPassword(
-			"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD);
+		if (StringUtil.equals(host, "localhost")) {
+			httpInvoker.userNameAndPassword(
+				"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD);
+		}
+		else {
+			httpInvoker.userNameAndPassword(
+				StringBundler.concat(
+					"test@", host, ":", PropsValues.DEFAULT_ADMIN_PASSWORD));
+		}
 
 		HttpInvoker.HttpResponse httpResponse = httpInvoker.invoke();
 
@@ -168,9 +194,13 @@ public class ExportImportTaskResourceTestUtil {
 		while (true) {
 			importTask = ImportTaskSerDes.toDTO(
 				_invoke(
-					"http://localhost:8080/o/headless-batch-engine/v1.0" +
-						"/import-task/by-external-reference-code/" +
-							externalReferenceCode));
+					host,
+					StringBundler.concat(
+						"http://", host, ":",
+						PortalUtil.getPortalServerPort(false),
+						"/o/headless-batch-engine/v1.0/import-task",
+						"/by-external-reference-code/",
+						externalReferenceCode)));
 
 			if (Objects.equals(
 					importTask.getExecuteStatusAsString(), "COMPLETED")) {
@@ -185,13 +215,21 @@ public class ExportImportTaskResourceTestUtil {
 		}
 	}
 
-	private static String _invoke(String url) throws Exception {
+	private static String _invoke(String host, String url) throws Exception {
 		HttpInvoker httpInvoker = HttpInvoker.newHttpInvoker();
 
 		httpInvoker.httpMethod(HttpInvoker.HttpMethod.GET);
 		httpInvoker.path(url);
-		httpInvoker.userNameAndPassword(
-			"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD);
+
+		if (StringUtil.equals(host, "localhost")) {
+			httpInvoker.userNameAndPassword(
+				"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD);
+		}
+		else {
+			httpInvoker.userNameAndPassword(
+				StringBundler.concat(
+					"test@", host, ":", PropsValues.DEFAULT_ADMIN_PASSWORD));
+		}
 
 		HttpInvoker.HttpResponse httpResponse = httpInvoker.invoke();
 

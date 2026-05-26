@@ -66,17 +66,17 @@ public class DLFileEntryUADExporterTest
 
 		File file = _uadExporter.exportAll(user.getUserId(), _zipWriterFactory);
 
-		ZipReader zipReader = _zipReaderFactory.getZipReader(file);
+		try (ZipReader zipReader = _zipReaderFactory.getZipReader(file)) {
+			List<String> entries = zipReader.getEntries();
 
-		List<String> entries = zipReader.getEntries();
-
-		Assert.assertEquals(entries.toString(), 2, entries.size());
+			Assert.assertEquals(entries.toString(), 2, entries.size());
+		}
 	}
 
 	@ExpectedLogs(
 		expectedLogs = {
 			@ExpectedLog(
-				expectedLog = "No such file or directory",
+				expectedLog = "NoSuchFileException",
 				expectedType = ExpectedType.CONTAINS
 			)
 		},
@@ -92,11 +92,11 @@ public class DLFileEntryUADExporterTest
 
 		File file = _uadExporter.exportAll(user.getUserId(), _zipWriterFactory);
 
-		ZipReader zipReader = _zipReaderFactory.getZipReader(file);
+		try (ZipReader zipReader = _zipReaderFactory.getZipReader(file)) {
+			List<String> entries = zipReader.getEntries();
 
-		List<String> entries = zipReader.getEntries();
-
-		Assert.assertEquals(entries.toString(), 1, entries.size());
+			Assert.assertEquals(entries.toString(), 1, entries.size());
+		}
 	}
 
 	@Override

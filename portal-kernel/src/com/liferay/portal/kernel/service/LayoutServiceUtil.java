@@ -280,6 +280,18 @@ public class LayoutServiceUtil {
 			groupId, folderName, fileName, inputStream, mimeType);
 	}
 
+	public static Layout convertEmptyLayout(
+			long plid, Map<java.util.Locale, String> nameMap, String type,
+			long classNameId, long classPK,
+			String masterLayoutPageTemplateEntryERC,
+			ServiceContext serviceContext)
+		throws Exception {
+
+		return getService().convertEmptyLayout(
+			plid, nameMap, type, classNameId, classPK,
+			masterLayoutPageTemplateEntryERC, serviceContext);
+	}
+
 	public static Layout copyLayout(
 			long groupId, boolean privateLayout,
 			Map<java.util.Locale, String> localeNamesMap, boolean hidden,
@@ -290,6 +302,23 @@ public class LayoutServiceUtil {
 		return getService().copyLayout(
 			groupId, privateLayout, localeNamesMap, hidden, system,
 			copyPermissions, sourcePlid, serviceContext);
+	}
+
+	public static Layout copyLayoutContent(
+			Layout sourceLayout, Layout targetLayout)
+		throws Exception {
+
+		return getService().copyLayoutContent(sourceLayout, targetLayout);
+	}
+
+	public static Layout copyLayoutContent(
+			long sourceSegmentsExperienceId, Layout sourceLayout,
+			long targetSegmentsExperienceId, Layout targetLayout)
+		throws Exception {
+
+		return getService().copyLayoutContent(
+			sourceSegmentsExperienceId, sourceLayout,
+			targetSegmentsExperienceId, targetLayout);
 	}
 
 	/**
@@ -645,12 +674,12 @@ public class LayoutServiceUtil {
 	}
 
 	public static Layout getOrAddEmptyLayout(
-			String externalReferenceCode, long groupId,
+			String externalReferenceCode, long groupId, boolean privateLayout,
 			ServiceContext serviceContext)
 		throws Exception {
 
 		return getService().getOrAddEmptyLayout(
-			externalReferenceCode, groupId, serviceContext);
+			externalReferenceCode, groupId, privateLayout, serviceContext);
 	}
 
 	/**
@@ -835,6 +864,12 @@ public class LayoutServiceUtil {
 		throws PortalException {
 
 		return getService().updateIconImage(plid, bytes);
+	}
+
+	public static Layout updateIconImageId(long plid, long iconImageId)
+		throws PortalException {
+
+		return getService().updateIconImageId(plid, iconImageId);
 	}
 
 	/**
@@ -1102,3 +1137,4 @@ public class LayoutServiceUtil {
 	private static volatile LayoutService _service;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:2069132619

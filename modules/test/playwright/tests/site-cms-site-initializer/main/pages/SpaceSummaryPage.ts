@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {Locator, Page} from '@playwright/test';
+import {Locator, Page, expect} from '@playwright/test';
 
 import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVisible';
 import {PORTLET_URLS} from '../../../../utils/portletUrls';
@@ -16,6 +16,7 @@ export class SpaceSummaryPage {
 
 	readonly addContentButton: Locator;
 	readonly addFileButton: Locator;
+	readonly addMembersButton: Locator;
 	readonly closeButton: Locator;
 	readonly galleryPreview: Locator;
 	readonly userGroupsTab: Locator;
@@ -31,6 +32,11 @@ export class SpaceSummaryPage {
 		this.addContentButton = page.getByRole('button', {name: `Add Content`});
 
 		this.addFileButton = page.getByRole('button', {name: `Add Files`});
+
+		this.addMembersButton = page.getByRole('button', {
+			exact: true,
+			name: 'Add Members',
+		});
 
 		this.closeButton = this.page
 			.locator('.modal-header')
@@ -62,35 +68,80 @@ export class SpaceSummaryPage {
 	async goto(spaceName: string) {
 		await this.page.goto(PORTLET_URLS.cms);
 		await this.page.getByRole('menuitem', {name: spaceName}).click();
-		await this.addContentButton.waitFor();
+		await this.page
+			.getByRole('heading', {exact: true, name: spaceName})
+			.waitFor();
+	}
+
+	async addRoleToSpaceMember(roleName: string, userName: string) {
+		await this.viewAllMembersLink.click();
+
+		await this.page.getByRole('dialog').waitFor();
+
+		const userRow = this.page
+			.getByRole('listitem')
+			.filter({hasText: userName});
+
+		await userRow.waitFor();
+
+		const triggerText = userRow.locator('.permission-select-trigger-text');
+
+		await expect(triggerText).toHaveText(/\S+/);
+
+		await userRow
+			.locator('button:has(.permission-select-trigger-text)')
+			.click();
+
+		await this.page
+			.getByRole('checkbox', {
+				exact: true,
+				name: roleName,
+			})
+			.check();
+
+		await expect(triggerText).toContainText(roleName);
+
+		await this.closeButton.click();
 	}
 
 	async addUserOrUserGroup(name: string, type: UserOrUserGroupType) {
 		await this.viewAllMembersLink.click();
 
-		this.page.getByRole('dialog').waitFor();
-		await this.page
+		await this.page.getByRole('dialog').waitFor({state: 'visible'});
+
+		const dialog = this.page.getByRole('dialog');
+
+		await dialog
 			.getByLabel('Add People to Collaborate', {exact: true})
 			.selectOption(type);
-		await this.page
-			.getByPlaceholder('Enter name or email.', {exact: true})
-			.click();
+
+		const input = dialog.getByPlaceholder('Enter name or email.', {
+			exact: true,
+		});
+
+		await input.waitFor({state: 'visible'});
+		await input.click();
+		await input.fill(name);
+
 		await this.page.getByRole('option', {name}).click();
 
 		await waitForAlert(
 			this.page,
 			type.includes('group')
 				? `Success:Group ${name} successfully added to space.`
-				: `Success:User ${name} successfully added to space.`
+				: `Success:User ${name} successfully added to space.`,
+			{autoClose: false}
 		);
 
 		await this.closeButton.click();
+
+		await this.page.getByRole('dialog').waitFor({state: 'detached'});
 	}
 
 	async removeUserOrUserGroup(name: string, type: UserOrUserGroupType) {
 		await this.viewAllMembersLink.click();
 
-		this.page.getByRole('dialog').waitFor();
+		await this.page.getByRole('dialog').waitFor();
 		await this.page
 			.getByLabel('Add People to Collaborate', {exact: true})
 			.selectOption(type);
@@ -98,14 +149,15 @@ export class SpaceSummaryPage {
 		await this.page
 			.locator('li')
 			.filter({hasText: name})
-			.getByLabel('Remove Group')
+			.getByLabel(type.includes('group') ? 'Remove Group' : 'Remove User')
 			.click();
 
 		await waitForAlert(
 			this.page,
 			type.includes('group')
 				? `Success:Group ${name} successfully removed from space.`
-				: `Success:User ${name} successfully removed from space.`
+				: `Success:User ${name} successfully removed from space.`,
+			{autoClose: false}
 		);
 
 		await this.closeButton.click();
@@ -148,17 +200,74 @@ export class SpaceSummaryPage {
 	}
 
 	async connectSite(siteName: string) {
-		await this.page.getByRole('button', {name: 'Connect Sites'}).click();
+		await this.openConnectSitesDialog();
 
-		this.page.getByRole('dialog').waitFor();
-		await this.page.getByLabel('Site', {exact: true}).click();
+		await this.page
+			.getByLabel('Sites', {exact: true})
+			.selectOption('sites');
+
+		await this.page
+			.getByPlaceholder('Select a Site', {exact: true})
+			.click();
 		await this.page.getByRole('option', {name: siteName}).click();
 		await this.page
 			.getByRole('button', {exact: true, name: 'Connect'})
 			.click();
 
-		this.page.getByLabel('Connected Sites').getByText(siteName).waitFor();
+		await this.page
+			.getByLabel('Connected Sites')
+			.getByText(siteName)
+			.waitFor();
 
 		await this.closeButton.click();
+	}
+
+	async connectSiteTemplate(siteTemplateName: string) {
+		await this.openConnectSitesDialog();
+
+		await this.page
+			.getByLabel('Sites', {exact: true})
+			.selectOption('site-templates');
+
+		await this.page
+			.getByPlaceholder('Select a Site Template', {exact: true})
+			.click();
+		await this.page.getByRole('option', {name: siteTemplateName}).click();
+		await this.page
+			.getByRole('button', {exact: true, name: 'Connect'})
+			.click();
+
+		await this.page
+			.getByLabel('Connected Sites')
+			.getByText(`${siteTemplateName} (Site Template)`, {exact: true})
+			.waitFor();
+
+		await this.closeButton.click();
+	}
+
+	async disconnectSiteFromModal(name: string) {
+		await this.page
+			.getByLabel('Connected Sites')
+			.getByRole('listitem')
+			.filter({has: this.page.getByText(name, {exact: true})})
+			.getByRole('button', {name: /Actions/i})
+			.click();
+
+		await this.page.getByRole('menuitem', {name: 'Disconnect'}).click();
+	}
+
+	async openConnectedSitesModal() {
+		await this.viewAllSitesLink.click();
+
+		await this.page.getByRole('dialog').waitFor();
+	}
+
+	private async openConnectSitesDialog() {
+		await this.page
+			.getByRole('button', {name: 'Connect Sites'})
+			.or(this.page.getByRole('button', {name: 'View All Sites'}))
+			.click();
+
+		await this.page.getByRole('dialog').waitFor();
 	}
 }

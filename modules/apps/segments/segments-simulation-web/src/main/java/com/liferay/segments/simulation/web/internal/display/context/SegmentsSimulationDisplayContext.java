@@ -6,12 +6,15 @@
 package com.liferay.segments.simulation.web.internal.display.context;
 
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.CompanyConstants;
 import com.liferay.portal.kernel.module.configuration.ConfigurationException;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.HashMapBuilder;
@@ -32,6 +35,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author Eduardo García
@@ -91,8 +95,18 @@ public class SegmentsSimulationDisplayContext {
 			return _segmentsEntries;
 		}
 
-		_segmentsEntries = SegmentsEntryServiceUtil.getSegmentsEntries(
-			_getStagingAwareGroupId());
+		if (FeatureFlagManagerUtil.isEnabled(
+				CompanyConstants.SYSTEM, "LPD-78863")) {
+
+			_segmentsEntries = SegmentsEntryServiceUtil.getSegmentsEntries(
+				_getStagingAwareGroupId());
+		}
+		else {
+			_segmentsEntries = SegmentsEntryServiceUtil.getSegmentsEntries(
+				_getStagingAwareGroupId(),
+				SegmentsEntryConstants.SOURCE_ASAH_FARO_BACKEND,
+				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+		}
 
 		return _segmentsEntries;
 	}
@@ -138,18 +152,8 @@ public class SegmentsSimulationDisplayContext {
 				"active", _isActive(segmentsExperience, segmentsExperiences)
 			).put(
 				"segmentsEntryName",
-				() -> {
-					SegmentsEntry segmentsEntry =
-						_segmentsEntryLocalService.fetchSegmentsEntry(
-							segmentsExperience.getSegmentsEntryId());
-
-					if (segmentsEntry != null) {
-						return segmentsEntry.getName(_themeDisplay.getLocale());
-					}
-
-					return SegmentsEntryConstants.getDefaultSegmentsEntryName(
-						_themeDisplay.getLocale());
-				}
+				segmentsExperience.getSegmentsEntryName(
+					_themeDisplay.getLocale())
 			).put(
 				"segmentsExperienceId",
 				segmentsExperience.getSegmentsExperienceId()
@@ -191,10 +195,13 @@ public class SegmentsSimulationDisplayContext {
 		List<SegmentsExperience> segmentsExperiences) {
 
 		for (SegmentsExperience curSegmentsExperience : segmentsExperiences) {
-			if ((curSegmentsExperience.getSegmentsEntryId() ==
-					segmentsExperience.getSegmentsEntryId()) ||
-				(curSegmentsExperience.getSegmentsEntryId() ==
-					SegmentsEntryConstants.ID_DEFAULT)) {
+			if ((Objects.equals(
+					curSegmentsExperience.getSegmentsEntryERC(),
+					segmentsExperience.getSegmentsEntryERC()) &&
+				 Objects.equals(
+					 curSegmentsExperience.getSegmentsEntryScopeERC(),
+					 segmentsExperience.getSegmentsEntryScopeERC())) ||
+				curSegmentsExperience.hasDefaultSegmentsEntry()) {
 
 				if (curSegmentsExperience.getSegmentsExperienceId() ==
 						segmentsExperience.getSegmentsExperienceId()) {

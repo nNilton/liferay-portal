@@ -14,21 +14,23 @@ import {
 
 export default function CategorizationPanel({
 	assetLibraryId,
+	assetType,
 	categorizationFields,
 	cmsGroupId,
 	contentAPIURL,
+	hasCategoriesError = false,
 	hasUpdatePermission,
 	onUpdateCategorization,
 }: {
 	assetLibraryId: number | string;
-	categorizationFields: CategorizationFields;
+	assetType: number;
+	categorizationFields: CategorizationFields | null;
 	cmsGroupId: number | string;
 	contentAPIURL: string;
+	hasCategoriesError?: boolean;
 	hasUpdatePermission: boolean;
 	onUpdateCategorization: (props: UpdateCategorizationProps) => void;
 }) {
-	const {assetCategoryIds, assetTagNames} = categorizationFields;
-
 	const updateCategorization = useCallback(
 		({keywords = [], taxonomyCategoryBriefs = []}: IAssetObjectEntry) => {
 			const fields: CategorizationFields = {
@@ -56,11 +58,18 @@ export default function CategorizationPanel({
 			<AssetCategorization
 				assetLibraryId={assetLibraryId}
 				categorization={{
-					keywords: assetTagNames.value,
-					taxonomyCategoryBriefs: assetCategoryIds.value,
+					keywords: categorizationFields?.assetTagNames?.value || [],
+					systemProperties: {
+						objectDefinitionBrief: {
+							classNameId: assetType,
+						},
+					} as IAssetObjectEntry['systemProperties'],
+					taxonomyCategoryBriefs:
+						categorizationFields?.assetCategoryIds?.value || [],
 				}}
 				cmsGroupId={cmsGroupId}
 				getObjectEntryURL={contentAPIURL}
+				hasCategoriesError={hasCategoriesError}
 				hasUpdatePermission={hasUpdatePermission}
 				inputSize="sm"
 				onUpdateCategorization={updateCategorization}

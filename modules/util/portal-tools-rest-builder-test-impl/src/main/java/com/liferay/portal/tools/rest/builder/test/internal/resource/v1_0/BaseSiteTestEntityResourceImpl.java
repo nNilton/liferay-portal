@@ -5,6 +5,7 @@
 
 package com.liferay.portal.tools.rest.builder.test.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.petra.function.UnsafeBiConsumer;
 import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.function.UnsafeFunction;
@@ -998,8 +999,33 @@ public abstract class BaseSiteTestEntityResourceImpl
 			Map<String, Serializable> parameters)
 		throws Exception {
 
-		throw new UnsupportedOperationException(
-			"This method needs to be implemented");
+		UnsafeFunction<SiteTestEntity, SiteTestEntity, Exception>
+			siteTestEntityUnsafeFunction = siteTestEntity -> {
+				if (parameters.containsKey("siteId")) {
+					deleteSiteSiteTestEntityByExternalReferenceCode(
+						(Long)parameters.get("siteId"),
+						siteTestEntity.getExternalReferenceCode());
+
+					return siteTestEntity;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
+			};
+
+		if (contextBatchUnsafeBiConsumer != null) {
+			contextBatchUnsafeBiConsumer.accept(
+				siteTestEntities, siteTestEntityUnsafeFunction);
+		}
+		else if (contextBatchUnsafeConsumer != null) {
+			contextBatchUnsafeConsumer.accept(
+				siteTestEntities, siteTestEntityUnsafeFunction::apply);
+		}
+		else {
+			for (SiteTestEntity siteTestEntity : siteTestEntities) {
+				siteTestEntityUnsafeFunction.apply(siteTestEntity);
+			}
+		}
 	}
 
 	public Set<String> getAvailableCreateStrategies() {
@@ -1060,6 +1086,15 @@ public abstract class BaseSiteTestEntityResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -1849,3 +1884,4 @@ public abstract class BaseSiteTestEntityResourceImpl
 		LogFactoryUtil.getLog(BaseSiteTestEntityResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:1475242337

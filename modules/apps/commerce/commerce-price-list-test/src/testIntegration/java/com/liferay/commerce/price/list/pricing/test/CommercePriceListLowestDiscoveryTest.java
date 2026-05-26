@@ -19,6 +19,10 @@ import com.liferay.commerce.price.list.discovery.CommercePriceListDiscovery;
 import com.liferay.commerce.price.list.model.CommercePriceEntry;
 import com.liferay.commerce.price.list.model.CommercePriceList;
 import com.liferay.commerce.price.list.service.CommercePriceListLocalService;
+import com.liferay.commerce.pricing.constants.CommercePriceModifierConstants;
+import com.liferay.commerce.pricing.model.CommercePriceModifier;
+import com.liferay.commerce.pricing.service.CommercePriceModifierLocalService;
+import com.liferay.commerce.pricing.service.CommercePriceModifierRelLocalService;
 import com.liferay.commerce.product.model.CPDefinition;
 import com.liferay.commerce.product.model.CPInstance;
 import com.liferay.commerce.product.model.CommerceCatalog;
@@ -28,6 +32,7 @@ import com.liferay.commerce.product.test.util.CPTestUtil;
 import com.liferay.commerce.test.util.CommerceTestUtil;
 import com.liferay.commerce.test.util.price.list.CommercePriceEntryTestUtil;
 import com.liferay.commerce.test.util.price.list.CommercePriceListTestUtil;
+import com.liferay.commerce.test.util.pricing.CommercePriceModifierTestUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
@@ -459,13 +464,93 @@ public class CommercePriceListLowestDiscoveryTest {
 			discoveredCommercePriceList.getCommercePriceListId());
 	}
 
+	@Test
+	public void testRetrieveCorrectPromotionListWithPriceModifications()
+		throws Exception {
+
+		CPInstance cpInstance = CPTestUtil.addCPInstanceFromCatalog(
+			_commerceCatalog.getGroupId());
+
+		CPDefinition cpDefinition = cpInstance.getCPDefinition();
+
+		CommercePriceList commercePriceList1 =
+			CommercePriceListTestUtil.addCommercePriceList(
+				_commerceCatalog.getGroupId(), false, _TYPE, 1.0);
+
+		CommercePriceEntryTestUtil.addCommercePriceEntry(
+			RandomTestUtil.randomString(), cpDefinition.getCProductId(),
+			cpInstance.getCPInstanceUuid(),
+			commercePriceList1.getCommercePriceListId(),
+			BigDecimal.valueOf(RandomTestUtil.randomDouble()));
+
+		CommercePriceList commercePriceList2 =
+			CommercePriceListTestUtil.addCommercePriceList(
+				_commerceCatalog.getGroupId(), false,
+				CommercePriceListConstants.TYPE_PROMOTION, 1.0);
+
+		CommercePriceEntryTestUtil.addCommercePriceEntry(
+			RandomTestUtil.randomString(), cpDefinition.getCProductId(),
+			cpInstance.getCPInstanceUuid(),
+			commercePriceList2.getCommercePriceListId(), BigDecimal.ZERO);
+
+		CommercePriceList discoveredPriceList =
+			_commercePriceListDiscovery.getCommercePriceList(
+				_commerceCatalog.getGroupId(),
+				_accountEntry.getAccountEntryId(),
+				_commerceChannel.getCommerceChannelId(), 0,
+				cpInstance.getCPInstanceUuid(), null,
+				CommercePriceListConstants.TYPE_PROMOTION, StringPool.BLANK);
+
+		Assert.assertEquals(
+			commercePriceList2.getCommercePriceListId(),
+			discoveredPriceList.getCommercePriceListId());
+
+		CommercePriceList commercePriceList3 =
+			CommercePriceListTestUtil.addCommercePriceList(
+				_commerceCatalog.getGroupId(), false,
+				CommercePriceListConstants.TYPE_PROMOTION, 1.0);
+
+		discoveredPriceList = _commercePriceListDiscovery.getCommercePriceList(
+			_commerceCatalog.getGroupId(), _accountEntry.getAccountEntryId(),
+			_commerceChannel.getCommerceChannelId(), 0,
+			cpInstance.getCPInstanceUuid(), null,
+			CommercePriceListConstants.TYPE_PROMOTION, StringPool.BLANK);
+
+		Assert.assertEquals(
+			commercePriceList2.getCommercePriceListId(),
+			discoveredPriceList.getCommercePriceListId());
+
+		CommercePriceModifier commercePriceModifier =
+			CommercePriceModifierTestUtil.addCommercePriceModifier(
+				_commerceCatalog.getGroupId(), _user,
+				commercePriceList3.getCommercePriceListId(),
+				RandomTestUtil.randomString(),
+				CommercePriceModifierConstants.TARGET_CATALOG,
+				BigDecimal.valueOf(-50.0),
+				CommercePriceModifierConstants.MODIFIER_TYPE_PERCENTAGE, 1.0,
+				true, _serviceContext);
+
+		_commercePriceModifierRelLocalService.addCommercePriceModifierRel(
+			commercePriceModifier.getCommercePriceModifierId(),
+			CPDefinition.class.getName(), cpDefinition.getCPDefinitionId(),
+			_serviceContext);
+
+		discoveredPriceList = _commercePriceListDiscovery.getCommercePriceList(
+			_commerceCatalog.getGroupId(), _accountEntry.getAccountEntryId(),
+			_commerceChannel.getCommerceChannelId(), 0,
+			cpInstance.getCPInstanceUuid(), null,
+			CommercePriceListConstants.TYPE_PROMOTION, StringPool.BLANK);
+
+		Assert.assertEquals(
+			commercePriceList3.getCommercePriceListId(),
+			discoveredPriceList.getCommercePriceListId());
+	}
+
 	@Rule
 	public FrutillaRule frutillaRule = new FrutillaRule();
 
 	private static final String _TYPE =
 		CommercePriceListConstants.TYPE_PRICE_LIST;
-
-	private static User _user;
 
 	private AccountEntry _accountEntry;
 	private AccountGroup _accountGroup;
@@ -490,7 +575,16 @@ public class CommercePriceListLowestDiscoveryTest {
 	@Inject
 	private CommercePriceListLocalService _commercePriceListLocalService;
 
+	@Inject
+	private CommercePriceModifierLocalService
+		_commercePriceModifierLocalService;
+
+	@Inject
+	private CommercePriceModifierRelLocalService
+		_commercePriceModifierRelLocalService;
+
 	private Group _group;
 	private ServiceContext _serviceContext;
+	private User _user;
 
 }

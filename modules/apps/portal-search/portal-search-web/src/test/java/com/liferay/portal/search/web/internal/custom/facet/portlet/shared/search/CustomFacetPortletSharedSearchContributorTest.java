@@ -39,7 +39,6 @@ import com.liferay.portal.search.internal.facet.range.RangeFacetFactoryImpl;
 import com.liferay.portal.search.internal.facet.range.RangeFacetSearchContributorImpl;
 import com.liferay.portal.search.internal.filter.FilterBuildersImpl;
 import com.liferay.portal.search.internal.legacy.searcher.SearchRequestBuilderImpl;
-import com.liferay.portal.search.internal.query.QueriesImpl;
 import com.liferay.portal.search.internal.searcher.SearchRequestBuilderFactoryImpl;
 import com.liferay.portal.search.searcher.SearchRequestBuilder;
 import com.liferay.portal.search.web.portlet.shared.search.PortletSharedSearchSettings;
@@ -125,7 +124,8 @@ public class CustomFacetPortletSharedSearchContributorTest {
 			StringBundler.concat(
 				DDMIndexer.DDM_FIELD_ARRAY, StringPool.PERIOD,
 				DDMIndexer.DDM_FIELD_NAME),
-			filterValue, DDMIndexer.DDM_FIELD_ARRAY,
+			filterValue, RandomTestUtil.randomInt(1, 20),
+			RandomTestUtil.randomInt(1, 100), DDMIndexer.DDM_FIELD_ARRAY,
 			new String[] {range1, range2},
 			_createRangesJSONArray(range1, range2));
 	}
@@ -148,6 +148,7 @@ public class CustomFacetPortletSharedSearchContributorTest {
 			StringBundler.concat(
 				_NESTED_FIELD_ARRAY, StringPool.PERIOD, aggregationField),
 			_NESTED_FIELD_ARRAY + ".fieldName", filterValue,
+			RandomTestUtil.randomInt(1, 20), RandomTestUtil.randomInt(1, 100),
 			_NESTED_FIELD_ARRAY, new String[] {range1, range2},
 			_createRangesJSONArray(range1, range2));
 	}
@@ -213,7 +214,8 @@ public class CustomFacetPortletSharedSearchContributorTest {
 			StringBundler.concat(
 				DDMIndexer.DDM_FIELD_ARRAY, StringPool.PERIOD,
 				DDMIndexer.DDM_FIELD_NAME),
-			filterValue, DDMIndexer.DDM_FIELD_ARRAY,
+			filterValue, RandomTestUtil.randomInt(1, 20),
+			RandomTestUtil.randomInt(1, 100), DDMIndexer.DDM_FIELD_ARRAY,
 			new String[] {range1, range2},
 			_createRangesJSONArray(range1, range2));
 	}
@@ -235,6 +237,7 @@ public class CustomFacetPortletSharedSearchContributorTest {
 			StringBundler.concat(
 				_NESTED_FIELD_ARRAY, StringPool.PERIOD, aggregationField),
 			_NESTED_FIELD_ARRAY + ".fieldName", filterValue,
+			RandomTestUtil.randomInt(1, 20), RandomTestUtil.randomInt(1, 100),
 			_NESTED_FIELD_ARRAY, new String[] {range1, range2},
 			_createRangesJSONArray(range1, range2));
 	}
@@ -285,7 +288,9 @@ public class CustomFacetPortletSharedSearchContributorTest {
 			StringBundler.concat(
 				DDMIndexer.DDM_FIELD_ARRAY, StringPool.PERIOD,
 				DDMIndexer.DDM_FIELD_NAME),
-			filterValue, DDMIndexer.DDM_FIELD_ARRAY, new String[0], null);
+			filterValue, RandomTestUtil.randomInt(1, 20),
+			RandomTestUtil.randomInt(1, 100), DDMIndexer.DDM_FIELD_ARRAY,
+			new String[0], null);
 	}
 
 	@Test
@@ -307,7 +312,9 @@ public class CustomFacetPortletSharedSearchContributorTest {
 			StringBundler.concat(
 				DDMIndexer.DDM_FIELD_ARRAY, StringPool.PERIOD,
 				DDMIndexer.DDM_FIELD_NAME),
-			filterValue, DDMIndexer.DDM_FIELD_ARRAY, new String[0], null);
+			filterValue, RandomTestUtil.randomInt(1, 20),
+			RandomTestUtil.randomInt(1, 100), DDMIndexer.DDM_FIELD_ARRAY,
+			new String[0], null);
 	}
 
 	@Test
@@ -328,7 +335,9 @@ public class CustomFacetPortletSharedSearchContributorTest {
 			StringBundler.concat(
 				DDMIndexer.DDM_FIELD_ARRAY, StringPool.PERIOD,
 				DDMIndexer.DDM_FIELD_NAME),
-			filterValue, DDMIndexer.DDM_FIELD_ARRAY, new String[0], null);
+			filterValue, RandomTestUtil.randomInt(1, 20),
+			RandomTestUtil.randomInt(1, 100), DDMIndexer.DDM_FIELD_ARRAY,
+			new String[0], null);
 	}
 
 	@Test
@@ -346,19 +355,21 @@ public class CustomFacetPortletSharedSearchContributorTest {
 			StringBundler.concat(
 				_NESTED_FIELD_ARRAY, StringPool.PERIOD, aggregationField),
 			_NESTED_FIELD_ARRAY + ".fieldName", filterValue,
+			RandomTestUtil.randomInt(1, 20), RandomTestUtil.randomInt(1, 100),
 			_NESTED_FIELD_ARRAY, new String[0], null);
 	}
 
 	private void _assertNestedAggregation(
 		String aggregationType, String configurationField,
 		String expectedAggregationField, String expectedFilterField,
-		String expectedFilterValue, String expectedPath,
-		String[] parameterValues, JSONArray rangesJSONArray) {
+		String expectedFilterValue, int expectedFrequencyThreshold,
+		int expectedMaxTerms, String expectedPath, String[] parameterValues,
+		JSONArray rangesJSONArray) {
 
 		PortletSharedSearchSettings portletSharedSearchSettings =
 			_createPortletSharedSearchSettings(
-				configurationField, aggregationType, parameterValues,
-				rangesJSONArray);
+				configurationField, aggregationType, expectedFrequencyThreshold,
+				expectedMaxTerms, parameterValues, rangesJSONArray);
 
 		_contribute(false, portletSharedSearchSettings);
 
@@ -375,6 +386,18 @@ public class CustomFacetPortletSharedSearchContributorTest {
 			expectedAggregationField, nestedFacet.getFieldName());
 		Assert.assertEquals(expectedFilterField, nestedFacet.getFilterField());
 		Assert.assertEquals(expectedFilterValue, nestedFacet.getFilterValue());
+
+		FacetConfiguration facetConfiguration =
+			nestedFacet.getFacetConfiguration();
+
+		JSONObject dataJSONObject = facetConfiguration.getData();
+
+		Assert.assertEquals(
+			expectedFrequencyThreshold,
+			dataJSONObject.getInt("frequencyThreshold"));
+		Assert.assertEquals(
+			expectedMaxTerms, dataJSONObject.getInt("maxTerms"));
+
 		Assert.assertEquals(expectedPath, nestedFacet.getPath());
 		Assert.assertArrayEquals(parameterValues, nestedFacet.getSelections());
 
@@ -448,8 +471,8 @@ public class CustomFacetPortletSharedSearchContributorTest {
 	}
 
 	private PortletPreferences _createPortletPreferences(
-		String aggregationField, String aggregationType,
-		JSONArray rangesJSONArray) {
+		String aggregationField, String aggregationType, int frequencyThreshold,
+		int maxTerms, JSONArray rangesJSONArray) {
 
 		PortletPreferences portletPreferences = Mockito.mock(
 			PortletPreferences.class);
@@ -470,6 +493,22 @@ public class CustomFacetPortletSharedSearchContributorTest {
 			"aggregationType", StringPool.BLANK
 		);
 
+		Mockito.doReturn(
+			String.valueOf(frequencyThreshold)
+		).when(
+			portletPreferences
+		).getValue(
+			"frequencyThreshold", StringPool.BLANK
+		);
+
+		Mockito.doReturn(
+			String.valueOf(maxTerms)
+		).when(
+			portletPreferences
+		).getValue(
+			"maxTerms", StringPool.BLANK
+		);
+
 		String ranges = null;
 
 		if (rangesJSONArray != null) {
@@ -488,11 +527,12 @@ public class CustomFacetPortletSharedSearchContributorTest {
 	}
 
 	private PortletSharedSearchSettings _createPortletSharedSearchSettings(
-		String aggregationField, String aggregationType,
-		String[] parameterValues, JSONArray rangesJSONArray) {
+		String aggregationField, String aggregationType, int frequencyThreshold,
+		int maxTerms, String[] parameterValues, JSONArray rangesJSONArray) {
 
 		PortletPreferences portletPreferences = _createPortletPreferences(
-			aggregationField, aggregationType, rangesJSONArray);
+			aggregationField, aggregationType, frequencyThreshold, maxTerms,
+			rangesJSONArray);
 
 		PortletSharedSearchSettings portletSharedSearchSettings = Mockito.mock(
 			PortletSharedSearchSettings.class);
@@ -529,6 +569,15 @@ public class CustomFacetPortletSharedSearchContributorTest {
 		).getPortletPreferences();
 
 		return portletSharedSearchSettings;
+	}
+
+	private PortletSharedSearchSettings _createPortletSharedSearchSettings(
+		String aggregationField, String aggregationType,
+		String[] parameterValues, JSONArray rangesJSONArray) {
+
+		return _createPortletSharedSearchSettings(
+			aggregationField, aggregationType, 1, 10, parameterValues,
+			rangesJSONArray);
 	}
 
 	private String _createRange() {
@@ -627,8 +676,6 @@ public class CustomFacetPortletSharedSearchContributorTest {
 		ReflectionTestUtil.setFieldValue(
 			nestedFacetSearchContributor, "nestedFacetFactory",
 			new NestedFacetFactoryImpl());
-		ReflectionTestUtil.setFieldValue(
-			nestedFacetSearchContributor, "queries", new QueriesImpl());
 
 		ReflectionTestUtil.setFieldValue(
 			customFacetPortletSharedSearchContributor,

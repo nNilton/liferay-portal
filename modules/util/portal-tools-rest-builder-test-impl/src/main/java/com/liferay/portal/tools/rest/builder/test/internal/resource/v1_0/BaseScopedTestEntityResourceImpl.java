@@ -5,6 +5,7 @@
 
 package com.liferay.portal.tools.rest.builder.test.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.petra.function.UnsafeBiConsumer;
 import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.function.UnsafeFunction;
@@ -957,8 +958,40 @@ public abstract class BaseScopedTestEntityResourceImpl
 			Map<String, Serializable> parameters)
 		throws Exception {
 
-		throw new UnsupportedOperationException(
-			"This method needs to be implemented");
+		UnsafeFunction<ScopedTestEntity, ScopedTestEntity, Exception>
+			scopedTestEntityUnsafeFunction = scopedTestEntity -> {
+				if (parameters.containsKey("assetLibraryId")) {
+					deleteAssetLibraryScopedTestEntityByExternalReferenceCode(
+						(Long)parameters.get("assetLibraryId"),
+						scopedTestEntity.getExternalReferenceCode());
+
+					return scopedTestEntity;
+				}
+				else if (parameters.containsKey("siteId")) {
+					deleteSiteScopedTestEntityByExternalReferenceCode(
+						(Long)parameters.get("siteId"),
+						scopedTestEntity.getExternalReferenceCode());
+
+					return scopedTestEntity;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
+			};
+
+		if (contextBatchUnsafeBiConsumer != null) {
+			contextBatchUnsafeBiConsumer.accept(
+				scopedTestEntities, scopedTestEntityUnsafeFunction);
+		}
+		else if (contextBatchUnsafeConsumer != null) {
+			contextBatchUnsafeConsumer.accept(
+				scopedTestEntities, scopedTestEntityUnsafeFunction::apply);
+		}
+		else {
+			for (ScopedTestEntity scopedTestEntity : scopedTestEntities) {
+				scopedTestEntityUnsafeFunction.apply(scopedTestEntity);
+			}
+		}
 	}
 
 	public Set<String> getAvailableCreateStrategies() {
@@ -1024,6 +1057,15 @@ public abstract class BaseScopedTestEntityResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -1607,3 +1649,4 @@ public abstract class BaseScopedTestEntityResourceImpl
 		LogFactoryUtil.getLog(BaseScopedTestEntityResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:1296743086

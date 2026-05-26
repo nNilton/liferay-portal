@@ -5,13 +5,18 @@
 
 package com.liferay.site.cms.site.initializer.internal.display.context;
 
+import com.liferay.depot.constants.DepotConstants;
+import com.liferay.depot.service.DepotEntryServiceUtil;
 import com.liferay.layout.constants.LayoutTypeSettingsConstants;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalServiceUtil;
 import com.liferay.object.admin.rest.dto.v1_0.ObjectDefinition;
 import com.liferay.object.admin.rest.dto.v1_0.util.ObjectDefinitionUtil;
 import com.liferay.object.admin.rest.resource.v1_0.ObjectDefinitionResource;
+import com.liferay.object.constants.ObjectFieldConstants;
 import com.liferay.object.constants.ObjectFolderConstants;
+import com.liferay.object.field.business.type.ObjectFieldBusinessType;
+import com.liferay.object.field.business.type.ObjectFieldBusinessTypeRegistry;
 import com.liferay.object.service.ObjectRelationshipLocalServiceUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.json.JSONFactory;
@@ -31,6 +36,7 @@ import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.vulcan.pagination.Page;
+import com.liferay.site.cms.site.initializer.internal.util.DefaultLanguageLabelsUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -46,11 +52,13 @@ public class StructureBuilderDisplayContext {
 
 	public StructureBuilderDisplayContext(
 		HttpServletRequest httpServletRequest, JSONFactory jsonFactory,
-		ObjectDefinitionResource.Factory objectDefinitionResourceFactory) {
+		ObjectDefinitionResource.Factory objectDefinitionResourceFactory,
+		ObjectFieldBusinessTypeRegistry objectFieldBusinessTypeRegistry) {
 
 		_httpServletRequest = httpServletRequest;
 		_jsonFactory = jsonFactory;
 		_objectDefinitionResourceFactory = objectDefinitionResourceFactory;
+		_objectFieldBusinessTypeRegistry = objectFieldBusinessTypeRegistry;
 
 		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
@@ -101,6 +109,8 @@ public class StructureBuilderDisplayContext {
 					return true;
 				}
 			).put(
+				"countries", _getCountries()
+			).put(
 				"editStructureDisplayPageURL",
 				() -> StringBundler.concat(
 					_themeDisplay.getPortalURL(), _themeDisplay.getPathMain(),
@@ -135,6 +145,27 @@ public class StructureBuilderDisplayContext {
 					_themeDisplay.getPortalURL(), _themeDisplay.getPathMain(),
 					"/cms/reset_translation_display_page")
 			).put(
+				"spaceExternalReferenceCode",
+				() -> {
+					List<Long> depotEntryGroupIds =
+						DepotEntryServiceUtil.getDepotEntryGroupIds(
+							_themeDisplay.getCompanyId(),
+							_themeDisplay.getUserId(),
+							DepotConstants.TYPE_SPACE);
+
+					for (Long groupId : depotEntryGroupIds) {
+						Group group = GroupLocalServiceUtil.fetchGroup(groupId);
+
+						if (group == null) {
+							continue;
+						}
+
+						return group.getExternalReferenceCode();
+					}
+
+					return null;
+				}
+			).put(
 				"structureBuilderURL",
 				() -> PortalUtil.getLayoutFullURL(
 					LayoutLocalServiceUtil.getLayoutByFriendlyURL(
@@ -142,6 +173,13 @@ public class StructureBuilderDisplayContext {
 						"/structure-builder"),
 					_themeDisplay)
 			)
+		).put(
+			"defaultLanguageLabels",
+			DefaultLanguageLabelsUtil.getDefaultLanguageLabelsJSONObject(
+				_themeDisplay, "boolean", "date", "date-and-time", "decimal",
+				"file", "long-text", "numeric", "repeatable-group", "rich-text",
+				"select-from-list", "select-related-content", "text", "title",
+				"upload")
 		).put(
 			"state",
 			JSONUtil.put(
@@ -151,6 +189,17 @@ public class StructureBuilderDisplayContext {
 				"objectDefinitions", _getObjectDefinitionsJSONObject()
 			)
 		).build();
+	}
+
+	private List<Map<String, String>> _getCountries() {
+		ObjectFieldBusinessType phoneNumberObjectFieldBusinessType =
+			_objectFieldBusinessTypeRegistry.getObjectFieldBusinessType(
+				ObjectFieldConstants.BUSINESS_TYPE_PHONE_NUMBER);
+
+		Map<String, Object> renderingProperties =
+			phoneNumberObjectFieldBusinessType.getRenderingProperties();
+
+		return (List<Map<String, String>>)renderingProperties.get("countries");
 	}
 
 	private ObjectDefinition _getObjectDefinition() throws Exception {
@@ -279,6 +328,8 @@ public class StructureBuilderDisplayContext {
 	private final ObjectDefinitionResource.Factory
 		_objectDefinitionResourceFactory;
 	private List<ObjectDefinition> _objectDefinitions;
+	private final ObjectFieldBusinessTypeRegistry
+		_objectFieldBusinessTypeRegistry;
 	private String _objectFolderExternalReferenceCode;
 	private final ThemeDisplay _themeDisplay;
 

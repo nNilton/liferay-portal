@@ -6,7 +6,7 @@
 import {fetch, sub} from 'frontend-js-web';
 
 import SpaceService from '../../../common/services/SpaceService';
-import {OBJECT_ENTRY_FOLDER_CLASS_NAME} from '../../../common/utils/constants';
+import {getFormattedLabel} from '../../../common/utils/getFormattedText';
 import {getScopeExternalReferenceCode} from '../../../common/utils/getScopeExternalReferenceCode';
 import {
 	displayDeleteSuccessToast,
@@ -63,6 +63,7 @@ async function showSuccessToast(
 }
 
 export default async function deleteItemAction(
+	confirmationMessage: string,
 	itemData: ItemData,
 	loadData: () => {}
 ) {
@@ -74,30 +75,22 @@ export default async function deleteItemAction(
 		);
 
 		if (!itemSpace.settings?.trashEnabled) {
+			const title =
+				itemData.title ||
+				embedded.title ||
+				Liferay.Language.get('untitled-asset');
+
 			confirmAndDeleteEntryAction({
-				bodyHTML:
-					itemData.entryClassName === OBJECT_ENTRY_FOLDER_CLASS_NAME
-						? sub(
-								Liferay.Language.get(
-									'delete-folder-confirmation-body'
-								),
-								itemData.title
-							)
-						: sub(
-								Liferay.Language.get(
-									'delete-asset-confirmation-body'
-								),
-								itemData.title
-							),
+				bodyHTML: confirmationMessage,
 				deleteAction: actions.delete,
 				loadData,
 				successMessage: sub(
 					Liferay.Language.get('x-was-successfully-deleted'),
-					`<strong>${itemData.title}</strong>`
+					`<strong>${getFormattedLabel(title)}</strong>`
 				),
 				title: sub(
 					Liferay.Language.get('delete-asset-confirmation-title'),
-					itemData.title
+					title
 				),
 			});
 		}
@@ -110,7 +103,7 @@ export default async function deleteItemAction(
 
 				showSuccessToast(
 					actions.get.href,
-					embedded.title,
+					embedded.title || Liferay.Language.get('untitled-asset'),
 					loadData,
 					actions.get.method
 				);

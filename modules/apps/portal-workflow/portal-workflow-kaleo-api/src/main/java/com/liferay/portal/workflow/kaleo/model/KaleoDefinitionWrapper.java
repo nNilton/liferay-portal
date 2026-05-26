@@ -491,6 +491,11 @@ public class KaleoDefinitionWrapper
 	}
 
 	@Override
+	public boolean isSystem() {
+		return model.isSystem();
+	}
+
+	@Override
 	public void persist() {
 		model.persist();
 	}
@@ -809,3 +814,4 @@ public class KaleoDefinitionWrapper
 	}
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-1326523217

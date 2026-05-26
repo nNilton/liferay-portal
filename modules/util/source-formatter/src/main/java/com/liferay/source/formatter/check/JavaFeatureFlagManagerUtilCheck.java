@@ -58,6 +58,10 @@ public class JavaFeatureFlagManagerUtilCheck extends BaseFileCheck {
 		SourceFormatterArgs sourceFormatterArgs =
 			sourceProcessor.getSourceFormatterArgs();
 
+		if (!sourceFormatterArgs.isFormatCurrentBranch()) {
+			return;
+		}
+
 		String[] lines = StringUtil.splitLines(
 			GitUtil.getCurrentBranchFileDiff(
 				sourceFormatterArgs.getBaseDirName(),
@@ -78,7 +82,7 @@ public class JavaFeatureFlagManagerUtilCheck extends BaseFileCheck {
 				continue;
 			}
 
-			for (int j = i + 1; j < (lines.length - 1); j++) {
+			for (int j = i + 1; j < lines.length; j++) {
 				trimmedLine =
 					trimmedLine + StringUtil.trimLeading(lines[j].substring(1));
 			}

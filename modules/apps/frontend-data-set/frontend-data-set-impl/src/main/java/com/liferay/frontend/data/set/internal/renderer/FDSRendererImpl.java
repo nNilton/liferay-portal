@@ -5,10 +5,14 @@
 
 package com.liferay.frontend.data.set.internal.renderer;
 
+import com.liferay.frontend.data.set.SystemFDSEntry;
+import com.liferay.frontend.data.set.SystemFDSEntryRegistry;
 import com.liferay.frontend.data.set.model.FDSActionDropdownItem;
 import com.liferay.frontend.data.set.model.FDSSortItem;
 import com.liferay.frontend.data.set.renderer.FDSRenderer;
 import com.liferay.frontend.data.set.serializer.FDSSerializer;
+import com.liferay.frontend.data.set.view.FDSView;
+import com.liferay.frontend.data.set.view.FDSViewRegistry;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.CreationMenu;
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMapFactory;
@@ -196,6 +200,19 @@ public class FDSRendererImpl implements FDSRenderer {
 						return filtersJSONArray;
 					}
 				).put(
+					"groupedFilters",
+					() -> {
+						JSONArray groupedFiltersJSONArray =
+							fdsSerializer.serializeGroupedFilters(
+								fdsName, httpServletRequest);
+
+						if (JSONUtil.isEmpty(groupedFiltersJSONArray)) {
+							return null;
+						}
+
+						return groupedFiltersJSONArray;
+					}
+				).put(
 					"hideManagementBarInEmptyState",
 					() -> fdsSerializer.serializeHideManagementBarInEmptyState(
 						fdsName, httpServletRequest)
@@ -226,6 +243,22 @@ public class FDSRendererImpl implements FDSRenderer {
 						}
 
 						return paginationJSONObject;
+					}
+				).put(
+					"showSearch",
+					() -> {
+						List<FDSView> fdsViews = _fdsViewRegistry.getFDSViews(
+							fdsName);
+
+						SystemFDSEntry systemFDSEntry =
+							_systemFDSEntryRegistry.getSystemFDSEntry(fdsName);
+
+						if ((fdsViews == null) && (systemFDSEntry == null)) {
+							return null;
+						}
+
+						return fdsSerializer.serializeShowSearch(
+							fdsName, httpServletRequest);
 					}
 				).put(
 					"snapshots",
@@ -326,11 +359,17 @@ public class FDSRendererImpl implements FDSRenderer {
 	private BundleContext _bundleContext;
 
 	@Reference
+	private FDSViewRegistry _fdsViewRegistry;
+
+	@Reference
 	private Portal _portal;
 
 	@Reference
 	private ReactRenderer _reactRenderer;
 
 	private ServiceTrackerMap<String, FDSSerializer> _serviceTrackerMap;
+
+	@Reference
+	private SystemFDSEntryRegistry _systemFDSEntryRegistry;
 
 }

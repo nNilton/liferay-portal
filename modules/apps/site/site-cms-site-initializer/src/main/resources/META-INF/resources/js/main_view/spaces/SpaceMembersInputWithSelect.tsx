@@ -3,21 +3,16 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import '../../../css/spaces/SpaceMembersInputWithSelect.scss';
-
-import ClayForm, {ClayInput, ClaySelectWithOption} from '@clayui/form';
 import ClayIcon from '@clayui/icon';
 import ClaySticker from '@clayui/sticker';
 import {ItemSelector} from '@liferay/frontend-js-item-selector-web';
-import classNames from 'classnames';
-import React, {useId, useMemo, useState} from 'react';
+import React, {useMemo, useState} from 'react';
 
 import {UserAccount, UserGroup} from '../../common/types/UserAccount';
-
-export enum SelectOptions {
-	USERS = 'users',
-	GROUPS = 'groups',
-}
+import {
+	SelectOptions,
+	SpaceMembersSelectOptions,
+} from './SpaceMembersSelectOptions';
 
 interface AdminUserAccount {
 	emailAddress: string;
@@ -37,8 +32,8 @@ interface AdminUserGroup {
 
 export interface SpaceMembersInputWithSelectProps {
 	className?: string;
-	disabled: boolean;
 	excludeMembers?: (UserAccount | UserGroup)[];
+	filter?: string;
 	onAutocompleteItemSelected?: (item: UserAccount | UserGroup) => void;
 	onSelectChange?: (value: SelectOptions) => void;
 	selectValue: SelectOptions;
@@ -51,28 +46,37 @@ const endpoints = {
 
 export function SpaceMembersInputWithSelect({
 	className,
-	disabled,
 	excludeMembers,
+	filter,
 	onAutocompleteItemSelected,
 	onSelectChange,
 	selectValue,
 }: SpaceMembersInputWithSelectProps) {
-	const selectId = useId();
 	const [value, setValue] = useState('');
 
 	const apiURL = useMemo(() => {
 		const endpoint = endpoints[selectValue as SelectOptions];
-		const filterKey =
-			selectValue === SelectOptions.USERS ? 'id' : 'userGroupId';
+
+		const filters: string[] = [];
 
 		if (excludeMembers?.length) {
 			const excludeIds = excludeMembers.map((member) => `'${member.id}'`);
+			const filterKey =
+				selectValue === SelectOptions.USERS ? 'id' : 'userGroupId';
 
-			return `${endpoint}?filter=${filterKey} ne ${excludeIds.join(` and ${filterKey} ne `)}`;
+			filters.push(
+				`${filterKey} ne ${excludeIds.join(` and ${filterKey} ne `)}`
+			);
 		}
 
-		return endpoint;
-	}, [excludeMembers, selectValue]);
+		if (filter) {
+			filters.push(filter);
+		}
+
+		return filters.length
+			? `${endpoint}?filter=${filters.join(' and ')}`
+			: endpoint;
+	}, [excludeMembers, filter, selectValue]);
 
 	const renderUserAccountItem = (item: AdminUserAccount) => {
 		return (
@@ -148,84 +152,45 @@ export function SpaceMembersInputWithSelect({
 	};
 
 	return (
-		<ClayForm.Group
-			className={classNames('space-members-input-with-select', className)}
+		<SpaceMembersSelectOptions
+			className={className}
+			label={Liferay.Language.get('add-people-to-collaborate')}
+			onSelectChange={onSelectChange}
+			selectValue={selectValue}
 		>
-			<label className="d-block" htmlFor={selectId}>
-				{Liferay.Language.get('add-people-to-collaborate')}
-			</label>
-
-			<ClayInput.Group>
-				<ClayInput.GroupItem prepend shrink>
-					<ClaySelectWithOption
-						className="font-weight-semi-bold form-control form-control-select-secondary rounded-left"
-						id={selectId}
-						onChange={(event) => {
-							onSelectChange?.(
-								event.target.value as SelectOptions
-							);
-						}}
-						options={[
-							{
-								label: Liferay.Language.get('users'),
-								value: 'users',
-							},
-							{
-								label: Liferay.Language.get('groups'),
-								value: 'groups',
-							},
-						]}
-						value={selectValue}
-					/>
-				</ClayInput.GroupItem>
-
-				<ClayInput.GroupItem append>
-					{disabled ? (
-						<ClayInput
-							disabled
-							placeholder={Liferay.Language.get(
-								'enter-name-or-email'
-							)}
-						/>
-					) : selectValue === SelectOptions.USERS ? (
-						<ItemSelector<AdminUserAccount>
-							apiURL={apiURL}
-							id="autocomplete"
-							key={apiURL}
-							locator={{
-								id: 'id',
-								label: 'name',
-								value: 'id',
-							}}
-							onChange={setValue}
-							placeholder={Liferay.Language.get(
-								'enter-name-or-email'
-							)}
-							value={value}
-						>
-							{renderUserAccountItem}
-						</ItemSelector>
-					) : (
-						<ItemSelector<AdminUserGroup>
-							apiURL={apiURL}
-							id="autocomplete"
-							key={apiURL}
-							locator={{
-								id: 'id',
-								label: 'name',
-								value: 'id',
-							}}
-							onChange={setValue}
-							placeholder={Liferay.Language.get(
-								'enter-name-or-email'
-							)}
-							value={value}
-						>
-							{renderUserGroupItem}
-						</ItemSelector>
-					)}
-				</ClayInput.GroupItem>
-			</ClayInput.Group>
-		</ClayForm.Group>
+			{selectValue === SelectOptions.USERS ? (
+				<ItemSelector<AdminUserAccount>
+					apiURL={apiURL}
+					id="autocomplete"
+					key={apiURL}
+					locator={{
+						id: 'id',
+						label: 'name',
+						value: 'id',
+					}}
+					onChange={setValue}
+					placeholder={Liferay.Language.get('enter-name-or-email')}
+					value={value}
+				>
+					{renderUserAccountItem}
+				</ItemSelector>
+			) : (
+				<ItemSelector<AdminUserGroup>
+					apiURL={apiURL}
+					id="autocomplete"
+					key={apiURL}
+					locator={{
+						id: 'id',
+						label: 'name',
+						value: 'id',
+					}}
+					onChange={setValue}
+					placeholder={Liferay.Language.get('enter-name-or-email')}
+					value={value}
+				>
+					{renderUserGroupItem}
+				</ItemSelector>
+			)}
+		</SpaceMembersSelectOptions>
 	);
 }

@@ -33,6 +33,7 @@ AUI.add(
 				archivedSetupsNode: defaultConfig,
 				commentsNode: defaultConfig,
 				deletionsNode: defaultConfig,
+				disableInputs: [],
 				exportLAR: defaultConfig,
 				form: defaultConfig,
 				incompleteProcessMessageNode: defaultConfig,
@@ -291,6 +292,11 @@ AUI.add(
 					if (deletionsNode) {
 						deletionsNode.on('change', () => {
 							instance._refreshDeletions();
+							instance.all('.content-link').each((item) => {
+								instance._setContentLabels(
+									item.attr('data-portletid')
+								);
+							});
 						});
 					}
 
@@ -719,6 +725,19 @@ AUI.add(
 
 						cmdNode.val(STR_EMPTY);
 
+						const disableInputs =
+							instance.get('disableInputs') || [];
+
+						for (const field of form
+							.getDOMNode()
+							.getElementsByTagName('input')) {
+							const fieldName = field.name.split('_').pop();
+
+							if (disableInputs.includes(fieldName)) {
+								field.disabled = true;
+							}
+						}
+
 						submitForm(form);
 					}
 				},
@@ -886,32 +905,42 @@ AUI.add(
 
 					const contentNode = instance.byId('content_' + portletId);
 
+					if (!contentNode) {
+						return;
+					}
+
+					const portletDataNode = instance.byId(
+						'PORTLET_DATA_' + portletId
+					);
+
 					const inputs = contentNode.all('.field');
 
 					const selectedContent = [];
 
 					inputs.each((item) => {
-						const checked = item.attr(STR_CHECKED);
-
-						if (checked) {
+						if (
+							item.attr('checked') &&
+							(!item.ancestor('.deletions') ||
+								instance._isChecked('deletionsNode'))
+						) {
 							selectedContent.push(item.attr('data-name'));
 						}
 					});
 
-					if (
-						!selectedContent.length ||
-						!instance
-							.byId('PORTLET_DATA_' + portletId)
-							.attr('checked')
-					) {
-						if (selectedContent.length) {
-							instance
-								.byId('PORTLET_DATA_' + portletId)
-								.attr('checked', false);
+					const hasSelectedContent = selectedContent.length;
+					const isPortletChecked = portletDataNode.attr('checked');
+
+					if (!hasSelectedContent || !isPortletChecked) {
+						const hasChildrenControls = inputs.size() > 0;
+						const isBatchPortlet = portletDataNode.ancestor(
+							'[data-portlet-type="batch"]'
+						);
+
+						if (!isBatchPortlet || hasChildrenControls) {
+							portletDataNode.attr('checked', false);
 						}
 
 						instance.byId('showChangeContent_' + portletId).hide();
-
 						contentNode.hide();
 					}
 					else {

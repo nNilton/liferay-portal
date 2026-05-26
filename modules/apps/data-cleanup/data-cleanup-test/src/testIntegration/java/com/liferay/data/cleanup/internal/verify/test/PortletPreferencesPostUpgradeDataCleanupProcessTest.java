@@ -14,6 +14,7 @@ import com.liferay.portal.kernel.service.PortletLocalServiceUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.upgrade.data.cleanup.util.OrphanReferencesDataCleanupUtil;
 import com.liferay.portal.kernel.util.PortletKeys;
+import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.Inject;
 
 import java.sql.Connection;
@@ -54,11 +55,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 
 				Assert.assertTrue(messages.toString(), messages.isEmpty());
 
-				Assert.assertTrue(_existsPortletPreference(portletId));
+				Assert.assertTrue(_hasPortletPreference(portletId));
 			},
 			() -> _deletePortletPreference(portletId),
 			() -> _addPortletPreference(0, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -86,11 +88,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 							" from table ",
 							dbInspector.normalizeName(_TEMP_TABLE_NAME))));
 
-				Assert.assertFalse(_existsPortletPreference(portletId));
+				Assert.assertFalse(_hasPortletPreference(portletId));
 			},
 			() -> _deletePortletPreference(portletId),
 			() -> _addPortletPreference(0, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -120,11 +123,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 							" from table ",
 							dbInspector.normalizeName(_TEMP_TABLE_NAME))));
 
-				Assert.assertTrue(_existsPortletPreference(portletId));
+				Assert.assertTrue(_hasPortletPreference(portletId));
 			},
 			() -> _deletePortletPreference(portletId),
 			() -> _addPortletPreference(0, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -138,7 +142,7 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 
 				Assert.assertTrue(messages.toString(), messages.isEmpty());
 
-				Assert.assertTrue(_existsPortlet(portletId));
+				Assert.assertTrue(_hasPortlet(portletId));
 			},
 			() -> _deletePortlet(portletId), () -> _addPortlet(portletId));
 	}
@@ -159,7 +163,7 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 							", 1 row deleted because \"", portletId,
 							"\" is not installed")));
 
-				Assert.assertFalse(_existsPortlet(portletId));
+				Assert.assertFalse(_hasPortlet(portletId));
 			},
 			() -> _deletePortlet(portletId), () -> _addPortlet(portletId));
 	}
@@ -184,7 +188,7 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 							", 1 row should be deleted because \"", portletId,
 							"\" is not installed")));
 
-				Assert.assertTrue(_existsPortlet(portletId));
+				Assert.assertTrue(_hasPortlet(portletId));
 			},
 			() -> _deletePortlet(portletId), () -> _addPortlet(portletId));
 	}
@@ -207,7 +211,7 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 
 				Assert.assertTrue(messages.toString(), messages.isEmpty());
 
-				Assert.assertTrue(_existsPortletPreference(portletId));
+				Assert.assertTrue(_hasPortletPreference(portletId));
 			},
 			() -> {
 				_deleteLayoutRevision(plid);
@@ -217,7 +221,8 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 				_addLayoutRevision(plid);
 				_addPortletPreference(plid, portletId);
 			},
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -236,46 +241,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 
 				Assert.assertTrue(messages.toString(), messages.isEmpty());
 
-				Assert.assertTrue(_existsPortletPreference(portletId));
+				Assert.assertTrue(_hasPortletPreference(portletId));
 			},
 			() -> _deletePortletPreference(portletId),
 			() -> _addPortletPreference(0, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
-	}
-
-	@Test
-	public void testPortletPreferenceLinkedToNonexistentLayoutIsDeleted()
-		throws Exception {
-
-		List<Portlet> portlets = PortletLocalServiceUtil.getPortlets();
-
-		Portlet portlet = portlets.get(0);
-
-		String portletId = portlet.getPortletId();
-
-		long plid = RandomTestUtil.nextLong();
-
-		test(
-			logCapture -> {
-				List<String> messages = logCapture.getMessages();
-
-				Assert.assertTrue(
-					messages.toString(),
-					messages.contains(
-						StringBundler.concat(
-							"Table ",
-							dbInspector.normalizeName("PortletPreferences"),
-							", 1 row deleted because ",
-							dbInspector.normalizeName("plid"), " ", plid,
-							" was not found in column ",
-							dbInspector.normalizeName("plid"), " from table ",
-							dbInspector.normalizeName("Layout"))));
-
-				Assert.assertFalse(_existsPortletPreference(portletId));
-			},
-			() -> _deletePortletPreference(portletId),
-			() -> _addPortletPreference(plid, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -300,11 +271,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 					messages.toString(),
 					messages.contains(String.valueOf(plid)));
 
-				Assert.assertTrue(_existsPortletPreference(portletId));
+				Assert.assertTrue(_hasPortletPreference(portletId));
 			},
 			() -> _deletePortletPreference(portletId),
 			() -> _addPortletPreference(plid, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -330,11 +302,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 							" from table ",
 							dbInspector.normalizeName(_TEMP_TABLE_NAME))));
 
-				Assert.assertFalse(_existsPortletPreference(portletId));
+				Assert.assertFalse(_hasPortletPreference(portletId));
 			},
 			() -> _deletePortletPreference(portletId),
 			() -> _addPortletPreference(0, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -362,11 +335,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 							" from table ",
 							dbInspector.normalizeName(_TEMP_TABLE_NAME))));
 
-				Assert.assertTrue(_existsPortletPreference(portletId));
+				Assert.assertTrue(_hasPortletPreference(portletId));
 			},
 			() -> _deletePortletPreference(portletId),
 			() -> _addPortletPreference(0, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -394,11 +368,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 							dbInspector.normalizeName("PortletPreferences"))));
 
 				Assert.assertFalse(
-					_existsPortletPreferenceValue(portletPreferencesId));
+					_hasPortletPreferenceValue(portletPreferencesId));
 			},
 			() -> _deletePortletPreferenceValue(portletPreferencesId),
 			() -> _addPortletPreferenceValue(portletPreferencesId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -418,11 +393,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 					messages.contains(String.valueOf(portletPreferencesId)));
 
 				Assert.assertTrue(
-					_existsPortletPreferenceValue(portletPreferencesId));
+					_hasPortletPreferenceValue(portletPreferencesId));
 			},
 			() -> _deletePortletPreferenceValue(portletPreferencesId),
 			() -> _addPortletPreferenceValue(portletPreferencesId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -442,11 +418,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 
 				Assert.assertTrue(messages.toString(), messages.isEmpty());
 
-				Assert.assertTrue(_existsPortletPreference(portletId));
+				Assert.assertTrue(_hasPortletPreference(portletId));
 			},
 			() -> _deletePortletPreference(portletId),
 			() -> _addPortletPreference(0, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -474,11 +451,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 							" from table ",
 							dbInspector.normalizeName(_TEMP_TABLE_NAME))));
 
-				Assert.assertFalse(_existsPortletPreference(portletId));
+				Assert.assertFalse(_hasPortletPreference(portletId));
 			},
 			() -> _deletePortletPreference(portletId),
 			() -> _addPortletPreference(0, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -508,11 +486,12 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 							" from table ",
 							dbInspector.normalizeName(_TEMP_TABLE_NAME))));
 
-				Assert.assertTrue(_existsPortletPreference(portletId));
+				Assert.assertTrue(_hasPortletPreference(portletId));
 			},
 			() -> _deletePortletPreference(portletId),
 			() -> _addPortletPreference(0, portletId),
-			OrphanReferencesDataCleanupUtil.class.getName());
+			OrphanReferencesDataCleanupUtil.class.getName(),
+			LoggerTestUtil.INFO);
 	}
 
 	@Test
@@ -660,7 +639,7 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 		}
 	}
 
-	private boolean _existsPortlet(String portletId) throws Exception {
+	private boolean _hasPortlet(String portletId) throws Exception {
 		try (PreparedStatement preparedStatement = connection.prepareStatement(
 				"select * from Portlet where portletId = ?")) {
 
@@ -672,9 +651,7 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 		}
 	}
 
-	private boolean _existsPortletPreference(String portletId)
-		throws Exception {
-
+	private boolean _hasPortletPreference(String portletId) throws Exception {
 		try (PreparedStatement preparedStatement = connection.prepareStatement(
 				"select * from PortletPreferences where portletId = ?")) {
 
@@ -686,7 +663,7 @@ public class PortletPreferencesPostUpgradeDataCleanupProcessTest
 		}
 	}
 
-	private boolean _existsPortletPreferenceValue(long portletPreferencesId)
+	private boolean _hasPortletPreferenceValue(long portletPreferencesId)
 		throws Exception {
 
 		try (PreparedStatement preparedStatement = connection.prepareStatement(

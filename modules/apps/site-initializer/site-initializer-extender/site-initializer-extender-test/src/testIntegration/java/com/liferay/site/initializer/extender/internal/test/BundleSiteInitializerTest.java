@@ -5,6 +5,8 @@
 
 package com.liferay.site.initializer.extender.internal.test;
 
+import com.liferay.account.model.AccountEntry;
+import com.liferay.account.service.AccountEntryLocalService;
 import com.liferay.account.service.AccountEntryOrganizationRelLocalService;
 import com.liferay.account.service.AccountGroupRelLocalService;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
@@ -47,6 +49,7 @@ import com.liferay.commerce.product.service.CPOptionLocalService;
 import com.liferay.commerce.product.service.CPSpecificationOptionLocalService;
 import com.liferay.commerce.product.service.CommerceCatalogLocalService;
 import com.liferay.commerce.product.service.CommerceChannelLocalService;
+import com.liferay.configuration.admin.util.ConfigurationFilterStringUtil;
 import com.liferay.data.engine.rest.dto.v2_0.DataDefinition;
 import com.liferay.data.engine.rest.resource.v2_0.DataDefinitionResource;
 import com.liferay.depot.constants.DepotConstants;
@@ -653,7 +656,7 @@ public class BundleSiteInitializerTest {
 				_group.getGroupId());
 
 		Assert.assertEquals(
-			assetListEntries.toString(), 4, assetListEntries.size());
+			assetListEntries.toString(), 5, assetListEntries.size());
 
 		AssetListEntry assetListEntry = assetListEntries.get(0);
 
@@ -670,6 +673,9 @@ public class BundleSiteInitializerTest {
 
 		String typeSettings = assetListEntrySegmentsEntryRel.getTypeSettings();
 
+		Assert.assertTrue(
+			typeSettings.contains(
+				"classTypeIdsJournalArticleAssetRendererFactory"));
 		Assert.assertTrue(typeSettings.contains("queryValues0=Test Keyword"));
 
 		assetListEntry = assetListEntries.get(1);
@@ -688,6 +694,17 @@ public class BundleSiteInitializerTest {
 			"com.liferay.document.library.kernel.model.DLFileEntry",
 			assetListEntry.getAssetEntryType());
 
+		assetListEntrySegmentsEntryRel =
+			_assetListEntrySegmentsEntryRelLocalService.
+				fetchAssetListEntrySegmentsEntryRel(
+					assetListEntry.getAssetListEntryId(), 0);
+
+		typeSettings = assetListEntrySegmentsEntryRel.getTypeSettings();
+
+		Assert.assertTrue(
+			typeSettings.contains(
+				"classTypeIdsDLFileEntryAssetRendererFactory"));
+
 		assetListEntry = assetListEntries.get(3);
 
 		Assert.assertEquals(
@@ -697,6 +714,30 @@ public class BundleSiteInitializerTest {
 				assetListEntry.getAssetEntryType(),
 				ObjectDefinitionConstants.
 					CLASS_NAME_PREFIX_CUSTOM_OBJECT_DEFINITION));
+
+		assetListEntry = assetListEntries.get(4);
+
+		Assert.assertEquals(
+			"Test Asset List Entry 5", assetListEntry.getTitle());
+
+		assetListEntrySegmentsEntryRel =
+			_assetListEntrySegmentsEntryRelLocalService.
+				fetchAssetListEntrySegmentsEntryRel(
+					assetListEntry.getAssetListEntryId(), 0);
+
+		typeSettings = assetListEntrySegmentsEntryRel.getTypeSettings();
+
+		Assert.assertEquals("manual", assetListEntry.getTypeLabel());
+		Assert.assertTrue(
+			typeSettings.contains(
+				"classNameIds=" +
+					_portal.getClassNameId(JournalArticle.class.getName())));
+		Assert.assertTrue(
+			typeSettings.contains(
+				"classTypeIdsJournalArticleAssetRendererFactory"));
+		Assert.assertFalse(
+			typeSettings.contains(
+				"classTypeIdsObjectEntryAssetRendererFactory"));
 	}
 
 	private void _assertAssetVocabularies() throws Exception {
@@ -1142,7 +1183,7 @@ public class BundleSiteInitializerTest {
 		CPDefinition cpDefinition =
 			_cpDefinitionLocalService.
 				fetchCPDefinitionByCProductExternalReferenceCode(
-					"TESTCOMMERCEPRODUCT1", _group.getCompanyId());
+					"TESTCOMMERCEPRODUCT1", _group.getCompanyId(), false);
 
 		Assert.assertNotNull(cpDefinition);
 		Assert.assertEquals("Test Commerce Product", cpDefinition.getName());
@@ -1176,7 +1217,7 @@ public class BundleSiteInitializerTest {
 		CPDefinition cpDefinition =
 			_cpDefinitionLocalService.
 				fetchCPDefinitionByCProductExternalReferenceCode(
-					"TESTCOMMERCEPRODUCT1", _group.getCompanyId());
+					"TESTCOMMERCEPRODUCT1", _group.getCompanyId(), false);
 
 		CPInstance cpInstance1 = _cpInstanceLocalService.getCPInstance(
 			cpDefinition.getCPDefinitionId(), "TEST VALUE 1");
@@ -1216,7 +1257,7 @@ public class BundleSiteInitializerTest {
 		CPDefinition cpDefinition =
 			_cpDefinitionLocalService.
 				fetchCPDefinitionByCProductExternalReferenceCode(
-					"TESTCOMMERCEPRODUCT1", _group.getCompanyId());
+					"TESTCOMMERCEPRODUCT1", _group.getCompanyId(), false);
 
 		Assert.assertNotNull(cpDefinition);
 
@@ -1729,7 +1770,7 @@ public class BundleSiteInitializerTest {
 		CPDefinition cpDefinition =
 			_cpDefinitionLocalService.
 				fetchCPDefinitionByCProductExternalReferenceCode(
-					"TESTCOMMERCEPRODUCT1", _group.getCompanyId());
+					"TESTCOMMERCEPRODUCT1", _group.getCompanyId(), false);
 
 		ExpandoBridge expandoBridge = cpDefinition.getExpandoBridge();
 
@@ -1743,7 +1784,7 @@ public class BundleSiteInitializerTest {
 		CPDefinition cpDefinition =
 			_cpDefinitionLocalService.
 				fetchCPDefinitionByCProductExternalReferenceCode(
-					"TESTCOMMERCEPRODUCT1", _group.getCompanyId());
+					"TESTCOMMERCEPRODUCT1", _group.getCompanyId(), false);
 
 		ExpandoBridge expandoBridge = cpDefinition.getExpandoBridge();
 
@@ -3722,11 +3763,10 @@ public class BundleSiteInitializerTest {
 			"Test Segments Entry 1",
 			segmentsEntry1.getName(LocaleUtil.getSiteDefault()));
 		Assert.assertTrue(segmentsEntry1.isActive());
-		Assert.assertFalse(
-			segmentsEntry1.getCriteria(
-			).contains(
-				"[$ROLE_ID:Test Role 1$]"
-			));
+
+		String criteria = segmentsEntry1.getCriteria();
+
+		Assert.assertFalse(criteria.contains("[$ROLE_ID:Test Role 1$]"));
 
 		SegmentsEntry segmentsEntry2 =
 			_segmentsEntryLocalService.fetchSegmentsEntry(
@@ -3737,11 +3777,10 @@ public class BundleSiteInitializerTest {
 			"Test Segments Entry 2",
 			segmentsEntry2.getName(LocaleUtil.getSiteDefault()));
 		Assert.assertFalse(segmentsEntry2.isActive());
-		Assert.assertFalse(
-			segmentsEntry2.getCriteria(
-			).contains(
-				"[$ROLE_ID:Test Role 2$]"
-			));
+
+		criteria = segmentsEntry2.getCriteria();
+
+		Assert.assertFalse(criteria.contains("[$ROLE_ID:Test Role 2$]"));
 
 		Layout layout = _layoutLocalService.fetchLayoutByFriendlyURL(
 			_group.getGroupId(), false, "/test-public-layout");
@@ -3754,11 +3793,11 @@ public class BundleSiteInitializerTest {
 		List<SegmentsExperience> publishLayoutSegmentsExperiences =
 			_segmentsExperienceLocalService.getSegmentsExperiences(
 				_group.getGroupId(),
-				new long[] {
-					segmentsEntry1.getSegmentsEntryId(),
-					segmentsEntry2.getSegmentsEntryId()
+				new String[] {
+					segmentsEntry1.getExternalReferenceCode(),
+					segmentsEntry2.getExternalReferenceCode()
 				},
-				layout.getPlid(), true);
+				null, layout.getPlid(), true);
 
 		Assert.assertEquals(
 			publishLayoutSegmentsExperiences.toString(), 2,
@@ -3788,11 +3827,11 @@ public class BundleSiteInitializerTest {
 		List<SegmentsExperience> draftLayoutSegmentsExperiences =
 			_segmentsExperienceLocalService.getSegmentsExperiences(
 				_group.getGroupId(),
-				new long[] {
-					segmentsEntry1.getSegmentsEntryId(),
-					segmentsEntry2.getSegmentsEntryId()
+				new String[] {
+					segmentsEntry1.getExternalReferenceCode(),
+					segmentsEntry2.getExternalReferenceCode()
 				},
-				draftLayout.getPlid(), true);
+				null, draftLayout.getPlid(), true);
 
 		Assert.assertEquals(
 			draftLayoutSegmentsExperiences.toString(), 2,
@@ -3820,10 +3859,14 @@ public class BundleSiteInitializerTest {
 		Assert.assertEquals(GroupConstants.TYPE_SITE_OPEN, _group.getType());
 		Assert.assertTrue(_group.isManualMembership());
 
-		Assert.assertEquals(
-			2,
+		String[] accessToControlMenuRoleIds =
 			_menuAccessConfigurationManager.getAccessToControlMenuRoleIds(
-				_group.getGroupId()).length);
+				_group.getGroupId());
+
+		Assert.assertEquals(
+			Arrays.toString(accessToControlMenuRoleIds), 2,
+			accessToControlMenuRoleIds.length);
+
 		Assert.assertTrue(
 			_menuAccessConfigurationManager.isShowControlMenuByRole(
 				_group.getGroupId()));
@@ -3836,10 +3879,14 @@ public class BundleSiteInitializerTest {
 		Assert.assertEquals(GroupConstants.TYPE_SITE_OPEN, _group.getType());
 		Assert.assertTrue(_group.isManualMembership());
 
-		Assert.assertEquals(
-			0,
+		String[] accessToControlMenuRoleIds =
 			_menuAccessConfigurationManager.getAccessToControlMenuRoleIds(
-				_group.getGroupId()).length);
+				_group.getGroupId());
+
+		Assert.assertEquals(
+			Arrays.toString(accessToControlMenuRoleIds), 0,
+			accessToControlMenuRoleIds.length);
+
 		Assert.assertTrue(
 			_menuAccessConfigurationManager.isShowControlMenuByRole(
 				_group.getGroupId()));
@@ -4423,6 +4470,18 @@ public class BundleSiteInitializerTest {
 				"Test Workflow Definition 1", null, 1);
 
 		Assert.assertNotNull(workflowDefinitionTest1);
+
+		AccountEntry accountEntry =
+			_accountEntryLocalService.getAccountEntryByExternalReferenceCode(
+				"TESTACCOUNT1", TestPropsValues.getCompanyId());
+
+		Group group = _groupLocalService.getGroup(
+			accountEntry.getAccountEntryGroupId());
+
+		Assert.assertEquals(
+			group.getExternalReferenceCode(),
+			workflowDefinitionTest1.getGroupExternalReferenceCode());
+
 		Assert.assertEquals(
 			"Test Workflow Definition 1", workflowDefinitionTest1.getName());
 		Assert.assertEquals(
@@ -4488,12 +4547,10 @@ public class BundleSiteInitializerTest {
 		throws Exception {
 
 		try {
-			String filterString = StringBundler.concat(
-				"(&(service.factoryPid=", factoryPid, ")(",
-				scope.getPropertyKey(), "=", scopePK, "))");
-
 			Configuration[] configurations =
-				_configurationAdmin.listConfigurations(filterString);
+				_configurationAdmin.listConfigurations(
+					ConfigurationFilterStringUtil.getScopedFilterString(
+						_group.getCompanyId(), factoryPid, scope, scopePK));
 
 			if (configurations != null) {
 				return configurations[0];
@@ -4615,10 +4672,7 @@ public class BundleSiteInitializerTest {
 		BundleSiteInitializerTest.class);
 
 	@Inject
-	private static ConfigurationAdmin _configurationAdmin;
-
-	@Inject
-	private static PLOEntryLocalService _ploEntryLocalService;
+	private AccountEntryLocalService _accountEntryLocalService;
 
 	@Inject
 	private AccountEntryOrganizationRelLocalService
@@ -4674,6 +4728,9 @@ public class BundleSiteInitializerTest {
 
 	@Inject
 	private CompanyLocalService _companyLocalService;
+
+	@Inject
+	private ConfigurationAdmin _configurationAdmin;
 
 	@Inject
 	private CPDefinitionLocalService _cpDefinitionLocalService;
@@ -4796,6 +4853,9 @@ public class BundleSiteInitializerTest {
 
 	@Inject
 	private OrganizationResource.Factory _organizationResourceFactory;
+
+	@Inject
+	private PLOEntryLocalService _ploEntryLocalService;
 
 	@Inject
 	private Portal _portal;

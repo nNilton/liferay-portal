@@ -55,10 +55,16 @@ import java.util.function.Supplier;
 			value = BackgroundImageFragmentEditableElementValue.class
 		),
 		@JsonSubTypes.Type(
+			name = "Date", value = DateFragmentEditableElementValue.class
+		),
+		@JsonSubTypes.Type(
 			name = "HTML", value = HTMLFragmentEditableElementValue.class
 		),
 		@JsonSubTypes.Type(
 			name = "Image", value = ImageFragmentEditableElementValue.class
+		),
+		@JsonSubTypes.Type(
+			name = "Link", value = LinkFragmentEditableElementValue.class
 		),
 		@JsonSubTypes.Type(
 			name = "RichText", value = HTMLFragmentEditableElementValue.class
@@ -197,8 +203,9 @@ public abstract class FragmentEditableElementValue implements Serializable {
 	@GraphQLName("Type")
 	public static enum Type {
 
-		ACTION("Action"), BACKGROUND_IMAGE("BackgroundImage"), HTML("HTML"),
-		IMAGE("Image"), RICH_TEXT("RichText"), TEXT("Text");
+		ACTION("Action"), BACKGROUND_IMAGE("BackgroundImage"), DATE("Date"),
+		HTML("HTML"), IMAGE("Image"), LINK("Link"), RICH_TEXT("RichText"),
+		TEXT("Text");
 
 		@JsonCreator
 		public static Type create(String value) {
@@ -322,3 +329,4 @@ public abstract class FragmentEditableElementValue implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
+// LIFERAY-REST-BUILDER-HASH:-159428927

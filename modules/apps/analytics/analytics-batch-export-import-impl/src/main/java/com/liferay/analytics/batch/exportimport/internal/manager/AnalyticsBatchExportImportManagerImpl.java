@@ -11,6 +11,7 @@ import com.liferay.analytics.batch.exportimport.manager.AnalyticsBatchExportImpo
 import com.liferay.analytics.message.storage.service.AnalyticsMessageLocalService;
 import com.liferay.analytics.settings.configuration.AnalyticsConfiguration;
 import com.liferay.analytics.settings.configuration.AnalyticsConfigurationRegistry;
+import com.liferay.analytics.settings.rest.manager.AnalyticsSettingsManager;
 import com.liferay.batch.engine.BatchEngineExportTaskExecutor;
 import com.liferay.batch.engine.BatchEngineImportTaskExecutor;
 import com.liferay.batch.engine.BatchEngineTaskContentType;
@@ -21,6 +22,8 @@ import com.liferay.batch.engine.model.BatchEngineExportTask;
 import com.liferay.batch.engine.model.BatchEngineImportTask;
 import com.liferay.batch.engine.service.BatchEngineExportTaskLocalService;
 import com.liferay.batch.engine.service.BatchEngineImportTaskLocalService;
+import com.liferay.oauth2.provider.model.OAuth2Application;
+import com.liferay.oauth2.provider.service.OAuth2ApplicationLocalService;
 import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.io.StreamUtil;
 import com.liferay.petra.string.StringBundler;
@@ -31,8 +34,10 @@ import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.servlet.HttpMethods;
 import com.liferay.portal.kernel.settings.CompanyServiceSettingsLocator;
@@ -40,6 +45,8 @@ import com.liferay.portal.kernel.settings.FallbackKeysSettingsUtil;
 import com.liferay.portal.kernel.settings.Settings;
 import com.liferay.portal.kernel.settings.SettingsDescriptor;
 import com.liferay.portal.kernel.settings.SettingsLocatorHelper;
+import com.liferay.portal.kernel.util.ArrayUtil;
+import com.liferay.portal.kernel.util.Base64;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FastDateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.FileUtil;
@@ -47,8 +54,8 @@ import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.HttpComponentsUtil;
-import com.liferay.portal.kernel.util.PrefsPropsUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.zip.ZipReaderFactory;
@@ -69,6 +76,7 @@ import java.nio.file.Files;
 import java.text.Format;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Dictionary;
 import java.util.HashMap;
@@ -412,6 +420,7 @@ public class AnalyticsBatchExportImportManagerImpl
 				companyId);
 
 		_checkEndpoints(analyticsConfiguration, companyId);
+		_checkOAuth2Application(analyticsConfiguration, companyId);
 
 		HttpUriRequest httpUriRequest = _buildHttpUriRequest(
 			null, analyticsConfiguration.liferayAnalyticsDataSourceId(),
@@ -525,11 +534,9 @@ public class AnalyticsBatchExportImportManagerImpl
 				responseJSONObject.getString("liferayAnalyticsFaroBackendURL");
 
 			if (liferayAnalyticsEndpointURL.equals(
-					PrefsPropsUtil.getString(
-						companyId, "liferayAnalyticsEndpointURL")) &&
+					analyticsConfiguration.liferayAnalyticsEndpointURL()) &&
 				liferayAnalyticsFaroBackendURL.equals(
-					PrefsPropsUtil.getString(
-						companyId, "liferayAnalyticsFaroBackendURL"))) {
+					analyticsConfiguration.liferayAnalyticsFaroBackendURL())) {
 
 				return;
 			}
@@ -554,6 +561,62 @@ public class AnalyticsBatchExportImportManagerImpl
 			_configurationProvider.saveCompanyConfiguration(
 				AnalyticsConfiguration.class, companyId,
 				configurationProperties);
+		}
+	}
+
+	private void _checkOAuth2Application(
+			AnalyticsConfiguration analyticsConfiguration, long companyId)
+		throws Exception {
+
+		if (StringUtil.equals(
+				analyticsConfiguration.liferayAnalyticsCredentialType(),
+				"OAuth 2 Authentication")) {
+
+			return;
+		}
+
+		OAuth2Application oAuth2Application =
+			_oAuth2ApplicationLocalService.
+				fetchOAuth2ApplicationByExternalReferenceCode(
+					"ANALYTICS-CLOUD", companyId);
+
+		if (oAuth2Application == null) {
+			throw new Exception(
+				"No OAuth 2 application found for ANALYTICS-CLOUD");
+		}
+
+		Http.Options options = new Http.Options();
+
+		options.addPart("oAuthClientId", oAuth2Application.getClientId());
+		options.addPart(
+			"oAuthClientSecret", oAuth2Application.getClientSecret());
+
+		JSONObject jsonObject = _jsonFactory.createJSONObject(
+			new String(Base64.decode(analyticsConfiguration.token())));
+
+		options.setLocation(
+			StringUtil.replace(
+				jsonObject.getString("url"), "data_source/connect",
+				"data_source/" +
+					analyticsConfiguration.liferayAnalyticsDataSourceId()));
+
+		options.setPost(true);
+
+		_http.URLtoString(options);
+
+		Http.Response response = options.getResponse();
+
+		if (response.getResponseCode() == HttpURLConnection.HTTP_OK) {
+			_analyticsSettingsManager.updateCompanyConfiguration(
+				companyId,
+				Collections.singletonMap(
+					"liferayAnalyticsCredentialType",
+					"OAuth 2 Authentication"));
+		}
+		else {
+			if (_log.isDebugEnabled()) {
+				_log.debug("Unable to update analytics data source");
+			}
 		}
 	}
 
@@ -593,7 +656,7 @@ public class AnalyticsBatchExportImportManagerImpl
 					"DISCONNECTED");
 
 				_processInvalidTokenMessage(
-					companyId, disconnected,
+					analyticsConfiguration, companyId, disconnected,
 					responseJSONObject.getString("message"));
 			}
 			else if (response.getResponseCode() >=
@@ -643,7 +706,7 @@ public class AnalyticsBatchExportImportManagerImpl
 			}
 
 			_processInvalidTokenMessage(
-				companyId, disconnected,
+				analyticsConfiguration, companyId, disconnected,
 				responseJSONObject.getString("message"));
 
 			return closeableHttpResponse;
@@ -765,7 +828,8 @@ public class AnalyticsBatchExportImportManagerImpl
 	}
 
 	private void _processInvalidTokenMessage(
-		long companyId, boolean disconnected, String message) {
+		AnalyticsConfiguration analyticsConfiguration, long companyId,
+		boolean disconnected, String message) {
 
 		if (!Objects.equals(message, "INVALID_TOKEN") && !disconnected) {
 			return;
@@ -779,6 +843,29 @@ public class AnalyticsBatchExportImportManagerImpl
 		}
 
 		try {
+			String[] groupIds = analyticsConfiguration.syncedGroupIds();
+
+			if (ArrayUtil.isNotEmpty(groupIds)) {
+				for (String groupId : groupIds) {
+					Group group = _groupLocalService.fetchGroup(
+						GetterUtil.getLong(groupId));
+
+					if (group == null) {
+						continue;
+					}
+
+					UnicodeProperties typeSettingsUnicodeProperties =
+						group.getTypeSettingsProperties();
+
+					typeSettingsUnicodeProperties.remove("analyticsChannelId");
+
+					group.setTypeSettingsProperties(
+						typeSettingsUnicodeProperties);
+
+					_groupLocalService.updateGroup(group);
+				}
+			}
+
 			_companyLocalService.updatePreferences(
 				companyId,
 				UnicodePropertiesBuilder.create(
@@ -875,7 +962,7 @@ public class AnalyticsBatchExportImportManagerImpl
 					"DISCONNECTED");
 
 				_processInvalidTokenMessage(
-					companyId, disconnected,
+					analyticsConfiguration, companyId, disconnected,
 					responseJSONObject.getString("message"));
 			}
 
@@ -910,6 +997,9 @@ public class AnalyticsBatchExportImportManagerImpl
 	private AnalyticsMessageLocalService _analyticsMessageLocalService;
 
 	@Reference
+	private AnalyticsSettingsManager _analyticsSettingsManager;
+
+	@Reference
 	private BatchEngineExportTaskExecutor _batchEngineExportTaskExecutor;
 
 	@Reference
@@ -933,10 +1023,16 @@ public class AnalyticsBatchExportImportManagerImpl
 	private com.liferay.portal.kernel.util.File _file;
 
 	@Reference
+	private GroupLocalService _groupLocalService;
+
+	@Reference
 	private Http _http;
 
 	@Reference
 	private JSONFactory _jsonFactory;
+
+	@Reference
+	private OAuth2ApplicationLocalService _oAuth2ApplicationLocalService;
 
 	@Reference
 	private SettingsLocatorHelper _settingsLocatorHelper;

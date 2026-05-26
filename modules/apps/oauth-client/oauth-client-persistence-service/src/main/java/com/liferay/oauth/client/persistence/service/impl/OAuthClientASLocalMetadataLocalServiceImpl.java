@@ -6,28 +6,43 @@
 package com.liferay.oauth.client.persistence.service.impl;
 
 import com.liferay.oauth.client.persistence.exception.DuplicateOAuthClientASLocalMetadataException;
-import com.liferay.oauth.client.persistence.exception.OAuthClientASLocalMetadataJSONException;
+import com.liferay.oauth.client.persistence.exception.OAuthClientASLocalMetadataIssuerException;
 import com.liferay.oauth.client.persistence.exception.OAuthClientASLocalMetadataLocalWellKnownURIException;
+import com.liferay.oauth.client.persistence.exception.OAuthClientASLocalMetadataMetadataJSONException;
 import com.liferay.oauth.client.persistence.model.OAuthClientASLocalMetadata;
 import com.liferay.oauth.client.persistence.service.base.OAuthClientASLocalMetadataLocalServiceBaseImpl;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.ResourceLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.Base64;
+import com.liferay.portal.kernel.util.Http;
+import com.liferay.portal.kernel.util.OrderByComparator;
+import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 
+import com.nimbusds.oauth2.sdk.GrantType;
+import com.nimbusds.oauth2.sdk.Scope;
 import com.nimbusds.oauth2.sdk.as.AuthorizationServerMetadata;
+import com.nimbusds.oauth2.sdk.id.Issuer;
+import com.nimbusds.openid.connect.sdk.SubjectType;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 
 import java.security.MessageDigest;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -50,30 +65,71 @@ public class OAuthClientASLocalMetadataLocalServiceImpl
 		AuthorizationServerMetadata authorizationServerMetadata =
 			_parseAuthorizationServerMetadata(metadataJSON, wellKnownURISuffix);
 
-		String localWellKnownURI = _generateLocalWellKnownURI(
+		return addOAuthClientASLocalMetadata(
+			null, userId,
+			String.valueOf(
+				authorizationServerMetadata.getAuthorizationEndpointURI()),
 			String.valueOf(authorizationServerMetadata.getIssuer()),
+			String.valueOf(authorizationServerMetadata.getJWKSetURI()), false,
+			String.valueOf(
+				authorizationServerMetadata.getRegistrationEndpointURI()),
+			StringUtil.split(
+				StringUtil.merge(authorizationServerMetadata.getGrantTypes()),
+				StringPool.COMMA),
+			StringUtil.split(
+				StringUtil.merge(authorizationServerMetadata.getScopes()),
+				StringPool.COMMA),
+			StringUtil.split(
+				_getSubjectTypes(authorizationServerMetadata),
+				StringPool.COMMA),
 			String.valueOf(authorizationServerMetadata.getTokenEndpointURI()),
-			wellKnownURISuffix);
+			_getUserInfoEndpointURI(authorizationServerMetadata));
+	}
 
-		OAuthClientASLocalMetadata oAuthClientASLocalMetadata =
-			oAuthClientASLocalMetadataPersistence.fetchByLocalWellKnownURI(
-				localWellKnownURI);
-
-		if (oAuthClientASLocalMetadata != null) {
-			throw new DuplicateOAuthClientASLocalMetadataException();
-		}
+	public OAuthClientASLocalMetadata addOAuthClientASLocalMetadata(
+			String externalReferenceCode, long userId,
+			String authorizationEndpoint, String issuer, String jwksURI,
+			boolean localWellKnownEnabled, String registrationEndpoint,
+			String[] supportedGrantTypes, String[] supportedScopes,
+			String[] supportedSubjectTypes, String tokenEndpoint,
+			String userInfoEndpoint)
+		throws PortalException {
 
 		User user = _userLocalService.getUser(userId);
 
-		oAuthClientASLocalMetadata =
+		String localWellKnownURI = _generateLocalWellKnownURI(
+			issuer, tokenEndpoint, "openid-configuration");
+
+		_validate(
+			null, user.getCompanyId(), authorizationEndpoint, issuer, jwksURI,
+			localWellKnownURI, registrationEndpoint, tokenEndpoint,
+			userInfoEndpoint);
+
+		OAuthClientASLocalMetadata oAuthClientASLocalMetadata =
 			oAuthClientASLocalMetadataPersistence.create(
 				counterLocalService.increment());
 
+		oAuthClientASLocalMetadata.setExternalReferenceCode(
+			externalReferenceCode);
 		oAuthClientASLocalMetadata.setCompanyId(user.getCompanyId());
 		oAuthClientASLocalMetadata.setUserId(user.getUserId());
 		oAuthClientASLocalMetadata.setUserName(user.getFullName());
+		oAuthClientASLocalMetadata.setIssuer(issuer);
+		oAuthClientASLocalMetadata.setLocalWellKnownEnabled(
+			localWellKnownEnabled);
 		oAuthClientASLocalMetadata.setLocalWellKnownURI(localWellKnownURI);
-		oAuthClientASLocalMetadata.setMetadataJSON(metadataJSON);
+		oAuthClientASLocalMetadata.setMetadataJSON(
+			_generateMetadataJSON(
+				authorizationEndpoint, issuer, jwksURI, supportedGrantTypes,
+				supportedScopes, supportedSubjectTypes, tokenEndpoint,
+				userInfoEndpoint));
+		oAuthClientASLocalMetadata.setOAuthASLocalWellKnownURI(
+			_generateLocalWellKnownURI(
+				issuer, null, "oauth-authorization-server"));
+		oAuthClientASLocalMetadata.setOAuthASMetadataJSON(
+			_generateAuthorizationServerMetadataJSON(
+				authorizationEndpoint, issuer, jwksURI, registrationEndpoint,
+				supportedScopes, supportedGrantTypes, tokenEndpoint));
 
 		oAuthClientASLocalMetadata =
 			oAuthClientASLocalMetadataPersistence.update(
@@ -104,6 +160,18 @@ public class OAuthClientASLocalMetadataLocalServiceImpl
 
 	@Override
 	public OAuthClientASLocalMetadata deleteOAuthClientASLocalMetadata(
+			long companyId, String localWellKnownURI)
+		throws PortalException {
+
+		OAuthClientASLocalMetadata oAuthClientASLocalMetadata =
+			oAuthClientASLocalMetadataPersistence.findByC_LWKURI(
+				companyId, localWellKnownURI);
+
+		return deleteOAuthClientASLocalMetadata(oAuthClientASLocalMetadata);
+	}
+
+	@Override
+	public OAuthClientASLocalMetadata deleteOAuthClientASLocalMetadata(
 			OAuthClientASLocalMetadata oAuthClientASLocalMetadata)
 		throws PortalException {
 
@@ -121,23 +189,29 @@ public class OAuthClientASLocalMetadataLocalServiceImpl
 	}
 
 	@Override
-	public OAuthClientASLocalMetadata deleteOAuthClientASLocalMetadata(
-			String localWellKnownURI)
-		throws PortalException {
+	public OAuthClientASLocalMetadata fetchOAuthClientASLocalMetadata(
+		long companyId, boolean localWellKnownEnabled,
+		OrderByComparator<OAuthClientASLocalMetadata> orderByComparator) {
 
-		OAuthClientASLocalMetadata oAuthClientASLocalMetadata =
-			oAuthClientASLocalMetadataPersistence.findByLocalWellKnownURI(
-				localWellKnownURI);
-
-		return deleteOAuthClientASLocalMetadata(oAuthClientASLocalMetadata);
+		return oAuthClientASLocalMetadataPersistence.fetchByC_L_First(
+			companyId, localWellKnownEnabled, orderByComparator);
 	}
 
 	@Override
 	public OAuthClientASLocalMetadata fetchOAuthClientASLocalMetadata(
-		String localWellKnownURI) {
+		long companyId, String issuer) {
 
-		return oAuthClientASLocalMetadataPersistence.fetchByLocalWellKnownURI(
-			localWellKnownURI);
+		return oAuthClientASLocalMetadataPersistence.fetchByC_I(
+			companyId, issuer);
+	}
+
+	@Override
+	public OAuthClientASLocalMetadata
+		fetchOAuthClientASLocalMetadataByLocalWellKnownURI(
+			long companyId, String localWellKnownURI) {
+
+		return oAuthClientASLocalMetadataPersistence.fetchByC_LWKURI(
+			companyId, localWellKnownURI);
 	}
 
 	@Override
@@ -158,11 +232,17 @@ public class OAuthClientASLocalMetadataLocalServiceImpl
 
 	@Override
 	public OAuthClientASLocalMetadata getOAuthClientASLocalMetadata(
-			String localWellKnownURI)
+			long companyId, String localWellKnownURI)
 		throws PortalException {
 
-		return oAuthClientASLocalMetadataPersistence.findByLocalWellKnownURI(
-			localWellKnownURI);
+		return oAuthClientASLocalMetadataPersistence.findByC_LWKURI(
+			companyId, localWellKnownURI);
+	}
+
+	@Override
+	public int getOAuthClientASLocalMetadatasCount(long companyId) {
+		return oAuthClientASLocalMetadataPersistence.countByCompanyId(
+			companyId);
 	}
 
 	@Override
@@ -189,36 +269,107 @@ public class OAuthClientASLocalMetadataLocalServiceImpl
 		AuthorizationServerMetadata authorizationServerMetadata =
 			_parseAuthorizationServerMetadata(metadataJSON, wellKnownURISuffix);
 
+		return updateOAuthClientASLocalMetadata(
+			oAuthClientASLocalMetadataId,
+			String.valueOf(
+				authorizationServerMetadata.getAuthorizationEndpointURI()),
+			String.valueOf(authorizationServerMetadata.getIssuer()),
+			String.valueOf(authorizationServerMetadata.getJWKSetURI()), false,
+			String.valueOf(
+				authorizationServerMetadata.getRegistrationEndpointURI()),
+			StringUtil.split(
+				StringUtil.merge(authorizationServerMetadata.getGrantTypes()),
+				StringPool.COMMA),
+			StringUtil.split(
+				StringUtil.merge(authorizationServerMetadata.getScopes()),
+				StringPool.COMMA),
+			StringUtil.split(
+				_getSubjectTypes(authorizationServerMetadata),
+				StringPool.COMMA),
+			String.valueOf(authorizationServerMetadata.getTokenEndpointURI()),
+			_getUserInfoEndpointURI(authorizationServerMetadata));
+	}
+
+	public OAuthClientASLocalMetadata updateOAuthClientASLocalMetadata(
+			long oAuthClientASLocalMetadataId, String authorizationEndpoint,
+			String issuer, String jwksURI, boolean localWellKnownEnabled,
+			String registrationEndpoint, String[] supportedGrantTypes,
+			String[] supportedScopes, String[] supportedSubjectTypes,
+			String tokenEndpoint, String userInfoEndpoint)
+		throws PortalException {
+
 		OAuthClientASLocalMetadata oAuthClientASLocalMetadata =
 			oAuthClientASLocalMetadataLocalService.
 				getOAuthClientASLocalMetadata(oAuthClientASLocalMetadataId);
 
-		AuthorizationServerMetadata currentAuthorizationServerMetadata =
-			_parseAuthorizationServerMetadata(
-				oAuthClientASLocalMetadata.getMetadataJSON(),
-				wellKnownURISuffix);
-
-		oAuthClientASLocalMetadata.setMetadataJSON(metadataJSON);
-
-		String currentIssuer = String.valueOf(
-			currentAuthorizationServerMetadata.getIssuer());
-		String currentLocalWellKnownURI =
+		String localWellKnownURI =
 			oAuthClientASLocalMetadata.getLocalWellKnownURI();
 
-		if (!currentIssuer.equals(
-				String.valueOf(authorizationServerMetadata.getIssuer())) ||
-			!currentLocalWellKnownURI.contains(wellKnownURISuffix)) {
+		if (!issuer.equals(oAuthClientASLocalMetadata.getIssuer()) ||
+			localWellKnownURI.contains("openid-configuration")) {
 
+			_validate(
+				oAuthClientASLocalMetadata,
+				oAuthClientASLocalMetadata.getCompanyId(),
+				authorizationEndpoint, issuer, jwksURI, localWellKnownURI,
+				registrationEndpoint, tokenEndpoint, userInfoEndpoint);
+
+			oAuthClientASLocalMetadata.setIssuer(issuer);
+			oAuthClientASLocalMetadata.setLocalWellKnownEnabled(
+				localWellKnownEnabled);
 			oAuthClientASLocalMetadata.setLocalWellKnownURI(
 				_generateLocalWellKnownURI(
-					String.valueOf(authorizationServerMetadata.getIssuer()),
-					String.valueOf(
-						authorizationServerMetadata.getTokenEndpointURI()),
-					wellKnownURISuffix));
+					issuer, tokenEndpoint, "openid-configuration"));
+			oAuthClientASLocalMetadata.setMetadataJSON(
+				_generateMetadataJSON(
+					authorizationEndpoint, issuer, jwksURI, supportedGrantTypes,
+					supportedScopes, supportedSubjectTypes, tokenEndpoint,
+					userInfoEndpoint));
+			oAuthClientASLocalMetadata.setOAuthASLocalWellKnownURI(
+				_generateLocalWellKnownURI(
+					issuer, null, "oauth-authorization-server"));
+			oAuthClientASLocalMetadata.setOAuthASMetadataJSON(
+				_generateAuthorizationServerMetadataJSON(
+					authorizationEndpoint, issuer, jwksURI,
+					registrationEndpoint, supportedScopes, supportedGrantTypes,
+					tokenEndpoint));
+
+			oAuthClientASLocalMetadata =
+				oAuthClientASLocalMetadataPersistence.update(
+					oAuthClientASLocalMetadata);
 		}
 
-		return oAuthClientASLocalMetadataPersistence.update(
-			oAuthClientASLocalMetadata);
+		return oAuthClientASLocalMetadata;
+	}
+
+	private String _generateAuthorizationServerMetadataJSON(
+			String authorizationEndpoint, String issuer, String jwksURI,
+			String registrationEndpoint, String[] supportedScopes,
+			String[] supportedGrantTypes, String tokenEndpoint)
+		throws PortalException {
+
+		try {
+			AuthorizationServerMetadata authorizationServerMetadata =
+				new AuthorizationServerMetadata(new Issuer(issuer));
+
+			authorizationServerMetadata.setAuthorizationEndpointURI(
+				new URI(authorizationEndpoint));
+			authorizationServerMetadata.setGrantTypes(
+				TransformUtil.transformToList(
+					supportedGrantTypes, GrantType::parse));
+			authorizationServerMetadata.setJWKSetURI(new URI(jwksURI));
+			authorizationServerMetadata.setRegistrationEndpointURI(
+				new URI(registrationEndpoint));
+			authorizationServerMetadata.setScopes(new Scope(supportedScopes));
+			authorizationServerMetadata.setTokenEndpointURI(
+				new URI(tokenEndpoint));
+
+			return String.valueOf(authorizationServerMetadata.toJSONObject());
+		}
+		catch (Exception exception) {
+			throw new OAuthClientASLocalMetadataMetadataJSONException(
+				exception.getMessage(), exception);
+		}
 	}
 
 	private String _generateLocalWellKnownURI(
@@ -226,21 +377,86 @@ public class OAuthClientASLocalMetadataLocalServiceImpl
 		throws PortalException {
 
 		try {
-			MessageDigest messageDigest = MessageDigest.getInstance("MD5");
-
 			URI issuerURI = URI.create(issuer);
+
+			if (wellKnownURISuffix.equals("openid-configuration")) {
+				MessageDigest messageDigest = MessageDigest.getInstance("MD5");
+
+				return StringBundler.concat(
+					issuerURI.getScheme(), "://", issuerURI.getAuthority(),
+					"/.well-known/", wellKnownURISuffix, issuerURI.getPath(),
+					'/',
+					Base64.encodeToURL(
+						messageDigest.digest(tokenEndpoint.getBytes())),
+					"/local");
+			}
 
 			return StringBundler.concat(
 				issuerURI.getScheme(), "://", issuerURI.getAuthority(),
-				"/.well-known/", wellKnownURISuffix, issuerURI.getPath(), '/',
-				Base64.encodeToURL(
-					messageDigest.digest(tokenEndpoint.getBytes())),
-				"/local");
+				"/o/.well-known/", wellKnownURISuffix);
 		}
 		catch (Exception exception) {
 			throw new OAuthClientASLocalMetadataLocalWellKnownURIException(
 				exception);
 		}
+	}
+
+	private String _generateMetadataJSON(
+			String authorizationEndpoint, String issuer, String jwksURI,
+			String[] supportedGrantTypes, String[] supportedScopes,
+			String[] supportedSubjectTypes, String tokenEndpoint,
+			String userInfoEndpoint)
+		throws PortalException {
+
+		try {
+			OIDCProviderMetadata oidcProviderMetadata =
+				new OIDCProviderMetadata(
+					new Issuer(issuer),
+					TransformUtil.transformToList(
+						supportedSubjectTypes, SubjectType::parse),
+					new URI(jwksURI));
+
+			oidcProviderMetadata.setAuthorizationEndpointURI(
+				new URI(authorizationEndpoint));
+			oidcProviderMetadata.setGrantTypes(
+				TransformUtil.transformToList(
+					supportedGrantTypes, GrantType::parse));
+			oidcProviderMetadata.setScopes(new Scope(supportedScopes));
+			oidcProviderMetadata.setTokenEndpointURI(new URI(tokenEndpoint));
+			oidcProviderMetadata.setUserInfoEndpointURI(
+				new URI(userInfoEndpoint));
+
+			return String.valueOf(oidcProviderMetadata.toJSONObject());
+		}
+		catch (Exception exception) {
+			throw new OAuthClientASLocalMetadataMetadataJSONException(
+				exception.getMessage(), exception);
+		}
+	}
+
+	private String _getSubjectTypes(
+		AuthorizationServerMetadata authorizationServerMetadata) {
+
+		if (authorizationServerMetadata instanceof
+				OIDCProviderMetadata oidcProviderMetadata) {
+
+			return StringUtil.merge(oidcProviderMetadata.getSubjectTypes());
+		}
+
+		return StringPool.BLANK;
+	}
+
+	private String _getUserInfoEndpointURI(
+		AuthorizationServerMetadata authorizationServerMetadata) {
+
+		if (authorizationServerMetadata instanceof
+				OIDCProviderMetadata oidcProviderMetadata) {
+
+			return String.valueOf(
+				oidcProviderMetadata.getUserInfoEndpointURI());
+		}
+
+		return StringPool.BLANK;
 	}
 
 	private AuthorizationServerMetadata _parseAuthorizationServerMetadata(
@@ -255,8 +471,70 @@ public class OAuthClientASLocalMetadataLocalServiceImpl
 			return AuthorizationServerMetadata.parse(metadataJSON);
 		}
 		catch (Exception exception) {
-			throw new OAuthClientASLocalMetadataJSONException(
+			throw new OAuthClientASLocalMetadataMetadataJSONException(
 				exception.getMessage(), exception);
+		}
+	}
+
+	private void _validate(
+			OAuthClientASLocalMetadata oldOAuthClientASLocalMetadata,
+			long companyId, String authorizationEndpoint, String issuer,
+			String jwksURI, String localWellKnownURI,
+			String registrationEndpoint, String tokenEndpoint,
+			String userInfoEndpoint)
+		throws PortalException {
+
+		if (FeatureFlagManagerUtil.isEnabled(companyId, "LPD-63415")) {
+			_validateURL(authorizationEndpoint);
+
+			if (Validator.isNull(issuer)) {
+				throw new OAuthClientASLocalMetadataIssuerException();
+			}
+
+			_validateURL(issuer);
+			_validateURL(jwksURI);
+			_validateURL(registrationEndpoint);
+			_validateURL(tokenEndpoint);
+			_validateURL(userInfoEndpoint);
+		}
+
+		if (oldOAuthClientASLocalMetadata == null) {
+			OAuthClientASLocalMetadata oAuthClientASLocalMetadata =
+				oAuthClientASLocalMetadataPersistence.fetchByC_LWKURI(
+					companyId, localWellKnownURI);
+
+			if (oAuthClientASLocalMetadata != null) {
+				throw new DuplicateOAuthClientASLocalMetadataException();
+			}
+		}
+
+		OAuthClientASLocalMetadata oAuthClientASLocalMetadata =
+			oAuthClientASLocalMetadataPersistence.fetchByC_I(companyId, issuer);
+
+		if ((oAuthClientASLocalMetadata != null) &&
+			!Objects.equals(
+				oldOAuthClientASLocalMetadata, oAuthClientASLocalMetadata)) {
+
+			throw new DuplicateOAuthClientASLocalMetadataException();
+		}
+	}
+
+	private void _validateURL(String urlString) throws PortalException {
+		if (Validator.isNull(urlString)) {
+			return;
+		}
+
+		try {
+			URL url = new URL(urlString);
+
+			if (!Http.HTTPS.equalsIgnoreCase(url.getProtocol())) {
+				throw new OAuthClientASLocalMetadataLocalWellKnownURIException(
+					urlString);
+			}
+		}
+		catch (MalformedURLException malformedURLException) {
+			throw new OAuthClientASLocalMetadataLocalWellKnownURIException(
+				urlString, malformedURLException);
 		}
 	}
 

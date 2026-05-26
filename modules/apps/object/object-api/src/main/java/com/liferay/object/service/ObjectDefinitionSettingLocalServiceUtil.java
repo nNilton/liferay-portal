@@ -120,6 +120,14 @@ public class ObjectDefinitionSettingLocalServiceUtil {
 			objectDefinitionSetting);
 	}
 
+	public static void deleteObjectDefinitionSettingByObjectDefinitionId(
+			long objectDefinitionId)
+		throws PortalException {
+
+		getService().deleteObjectDefinitionSettingByObjectDefinitionId(
+			objectDefinitionId);
+	}
+
 	/**
 	 * @throws PortalException
 	 */
@@ -227,6 +235,13 @@ public class ObjectDefinitionSettingLocalServiceUtil {
 
 		return getService().fetchObjectDefinitionSetting(
 			objectDefinitionId, name);
+	}
+
+	public static ObjectDefinitionSetting fetchObjectDefinitionSetting(
+		long companyId, String name, String value) {
+
+		return getService().fetchObjectDefinitionSetting(
+			companyId, name, value);
 	}
 
 	/**
@@ -388,3 +403,4 @@ public class ObjectDefinitionSettingLocalServiceUtil {
 			ObjectDefinitionSettingLocalService.class);
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-597159586

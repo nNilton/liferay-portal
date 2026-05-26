@@ -9,14 +9,18 @@ import {openModal} from 'frontend-js-components-web';
 import {fetch} from 'frontend-js-web';
 
 import CustomAuthorTableCell from './CustomAuthorTableCell';
+import CustomListTitle from './CustomListTitle';
 import SampleInfoPanel from './SampleInfoPanel';
 import dummyUploader from './dummyUploader';
+import {advancedFDSAtom} from './utils/atoms';
 
 import type {
+	IBulkActionItem,
 	ICardSchema,
 	IFileDropSettings,
 	IInternalRenderer,
 	IItemsActions,
+	IListSchema,
 	IView,
 } from '@liferay/frontend-data-set-web';
 
@@ -41,6 +45,7 @@ function applyStyles(itemsActions: Array<IItemsActions>): Array<IItemsActions> {
 
 export default function propsTransformer({
 	additionalProps: {greeting},
+	bulkActions,
 	itemsActions,
 	selectedItemsKey,
 	...otherProps
@@ -48,6 +53,12 @@ export default function propsTransformer({
 	const customAuthorTableCellRenderer: IInternalRenderer = {
 		component: CustomAuthorTableCell,
 		name: 'customAuthorTableCellRenderer',
+		type: 'internal',
+	};
+
+	const customListTitleRenderer: IInternalRenderer = {
+		component: CustomListTitle,
+		name: 'customListTitleRenderer',
 		type: 'internal',
 	};
 
@@ -90,6 +101,8 @@ export default function propsTransformer({
 
 	const listView = views.find((view) => view.name === 'list')!;
 
+	const listSchema = listView.schema as IListSchema;
+
 	listView.setItemComponentProps = ({
 		item,
 		props,
@@ -97,14 +110,25 @@ export default function propsTransformer({
 		item: any;
 		props: any;
 	}) => {
+		const updatedProps = {
+			...props,
+			schema: {
+				...listSchema,
+				titleRendererName: 'customListTitleRenderer',
+			},
+		};
+
 		if (item.title === 'Sample1') {
 			return {
-				...props,
-				className: classNames('sample-css-class', props.className),
+				...updatedProps,
+				className: classNames(
+					'sample-css-class',
+					updatedProps.className
+				),
 			};
 		}
 
-		return props;
+		return updatedProps;
 	};
 
 	const tableView = views.find((view) =>
@@ -128,19 +152,40 @@ export default function propsTransformer({
 		return props;
 	};
 
-	const filtersGroups = [
-		{filters: ['date', 'color'], label: 'Group 1'},
-		{filters: ['invalid', 'size'], label: 'Group 2'},
-		{filters: ['status', 'title'], label: 'Group 3'},
-	];
-
 	return {
 		...otherProps,
+		atom: advancedFDSAtom,
+		bulkActions: bulkActions?.map((action: IBulkActionItem) => {
+			const key = action?.data?.id as string;
+
+			if (!key || key !== 'sampleBulkAction') {
+				return action;
+			}
+
+			return {
+				...action,
+				isVisible: ({
+					allItemsSelectedActive,
+					selectedItems,
+				}: {
+					allItemsSelectedActive: boolean;
+					selectedItems: Array<any>;
+				}) => {
+					if (allItemsSelectedActive) {
+						return true;
+					}
+
+					return selectedItems.every((item: any) => {
+						return item.color === 'Green';
+					});
+				},
+			};
+		}),
 		customRenderers: {
+			listSection: [customListTitleRenderer],
 			tableCell: [customAuthorTableCellRenderer],
 		},
 		fileDropSettings,
-		filtersGroups,
 		infoPanelComponent: SampleInfoPanel,
 		itemsActions: applyStyles(itemsActions),
 		onActionDropdownItemClick({

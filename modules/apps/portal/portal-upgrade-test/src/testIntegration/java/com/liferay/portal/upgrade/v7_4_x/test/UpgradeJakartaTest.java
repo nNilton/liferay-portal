@@ -66,6 +66,7 @@ import com.liferay.portal.kernel.upgrade.util.UpgradeProcessUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.ScopeUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
@@ -193,18 +194,22 @@ public class UpgradeJakartaTest {
 			_upgradeProcess.upgrade();
 
 			try (Connection connection = DataAccess.getConnection();
+
 				PreparedStatement preparedStatement =
 					connection.prepareStatement(
-						StringBundler.concat(
-							"select dictionary from Configuration_ where ",
-							"configurationId = '", _JAKARTA_CLASS_NAME, "'"));
-				ResultSet resultSet = preparedStatement.executeQuery()) {
+						"select dictionary from Configuration_ where " +
+							"configurationId = ?")) {
 
-				Assert.assertTrue(resultSet.next());
+				preparedStatement.setString(1, _JAKARTA_CLASS_NAME);
 
-				Assert.assertEquals(
-					resultSet.getString(1), "key=" + _JAKARTA_CLASS_NAME,
-					resultSet.getString(1));
+				try (ResultSet resultSet = preparedStatement.executeQuery()) {
+					Assert.assertTrue(resultSet.next());
+
+					Assert.assertEquals(
+						resultSet.getString("dictionary"),
+						"key=" + _JAKARTA_CLASS_NAME,
+						resultSet.getString("dictionary"));
+				}
 			}
 		}
 		finally {
@@ -233,17 +238,21 @@ public class UpgradeJakartaTest {
 			_upgradeProcess.upgrade();
 
 			try (Connection connection = DataAccess.getConnection();
+
 				PreparedStatement preparedStatement =
 					connection.prepareStatement(
 						StringBundler.concat(
 							"select largeAttributeValue from ",
 							"DDMFieldAttribute where fieldAttributeId = ",
 							"10000"));
+
 				ResultSet resultSet = preparedStatement.executeQuery()) {
 
 				Assert.assertTrue(resultSet.next());
 
-				Assert.assertEquals(_JAKARTA_IMPORT, resultSet.getString(1));
+				Assert.assertEquals(
+					_JAKARTA_IMPORT,
+					resultSet.getString("largeAttributeValue"));
 			}
 		}
 		finally {
@@ -368,11 +377,9 @@ public class UpgradeJakartaTest {
 
 		Assert.assertNotNull(updatedExportImportConfiguration);
 
-		Assert.assertTrue(
-			updatedExportImportConfiguration.getSettings(
-			).contains(
-				_JAKARTA_CLASS_NAME
-			));
+		String settings = updatedExportImportConfiguration.getSettings();
+
+		Assert.assertTrue(settings.contains(_JAKARTA_CLASS_NAME));
 
 		_exportImportConfigurationLocalService.deleteExportImportConfiguration(
 			exportImportConfiguration.getExportImportConfigurationId());
@@ -409,7 +416,8 @@ public class UpgradeJakartaTest {
 			_fragmentEntryLinkLocalService.addFragmentEntryLink(
 				null, TestPropsValues.getUserId(), _group.getGroupId(), null,
 				fragmentEntry.getExternalReferenceCode(),
-				fragmentEntry.getScopeERC(),
+				ScopeUtil.getItemScopeExternalReferenceCode(
+					fragmentEntry.getGroupId(), _group.getGroupId()),
 				_segmentsExperienceLocalService.
 					fetchDefaultSegmentsExperienceId(_layout.getPlid()),
 				_layout.getPlid(), fragmentEntry.getCss(), _JAVAX_HTML,
@@ -569,11 +577,9 @@ public class UpgradeJakartaTest {
 
 		Assert.assertNotNull(updatedKaleoDefinition);
 
-		Assert.assertTrue(
-			updatedKaleoDefinition.getContentAsXML(
-			).contains(
-				_JAKARTA_IMPORT
-			));
+		String content = updatedKaleoDefinition.getContentAsXML();
+
+		Assert.assertTrue(content.contains(_JAKARTA_IMPORT));
 
 		_kaleoDefinitionLocalService.deleteKaleoDefinition(kaleoDefinition);
 		_kaleoInstanceLocalService.deleteKaleoInstance(kaleoInstance);
@@ -599,11 +605,9 @@ public class UpgradeJakartaTest {
 
 		Assert.assertNotNull(updatedKaleoDefinition);
 
-		Assert.assertTrue(
-			updatedKaleoDefinition.getContentAsXML(
-			).contains(
-				_JAKARTA_IMPORT
-			));
+		String content = updatedKaleoDefinition.getContentAsXML();
+
+		Assert.assertTrue(content.contains(_JAKARTA_IMPORT));
 
 		List<KaleoDefinitionVersion> kaleoDefinitionVersions =
 			kaleoDefinition.getKaleoDefinitionVersions();
@@ -612,13 +616,12 @@ public class UpgradeJakartaTest {
 			kaleoDefinitionVersions.toString(), 1,
 			kaleoDefinitionVersions.size());
 
-		Assert.assertTrue(
-			kaleoDefinitionVersions.get(
-				0
-			).getContentAsXML(
-			).contains(
-				_JAKARTA_IMPORT
-			));
+		KaleoDefinitionVersion kaleoDefinitionVersion =
+			kaleoDefinitionVersions.get(0);
+
+		content = kaleoDefinitionVersion.getContentAsXML();
+
+		Assert.assertTrue(content.contains(_JAKARTA_IMPORT));
 
 		_kaleoDefinitionLocalService.deleteKaleoDefinition(kaleoDefinition);
 		_kaleoInstanceLocalService.deleteKaleoInstance(kaleoInstance);
@@ -702,14 +705,17 @@ public class UpgradeJakartaTest {
 
 		KaleoDefinition kaleoDefinition = _addKaleoDefinition();
 
+		List<KaleoDefinitionVersion> kaleoDefinitionVersions =
+			kaleoDefinition.getKaleoDefinitionVersions();
+
+		KaleoDefinitionVersion kaleoDefinitionVersion =
+			kaleoDefinitionVersions.get(0);
+
 		KaleoNotification kaleoNotification =
 			_kaleoNotificationLocalService.addKaleoNotification(
 				KaleoNode.class.getName(), kaleoInstance.getClassPK(),
 				kaleoDefinition.getKaleoDefinitionId(),
-				kaleoDefinition.getKaleoDefinitionVersions(
-				).get(
-					0
-				).getKaleoDefinitionVersionId(),
+				kaleoDefinitionVersion.getKaleoDefinitionVersionId(),
 				kaleoNode.getName(),
 				new Notification(
 					StringUtil.randomString(), StringUtil.randomString(),

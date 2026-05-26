@@ -43,6 +43,7 @@ import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.comment.CommentManager;
 import com.liferay.portal.kernel.dao.orm.QueryDefinition;
+import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
@@ -77,7 +78,6 @@ import com.liferay.portal.kernel.settings.GroupServiceSettingsLocator;
 import com.liferay.portal.kernel.settings.LocalizedValuesMap;
 import com.liferay.portal.kernel.social.SocialActivityManagerUtil;
 import com.liferay.portal.kernel.systemevent.SystemEvent;
-import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.Constants;
 import com.liferay.portal.kernel.util.ContentTypes;
@@ -101,7 +101,6 @@ import com.liferay.portal.kernel.util.SubscriptionSender;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.kernel.workflow.WorkflowHandlerRegistryUtil;
 import com.liferay.portal.linkback.LinkbackProducerUtil;
@@ -819,16 +818,18 @@ public class BlogsEntryLocalServiceImpl extends BlogsEntryLocalServiceBaseImpl {
 
 		BlogsEntry entry = blogsEntryPersistence.findByPrimaryKey(entryId);
 
-		BlogsEntry[] entries = blogsEntryPersistence.findByG_D_S_PrevAndNext(
-			entryId, entry.getGroupId(), entry.getDisplayDate(),
-			WorkflowConstants.STATUS_APPROVED,
-			EntryIdComparator.getInstance(true));
+		BlogsEntry[] entries = ListUtil.getPreviousAndNext(
+			blogsEntryPersistence.findByG_D_S(
+				entry.getGroupId(), entry.getDisplayDate(),
+				WorkflowConstants.STATUS_APPROVED, QueryUtil.ALL_POS,
+				QueryUtil.ALL_POS, EntryIdComparator.getInstance(true)),
+			entry::equals, BlogsEntry[]::new);
 
 		if (entries[0] == null) {
-			entries[0] = blogsEntryPersistence.fetchByG_LtD_S_Last(
+			entries[0] = blogsEntryPersistence.fetchByG_LtD_S_First(
 				entry.getGroupId(), entry.getDisplayDate(),
 				WorkflowConstants.STATUS_APPROVED,
-				EntryDisplayDateComparator.getInstance(true));
+				EntryDisplayDateComparator.getInstance(false));
 		}
 
 		if (entries[2] == null) {
@@ -1818,21 +1819,15 @@ public class BlogsEntryLocalServiceImpl extends BlogsEntryLocalServiceBaseImpl {
 		return StringPool.BLANK;
 	}
 
-	private String _getLayoutFullURL(
-			ThemeDisplay themeDisplay, ServiceContext serviceContext)
-		throws PortalException {
+	private String _getLayoutFullURL(ServiceContext serviceContext) {
+		String layoutFullURL = GetterUtil.getString(
+			serviceContext.getAttribute("layoutFullURL"));
 
-		if (themeDisplay == null) {
-			return serviceContext.getLayoutFullURL();
+		if (Validator.isNotNull(layoutFullURL)) {
+			return layoutFullURL;
 		}
 
-		if (themeDisplay.getRefererPlid() == 0) {
-			return _portal.getLayoutFullURL(themeDisplay);
-		}
-
-		return _portal.getLayoutFullURL(
-			_layoutLocalService.getLayout(themeDisplay.getRefererPlid()),
-			themeDisplay);
+		return serviceContext.getLayoutFullURL();
 	}
 
 	private String _getUniqueFileName(
@@ -2201,11 +2196,7 @@ public class BlogsEntryLocalServiceImpl extends BlogsEntryLocalServiceBaseImpl {
 			return;
 		}
 
-		ThemeDisplay themeDisplay =
-			(ThemeDisplay)httpServletRequest.getAttribute(
-				WebKeys.THEME_DISPLAY);
-
-		String layoutFullURL = _getLayoutFullURL(themeDisplay, serviceContext);
+		String layoutFullURL = _getLayoutFullURL(serviceContext);
 
 		if (Validator.isNull(layoutFullURL)) {
 			return;
@@ -2251,11 +2242,7 @@ public class BlogsEntryLocalServiceImpl extends BlogsEntryLocalServiceBaseImpl {
 			return;
 		}
 
-		ThemeDisplay themeDisplay =
-			(ThemeDisplay)httpServletRequest.getAttribute(
-				WebKeys.THEME_DISPLAY);
-
-		String layoutFullURL = _getLayoutFullURL(themeDisplay, serviceContext);
+		String layoutFullURL = _getLayoutFullURL(serviceContext);
 
 		if (Validator.isNull(layoutFullURL)) {
 			return;

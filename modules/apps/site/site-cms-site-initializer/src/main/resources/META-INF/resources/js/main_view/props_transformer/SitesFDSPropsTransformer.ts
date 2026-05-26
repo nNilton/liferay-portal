@@ -7,11 +7,6 @@ import {IInternalRenderer} from '@liferay/frontend-data-set-web';
 
 import manageConnectedSitesAction from './actions/manageConnectedSitesAction';
 import SiteRenderer from './cell_renderers/SiteRenderer';
-import addOnClickToCreationMenuItems from './utils/addOnClickToCreationMenuItems';
-
-const ACTIONS = {
-	connectSites: manageConnectedSitesAction,
-};
 
 export default function SitesFDSPropsTransformer({
 	creationMenu,
@@ -26,9 +21,24 @@ export default function SitesFDSPropsTransformer({
 		...otherProps,
 		creationMenu: {
 			...creationMenu,
-			primaryItems: addOnClickToCreationMenuItems(
-				creationMenu.primaryItems,
-				ACTIONS
+			primaryItems: creationMenu.primaryItems.map(
+				(item: {data: {action: string}}) => {
+					return {
+						...item,
+						onClick() {
+							const action = item.data.action;
+
+							const loadData = () => window.location.reload();
+
+							if (action === 'connectSites') {
+								manageConnectedSitesAction(
+									item.data as any,
+									loadData
+								);
+							}
+						},
+					};
+				}
 			),
 		},
 		customRenderers: {
@@ -40,6 +50,7 @@ export default function SitesFDSPropsTransformer({
 				} as IInternalRenderer,
 			],
 		},
+		hideManagementBarInEmptyState: true,
 		itemsActions: itemsActions.map((action) => {
 			if (action?.data?.id === 'make-searchable') {
 				return {

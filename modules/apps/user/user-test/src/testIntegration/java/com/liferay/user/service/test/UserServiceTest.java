@@ -27,6 +27,8 @@ import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.OrganizationLocalService;
+import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
+import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.UserService;
 import com.liferay.portal.kernel.service.WorkflowDefinitionLinkLocalService;
@@ -118,11 +120,53 @@ public class UserServiceTest {
 	}
 
 	@Test
-	public void testAddUserWithInvalidName() {
-		int firstNameMaxLength = ModelHintsUtil.getMaxLength(
-			User.class.getName(), "firstName");
+	public void testAddOrganizationUsers() throws Exception {
+		Role role = RoleTestUtil.addRole(RoleConstants.TYPE_REGULAR);
 
+		User user1 = UserTestUtil.addUser();
+
+		_userLocalService.addRoleUser(role.getRoleId(), user1.getUserId());
+
+		_resourcePermissionLocalService.setResourcePermissions(
+			TestPropsValues.getCompanyId(), Organization.class.getName(),
+			ResourceConstants.SCOPE_COMPANY,
+			String.valueOf(TestPropsValues.getCompanyId()), role.getRoleId(),
+			new String[] {
+				ActionKeys.ASSIGN_MEMBERS, ActionKeys.MANAGE_USERS,
+				ActionKeys.VIEW_MEMBERS
+			});
+
+		RoleTestUtil.addResourcePermission(
+			role, User.class.getName(), ResourceConstants.SCOPE_COMPANY,
+			String.valueOf(TestPropsValues.getCompanyId()), ActionKeys.VIEW);
+
+		Organization organization = _organizationLocalService.addOrganization(
+			TestPropsValues.getUserId(),
+			OrganizationConstants.DEFAULT_PARENT_ORGANIZATION_ID,
+			RandomTestUtil.randomString(), false);
+
+		User user2 = UserTestUtil.addUser();
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user1, PermissionCheckerFactoryUtil.create(user1))) {
+
+			_userService.addOrganizationUsers(
+				organization.getOrganizationId(),
+				new long[] {user2.getUserId()});
+
+			long[] userIds = _userService.getOrganizationUserIds(
+				organization.getOrganizationId());
+
+			Assert.assertEquals(user2.getUserId(), userIds[0]);
+		}
+	}
+
+	@Test
+	public void testAddUserWithInvalidName() {
 		try {
+			ServiceContext serviceContext =
+				ServiceContextTestUtil.getServiceContext();
+
 			UserTestUtil.addUser(
 				TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
 				RandomTestUtil.randomString(
@@ -130,15 +174,14 @@ public class UserServiceTest {
 					UniqueStringRandomizerBumper.INSTANCE),
 				LocaleUtil.getDefault(), RandomTestUtil.randomString(76),
 				RandomTestUtil.randomString(),
-				new long[] {
-					ServiceContextTestUtil.getServiceContext(
-					).getScopeGroupId()
-				},
+				new long[] {serviceContext.getScopeGroupId()},
 				ServiceContextTestUtil.getServiceContext());
 
 			Assert.fail();
 		}
 		catch (Exception exception) {
+			int firstNameMaxLength = ModelHintsUtil.getMaxLength(
+				User.class.getName(), "firstName");
 			String message = exception.getMessage();
 
 			Assert.assertTrue(
@@ -159,14 +202,14 @@ public class UserServiceTest {
 			UniqueStringRandomizerBumper.INSTANCE);
 
 		try {
+			ServiceContext serviceContext =
+				ServiceContextTestUtil.getServiceContext();
+
 			UserTestUtil.addUser(
 				TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
 				screenName, LocaleUtil.getDefault(),
 				RandomTestUtil.randomString(), RandomTestUtil.randomString(),
-				new long[] {
-					ServiceContextTestUtil.getServiceContext(
-					).getScopeGroupId()
-				},
+				new long[] {serviceContext.getScopeGroupId()},
 				ServiceContextTestUtil.getServiceContext());
 
 			Assert.fail();
@@ -331,6 +374,9 @@ public class UserServiceTest {
 
 	@Inject
 	private OrganizationLocalService _organizationLocalService;
+
+	@Inject
+	private ResourcePermissionLocalService _resourcePermissionLocalService;
 
 	@Inject
 	private UserLocalService _userLocalService;

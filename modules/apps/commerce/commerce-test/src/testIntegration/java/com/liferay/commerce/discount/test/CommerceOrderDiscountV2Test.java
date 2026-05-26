@@ -33,6 +33,7 @@ import com.liferay.commerce.product.model.CPInstance;
 import com.liferay.commerce.product.model.CPInstanceUnitOfMeasure;
 import com.liferay.commerce.product.model.CommerceCatalog;
 import com.liferay.commerce.product.model.CommerceChannel;
+import com.liferay.commerce.product.service.CPDefinitionLocalService;
 import com.liferay.commerce.product.service.CPInstanceUnitOfMeasureLocalService;
 import com.liferay.commerce.product.service.CommerceCatalogLocalService;
 import com.liferay.commerce.product.test.util.CPTestUtil;
@@ -630,6 +631,12 @@ public class CommerceOrderDiscountV2Test {
 
 		CPDefinition cpDefinition = cpInstance.getCPDefinition();
 
+		cpDefinition.setCPTaxCategoryId(
+			CommerceTaxTestUtil.addTaxCategoryId(_user.getGroupId()));
+
+		cpDefinition = _cpDefinitionLocalService.updateCPDefinition(
+			cpDefinition);
+
 		CommercePriceEntry commercePriceEntry =
 			CommercePriceEntryTestUtil.addCommercePriceEntry(
 				StringPool.BLANK, cpDefinition.getCProductId(),
@@ -672,12 +679,18 @@ public class CommerceOrderDiscountV2Test {
 			_commerceOrderPriceCalculation.getCommerceOrderPrice(
 				commerceOrder, commerceContext);
 
-		BigDecimal expectedSubtotalValue = commerceOrderPrice.getSubtotal(
-		).getPrice();
+		CommerceMoney subtotalCommerceMoney = commerceOrderPrice.getSubtotal();
+
+		BigDecimal expectedSubtotalValue = subtotalCommerceMoney.getPrice();
+
+		CommerceDiscountValue subtotalDiscountValue =
+			commerceOrderPrice.getSubtotalDiscountValue();
+
+		CommerceMoney subtotalDiscountAmountCommerceMoney =
+			subtotalDiscountValue.getDiscountAmount();
+
 		BigDecimal subtotalDiscountAmount =
-			commerceOrderPrice.getSubtotalDiscountValue(
-			).getDiscountAmount(
-			).getPrice();
+			subtotalDiscountAmountCommerceMoney.getPrice();
 
 		expectedSubtotalValue = expectedSubtotalValue.subtract(
 			subtotalDiscountAmount);
@@ -702,35 +715,31 @@ public class CommerceOrderDiscountV2Test {
 			_commerceDiscountCalculation.getOrderTotalCommerceDiscountValue(
 				commerceOrder, expectedTotalValue, commerceContext);
 
-		CommerceMoney discountAmountCommerceMoney =
-			totalCommerceDiscountValue.getDiscountAmount();
+		if (totalCommerceDiscountValue != null) {
+			CommerceMoney discountAmountCommerceMoney =
+				totalCommerceDiscountValue.getDiscountAmount();
 
-		expectedTotalValue = expectedTotalValue.subtract(
-			discountAmountCommerceMoney.getPrice()
-		).round(
-			new MathContext(
-				_commerceCurrency.getMaxFractionDigits(),
-				RoundingMode.HALF_EVEN)
-		);
+			expectedTotalValue = expectedTotalValue.subtract(
+				discountAmountCommerceMoney.getPrice());
+		}
 
 		CommerceMoney totalCommerceMoney =
 			_commerceOrderPriceCalculation.getTotal(
 				commerceOrder, commerceContext);
 
-		BigDecimal totalPrice = totalCommerceMoney.getPrice(
-		).round(
-			new MathContext(
-				_commerceCurrency.getMaxFractionDigits(),
-				RoundingMode.HALF_EVEN)
-		);
+		BigDecimal totalPrice = totalCommerceMoney.getPrice();
 
-		Assert.assertEquals(expectedTotalValue, totalPrice);
+		Assert.assertEquals(
+			expectedTotalValue.setScale(
+				_commerceCurrency.getMaxFractionDigits(),
+				RoundingMode.HALF_EVEN),
+			totalPrice.setScale(
+				_commerceCurrency.getMaxFractionDigits(),
+				RoundingMode.HALF_EVEN));
 	}
 
 	@Rule
 	public FrutillaRule frutillaRule = new FrutillaRule();
-
-	private static User _user;
 
 	@DeleteAfterTestRun
 	private AccountEntry _accountEntry;
@@ -758,9 +767,13 @@ public class CommerceOrderDiscountV2Test {
 	private CommercePriceListLocalService _commercePriceListLocalService;
 
 	@Inject
+	private CPDefinitionLocalService _cpDefinitionLocalService;
+
+	@Inject
 	private CPInstanceUnitOfMeasureLocalService
 		_cpInstanceUnitOfMeasureLocalService;
 
 	private Group _group;
+	private User _user;
 
 }

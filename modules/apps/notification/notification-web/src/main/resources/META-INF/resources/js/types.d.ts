@@ -79,7 +79,7 @@ interface ObjectDefinition {
 	active: boolean;
 	dateCreated: string;
 	dateModified: string;
-	defaultLanguageId: Locale;
+	defaultLanguageId: Liferay.Language.Locale;
 	externalReferenceCode: string;
 	id: number;
 	label: LocalizedValue<string>;
@@ -120,5 +120,5 @@ type ObjectFieldSettingName =
 	| 'maximumFileSize'
 	| 'maxLength'
 	| 'showCounter'
-	| 'showFilesInDocumentsAndMedia'
+	| 'showFilesInLibrary'
 	| 'storageDLFolderPath';

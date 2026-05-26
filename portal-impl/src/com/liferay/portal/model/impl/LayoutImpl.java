@@ -5,7 +5,8 @@
 
 package com.liferay.portal.model.impl;
 
-import com.liferay.document.library.kernel.service.DLAppServiceUtil;
+import com.liferay.document.library.kernel.service.DLAppLocalServiceUtil;
+import com.liferay.exportimport.kernel.staging.MergeLayoutPrototypesThreadLocal;
 import com.liferay.layout.page.template.kernel.provider.util.LayoutPageTemplateEntryLayoutProviderUtil;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.CharPool;
@@ -27,6 +28,7 @@ import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutConstants;
 import com.liferay.portal.kernel.model.LayoutFriendlyURL;
+import com.liferay.portal.kernel.model.LayoutPrototype;
 import com.liferay.portal.kernel.model.LayoutSet;
 import com.liferay.portal.kernel.model.LayoutSetPrototype;
 import com.liferay.portal.kernel.model.LayoutType;
@@ -68,6 +70,7 @@ import com.liferay.portal.kernel.util.PortletKeys;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.PropsValues;
+import com.liferay.portal.kernel.util.ScopeUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.kernel.util.UnicodeProperties;
@@ -553,21 +556,6 @@ public class LayoutImpl extends LayoutBaseImpl {
 		return portlets;
 	}
 
-	public long getFaviconFileEntryGroupId() {
-		if (Validator.isNull(getFaviconFileEntryScopeERC())) {
-			return getGroupId();
-		}
-
-		Group group = GroupLocalServiceUtil.fetchGroupByExternalReferenceCode(
-			getFaviconFileEntryScopeERC(), getCompanyId());
-
-		if (group == null) {
-			return 0;
-		}
-
-		return group.getGroupId();
-	}
-
 	@Override
 	public String getFaviconURL() {
 		if (_faviconURL != null) {
@@ -772,6 +760,21 @@ public class LayoutImpl extends LayoutBaseImpl {
 		}
 
 		return false;
+	}
+
+	@Override
+	public String getLayoutPrototypeUuid() {
+		LayoutPrototype layoutPrototype =
+			LayoutPageTemplateEntryLayoutProviderUtil.
+				getLayoutPageTemplateEntryLayoutPrototype(
+					getCompanyId(), getPortletLayoutPageTemplateEntryERC(),
+					getPortletLayoutPageTemplateEntryScopeERC(), getGroupId());
+
+		if (layoutPrototype == null) {
+			return null;
+		}
+
+		return layoutPrototype.getUuid();
 	}
 
 	/**
@@ -1245,7 +1248,9 @@ public class LayoutImpl extends LayoutBaseImpl {
 	@Override
 	public boolean isLayoutDeleteable() {
 		try {
-			if (Validator.isNull(getLayoutSetPrototypeLayoutERC())) {
+			if (MergeLayoutPrototypesThreadLocal.isInProgress() ||
+				Validator.isNull(getLayoutSetPrototypeLayoutERC())) {
+
 				return true;
 			}
 
@@ -1280,13 +1285,7 @@ public class LayoutImpl extends LayoutBaseImpl {
 	 */
 	@Override
 	public boolean isLayoutPrototypeLinkActive() {
-		if (isLayoutPrototypeLinkEnabled() &&
-			Validator.isNotNull(getLayoutPrototypeUuid())) {
-
-			return true;
-		}
-
-		return false;
+		return isPortletLayoutPageTemplateEntryLinkActive();
 	}
 
 	@Override
@@ -1297,7 +1296,7 @@ public class LayoutImpl extends LayoutBaseImpl {
 	@Override
 	public boolean isLayoutUpdateable() {
 		try {
-			if (Validator.isNull(getLayoutPrototypeUuid()) &&
+			if (Validator.isNull(getPortletLayoutPageTemplateEntryERC()) &&
 				Validator.isNull(getLayoutSetPrototypeLayoutERC())) {
 
 				return true;
@@ -1387,6 +1386,17 @@ public class LayoutImpl extends LayoutBaseImpl {
 		}
 
 		return true;
+	}
+
+	@Override
+	public boolean isPortletLayoutPageTemplateEntryLinkActive() {
+		if (isPortletLayoutPageTemplateEntryLinkEnabled() &&
+			Validator.isNotNull(getPortletLayoutPageTemplateEntryERC())) {
+
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -1641,7 +1651,7 @@ public class LayoutImpl extends LayoutBaseImpl {
 	private static String _getFriendlyURLKeyword(String friendlyURL) {
 		friendlyURL = StringUtil.toLowerCase(friendlyURL);
 
-		for (String keyword : _friendlyURLKeywords) {
+		for (String keyword : _FRIENDLY_URL_KEYWORDS) {
 			if (friendlyURL.startsWith(keyword)) {
 				return keyword;
 			}
@@ -1652,30 +1662,6 @@ public class LayoutImpl extends LayoutBaseImpl {
 		}
 
 		return null;
-	}
-
-	private static void _initFriendlyURLKeywords() {
-		_friendlyURLKeywords =
-			new String[PropsValues.LAYOUT_FRIENDLY_URL_KEYWORDS.length];
-
-		for (int i = 0; i < PropsValues.LAYOUT_FRIENDLY_URL_KEYWORDS.length;
-			 i++) {
-
-			String keyword = PropsValues.LAYOUT_FRIENDLY_URL_KEYWORDS[i];
-
-			keyword = StringPool.SLASH + keyword;
-
-			if (!keyword.contains(StringPool.PERIOD)) {
-				if (keyword.endsWith(StringPool.STAR)) {
-					keyword = keyword.substring(0, keyword.length() - 1);
-				}
-				else {
-					keyword = keyword + StringPool.SLASH;
-				}
-			}
-
-			_friendlyURLKeywords[i] = StringUtil.toLowerCase(keyword);
-		}
 	}
 
 	private ColorScheme _getColorScheme() throws PortalException {
@@ -1707,9 +1693,29 @@ public class LayoutImpl extends LayoutBaseImpl {
 		}
 
 		try {
+			Long groupId = ScopeUtil.getItemGroupId(
+				getCompanyId(), getFaviconFileEntryScopeERC(), getGroupId());
+
+			if (groupId == null) {
+				if (_log.isDebugEnabled()) {
+					_log.debug(
+						StringBundler.concat(
+							"Unable to resolve group ID for favicon file ",
+							"entry in layout with PLID ", getPlid(),
+							" using favicon file entry scope external ",
+							"reference code ", getFaviconFileEntryScopeERC()));
+				}
+
+				return null;
+			}
+
 			FileEntry fileEntry =
-				DLAppServiceUtil.getFileEntryByExternalReferenceCode(
-					getFaviconFileEntryERC(), getFaviconFileEntryGroupId());
+				DLAppLocalServiceUtil.fetchFileEntryByExternalReferenceCode(
+					groupId, getFaviconFileEntryERC());
+
+			if (fileEntry == null) {
+				return null;
+			}
 
 			return HtmlUtil.escape(
 				StringBundler.concat(
@@ -1929,12 +1935,32 @@ public class LayoutImpl extends LayoutBaseImpl {
 		return url;
 	}
 
+	private static final String[] _FRIENDLY_URL_KEYWORDS;
+
 	private static final Log _log = LogFactoryUtil.getLog(LayoutImpl.class);
 
-	private static String[] _friendlyURLKeywords;
-
 	static {
-		_initFriendlyURLKeywords();
+		_FRIENDLY_URL_KEYWORDS =
+			new String[PropsValues.LAYOUT_FRIENDLY_URL_KEYWORDS.length];
+
+		for (int i = 0; i < PropsValues.LAYOUT_FRIENDLY_URL_KEYWORDS.length;
+			 i++) {
+
+			String keyword = PropsValues.LAYOUT_FRIENDLY_URL_KEYWORDS[i];
+
+			keyword = StringPool.SLASH + keyword;
+
+			if (!keyword.contains(StringPool.PERIOD)) {
+				if (keyword.endsWith(StringPool.STAR)) {
+					keyword = keyword.substring(0, keyword.length() - 1);
+				}
+				else {
+					keyword = keyword + StringPool.SLASH;
+				}
+			}
+
+			_FRIENDLY_URL_KEYWORDS[i] = StringUtil.toLowerCase(keyword);
+		}
 	}
 
 	private ColorScheme _colorScheme;

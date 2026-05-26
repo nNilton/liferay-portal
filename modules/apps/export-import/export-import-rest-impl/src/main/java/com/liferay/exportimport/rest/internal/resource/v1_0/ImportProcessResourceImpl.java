@@ -19,7 +19,6 @@ import com.liferay.portal.kernel.dao.orm.OrderFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.exception.NoSuchBackgroundTaskException;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.search.Sort;
@@ -30,8 +29,6 @@ import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.staging.StagingGroupHelper;
-
-import jakarta.ws.rs.NotFoundException;
 
 import java.util.List;
 
@@ -54,12 +51,6 @@ public class ImportProcessResourceImpl extends BaseImportProcessResourceImpl {
 			Pagination pagination, Sort[] sorts)
 		throws Exception {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-35914")) {
-
-			throw new NotFoundException();
-		}
-
 		return Page.of(
 			transform(
 				_getBackgroundTasks(
@@ -75,16 +66,10 @@ public class ImportProcessResourceImpl extends BaseImportProcessResourceImpl {
 	public ImportProcess getImportProcess(Long importProcessId)
 		throws Exception {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-35914")) {
-
-			throw new NotFoundException();
-		}
-
 		BackgroundTask backgroundTask =
 			_backgroundTaskLocalService.getBackgroundTask(importProcessId);
 
-		PermissionUtil.checkPermission(
+		PermissionUtil.checkImportPermission(
 			contextCompany.getCompanyId(), backgroundTask.getGroupId());
 
 		if (!StringUtil.equals(
@@ -104,12 +89,6 @@ public class ImportProcessResourceImpl extends BaseImportProcessResourceImpl {
 			Pagination pagination, Sort[] sorts)
 		throws Exception {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-35914")) {
-
-			throw new NotFoundException();
-		}
-
 		long groupId = _getCompanyGroupId();
 
 		return Page.of(
@@ -128,12 +107,6 @@ public class ImportProcessResourceImpl extends BaseImportProcessResourceImpl {
 			Pagination pagination, Sort[] sorts)
 		throws Exception {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-35914")) {
-
-			throw new NotFoundException();
-		}
-
 		return Page.of(
 			transform(
 				_getBackgroundTasks(
@@ -149,7 +122,8 @@ public class ImportProcessResourceImpl extends BaseImportProcessResourceImpl {
 			Sort[] sorts, Integer status)
 		throws Exception {
 
-		PermissionUtil.checkPermission(contextCompany.getCompanyId(), groupId);
+		PermissionUtil.checkImportPermission(
+			contextCompany.getCompanyId(), groupId);
 
 		DynamicQuery dynamicQuery = _getDynamicQuery(
 			creatorId, groupId, search, status);
@@ -227,9 +201,6 @@ public class ImportProcessResourceImpl extends BaseImportProcessResourceImpl {
 			else if (fieldName.equals("dateModified")) {
 				fieldName = "modifiedDate";
 			}
-			else if (fieldName.equals("title")) {
-				fieldName = "name";
-			}
 
 			if (sort.isReverse()) {
 				dynamicQuery.addOrder(OrderFactoryUtil.desc(fieldName));
@@ -253,8 +224,8 @@ public class ImportProcessResourceImpl extends BaseImportProcessResourceImpl {
 				setDateCreated(backgroundTask::getCreateDate);
 				setDateModified(backgroundTask::getModifiedDate);
 				setId(backgroundTask::getBackgroundTaskId);
+				setName(backgroundTask::getName);
 				setStatus(() -> _toStatus(backgroundTask.getStatus()));
-				setTitle(backgroundTask::getName);
 			}
 		};
 	}

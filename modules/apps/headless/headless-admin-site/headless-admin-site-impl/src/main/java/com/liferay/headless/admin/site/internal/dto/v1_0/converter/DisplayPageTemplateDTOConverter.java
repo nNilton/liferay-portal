@@ -11,13 +11,10 @@ import com.liferay.headless.admin.site.dto.v1_0.DisplayPageTemplateFolder;
 import com.liferay.headless.admin.site.dto.v1_0.DisplayPageTemplateOpenGraphSettings;
 import com.liferay.headless.admin.site.dto.v1_0.DisplayPageTemplateSEOSettings;
 import com.liferay.headless.admin.site.dto.v1_0.DisplayPageTemplateSettings;
-import com.liferay.headless.admin.site.dto.v1_0.ItemExternalReference;
 import com.liferay.headless.admin.site.dto.v1_0.SitemapSettings;
-import com.liferay.headless.admin.site.internal.dto.v1_0.util.ThumbnailUtil;
+import com.liferay.headless.admin.site.dto.v1_0.util.ThumbnailURLReferenceUtil;
+import com.liferay.headless.admin.site.internal.dto.v1_0.util.SubtypeUtil;
 import com.liferay.headless.admin.user.dto.v1_0.Creator;
-import com.liferay.info.item.InfoItemFormVariation;
-import com.liferay.info.item.InfoItemServiceRegistry;
-import com.liferay.info.item.provider.InfoItemFormVariationsProvider;
 import com.liferay.layout.admin.kernel.model.LayoutTypePortletConstants;
 import com.liferay.layout.page.template.model.LayoutPageTemplateCollection;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
@@ -31,6 +28,7 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterContext;
+import com.liferay.portal.vulcan.fields.NestedFieldsSupplier;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 
 import java.util.Locale;
@@ -71,8 +69,14 @@ public class DisplayPageTemplateDTOConverter
 						{
 							setClassName(layoutPageTemplateEntry::getClassName);
 							setSubTypeExternalReference(
-								() -> _getSubtypeItemExternalReference(
-									layoutPageTemplateEntry));
+								() ->
+									SubtypeUtil.getSubtypeItemExternalReference(
+										layoutPageTemplateEntry.getClassName(),
+										layoutPageTemplateEntry.
+											getClassTypeId(),
+										layoutPageTemplateEntry.
+											getClassTypeKey(),
+										layoutPageTemplateEntry.getGroupId()));
 						}
 					});
 				setCreator(
@@ -127,12 +131,16 @@ public class DisplayPageTemplateDTOConverter
 						}
 
 						return _displayPageTemplateFolderDTOConverter.toDTO(
-							layoutPageTemplateCollection);
+							dtoConverterContext, layoutPageTemplateCollection);
 					});
-				setThumbnail(
-					() ->
-						ThumbnailUtil.getPortletFileEntryItemExternalReference(
-							layoutPageTemplateEntry.getPreviewFileEntryId()));
+				setThumbnailURLReference(
+					() -> NestedFieldsSupplier.supply(
+						"thumbnailURLReference",
+						fieldName ->
+							ThumbnailURLReferenceUtil.
+								getFileEntryThumbnailURLReference(
+									layoutPageTemplateEntry.
+										getPreviewFileEntryId())));
 				setUuid(layoutPageTemplateEntry::getUuid);
 			}
 		};
@@ -221,44 +229,12 @@ public class DisplayPageTemplateDTOConverter
 		};
 	}
 
-	private ItemExternalReference _getSubtypeItemExternalReference(
-		LayoutPageTemplateEntry layoutPageTemplateEntry) {
-
-		InfoItemFormVariationsProvider<?> infoItemFormVariationsProvider =
-			_infoItemServiceRegistry.getFirstInfoItemService(
-				InfoItemFormVariationsProvider.class,
-				layoutPageTemplateEntry.getClassName());
-
-		if (infoItemFormVariationsProvider == null) {
-			return null;
-		}
-
-		InfoItemFormVariation infoItemFormVariation =
-			infoItemFormVariationsProvider.getInfoItemFormVariation(
-				layoutPageTemplateEntry.getGroupId(),
-				String.valueOf(layoutPageTemplateEntry.getClassTypeId()));
-
-		if (infoItemFormVariation == null) {
-			return null;
-		}
-
-		return new ItemExternalReference() {
-			{
-				setExternalReferenceCode(
-					infoItemFormVariation::getExternalReferenceCode);
-			}
-		};
-	}
-
 	@Reference(
 		target = "(component.name=com.liferay.headless.admin.site.internal.dto.v1_0.converter.DisplayPageTemplateFolderDTOConverter)"
 	)
 	private DTOConverter
 		<LayoutPageTemplateCollection, DisplayPageTemplateFolder>
 			_displayPageTemplateFolderDTOConverter;
-
-	@Reference
-	private InfoItemServiceRegistry _infoItemServiceRegistry;
 
 	@Reference
 	private LayoutLocalService _layoutLocalService;

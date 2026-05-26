@@ -56,6 +56,7 @@ import com.liferay.portal.kernel.util.DateUtil;
 import com.liferay.portal.kernel.util.FastDateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Time;
@@ -171,7 +172,8 @@ public abstract class BaseKeywordResourceTestCase {
 			_testCompanyAdminUser.getEmailAddress(),
 			PropsValues.DEFAULT_ADMIN_PASSWORD
 		).endpoint(
-			testCompany.getVirtualHostname(), 8080, "http"
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
 		).locale(
 			LocaleUtil.getDefault()
 		).build();
@@ -181,7 +183,8 @@ public abstract class BaseKeywordResourceTestCase {
 			_testCompanyAdminUser.getEmailAddress(),
 			PropsValues.DEFAULT_ADMIN_PASSWORD
 		).endpoint(
-			testCompany.getVirtualHostname(), 8080, "http"
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
 		).locale(
 			LocaleUtil.getDefault()
 		).build();
@@ -189,6 +192,9 @@ public abstract class BaseKeywordResourceTestCase {
 
 	@After
 	public void tearDown() throws Exception {
+		DepotEntryLocalServiceUtil.deleteDepotEntry(irrelevantDepotEntry);
+		DepotEntryLocalServiceUtil.deleteDepotEntry(testDepotEntry);
+
 		GroupTestUtil.deleteGroup(irrelevantGroup);
 		GroupTestUtil.deleteGroup(testGroup);
 	}
@@ -310,6 +316,7 @@ public abstract class BaseKeywordResourceTestCase {
 
 		// No namespace
 
+		@SuppressWarnings("PMD.UnusedLocalVariable")
 		Keyword keyword1 =
 			testGraphQLDeleteAssetLibraryKeywordByExternalReferenceCode_addKeyword();
 
@@ -358,6 +365,7 @@ public abstract class BaseKeywordResourceTestCase {
 
 		// Using the namespace headlessAdminTaxonomy_v1_0
 
+		@SuppressWarnings("PMD.UnusedLocalVariable")
 		Keyword keyword2 =
 			testGraphQLDeleteAssetLibraryKeywordByExternalReferenceCode_addKeyword();
 
@@ -449,6 +457,7 @@ public abstract class BaseKeywordResourceTestCase {
 
 		// No namespace
 
+		@SuppressWarnings("PMD.UnusedLocalVariable")
 		Keyword keyword1 = testGraphQLDeleteKeyword_addKeyword();
 
 		Assert.assertTrue(
@@ -479,6 +488,7 @@ public abstract class BaseKeywordResourceTestCase {
 
 		// Using the namespace headlessAdminTaxonomy_v1_0
 
+		@SuppressWarnings("PMD.UnusedLocalVariable")
 		Keyword keyword2 = testGraphQLDeleteKeyword_addKeyword();
 
 		Assert.assertTrue(
@@ -589,6 +599,7 @@ public abstract class BaseKeywordResourceTestCase {
 
 		// No namespace
 
+		@SuppressWarnings("PMD.UnusedLocalVariable")
 		Keyword keyword1 =
 			testGraphQLDeleteSiteKeywordByExternalReferenceCode_addKeyword();
 
@@ -631,6 +642,7 @@ public abstract class BaseKeywordResourceTestCase {
 
 		// Using the namespace headlessAdminTaxonomy_v1_0
 
+		@SuppressWarnings("PMD.UnusedLocalVariable")
 		Keyword keyword2 =
 			testGraphQLDeleteSiteKeywordByExternalReferenceCode_addKeyword();
 
@@ -985,8 +997,10 @@ public abstract class BaseKeywordResourceTestCase {
 		createBatchAction.put("method", "POST");
 		createBatchAction.put(
 			"href",
-			"http://localhost:8080/o/headless-admin-taxonomy/v1.0/asset-libraries/{assetLibraryId}/keywords/batch".
-				replace("{assetLibraryId}", String.valueOf(assetLibraryId)));
+			("http://localhost:" + PortalUtil.getPortalServerPort(false) +
+				"/o/headless-admin-taxonomy/v1.0/asset-libraries/{assetLibraryId}/keywords/batch").
+					replace(
+						"{assetLibraryId}", String.valueOf(assetLibraryId)));
 
 		expectedActions.put("createBatch", createBatchAction);
 
@@ -1483,8 +1497,9 @@ public abstract class BaseKeywordResourceTestCase {
 			public StringBuffer getRequestURL() {
 				return new StringBuffer(
 					StringBundler.concat(
-						"http://localhost:8080/o/v1.0/",
-						RandomTestUtil.randomString(), "/",
+						"http://localhost:",
+						String.valueOf(PortalUtil.getPortalServerPort(false)),
+						"/o/v1.0/", RandomTestUtil.randomString(), "/",
 						RandomTestUtil.randomString()));
 			}
 
@@ -1520,8 +1535,10 @@ public abstract class BaseKeywordResourceTestCase {
 			@Override
 			public URI getRequestUri() {
 				return URI.create(
-					"http://localhost:8080/o/" + applicationPath +
-						resourcePath);
+					StringBundler.concat(
+						"http://localhost:",
+						PortalUtil.getPortalServerPort(false), "/o/",
+						applicationPath, resourcePath));
 			}
 
 			@Override
@@ -1541,7 +1558,11 @@ public abstract class BaseKeywordResourceTestCase {
 
 			@Override
 			public URI getBaseUri() {
-				return URI.create("http://localhost:8080/o/" + applicationPath);
+				return URI.create(
+					StringBundler.concat(
+						"http://localhost:",
+						PortalUtil.getPortalServerPort(false), "/o/",
+						applicationPath));
 			}
 
 			@Override
@@ -2147,8 +2168,9 @@ public abstract class BaseKeywordResourceTestCase {
 		createBatchAction.put("method", "POST");
 		createBatchAction.put(
 			"href",
-			"http://localhost:8080/o/headless-admin-taxonomy/v1.0/sites/{siteId}/keywords/batch".
-				replace("{siteId}", String.valueOf(siteId)));
+			("http://localhost:" + PortalUtil.getPortalServerPort(false) +
+				"/o/headless-admin-taxonomy/v1.0/sites/{siteId}/keywords/batch").
+					replace("{siteId}", String.valueOf(siteId)));
 
 		expectedActions.put("createBatch", createBatchAction);
 
@@ -2541,6 +2563,44 @@ public abstract class BaseKeywordResourceTestCase {
 	}
 
 	@Test
+	public void testPatchSiteKeyword() throws Exception {
+		Assert.assertTrue(false);
+	}
+
+	@Test
+	public void testPatchSiteKeywordByExternalReferenceCode() throws Exception {
+		Keyword postKeyword =
+			testPatchSiteKeywordByExternalReferenceCode_addKeyword();
+
+		Keyword randomPatchKeyword = randomPatchKeyword();
+
+		@SuppressWarnings("PMD.UnusedLocalVariable")
+		Keyword patchKeyword =
+			keywordResource.patchSiteKeywordByExternalReferenceCode(
+				postKeyword.getSiteId(), postKeyword.getExternalReferenceCode(),
+				randomPatchKeyword);
+
+		Keyword expectedPatchKeyword = postKeyword.clone();
+
+		BeanTestUtil.copyProperties(randomPatchKeyword, expectedPatchKeyword);
+
+		Keyword getKeyword =
+			keywordResource.getSiteKeywordByExternalReferenceCode(
+				patchKeyword.getSiteId(),
+				patchKeyword.getExternalReferenceCode());
+
+		assertEquals(expectedPatchKeyword, getKeyword);
+		assertValid(getKeyword);
+	}
+
+	protected Keyword testPatchSiteKeywordByExternalReferenceCode_addKeyword()
+		throws Exception {
+
+		return keywordResource.postSiteKeyword(
+			testGroup.getGroupId(), randomKeyword());
+	}
+
+	@Test
 	public void testPostAssetLibraryKeyword() throws Exception {
 		Keyword randomKeyword = randomKeyword();
 
@@ -2894,19 +2954,93 @@ public abstract class BaseKeywordResourceTestCase {
 
 	@Test
 	public void testBatchEngineDeleteImportTask() throws Exception {
-		Keyword keyword1 = testBatchEngineDeleteImportTask_addKeyword();
+		Keyword keyword1 =
+			testBatchEngineDeleteImportTask_addAssetLibraryKeyword();
+
+		testBatchEngineDeleteImportTask_deleteKeyword(
+			200, keyword1.getExternalReferenceCode(), null, "assetLibraryId",
+			String.valueOf(testDepotEntryGroup.getGroupId()));
+
+		keyword1 = testBatchEngineDeleteImportTask_addKeyword();
 
 		testBatchEngineDeleteImportTask_deleteKeyword(
 			200, null, keyword1.getId());
 
 		assertHttpResponseStatusCode(
 			404, keywordResource.getKeywordHttpResponse(keyword1.getId()));
+
+		keyword1 = testBatchEngineDeleteImportTask_addSiteKeyword();
+
+		testBatchEngineDeleteImportTask_deleteKeyword(
+			200, keyword1.getExternalReferenceCode(), null, "siteId",
+			String.valueOf(testGroup.getGroupId()));
+
+		keyword1 = testBatchEngineDeleteImportTask_addAssetLibraryKeyword();
+		Keyword keyword2 =
+			testBatchEngineDeleteImportTask_addAssetLibraryKeyword();
+
+		testBatchEngineDeleteImportTask_deleteKeyword(
+			200, keyword2.getExternalReferenceCode(), keyword1.getId(),
+			"assetLibraryId", String.valueOf(testDepotEntryGroup.getGroupId()));
+
+		assertHttpResponseStatusCode(
+			404, keywordResource.getKeywordHttpResponse(keyword1.getId()));
+		assertHttpResponseStatusCode(
+			200, keywordResource.getKeywordHttpResponse(keyword2.getId()));
+
+		testBatchEngineDeleteImportTask_deleteKeyword(
+			200, keyword2.getExternalReferenceCode(), keyword1.getId(),
+			"assetLibraryId", String.valueOf(testDepotEntryGroup.getGroupId()));
+
+		assertHttpResponseStatusCode(
+			404, keywordResource.getKeywordHttpResponse(keyword2.getId()));
+
+		keyword1 = testBatchEngineDeleteImportTask_addSiteKeyword();
+		keyword2 = testBatchEngineDeleteImportTask_addSiteKeyword();
+
+		testBatchEngineDeleteImportTask_deleteKeyword(
+			200, keyword2.getExternalReferenceCode(), keyword1.getId(),
+			"siteId", String.valueOf(testGroup.getGroupId()));
+
+		assertHttpResponseStatusCode(
+			404, keywordResource.getKeywordHttpResponse(keyword1.getId()));
+		assertHttpResponseStatusCode(
+			200, keywordResource.getKeywordHttpResponse(keyword2.getId()));
+
+		testBatchEngineDeleteImportTask_deleteKeyword(
+			200, keyword2.getExternalReferenceCode(), keyword1.getId(),
+			"siteId", String.valueOf(testGroup.getGroupId()));
+
+		assertHttpResponseStatusCode(
+			404, keywordResource.getKeywordHttpResponse(keyword2.getId()));
+
+		keyword1 = testBatchEngineDeleteImportTask_addSiteKeyword();
+
+		testBatchEngineDeleteImportTask_deleteKeyword(
+			400, keyword1.getExternalReferenceCode(), keyword1.getId(),
+			"assetLibraryId", String.valueOf(testDepotEntryGroup.getGroupId()),
+			"siteId", String.valueOf(testGroup.getGroupId()));
+
+		assertHttpResponseStatusCode(
+			200, keywordResource.getKeywordHttpResponse(keyword1.getId()));
 	}
 
 	protected Keyword testBatchEngineDeleteImportTask_addKeyword()
 		throws Exception {
 
 		return testDeleteKeyword_addKeyword();
+	}
+
+	protected Keyword testBatchEngineDeleteImportTask_addAssetLibraryKeyword()
+		throws Exception {
+
+		return testDeleteAssetLibraryKeywordByExternalReferenceCode_addKeyword();
+	}
+
+	protected Keyword testBatchEngineDeleteImportTask_addSiteKeyword()
+		throws Exception {
+
+		return testDeleteSiteKeywordByExternalReferenceCode_addKeyword();
 	}
 
 	protected void testBatchEngineDeleteImportTask_deleteKeyword(
@@ -2919,7 +3053,8 @@ public abstract class BaseKeywordResourceTestCase {
 			_testCompanyAdminUser.getEmailAddress(),
 			PropsValues.DEFAULT_ADMIN_PASSWORD
 		).endpoint(
-			testCompany.getVirtualHostname(), 8080, "http"
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
 		).parameters(
 			parameters
 		).build();
@@ -3096,16 +3231,22 @@ public abstract class BaseKeywordResourceTestCase {
 		else if (value instanceof Boolean || value instanceof Number) {
 			return value.toString();
 		}
-		else if (value instanceof Date date) {
+		else if (value instanceof Date) {
+			Date date = (Date)value;
+
 			return "\"" +
 				DateUtil.getDate(
 					date, "yyyy-MM-dd'T'HH:mm:ss'Z'", LocaleUtil.getDefault(),
 					TimeZone.getTimeZone("UTC")) + "\"";
 		}
-		else if (value instanceof Enum<?> enm) {
+		else if (value instanceof Enum) {
+			Enum<?> enm = (Enum<?>)value;
+
 			return enm.name();
 		}
-		else if (value instanceof Map<?, ?> map) {
+		else if (value instanceof Map) {
+			Map<?, ?> map = (Map<?, ?>)value;
+
 			List<String> entries = new ArrayList<>();
 
 			for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -3118,7 +3259,9 @@ public abstract class BaseKeywordResourceTestCase {
 
 			return "{" + String.join(", ", entries) + "}";
 		}
-		else if (value instanceof Object[] array) {
+		else if (value instanceof Object[]) {
+			Object[] array = (Object[])value;
+
 			List<String> entries = new ArrayList<>();
 
 			for (Object entry : array) {
@@ -3962,7 +4105,9 @@ public abstract class BaseKeywordResourceTestCase {
 			).toString(),
 			"application/json");
 		httpInvoker.httpMethod(HttpInvoker.HttpMethod.POST);
-		httpInvoker.path("http://localhost:8080/o/graphql");
+		httpInvoker.path(
+			"http://localhost:" + PortalUtil.getPortalServerPort(false) +
+				"/o/graphql");
 		httpInvoker.userNameAndPassword(
 			"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD);
 
@@ -4288,3 +4433,4 @@ public abstract class BaseKeywordResourceTestCase {
 		_vulcanCRUDItemDelegateBuilderRegistry;
 
 }
+// LIFERAY-REST-BUILDER-HASH:1829607848

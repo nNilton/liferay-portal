@@ -17,22 +17,21 @@ import {useIsMounted} from '@liferay/frontend-js-react-web';
 import {FDSTableCellHTMLElementBuilderArgs} from '@liferay/js-api/data-set';
 import classNames from 'classnames';
 import {ClientExtension} from 'frontend-js-components-web';
-import {getObjectValueFromPath, throttle} from 'frontend-js-web';
+import {getObjectValueFromPath, sub, throttle} from 'frontend-js-web';
 import React, {useContext, useEffect, useMemo, useRef, useState} from 'react';
 
 import FrontendDataSetContext, {
 	IFrontendDataSetContext,
 } from '../../FrontendDataSetContext';
 import Actions from '../../actions/Actions';
-import {getInternalCellRenderer} from '../../cell_renderers/getInternalCellRenderer';
 import FDSDndProvider from '../../dnd/FDSDndProvider';
 import useFDSDrop from '../../dnd/useFDSDrop';
+import {getInternalRenderer} from '../../renderers/getInternalRenderer';
 import {
 	ILocalizedItemDetails,
 	getLocalizedValue,
 } from '../../utils/getLocalizedValue';
 import {getInputRendererById} from '../../utils/renderer';
-import {saveViewSettings} from '../../utils/saveViewSettings';
 import {
 	IItemsActions,
 	ITableSchema,
@@ -156,6 +155,7 @@ const Head = ({
 };
 
 const Row = ({
+	accessibleName,
 	active,
 	columns,
 	item,
@@ -166,6 +166,7 @@ const Row = ({
 	selectionType,
 	...otherProps
 }: {
+	accessibleName: string;
 	active: boolean;
 	columns: Array<Field>;
 	item: any;
@@ -210,6 +211,7 @@ const Row = ({
 										item.actionDropdownItems?.length >
 											0) && (
 										<Actions
+											accessibleName={accessibleName}
 											actions={
 												itemsActions ||
 												item.actionDropdownItems
@@ -235,6 +237,10 @@ const Row = ({
 							>
 								{!item.editable && (
 									<SelectionComponent
+										aria-label={sub(
+											Liferay.Language.get('select-x'),
+											accessibleName
+										)}
 										checked={active}
 										onChange={() =>
 											onItemSelectionChange(item)
@@ -338,6 +344,7 @@ const Body = ({
 	items,
 	itemsActions,
 	onItemSelectionChange,
+	schema,
 	selectionType,
 }: {
 	fields: Array<Field>;
@@ -349,6 +356,7 @@ const Body = ({
 	items: Array<any>;
 	itemsActions: Array<IItemsActions>;
 	onItemSelectionChange: Function;
+	schema: ITableSchema;
 	selectionType?: 'single' | 'multiple';
 }) => {
 	const {
@@ -357,6 +365,8 @@ const Body = ({
 		selectedItemsKey,
 		selectedItemsValue,
 	} = useContext(FrontendDataSetContext);
+
+	const {accessibleNameField} = schema;
 
 	const columns: Array<Field> = [
 		...(selectable ? [{fieldName: 'select'}] : []),
@@ -372,8 +382,23 @@ const Body = ({
 				}
 			>
 				{(item: any) => {
+					let accessibleName = Liferay.Language.get('item') ?? '';
+
+					[accessibleNameField, fields[0].fieldName, 'id'].find(
+						(key) => {
+							const value = getLocalizedValue(item, key)?.value;
+							if (!value || typeof value === 'object') {
+								return false;
+							}
+							accessibleName = value;
+
+							return true;
+						}
+					);
+
 					return (
 						<Row
+							accessibleName={accessibleName}
 							active={
 								allItemsSelectedActive ||
 								!!selectedItemsValue?.find(
@@ -504,10 +529,16 @@ function HeadCellResizer({
 	}, [columnName, resizeColumn, updateDraggingColumnName]);
 
 	function initializeDrag() {
+		const originalUserSelect = document.body.style.userSelect;
+
+		document.body.style.userSelect = 'none';
+
 		window.addEventListener('mousemove', handleDrag);
 		window.addEventListener(
 			'mouseup',
 			() => {
+				document.body.style.userSelect = originalUserSelect;
+
 				updateDraggingAllowed(true);
 				updateDraggingColumnName(null);
 				window.removeEventListener('mousemove', handleDrag);
@@ -657,7 +688,7 @@ function CellRenderer({
 			};
 		}
 
-		return getInternalCellRenderer(contentRenderer);
+		return getInternalRenderer(contentRenderer);
 	}, [customDataRenderers, customRenderers, field, modifiedFields]);
 
 	if (cellRenderer?.type === 'clientExtension') {
@@ -736,13 +767,10 @@ const Table = ({
 	schema: ITableSchema;
 }) => {
 	const {
-		appURL,
-		id,
 		inlineAddingSettings,
 		itemsChanges,
 		nestedItemsKey,
 		nestedItemsReferenceKey,
-		portletId,
 		selectable,
 		selectionType,
 		updateActiveSorts,
@@ -845,23 +873,24 @@ const Table = ({
 					const visibleFieldNames: VisibleFieldNames = {};
 
 					schema.fields.forEach(({fieldName}) => {
+						if (String(fieldName).includes('.')) {
+							fieldName = String(fieldName).replaceAll('.', ',');
+						}
+
 						visibleFieldNames[String(fieldName)] = false;
 					});
 
 					visibleColumns.forEach((value: any, key: any) => {
+						if (key.includes('.')) {
+							key = key.replaceAll('.', ',');
+						}
+
 						if (visibleFieldNames[key] !== undefined) {
 							visibleFieldNames[key] = true;
 						}
 					});
 
 					viewsDispatch(updateVisibleFields(visibleFieldNames));
-
-					saveViewSettings({
-						appURL,
-						id,
-						portletId,
-						settings: {visibleFieldNames},
-					});
 				}}
 				sort={getSorting()}
 				visibleColumns={getVisibleFieldsMap(
@@ -883,6 +912,7 @@ const Table = ({
 					items={items}
 					itemsActions={itemsActions}
 					onItemSelectionChange={onItemSelectionChange}
+					schema={schema}
 					selectionType={selectionType}
 				/>
 			</ClayTable>

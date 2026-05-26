@@ -324,6 +324,7 @@ type ObjectFieldBusinessTypeName =
 	| 'LongInteger'
 	| 'LongText'
 	| 'MultiselectPicklist'
+	| 'PhoneNumber'
 	| 'Picklist'
 	| 'PrecisionDecimal'
 	| 'Relationship'
@@ -382,11 +383,13 @@ type ObjectFieldSettingName =
 	| 'objectRelationshipName'
 	| 'output'
 	| 'prefix'
+	| 'prefixType'
 	| 'script'
 	| 'showCounter'
-	| 'showFilesInDocumentsAndMedia'
+	| 'showFilesInLibrary'
 	| 'stateFlow'
 	| 'storageDLFolderPath'
+	| 'storageDepotGroup'
 	| 'suffix'
 	| 'timeStorage'
 	| 'uniqueValues'
@@ -397,6 +400,7 @@ type ObjectFieldSettingValue =
 	| NameValueObject[]
 	| ObjectFieldFilterSetting[]
 	| ObjectFieldPicklistSetting
+	| Space
 	| boolean
 	| number
 	| string;
@@ -532,5 +536,38 @@ interface ShowObjectDefinitionsModals {
 	objectDefinitionOnRootModelDeletionNotAllowed: boolean;
 	objectFieldDeletionNotAllowed: boolean;
 }
+
+interface Space {
+	assetLibraryKey: string;
+	creatorUserId: string;
+	description: string;
+	externalReferenceCode: string;
+	id: number;
+	name: string;
+	settings?: SpaceSettings;
+	siteId: number;
+}
+
+type SpaceSettings = {
+	availableLanguageIds?: string[];
+	defaultLanguageId?: string;
+	logoColor?: LogoColor;
+	sharingEnabled?: boolean;
+	trashEnabled?: boolean;
+	trashEntriesMaxAge?: number;
+	useCustomLanguages?: boolean;
+};
+
+type LogoColor =
+	| 'outline-0'
+	| 'outline-1'
+	| 'outline-2'
+	| 'outline-3'
+	| 'outline-4'
+	| 'outline-5'
+	| 'outline-6'
+	| 'outline-7'
+	| 'outline-8'
+	| 'outline-9';
 
 type SubmitError = string | null;

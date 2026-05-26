@@ -261,12 +261,27 @@ public interface LayoutService extends BaseService {
 			InputStream inputStream, String mimeType)
 		throws PortalException;
 
+	public Layout convertEmptyLayout(
+			long plid, Map<Locale, String> nameMap, String type,
+			long classNameId, long classPK,
+			String masterLayoutPageTemplateEntryERC,
+			ServiceContext serviceContext)
+		throws Exception;
+
 	public Layout copyLayout(
 			long groupId, boolean privateLayout,
 			Map<Locale, String> localeNamesMap, boolean hidden, boolean system,
 			boolean copyPermissions, long sourcePlid,
 			ServiceContext serviceContext)
 		throws PortalException;
+
+	public Layout copyLayoutContent(Layout sourceLayout, Layout targetLayout)
+		throws Exception;
+
+	public Layout copyLayoutContent(
+			long sourceSegmentsExperienceId, Layout sourceLayout,
+			long targetSegmentsExperienceId, Layout targetLayout)
+		throws Exception;
 
 	/**
 	 * Deletes the layout with the primary key, also deleting the layout's child
@@ -529,7 +544,7 @@ public interface LayoutService extends BaseService {
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public Layout getOrAddEmptyLayout(
-			String externalReferenceCode, long groupId,
+			String externalReferenceCode, long groupId, boolean privateLayout,
 			ServiceContext serviceContext)
 		throws Exception;
 
@@ -676,6 +691,9 @@ public interface LayoutService extends BaseService {
 		throws PortalException;
 
 	public Layout updateIconImage(long plid, byte[] bytes)
+		throws PortalException;
+
+	public Layout updateIconImageId(long plid, long iconImageId)
 		throws PortalException;
 
 	/**
@@ -883,3 +901,4 @@ public interface LayoutService extends BaseService {
 		throws PortalException;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-1420307162

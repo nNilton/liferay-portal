@@ -13,13 +13,12 @@ import com.liferay.frontend.data.set.action.FDSItemsActions;
 import com.liferay.frontend.data.set.model.FDSActionDropdownItem;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.CreationMenu;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItem;
-import com.liferay.object.model.ObjectEntryFolder;
 import com.liferay.object.service.ObjectDefinitionService;
-import com.liferay.object.service.ObjectDefinitionSettingLocalService;
-import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.language.LanguageUtil;
-import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.Portal;
@@ -39,11 +38,8 @@ public class ViewAllSectionDisplayContext extends BaseSectionDisplayContext {
 		DepotEntryLocalService depotEntryLocalService,
 		DLConfiguration dlConfiguration, GroupLocalService groupLocalService,
 		HttpServletRequest httpServletRequest, Language language,
-		ObjectDefinitionService objectDefinitionService,
-		ObjectDefinitionSettingLocalService objectDefinitionSettingLocalService,
-		ModelResourcePermission<ObjectEntryFolder>
-			objectEntryFolderModelResourcePermission,
-		Portal portal, FDSCreationMenu viewAllSectionFDSCreationMenu,
+		ObjectDefinitionService objectDefinitionService, Portal portal,
+		FDSCreationMenu viewAllSectionFDSCreationMenu,
 		FDSItemsActions viewAllSectionFDSItemsActions,
 		SystemFDSEntry viewAllSectionSystemFDSEntry,
 		TranslationInfoItemFieldValuesExporterRegistry
@@ -51,9 +47,7 @@ public class ViewAllSectionDisplayContext extends BaseSectionDisplayContext {
 
 		super(
 			depotEntryLocalService, dlConfiguration, groupLocalService,
-			httpServletRequest, language, objectDefinitionService,
-			objectDefinitionSettingLocalService,
-			objectEntryFolderModelResourcePermission, portal,
+			httpServletRequest, language, objectDefinitionService, portal,
 			translationInfoItemFieldValuesExporterRegistry);
 
 		_httpServletRequest = httpServletRequest;
@@ -70,43 +64,25 @@ public class ViewAllSectionDisplayContext extends BaseSectionDisplayContext {
 	}
 
 	@Override
+	public Map<String, Object> getAdditionalProps() {
+		Map<String, Object> additionalProps = super.getAdditionalProps();
+
+		try {
+			additionalProps.put("breadcrumbProps", getBreadcrumbProps());
+		}
+		catch (PortalException portalException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(portalException);
+			}
+		}
+
+		return additionalProps;
+	}
+
+	@Override
 	public List<DropdownItem> getBulkActionDropdownItems() {
-		List<DropdownItem> fdsBulkActionDropdownItems =
-			super.getBulkActionDropdownItems();
-
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				StringPool.BLANK, "download", "download",
-				LanguageUtil.get(_httpServletRequest, "download"), null, null,
-				null));
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				StringPool.BLANK, "password-policies", "permissions",
-				LanguageUtil.get(_httpServletRequest, "permissions"), null,
-				null, null));
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				StringPool.BLANK, "password-policies",
-				"edit-default-permissions-by-role",
-				LanguageUtil.get(
-					httpServletRequest, "edit-default-permissions-by-role"),
-				null, null, null));
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				StringPool.BLANK, "password-policies",
-				"edit-permissions-by-role",
-				LanguageUtil.get(
-					httpServletRequest, "edit-permissions-by-role"),
-				null, null, null));
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				StringPool.BLANK, "password-policies",
-				"reset-to-default-permissions",
-				LanguageUtil.get(
-					httpServletRequest, "reset-to-default-permissions"),
-				null, null, null));
-
-		return fdsBulkActionDropdownItems;
+		return SectionDisplayContextUtil.getAllSectionBulkActionDropdownItems(
+			httpServletRequest);
 	}
 
 	@Override
@@ -146,6 +122,14 @@ public class ViewAllSectionDisplayContext extends BaseSectionDisplayContext {
 		throw new UnsupportedOperationException(
 			"ViewAllSectionSystemFDSEntry must calculate this");
 	}
+
+	@Override
+	protected boolean isFolderSearchEnabled() {
+		return true;
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		ViewAllSectionDisplayContext.class);
 
 	private final HttpServletRequest _httpServletRequest;
 	private final FDSCreationMenu _viewAllSectionFDSCreationMenu;

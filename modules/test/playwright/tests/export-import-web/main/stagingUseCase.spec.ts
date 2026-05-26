@@ -3,7 +3,10 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {ObjectDefinitionAPI} from '@liferay/object-admin-rest-client-js';
+import {
+	TaxonomyCategoryAPI,
+	TaxonomyVocabularyAPI,
+} from '@liferay/headless-admin-taxonomy-client-js';
 import {expect, mergeTests} from '@playwright/test';
 import {createReadStream, readdirSync} from 'fs';
 import path from 'path';
@@ -21,7 +24,9 @@ import {systemSettingsPageTest} from '../../../fixtures/systemSettingsPageTest';
 import {uiElementsPageTest} from '../../../fixtures/uiElementsTest';
 import {webContentDisplayPageTest} from '../../../fixtures/webContentDisplayPageTest';
 import {workflowPagesTest} from '../../../fixtures/workflowPagesTest';
+import {liferayConfig} from '../../../liferay.config';
 import getRandomString from '../../../utils/getRandomString';
+import {normalizeRestPath} from '../../../utils/normalizeRestPath';
 import {reloadUntilVisible} from '../../../utils/reloadUntilVisible';
 import {enableLocalStaging} from '../../../utils/staging';
 import getBasicWebContentStructureId from '../../../utils/structured-content/getBasicWebContentStructureId';
@@ -30,14 +35,14 @@ import {exportImportConfig} from './export_import.config';
 import {exportPageTest} from './fixtures/exportPageTest';
 import {stagingConfigurationPageTest} from './fixtures/stagingConfigurationPageTest';
 import {stagingPageTest} from './fixtures/stagingPageTest';
-import {objectDefitionRequestData} from './utils/objectDefitionRequestData';
+import {StageableEntities} from './utils/stagingConstants';
 import {unzipAndCheckFolder} from './utils/stagingUtil';
 
 const test = mergeTests(
 	dataApiHelpersTest,
 	featureFlagsTest({
 		'LPD-35443': {enabled: true},
-		'LPD-35914': {enabled: true},
+		'LPD-39304': {enabled: true},
 	}),
 	loginTest(),
 	assetPublisherPagesTest,
@@ -56,47 +61,28 @@ const test = mergeTests(
 	uiElementsPageTest
 );
 
-const testWithBatchStagingFF = mergeTests(
-	dataApiHelpersTest,
-	featureFlagsTest({
-		'LPD-35443': {enabled: true},
-		'LPD-35914': {enabled: true},
-		'LPD-41367': {enabled: true},
-	}),
-	loginTest(),
-	stagingConfigurationPageTest,
-	stagingPageTest
-);
-
-testWithBatchStagingFF(
+test(
 	'Object entries can not be staged through batch',
 	{tag: ['@LPD-70661', '@LPD-72343']},
 	async ({apiHelpers, stagingPage}) => {
-		const objectActionAPIClient =
-			await apiHelpers.buildRestClient(ObjectDefinitionAPI);
-
-		const {body: objectDefinition} =
-			await objectActionAPIClient.postObjectDefinition(
-				objectDefitionRequestData({scope: 'site'})
-			);
+		const objectDefinition =
+			await apiHelpers.objectAdmin.postRandomObjectDefinition({
+				scope: 'site',
+				status: {code: 0},
+			});
 
 		apiHelpers.data.push({
 			id: objectDefinition.id,
 			type: 'objectDefinition',
 		});
 
-		const site = await apiHelpers.headlessSite.createSite({
+		const site = await apiHelpers.headlessAdminSite.postSite({
 			name: getRandomString(),
-		});
-
-		apiHelpers.data.push({
-			id: site.id,
-			type: 'site',
 		});
 
 		await apiHelpers.objectEntry.postObjectEntry(
 			{externalReferenceCode: getRandomString(), name: getRandomString()},
-			`c/tests/scopes/${site.name}`
+			`${normalizeRestPath(objectDefinition.restContextPath)}/scopes/${site.name}`
 		);
 
 		await stagingPage.goto(site.name);
@@ -110,6 +96,167 @@ testWithBatchStagingFF(
 	}
 );
 
+test(
+	'Taxonomy Categories can be staged through batch',
+	{tag: ['@LPD-76007']},
+	async ({apiHelpers, stagingPage}) => {
+		const site = await apiHelpers.headlessAdminSite.postSite({
+			name: getRandomString(),
+		});
+
+		const taxonomyVocabularyAPIClient = await apiHelpers.buildRestClient(
+			TaxonomyVocabularyAPI
+		);
+
+		const {body: taxonomyVocabulary} =
+			await taxonomyVocabularyAPIClient.postSiteTaxonomyVocabulary(
+				Number(site.id),
+				{
+					externalReferenceCode: getRandomString(),
+					name: getRandomString(),
+				}
+			);
+
+		const taxonomyCategoryAPIClient =
+			await apiHelpers.buildRestClient(TaxonomyCategoryAPI);
+
+		const {body: taxonomyCategory1} =
+			await taxonomyCategoryAPIClient.postSiteTaxonomyCategory(
+				Number(site.id),
+				{
+					externalReferenceCode: getRandomString(),
+					name: getRandomString(),
+					taxonomyVocabularyId: taxonomyVocabulary.id,
+				}
+			);
+
+		const {body: taxonomyCategory2} =
+			await taxonomyCategoryAPIClient.postSiteTaxonomyCategory(
+				Number(site.id),
+				{
+					externalReferenceCode: getRandomString(),
+					name: getRandomString(),
+					taxonomyVocabularyId: taxonomyVocabulary.id,
+				}
+			);
+
+		await stagingPage.goto(site.name);
+		await stagingPage.enableLocalStaging({
+			stagedPortlets: [StageableEntities.CATEGORIES],
+		});
+
+		const stagingSite =
+			await apiHelpers.headlessAdminUser.getSiteByFriendlyUrlPath(
+				`${site.friendlyUrlPath}-staging`
+			);
+
+		expect(
+			(
+				await taxonomyCategoryAPIClient.getSiteTaxonomyCategoryByExternalReferenceCode(
+					Number(stagingSite.id),
+					taxonomyCategory1.externalReferenceCode
+				)
+			).body
+		).toMatchObject({
+			externalReferenceCode: taxonomyCategory1.externalReferenceCode,
+			name: taxonomyCategory1.name,
+			parentTaxonomyVocabulary: {
+				externalReferenceCode: taxonomyVocabulary.externalReferenceCode,
+			},
+			siteId: stagingSite.id,
+		});
+
+		expect(
+			(
+				await taxonomyCategoryAPIClient.getSiteTaxonomyCategoryByExternalReferenceCode(
+					Number(stagingSite.id),
+					taxonomyCategory2.externalReferenceCode
+				)
+			).body
+		).toMatchObject({
+			externalReferenceCode: taxonomyCategory2.externalReferenceCode,
+			name: taxonomyCategory2.name,
+			parentTaxonomyVocabulary: {
+				externalReferenceCode: taxonomyVocabulary.externalReferenceCode,
+			},
+			siteId: stagingSite.id,
+		});
+
+		expect(
+			(
+				await taxonomyVocabularyAPIClient.getSiteTaxonomyVocabularyByExternalReferenceCode(
+					Number(stagingSite.id),
+					taxonomyVocabulary.externalReferenceCode
+				)
+			).body
+		).toMatchObject({
+			externalReferenceCode: taxonomyVocabulary.externalReferenceCode,
+			name: taxonomyVocabulary.name,
+			siteId: stagingSite.id,
+		});
+	}
+);
+
+test(
+	'Taxonomy Categories display controls on staging page',
+	{tag: ['@LPD-78848']},
+	async ({apiHelpers, page, stagingPage, uiElementsPage}) => {
+		const site = await apiHelpers.headlessAdminSite.postSite({
+			name: getRandomString(),
+		});
+
+		await stagingPage.goto(site.key);
+		await stagingPage.enableLocalStaging({
+			stagedPortlets: [StageableEntities.CATEGORIES],
+		});
+
+		const stagingSite =
+			await apiHelpers.headlessAdminUser.getSiteByFriendlyUrlPath(
+				`${site.friendlyUrlPath}-staging`
+			);
+
+		const taxonomyVocabularyAPIClient = await apiHelpers.buildRestClient(
+			TaxonomyVocabularyAPI
+		);
+
+		const {body: taxonomyVocabulary} =
+			await taxonomyVocabularyAPIClient.postSiteTaxonomyVocabulary(
+				Number(stagingSite.id),
+				{
+					externalReferenceCode: getRandomString(),
+					name: getRandomString(),
+				}
+			);
+
+		const taxonomyCategoryAPIClient =
+			await apiHelpers.buildRestClient(TaxonomyCategoryAPI);
+
+		await taxonomyCategoryAPIClient.postSiteTaxonomyCategory(
+			Number(stagingSite.id),
+			{
+				externalReferenceCode: getRandomString(),
+				name: getRandomString(),
+				taxonomyVocabularyId: taxonomyVocabulary.id,
+			}
+		);
+
+		await stagingPage.goto(stagingSite.key);
+
+		await uiElementsPage.newButton.click();
+
+		await page
+			.getByTestId('headerTitle')
+			.filter({hasText: 'New Publish Process'})
+			.waitFor();
+
+		await expect(page.getByRole('button', {name: 'Select'})).toHaveCount(0);
+
+		await expect(
+			page.getByText(/(?=.*Categories)(?=.*Vocabularies)/)
+		).toBeVisible();
+	}
+);
+
 test('Staging only approved content goes to live', async ({
 	apiHelpers,
 	page,
@@ -119,11 +266,9 @@ test('Staging only approved content goes to live', async ({
 	workflowPage,
 	workflowTasksPage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: `site-${getRandomString()}`,
 	});
-
-	apiHelpers.data.push({id: site.id, type: 'site'});
 
 	const layout1 = await apiHelpers.jsonWebServicesLayout.addLayout({
 		groupId: site.id,
@@ -133,7 +278,11 @@ test('Staging only approved content goes to live', async ({
 
 	await pageEditorPage.goto(layout1, site.friendlyUrlPath);
 
-	await pageEditorPage.addWidget('Content Management', 'Web Content Display');
+	await pageEditorPage.addWidget(
+		'Content Management',
+		'Web Content Display',
+		pageEditorPage.dropZone
+	);
 
 	await pageEditorPage.publishPage();
 
@@ -144,7 +293,11 @@ test('Staging only approved content goes to live', async ({
 	});
 
 	await pageEditorPage.goto(layout2, site.friendlyUrlPath);
-	await pageEditorPage.addWidget('Content Management', 'Web Content Display');
+	await pageEditorPage.addWidget(
+		'Content Management',
+		'Web Content Display',
+		pageEditorPage.dropZone
+	);
 	await pageEditorPage.publishPage();
 
 	await workflowPage.goto(site.friendlyUrlPath);
@@ -271,11 +424,9 @@ test(
 		pageEditorPage,
 		uiElementsPage,
 	}) => {
-		const site = await apiHelpers.headlessSite.createSite({
+		const site = await apiHelpers.headlessAdminSite.postSite({
 			name: 'site-' + getRandomString(),
 		});
-
-		apiHelpers.data.push({id: site.id, type: 'site'});
 
 		const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
 			groupId: site.id,
@@ -296,7 +447,11 @@ test(
 			name: displayPageTemplateName,
 		});
 		await displayPageTemplatesPage.editTemplate(displayPageTemplateName);
-		await pageEditorPage.addFragment('Basic Components', 'Button');
+		await pageEditorPage.addFragment(
+			'Basic Components',
+			'Button',
+			pageEditorPage.dropZone
+		);
 		await pageEditorPage.mapEditableLink({
 			editableId: 'link',
 			fragmentName: 'Button',
@@ -367,7 +522,11 @@ classTypeIdsJournalArticleAssetRendererFactory=${basicWebcontentStructureId}`,
 			webContentName
 		);
 		await pageEditorPage.goto(layout, site.friendlyUrlPath);
-		await pageEditorPage.addWidget('Content Management', 'Asset Publisher');
+		await pageEditorPage.addWidget(
+			'Content Management',
+			'Asset Publisher',
+			pageEditorPage.dropZone
+		);
 
 		const widgetId = await pageEditorPage.getFragmentId('Asset Publisher');
 
@@ -387,11 +546,9 @@ test(
 	'Non modified referred content cannot publish to live when enable include if modified option',
 	{tag: '@LPS-167777'},
 	async ({apiHelpers, stagingConfigurationPage, stagingPage}) => {
-		const site = await apiHelpers.headlessSite.createSite({
+		const site = await apiHelpers.headlessAdminSite.postSite({
 			name: 'site-' + getRandomString(),
 		});
-
-		apiHelpers.data.push({id: site.id, type: 'site'});
 
 		await apiHelpers.jsonWebServicesLayout.addLayout({
 			groupId: site.id,
@@ -473,11 +630,9 @@ test(
 		page,
 		webContentDisplayPage,
 	}) => {
-		const site = await apiHelpers.headlessSite.createSite({
+		const site = await apiHelpers.headlessAdminSite.postSite({
 			name: getRandomString(),
 		});
-
-		apiHelpers.data.push({id: site.id, type: 'site'});
 
 		const document = await apiHelpers.headlessDelivery.postDocument(
 			site.id,
@@ -490,7 +645,7 @@ test(
 			}
 		);
 
-		const correctUrl = `http://localhost:8080/documents/d${site.friendlyUrlPath}/${document.friendlyUrlPath}`;
+		const correctUrl = `${liferayConfig.environment.baseUrl}/documents/d${site.friendlyUrlPath}/${document.friendlyUrlPath}`;
 
 		const webContentContent = `<a href="${correctUrl}">Document</a>`;
 		const webcontentTitle = getRandomString();
@@ -527,11 +682,9 @@ test('Staging publish template with smoke', async ({
 	webContentDisplayPage,
 	widgetPagePage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
-
-	apiHelpers.data.push({id: site.id, type: 'site'});
 
 	const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
 		groupId: site.id,
@@ -588,4 +741,80 @@ test('Staging publish template with smoke', async ({
 
 	expect(page.getByText(webContent.title, {exact: true})).toBeVisible();
 	expect(page.getByText(webContentContent, {exact: true})).toBeVisible();
+});
+
+test('A page created in staging is published to live', async ({
+	apiHelpers,
+	page,
+	stagingPage,
+}) => {
+	const site = await apiHelpers.headlessAdminSite.postSite({
+		name: 'site-' + getRandomString(),
+	});
+
+	await stagingPage.goto(site.name);
+	await stagingPage.enableLocalStaging();
+
+	const company =
+		await apiHelpers.jsonWebServicesCompany.getCompanyByWebId(
+			'liferay.com'
+		);
+
+	const stagingGroup = await apiHelpers.jsonWebServicesGroup.getGroupByKey(
+		company.companyId,
+		`${site.name}-staging`
+	);
+
+	const layout = await apiHelpers.headlessAdminSite.createPage(
+		stagingGroup.externalReferenceCode,
+		{
+			name_i18n: {en_US: 'My Simple Page'},
+			type: 'WidgetPage',
+		}
+	);
+
+	await page.goto('/web' + stagingGroup.friendlyURL);
+	await page.getByText('Publish to Live').click();
+	await page
+		.frameLocator(`iframe[title="Publish to Live"]`)
+		.getByText('Publish to Live')
+		.click();
+
+	await expect(
+		page
+			.frameLocator(`iframe[title="Publish to Live"]`)
+			.getByText('Successful')
+	).toBeVisible();
+
+	await page.goto('/group' + site.friendlyUrlPath);
+
+	expect(
+		(
+			await apiHelpers.headlessAdminSite.getPage(
+				site.externalReferenceCode,
+				layout.externalReferenceCode
+			)
+		).externalReferenceCode
+	).toBe(layout.externalReferenceCode);
+});
+
+test('Content selection is empty after initial publication to live when using the From Last Publish Date option', async ({
+	apiHelpers,
+	stagingPage,
+}) => {
+	const site = await apiHelpers.headlessAdminSite.postSite({
+		name: 'site-' + getRandomString(),
+	});
+
+	await apiHelpers.headlessAdminSite.createPage(site.externalReferenceCode, {
+		name_i18n: {en_US: getRandomString()},
+		type: 'WidgetPage',
+	});
+
+	await stagingPage.goto(site.name);
+	await stagingPage.enableLocalStaging({stagedPortlets: 'all'});
+
+	const contentItems = await stagingPage.getContentItems();
+
+	expect(contentItems.size).toEqual(0);
 });

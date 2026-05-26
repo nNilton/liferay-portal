@@ -4,17 +4,15 @@
 			{
 				"definition": {
 					"fragment": {
-						"key": "BASIC_COMPONENT-html"
+						"key": "welcome-block"
 					},
 					"fragmentConfig": {
 					},
 					"fragmentFields": [
 						{
-							"id": "element-html",
+							"id": "element-text",
 							"value": {
-								"html": {
-									"value_i18n": {
-									}
+								"fragmentLink": {
 								}
 							}
 						}
@@ -26,25 +24,19 @@
 			{
 				"definition": {
 					"fragment": {
-						"key": "BASIC_COMPONENT-button"
+						"key": "video-block"
 					},
 					"fragmentConfig": {
-						"buttonSize": "nm",
-						"buttonType": "primary",
-						"type": "link"
 					},
 					"fragmentFields": [
 						{
-							"id": "link",
+							"id": "element-text",
 							"value": {
 								"fragmentLink": {
 								}
 							}
 						}
 					],
-					"fragmentStyle": {
-						"marginTop": "2"
-					},
 					"indexed": true
 				},
 				"type": "Fragment"

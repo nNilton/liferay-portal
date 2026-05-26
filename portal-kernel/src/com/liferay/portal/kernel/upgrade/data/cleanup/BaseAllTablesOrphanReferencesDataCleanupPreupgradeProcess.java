@@ -7,6 +7,7 @@ package com.liferay.portal.kernel.upgrade.data.cleanup;
 
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.db.DBInspector;
+import com.liferay.portal.kernel.db.DBResourceUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.upgrade.data.cleanup.util.OrphanReferencesDataCleanupUtil;
@@ -14,6 +15,7 @@ import com.liferay.portal.kernel.util.PropsValues;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author Luis Ortiz
@@ -92,47 +94,63 @@ public abstract class BaseAllTablesOrphanReferencesDataCleanupPreupgradeProcess
 
 		String sourceColumnName = dbInspector.normalizeName(_sourceColumnName);
 
-		for (String sourceTableName : tableNames) {
-			if (excludedTableNames.contains(sourceTableName) ||
-				!dbInspector.hasColumn(sourceTableName, sourceColumnName)) {
+		Set<String> liferayTableNames = DBResourceUtil.getLiferayTableNames(
+			connection);
 
-				continue;
-			}
+		processConcurrently(
+			tableNames.toArray(new String[0]),
+			sourceTableName -> {
+				if (excludedTableNames.contains(sourceTableName) ||
+					!dbInspector.hasColumn(sourceTableName, sourceColumnName)) {
 
-			boolean compatibleTypes = true;
-
-			boolean numericSourceColumn = dbInspector.isNumeric(
-				sourceTableName, sourceColumnName);
-
-			for (String targetColumnName : targetColumnNames) {
-				boolean numericTargetColumn = dbInspector.isNumeric(
-					targetTableName, targetColumnName);
-
-				if (numericSourceColumn != numericTargetColumn) {
-					if (_log.isWarnEnabled()) {
-						_log.warn(
-							StringBundler.concat(
-								"Table ", sourceTableName, " and column ",
-								sourceColumnName,
-								" has an incompatible type with table ",
-								targetTableName, " and column ",
-								targetColumnName));
-					}
-
-					compatibleTypes = false;
-
-					break;
+					return;
 				}
-			}
 
-			if (!compatibleTypes) {
-				continue;
-			}
+				boolean compatibleTypes = true;
 
-			cleanUp(
-				sourceColumnName, sourceTableName, targetColumnNames,
-				targetTableName);
-		}
+				boolean numericSourceColumn = dbInspector.isNumeric(
+					sourceTableName, sourceColumnName);
+
+				for (String targetColumnName : targetColumnNames) {
+					boolean numericTargetColumn = dbInspector.isNumeric(
+						targetTableName, targetColumnName);
+
+					if (numericSourceColumn != numericTargetColumn) {
+						String message = StringBundler.concat(
+							"Table ", sourceTableName, " and column ",
+							sourceColumnName,
+							" has an incompatible type with table ",
+							targetTableName, " and column ", targetColumnName);
+
+						compatibleTypes = false;
+
+						if (!dbInspector.isObjectTable(sourceTableName) &&
+							!liferayTableNames.contains(sourceTableName)) {
+
+							if (_log.isDebugEnabled()) {
+								_log.debug(message);
+							}
+
+							break;
+						}
+
+						if (_log.isWarnEnabled()) {
+							_log.warn(message);
+						}
+
+						break;
+					}
+				}
+
+				if (!compatibleTypes) {
+					return;
+				}
+
+				cleanUp(
+					sourceColumnName, sourceTableName, targetColumnNames,
+					targetTableName);
+			},
+			null);
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(

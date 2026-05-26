@@ -304,7 +304,12 @@ public class AssetVocabularySiteNavigationMenuItemType
 			siteNavigationMenuItem.getGroupId(),
 			typeSettingsUnicodeProperties.get("scopeExternalReferenceCode"));
 
-		if (groupId == 0) {
+		if ((groupId == 0) ||
+			!hasModel(
+				siteNavigationMenuItem.getCompanyId(),
+				siteNavigationMenuItem.getGroupId(),
+				typeSettingsUnicodeProperties)) {
+
 			return "warning-full";
 		}
 
@@ -392,6 +397,27 @@ public class AssetVocabularySiteNavigationMenuItemType
 	@Override
 	public String getType() {
 		return SiteNavigationMenuItemTypeConstants.ASSET_VOCABULARY;
+	}
+
+	@Override
+	public boolean hasModel(
+		long companyId, long groupId,
+		UnicodeProperties typeSettingsUnicodeProperties) {
+
+		AssetVocabulary assetVocabulary =
+			_assetVocabularyLocalService.
+				fetchAssetVocabularyByExternalReferenceCode(
+					typeSettingsUnicodeProperties.get("externalReferenceCode"),
+					_getGroupId(
+						companyId, groupId,
+						typeSettingsUnicodeProperties.get(
+							"scopeExternalReferenceCode")));
+
+		if (assetVocabulary == null) {
+			return false;
+		}
+
+		return true;
 	}
 
 	@Override
@@ -526,7 +552,7 @@ public class AssetVocabularySiteNavigationMenuItemType
 			AssetVocabularySiteNavigationMenuTypeConstants.
 				ASSET_VOCABULARY_SITE_NAVIGATION_MENU_TYPE_DISPLAY_CONTEXT,
 			new AssetVocabularySiteNavigationMenuTypeDisplayContext(
-				httpServletRequest, _itemSelector, siteNavigationMenuItem));
+				httpServletRequest, siteNavigationMenuItem));
 
 		_jspRenderer.renderJSP(
 			_servletContext, httpServletRequest, httpServletResponse,

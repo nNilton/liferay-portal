@@ -13,6 +13,7 @@ import com.liferay.fragment.input.template.parser.InputTemplateNode;
 import com.liferay.fragment.model.FragmentEntryLink;
 import com.liferay.fragment.util.configuration.FragmentConfigurationField;
 import com.liferay.fragment.util.configuration.FragmentEntryConfigurationParser;
+import com.liferay.info.constants.InfoDisplayWebKeys;
 import com.liferay.info.exception.InfoFormValidationException;
 import com.liferay.info.field.InfoField;
 import com.liferay.info.field.InfoFieldValue;
@@ -61,6 +62,8 @@ import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.GroupedModel;
 import com.liferay.portal.kernel.portlet.RequestBackedPortletURLFactoryUtil;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.servlet.SessionErrors;
@@ -74,6 +77,7 @@ import com.liferay.portal.kernel.util.KeyValuePair;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
+import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.TempFileEntryUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -312,6 +316,22 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			(Map<String, String>)SessionMessages.get(
 				httpServletRequest, "infoFormParameterMap");
 
+		long groupId = _getGroupId(httpServletRequest);
+
+		Set<Locale> availableLocales = _language.getAvailableLocales(groupId);
+
+		Locale siteDefaultLocale = locale;
+
+		try {
+			siteDefaultLocale = _portal.getSiteDefaultLocale(groupId);
+		}
+		catch (PortalException portalException) {
+			_log.error(portalException);
+		}
+
+		Locale currentLocale = _getCurrentLocale(
+			availableLocales, locale, siteDefaultLocale);
+
 		if (infoFormParameterMap != null) {
 			label = String.valueOf(
 				infoFormParameterMap.get(infoField.getUniqueId() + "-label"));
@@ -323,7 +343,7 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 				Map<Locale, String> map =
 					(Map<Locale, String>)infoParameterMapValue;
 
-				value = String.valueOf(map.get(locale));
+				value = String.valueOf(map.get(currentLocale));
 				valueI18n = map;
 			}
 			else {
@@ -333,7 +353,7 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 		else {
 			Object infoFieldValue = _getValue(
 				value, httpServletRequest, infoField, infoForm.getName(),
-				locale);
+				currentLocale);
 
 			if (infoFieldValue instanceof KeyValuePair) {
 				KeyValuePair keyValuePair = (KeyValuePair)infoFieldValue;
@@ -344,7 +364,7 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			else if (infoFieldValue instanceof Map) {
 				Map<Locale, String> map = (Map<Locale, String>)infoFieldValue;
 
-				value = map.get(locale);
+				value = map.get(currentLocale);
 				valueI18n = map;
 			}
 			else {
@@ -352,20 +372,16 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			}
 		}
 
-		if (infoFieldType instanceof LongTextInfoFieldType ||
-			infoFieldType instanceof TextInfoFieldType) {
+		value = HtmlUtil.escape(value);
 
-			value = HtmlUtil.escape(value);
+		Map<Locale, String> escapedValueI18n = new HashMap<>();
 
-			Map<Locale, String> escapedValueI18n = new HashMap<>();
-
-			for (Map.Entry<Locale, String> entry : valueI18n.entrySet()) {
-				escapedValueI18n.put(
-					entry.getKey(), HtmlUtil.escape(entry.getValue()));
-			}
-
-			valueI18n = escapedValueI18n;
+		for (Map.Entry<Locale, String> entry : valueI18n.entrySet()) {
+			escapedValueI18n.put(
+				entry.getKey(), HtmlUtil.escape(entry.getValue()));
 		}
+
+		valueI18n = escapedValueI18n;
 
 		InputTemplateNode inputTemplateNode = new InputTemplateNode(
 			errorMessage, inputHelpText, inputLabel, localizable, name,
@@ -373,8 +389,9 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			infoFieldType.getName(), value, valueI18n);
 
 		_addInputTemplateNodeAttributes(
-			attributes, fragmentEntryLink, httpServletRequest, infoField,
-			inputTemplateNode, label, locale, value, valueI18n);
+			attributes, availableLocales, fragmentEntryLink, groupId,
+			httpServletRequest, infoField, inputTemplateNode, label, locale,
+			siteDefaultLocale, value, valueI18n);
 
 		if (!localizable) {
 			_addLocalizationOptionsAttributes(
@@ -386,7 +403,7 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 	}
 
 	private void _addFileInfoFieldTypeInputTemplateNodeAttributes(
-		FragmentEntryLink fragmentEntryLink,
+		FragmentEntryLink fragmentEntryLink, long groupId,
 		HttpServletRequest httpServletRequest, InfoField infoField,
 		InputTemplateNode inputTemplateNode, String value,
 		Map<Locale, String> valueI18n) {
@@ -435,6 +452,16 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 
 		inputTemplateNode.addAttribute(
 			"fileNameI18n", _jsonFactory.createJSONObject(fileNameI18n));
+
+		inputTemplateNode.addAttribute("groupId", groupId);
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
+		Group group = themeDisplay.getScopeGroup();
+
+		inputTemplateNode.addAttribute("isCMS", group.isCMS());
 
 		String previewURL = _getPreviewURL(httpServletRequest, value);
 
@@ -494,15 +521,15 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 	}
 
 	private void _addInputTemplateNodeAttributes(
-		Map<String, Serializable> attributes,
-		FragmentEntryLink fragmentEntryLink,
+		Map<String, Serializable> attributes, Set<Locale> availableLocales,
+		FragmentEntryLink fragmentEntryLink, long groupId,
 		HttpServletRequest httpServletRequest, InfoField infoField,
 		InputTemplateNode inputTemplateNode, String label, Locale locale,
-		String value, Map<Locale, String> valueI18n) {
+		Locale siteDefaultLocale, String value, Map<Locale, String> valueI18n) {
 
 		if (infoField.getInfoFieldType() instanceof FileInfoFieldType) {
 			_addFileInfoFieldTypeInputTemplateNodeAttributes(
-				fragmentEntryLink, httpServletRequest, infoField,
+				fragmentEntryLink, groupId, httpServletRequest, infoField,
 				inputTemplateNode, value, valueI18n);
 		}
 		else if (infoField.getInfoFieldType() instanceof
@@ -535,6 +562,13 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			_addTextInfoFieldTypeInputTemplateNodeAttributes(
 				infoField, inputTemplateNode);
 		}
+
+		inputTemplateNode.addAttribute(
+			"availableLanguageIds",
+			_jsonFactory.createJSONArray(
+				LocaleUtil.toLanguageIds(availableLocales)));
+		inputTemplateNode.addAttribute(
+			"defaultLanguageId", LocaleUtil.toLanguageId(siteDefaultLocale));
 
 		for (Map.Entry<String, Serializable> entry : attributes.entrySet()) {
 			inputTemplateNode.addAttribute(entry.getKey(), entry.getValue());
@@ -592,7 +626,8 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			inputTemplateNode.addAttribute(
 				"unlocalizedFieldsMessage",
 				_language.format(
-					locale, "x-field-cannot-be-localized", inputLabel));
+					locale, "x-field-cannot-be-localized",
+					HtmlUtil.escape(inputLabel)));
 			inputTemplateNode.addAttribute(
 				"unlocalizedFieldsState", "disabled");
 
@@ -786,6 +821,16 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 		return sb.toString();
 	}
 
+	private Locale _getCurrentLocale(
+		Set<Locale> availableLocales, Locale locale, Locale siteDefaultLocale) {
+
+		if (availableLocales.contains(locale)) {
+			return locale;
+		}
+
+		return siteDefaultLocale;
+	}
+
 	private String _getFileName(
 		FileInfoFieldType.FileSourceType fileSourceType, Object value) {
 
@@ -808,6 +853,43 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			if (fileEntry != null) {
 				return TempFileEntryUtil.getOriginalTempFileName(
 					fileEntry.getFileName());
+			}
+		}
+
+		return null;
+	}
+
+	private long _getGroupId(HttpServletRequest httpServletRequest) {
+		Object infoItem = httpServletRequest.getAttribute(
+			InfoDisplayWebKeys.INFO_ITEM);
+
+		if (infoItem instanceof GroupedModel) {
+			GroupedModel groupedModel = (GroupedModel)infoItem;
+
+			return groupedModel.getGroupId();
+		}
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
+		return themeDisplay.getScopeGroupId();
+	}
+
+	private InfoFieldValue<?> _getInfoFieldValue(
+		List<InfoFieldValue<Object>> infoFieldValues) {
+
+		if (ListUtil.isEmpty(infoFieldValues)) {
+			return null;
+		}
+
+		for (InfoFieldValue<Object> infoFieldValue : infoFieldValues) {
+			InfoField infoField = infoFieldValue.getInfoField();
+
+			String uniqueId = infoField.getUniqueId();
+
+			if (!uniqueId.contains(StringPool.POUND)) {
+				return infoFieldValue;
 			}
 		}
 
@@ -937,8 +1019,8 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			Validator.isNotNull(relatedItemExternalReferenceCode)) {
 
 			return StringBundler.concat(
-				infoField.getUniqueId(), "[$", parentExternalReferenceCode,
-				StringPool.DOLLAR, relatedItemExternalReferenceCode, "$]");
+				infoField.getUniqueId(), "[$", relatedItemExternalReferenceCode,
+				StringPool.DOLLAR, parentExternalReferenceCode, "$]");
 		}
 
 		return infoField.getUniqueId();
@@ -1068,8 +1150,10 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			infoItemFieldValues.getInfoFieldValue(infoField.getUniqueId());
 
 		if (infoFieldValue == null) {
-			infoFieldValue = infoItemFieldValues.getInfoFieldValue(
-				infoField.getName());
+			infoFieldValue = _getInfoFieldValue(
+				new ArrayList<>(
+					infoItemFieldValues.getInfoFieldValues(
+						infoField.getName())));
 		}
 
 		if (infoFieldValue == null) {
@@ -1282,5 +1366,8 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 	@Reference
 	private LayoutPageTemplateStructureLocalService
 		_layoutPageTemplateStructureLocalService;
+
+	@Reference
+	private Portal _portal;
 
 }

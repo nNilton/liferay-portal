@@ -6,8 +6,11 @@
 package com.liferay.marketplace.service;
 
 import com.liferay.headless.admin.user.client.custom.field.CustomField;
+import com.liferay.headless.commerce.admin.order.client.dto.v1_0.Order;
 import com.liferay.headless.commerce.admin.order.client.dto.v1_0.OrderItem;
+import com.liferay.marketplace.util.MarketplaceUtil;
 import com.liferay.osb.koroneiki.phloem.rest.client.dto.v1_0.Account;
+import com.liferay.osb.koroneiki.phloem.rest.client.dto.v1_0.Contact;
 import com.liferay.osb.koroneiki.phloem.rest.client.dto.v1_0.Entitlement;
 import com.liferay.osb.koroneiki.phloem.rest.client.dto.v1_0.ExternalLink;
 import com.liferay.osb.koroneiki.phloem.rest.client.dto.v1_0.PostalAddress;
@@ -20,16 +23,17 @@ import com.liferay.osb.koroneiki.phloem.rest.client.resource.v1_0.ProductPurchas
 import com.liferay.osb.koroneiki.phloem.rest.client.resource.v1_0.ProductPurchaseViewResource;
 import com.liferay.osb.koroneiki.phloem.rest.client.resource.v1_0.ProductResource;
 import com.liferay.petra.string.StringPool;
+import com.liferay.petra.string.StringUtil;
 
 import java.net.URL;
 
-import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -62,7 +66,19 @@ public class KoroneikiService {
 			"API_TOKEN", _koroneikiAuthToken
 		).endpoint(
 			new URL(_koroneikiAuthURL)
+		).parameters(
+			"nestedFields", "contactRoles"
 		).build();
+	}
+
+	public Page<Contact> getContactsPage(
+			String accountKey, Pagination pagination)
+		throws Exception {
+
+		ContactResource contactResource = getContactResource();
+
+		return contactResource.getAccountAccountKeyContactsPage(
+			accountKey, pagination);
 	}
 
 	public Account getKoroneikiAccount(String accountKey) throws Exception {
@@ -113,6 +129,22 @@ public class KoroneikiService {
 		).build();
 	}
 
+	public String getSalesforceAccountKey(Account koroneikiAccount) {
+		for (ExternalLink externalLink : koroneikiAccount.getExternalLinks()) {
+			if ((StringUtil.equalsIgnoreCase(
+					externalLink.getDomain(), "dossiera") ||
+				 StringUtil.equalsIgnoreCase(
+					 externalLink.getDomain(), "salesforce")) &&
+				StringUtil.equalsIgnoreCase(
+					externalLink.getEntityName(), "account")) {
+
+				return externalLink.getEntityId();
+			}
+		}
+
+		return "";
+	}
+
 	public boolean hasEntitlement(
 		Account koroneikiAccount, String[] entitlementNames) {
 
@@ -137,79 +169,39 @@ public class KoroneikiService {
 		ProductPurchase productPurchase =
 			productPurchaseResource.getProductPurchase(productPurchaseKey);
 
-		ExternalLink[] externalLinks = productPurchase.getExternalLinks();
-
-		for (ExternalLink externalLink : externalLinks) {
-			if (Objects.equals(externalLink.getDomain(), "salesforce") &&
-				Objects.equals(externalLink.getEntityName(), "opportunity")) {
-
-				if (_log.isInfoEnabled()) {
-					_log.info(
-						"Salesforce opportunity already exists " + opportunity);
-				}
-
-				return;
-			}
-		}
-
-		externalLinks = Arrays.copyOf(externalLinks, externalLinks.length + 1);
-
-		ExternalLink externalLink = new ExternalLink();
-
-		externalLink.setDomain("salesforce");
-		externalLink.setEntityId(opportunity);
-		externalLink.setEntityName("opportunity");
-
-		externalLinks[externalLinks.length - 1] = externalLink;
-
-		productPurchase.setExternalLinks(externalLinks);
+		productPurchase.setExternalLinks(
+			MarketplaceUtil.appendExternalLink(
+				productPurchase.getExternalLinks(), "salesforce", opportunity,
+				"opportunity"));
 
 		productPurchaseResource.putProductPurchase(
 			jwt.getClaim("username"), jwt.getClaim("sub"), productPurchaseKey,
 			productPurchase);
 	}
 
-	public void postAccountAccountKeyProductPurchase(
+	public ProductPurchase postAccountAccountKeyProductPurchase(
 			String accountKey, Jwt jwt, String licenseType,
 			String licenseUsageType, OrderItem orderItem)
 		throws Exception {
 
-		ZonedDateTime zonedDateTime = ZonedDateTime.now();
-
 		ProductPurchase productPurchase = new ProductPurchase();
 
-		productPurchase.setPerpetual(Objects.equals(licenseType, "Perpetual"));
-
-		if (Objects.equals(licenseUsageType, "trial")) {
+		if (!Objects.equals(licenseType, "Perpetual")) {
 			productPurchase.setEndDate(
-				Date.from(
-					zonedDateTime.plusMonths(
-						1
-					).toInstant()));
-
-			productPurchase.setPerpetual(false);
-		}
-		else if (Objects.equals(licenseType, "Subscription")) {
-			Instant instant = zonedDateTime.plusYears(
-				1
-			).toInstant();
-
-			productPurchase.setEndDate(Date.from(instant));
+				MarketplaceUtil.getOrderPurchaseEndDate(
+					licenseType, licenseUsageType));
 		}
 
-		ExternalLink externalLink = new ExternalLink();
-
-		externalLink.setDomain("salesforce");
-		externalLink.setEntityId(String.valueOf(orderItem.getOrderId()));
-		externalLink.setEntityName("opportunity");
-
-		productPurchase.setExternalLinks(new ExternalLink[] {externalLink});
-
+		productPurchase.setExternalLinks(
+			MarketplaceUtil.appendExternalLink(
+				productPurchase.getExternalLinks(), "marketplace",
+				String.valueOf(orderItem.getOrderId()), "opportunity"));
+		productPurchase.setPerpetual(Objects.equals(licenseType, "Perpetual"));
 		productPurchase.setProductKey(orderItem.getSkuExternalReferenceCode());
 		productPurchase.setQuantity(
 			orderItem.getQuantity(
 			).intValue());
-		productPurchase.setStartDate(Date.from(zonedDateTime.toInstant()));
+		productPurchase.setStartDate(new Date());
 		productPurchase.setStatus(ProductPurchase.Status.APPROVED);
 
 		ProductPurchaseResource productPurchaseResource =
@@ -223,6 +215,57 @@ public class KoroneikiService {
 		if (_log.isInfoEnabled()) {
 			_log.info("Created account product purchase " + productPurchase);
 		}
+
+		return productPurchase;
+	}
+
+	public ProductPurchase[] postAccountProductPurchases(
+			Jwt jwt, String licenseType, Order order)
+		throws Exception {
+
+		String accountExternalReferenceCode =
+			order.getAccountExternalReferenceCode();
+
+		if (!accountExternalReferenceCode.startsWith("KOR-")) {
+			com.liferay.headless.admin.user.client.resource.v1_0.AccountResource
+				accountResource = _marketplaceService.getAccountResource();
+
+			com.liferay.headless.admin.user.client.dto.v1_0.Account account =
+				accountResource.getAccount(order.getAccountId());
+
+			Account koroneikiAccount = postKoroneikiAccount(account, jwt);
+
+			order.setAccountExternalReferenceCode(koroneikiAccount::getKey);
+
+			accountResource.patchAccount(
+				account.getId(),
+				new com.liferay.headless.admin.user.client.dto.v1_0.Account() {
+					{
+						setExternalReferenceCode(koroneikiAccount::getKey);
+					}
+				});
+		}
+
+		List<ProductPurchase> productPurchases = new ArrayList<>();
+
+		try {
+			for (OrderItem orderItem : order.getOrderItems()) {
+				ProductPurchase productPurchase =
+					postAccountAccountKeyProductPurchase(
+						order.getAccountExternalReferenceCode(), jwt,
+						licenseType,
+						MarketplaceUtil.getSkuOptionValue(
+							"license-usage-type", orderItem.getOptions()),
+						orderItem);
+
+				productPurchases.add(productPurchase);
+			}
+		}
+		catch (Exception exception) {
+			_log.error("Unable to create account product purchase", exception);
+		}
+
+		return productPurchases.toArray(new ProductPurchase[0]);
 	}
 
 	public Account postKoroneikiAccount(
@@ -270,6 +313,10 @@ public class KoroneikiService {
 				).toInstant()));
 
 		koroneikiAccount.setDescription(account.getDescription());
+		koroneikiAccount.setExternalLinks(
+			MarketplaceUtil.appendExternalLink(
+				koroneikiAccount.getExternalLinks(), "marketplace",
+				account.getName(), "account"));
 		koroneikiAccount.setName(account.getName());
 		koroneikiAccount.setPhoneNumber(customFieldsMap.get("Contact Phone"));
 

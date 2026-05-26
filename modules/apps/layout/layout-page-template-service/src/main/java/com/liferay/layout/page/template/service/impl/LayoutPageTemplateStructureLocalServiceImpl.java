@@ -5,6 +5,7 @@
 
 package com.liferay.layout.page.template.service.impl;
 
+import com.liferay.batch.engine.thread.local.BatchEngineThreadLocal;
 import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.layout.page.template.model.LayoutPageTemplateStructure;
@@ -30,6 +31,7 @@ import com.liferay.segments.service.SegmentsExperienceLocalService;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -85,7 +87,9 @@ public class LayoutPageTemplateStructureLocalServiceImpl
 
 		// Layout page template structure rel
 
-		if (!ExportImportThreadLocal.isImportInProcess()) {
+		if (BatchEngineThreadLocal.isBatchImportInProcess() ||
+			!ExportImportThreadLocal.isImportInProcess()) {
+
 			_layoutPageTemplateStructureRelLocalService.
 				addLayoutPageTemplateStructureRel(
 					userId, groupId, layoutPageTemplateStructureId,
@@ -160,12 +164,6 @@ public class LayoutPageTemplateStructureLocalServiceImpl
 		LayoutPageTemplateStructure layoutPageTemplateStructure =
 			layoutPageTemplateStructurePersistence.findByG_P(groupId, plid);
 
-		layoutPageTemplateStructure.setModifiedDate(new Date());
-
-		layoutPageTemplateStructure =
-			layoutPageTemplateStructurePersistence.update(
-				layoutPageTemplateStructure);
-
 		// Layout page template structure rel
 
 		LayoutPageTemplateStructureRel layoutPageTemplateStructureRel =
@@ -174,6 +172,18 @@ public class LayoutPageTemplateStructureLocalServiceImpl
 					layoutPageTemplateStructure.
 						getLayoutPageTemplateStructureId(),
 					segmentsExperienceId);
+
+		if ((layoutPageTemplateStructureRel != null) &&
+			Objects.equals(layoutPageTemplateStructureRel.getData(), data)) {
+
+			return layoutPageTemplateStructure;
+		}
+
+		layoutPageTemplateStructure.setModifiedDate(new Date());
+
+		layoutPageTemplateStructure =
+			layoutPageTemplateStructurePersistence.update(
+				layoutPageTemplateStructure);
 
 		if (layoutPageTemplateStructureRel == null) {
 			_layoutPageTemplateStructureRelLocalService.

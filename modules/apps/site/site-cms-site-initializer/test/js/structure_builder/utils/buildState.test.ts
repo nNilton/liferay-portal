@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {ObjectDefinition} from '../../../../src/main/resources/META-INF/resources/js/common/types/ObjectDefinition';
 import {State} from '../../../../src/main/resources/META-INF/resources/js/structure_builder/contexts/StateContext';
 import buildObjectDefinition from '../../../../src/main/resources/META-INF/resources/js/structure_builder/utils/buildObjectDefinition';
 import buildState from '../../../../src/main/resources/META-INF/resources/js/structure_builder/utils/buildState';
@@ -93,6 +94,7 @@ describe('buildState', () => {
 			erc: 'structureERC',
 			label: {en_US: 'Structure'},
 			name: 'myStructure',
+			path: '',
 			spaces: [],
 			status: 'draft',
 			system: false,
@@ -102,13 +104,16 @@ describe('buildState', () => {
 		};
 
 		const initialState: State = {
+			clipboard: null,
 			history: {
-				deletedChildren: false,
+				deletedChildren: [],
 				deletedGroupERCs: [],
+				deletedRelationships: [],
 				modifiedNames: new Set(),
 			},
 			invalids: new Map(),
 			publishedChildren: new Set(),
+			renamingItemUuid: null,
 			selection: [],
 			structure,
 			unsavedChanges: false,
@@ -147,6 +152,7 @@ describe('buildState', () => {
 			erc: 'structureERC',
 			label: {en_US: 'Structure'},
 			name: 'myStructure',
+			path: '',
 			spaces: [],
 			status: 'published',
 			system: false,
@@ -156,13 +162,16 @@ describe('buildState', () => {
 		};
 
 		const initialState: State = {
+			clipboard: null,
 			history: {
-				deletedChildren: false,
+				deletedChildren: [],
 				deletedGroupERCs: [],
+				deletedRelationships: [],
 				modifiedNames: new Set(),
 			},
 			invalids: new Map(),
 			publishedChildren: new Set(),
+			renamingItemUuid: null,
 			selection: [],
 			structure,
 			unsavedChanges: false,
@@ -209,6 +218,7 @@ describe('buildState', () => {
 			erc: 'structureERC',
 			label: {en_US: 'Structure'},
 			name: 'myStructure',
+			path: '',
 			spaces: ['space-1-erc', 'space-2-erc'],
 			status: 'published',
 			system: false,
@@ -221,13 +231,16 @@ describe('buildState', () => {
 		};
 
 		const initialState: State = {
+			clipboard: null,
 			history: {
-				deletedChildren: false,
+				deletedChildren: [],
 				deletedGroupERCs: [],
+				deletedRelationships: [],
 				modifiedNames: new Set(),
 			},
 			invalids: new Map(),
 			publishedChildren: new Set(),
+			renamingItemUuid: null,
 			selection: [],
 			structure,
 			unsavedChanges: false,
@@ -313,5 +326,71 @@ describe('buildState', () => {
 		const [, field] = [...state!.structure.children][0];
 
 		expect(field).toEqual(expect.objectContaining({type: 'decimal'}));
+	});
+
+	it('Includes related content relationships', () => {
+		const objectDefinition = buildObjectDefinition({
+			children: getChildren([TEXT_FIELD]),
+			erc: 'structureERC',
+			label: {en_US: 'Structure'},
+			name: 'myStructure',
+			spaces: [],
+			status: 'published',
+		});
+
+		const relatedObjectDefinition: ObjectDefinition = {
+			enableComments: true,
+			enableFriendlyURLCustomization: true,
+			enableIndexSearch: true,
+			enableLocalization: true,
+			enableObjectEntryDraft: true,
+			enableObjectEntryHistory: true,
+			enableObjectEntrySchedule: true,
+			enableObjectEntryVersioning: true,
+			externalReferenceCode: 'related-structure-erc',
+			label: {en_US: 'Structure'},
+			name: 'relatedStructure',
+			objectFields: [],
+			objectRelationships: [
+				{
+					deletionType: 'disassociate',
+					externalReferenceCode: 'related-content-relationship-erc',
+					label: {en_US: 'Related Content'},
+					name: 'relatedContent',
+					objectDefinitionExternalReferenceCode1:
+						'related-structure-erc',
+					objectDefinitionExternalReferenceCode2: 'structureERC',
+					type: 'oneToMany',
+				},
+			],
+			pluralLabel: {en_US: 'Structure'},
+			scope: 'depot',
+			status: {
+				code: 2,
+			},
+			titleObjectFieldName: 'title',
+		};
+
+		const state = buildState({
+			mainObjectDefinition: objectDefinition,
+			objectDefinitions: {
+				[relatedObjectDefinition.externalReferenceCode]:
+					relatedObjectDefinition,
+			},
+		});
+
+		const children = Array.from(state!.structure.children.values());
+		const relatedContent = children.find(
+			(child) => child.type === 'related-content'
+		);
+
+		expect(relatedContent).toEqual(
+			expect.objectContaining({
+				erc: 'related-content-relationship-erc',
+				multiselection: false,
+				relatedStructureERC: 'related-structure-erc',
+				type: 'related-content',
+			})
+		);
 	});
 });

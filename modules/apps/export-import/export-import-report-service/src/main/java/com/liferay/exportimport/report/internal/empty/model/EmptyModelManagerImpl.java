@@ -7,19 +7,23 @@ package com.liferay.exportimport.report.internal.empty.model;
 
 import com.liferay.exportimport.kernel.empty.model.EmptyModelManager;
 import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
-import com.liferay.exportimport.report.internal.util.ExportImportReportEntryUtil;
 import com.liferay.exportimport.report.service.ExportImportReportEntryLocalService;
 import com.liferay.petra.function.UnsafeBiFunction;
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.lang.SafeCloseable;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -37,7 +41,8 @@ public class EmptyModelManagerImpl implements EmptyModelManager {
 			String externalReferenceCode,
 			BiFunction<String, Long, T> fetchByExternalReferenceCodeBiFunction,
 			UnsafeBiFunction<String, Long, T, E>
-				getByExternalReferenceCodeUnsafeBiFunction)
+				getByExternalReferenceCodeUnsafeBiFunction,
+			String modelNameLanguageKey)
 		throws E {
 
 		if (!LazyReferencingThreadLocal.isEnabled()) {
@@ -55,34 +60,19 @@ public class EmptyModelManagerImpl implements EmptyModelManager {
 		try (SafeCloseable safeCloseable =
 				EmptyModelThreadLocal.setEmptyModelWithSafeCloseable(true)) {
 
-			_exportImportReportEntryLocalService.
-				addEmptyExportImportReportEntry(
-					0L, companyId, externalReferenceCode,
-					_classNameLocalService.getClassNameId(clazz.getName()),
-					GetterUtil.getLong(
-						ExportImportThreadLocal.
-							getExportImportConfigurationId()),
-					clazz.getName(), ExportImportReportEntryUtil.getOrigin());
+			if (ExportImportThreadLocal.isImportInProcess()) {
+				_exportImportReportEntryLocalService.
+					getOrAddEmptyExportImportReportEntry(
+						0L, companyId, externalReferenceCode,
+						_classNameLocalService.getClassNameId(clazz.getName()),
+						GetterUtil.getLong(
+							ExportImportThreadLocal.
+								getExportImportConfigurationId()),
+						modelNameLanguageKey);
+			}
 
 			return emptyModelUnsafeSupplier.get();
 		}
-	}
-
-	@Override
-	public <T, E extends PortalException> T getOrAddEmptyModel(
-			Class<T> clazz, UnsafeSupplier<T, E> emptyModelUnsafeSupplier,
-			String externalReferenceCode,
-			BiFunction<String, Long, T> fetchByExternalReferenceCodeBiFunction,
-			UnsafeBiFunction<String, Long, T, E>
-				getByExternalReferenceCodeUnsafeBiFunction,
-			long groupId)
-		throws E {
-
-		return getOrAddEmptyModel(
-			clazz.getName(), null, emptyModelUnsafeSupplier,
-			externalReferenceCode, fetchByExternalReferenceCodeBiFunction,
-			getByExternalReferenceCodeUnsafeBiFunction, groupId,
-			clazz.getName());
 	}
 
 	@Override
@@ -93,7 +83,7 @@ public class EmptyModelManagerImpl implements EmptyModelManager {
 			BiFunction<String, Long, T> fetchByExternalReferenceCodeBiFunction,
 			UnsafeBiFunction<String, Long, T, E>
 				getByExternalReferenceCodeUnsafeBiFunction,
-			long groupId, String modelName)
+			long groupId, String modelNameLanguageKey)
 		throws E {
 
 		if (!LazyReferencingThreadLocal.isEnabled()) {
@@ -108,23 +98,25 @@ public class EmptyModelManagerImpl implements EmptyModelManager {
 			return model;
 		}
 
-		Group group = _groupLocalService.fetchGroup(groupId);
-
-		if (group != null) {
-			companyId = group.getCompanyId();
-		}
-
 		try (SafeCloseable safeCloseable =
 				EmptyModelThreadLocal.setEmptyModelWithSafeCloseable(true)) {
 
-			_exportImportReportEntryLocalService.
-				addEmptyExportImportReportEntry(
-					groupId, companyId, externalReferenceCode,
-					_classNameLocalService.getClassNameId(className),
-					GetterUtil.getLong(
-						ExportImportThreadLocal.
-							getExportImportConfigurationId()),
-					modelName, ExportImportReportEntryUtil.getOrigin());
+			if (ExportImportThreadLocal.isImportInProcess()) {
+				Group group = _groupLocalService.fetchGroup(groupId);
+
+				if (group != null) {
+					companyId = group.getCompanyId();
+				}
+
+				_exportImportReportEntryLocalService.
+					getOrAddEmptyExportImportReportEntry(
+						groupId, companyId, externalReferenceCode,
+						_classNameLocalService.getClassNameId(className),
+						GetterUtil.getLong(
+							ExportImportThreadLocal.
+								getExportImportConfigurationId()),
+						modelNameLanguageKey);
+			}
 
 			return emptyModelUnsafeSupplier.get();
 		}
@@ -134,6 +126,38 @@ public class EmptyModelManagerImpl implements EmptyModelManager {
 	public boolean isEmptyModel() {
 		return EmptyModelThreadLocal.isEmptyModel();
 	}
+
+	@Override
+	public int solveEmptyModel(
+		String classExternalReferenceCode, String className, long companyId,
+		long groupId, int status,
+		Supplier<Integer> updatedModelStatusSupplier) {
+
+		if (status != WorkflowConstants.STATUS_EMPTY) {
+			return status;
+		}
+
+		try {
+			_exportImportReportEntryLocalService.
+				resolveEmptyExportImportReportEntries(
+					groupId, companyId, classExternalReferenceCode,
+					_classNameLocalService.getClassNameId(className));
+		}
+		catch (Exception exception) {
+			_log.error(
+				StringBundler.concat(
+					"Unable to resolve the export/import report entries for \"",
+					"the class external reference code ",
+					classExternalReferenceCode, "\" and class name \"",
+					className, "\""),
+				exception);
+		}
+
+		return updatedModelStatusSupplier.get();
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		EmptyModelManagerImpl.class);
 
 	@Reference
 	private ClassNameLocalService _classNameLocalService;

@@ -10,28 +10,39 @@ import React, {useEffect} from 'react';
 import {
 	ObjectDefinition,
 	ObjectDefinitions,
+	ObjectRelationship,
 } from '../../common/types/ObjectDefinition';
+import {
+	DefaultLanguageLabels,
+	setDefaultLanguageLabels,
+} from '../../common/utils/defaultLanguageLabels';
 import {Config, initializeConfig} from '../config';
 import CacheContextProvider from '../contexts/CacheContext';
 import StateContextProvider, {useSelector} from '../contexts/StateContext';
 import selectStructureId from '../selectors/selectStructureId';
 import selectStructureStatus from '../selectors/selectStructureStatus';
 import buildState from '../utils/buildState';
+import HelpButton from './HelpButton';
+import ShortcutManager from './ShortcutManager';
 import Sidebar from './Sidebar';
 import StructureBuilderToolbar from './StructureBuilderToolbar';
 import Settings from './settings/Settings';
 
 export default function StructureBuilder({
 	config,
+	defaultLanguageLabels,
 	state,
 }: {
 	config: Config;
+	defaultLanguageLabels: DefaultLanguageLabels;
 	state: {
 		mainObjectDefinition: ObjectDefinition;
 		objectDefinitions: ObjectDefinitions;
+		relatedContentObjectRelationships: ObjectRelationship[];
 	};
 }) {
 	initializeConfig(config);
+	setDefaultLanguageLabels(defaultLanguageLabels);
 
 	return (
 		<StateContextProvider initialState={buildState(state)}>
@@ -43,13 +54,17 @@ export default function StructureBuilder({
 				<div className="d-flex flex-column structure-builder__wrapper">
 					<HistoryManager />
 
+					<ShortcutManager />
+
 					<StructureBuilderToolbar />
 
-					<div className="d-flex flex-grow-1 p-4">
+					<div className="d-flex flex-grow-1 p-2 p-md-4">
 						<Sidebar />
 
 						<Settings />
 					</div>
+
+					<HelpButton />
 				</div>
 			</CacheContextProvider>
 		</StateContextProvider>

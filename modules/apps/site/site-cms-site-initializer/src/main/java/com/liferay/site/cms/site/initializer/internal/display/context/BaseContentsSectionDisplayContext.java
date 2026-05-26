@@ -10,13 +10,8 @@ import com.liferay.frontend.data.set.model.FDSActionDropdownItem;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItem;
 import com.liferay.object.constants.ObjectEntryFolderConstants;
 import com.liferay.object.constants.ObjectFolderConstants;
-import com.liferay.object.model.ObjectEntryFolder;
 import com.liferay.object.service.ObjectDefinitionService;
-import com.liferay.object.service.ObjectDefinitionSettingLocalService;
-import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.language.Language;
-import com.liferay.portal.kernel.language.LanguageUtil;
-import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.Portal;
@@ -38,70 +33,20 @@ public abstract class BaseContentsSectionDisplayContext
 		DepotEntryLocalService depotEntryLocalService,
 		GroupLocalService groupLocalService,
 		HttpServletRequest httpServletRequest, Language language,
-		ObjectDefinitionService objectDefinitionService,
-		ObjectDefinitionSettingLocalService objectDefinitionSettingLocalService,
-		ModelResourcePermission<ObjectEntryFolder>
-			objectEntryFolderModelResourcePermission,
-		Portal portal,
+		ObjectDefinitionService objectDefinitionService, Portal portal,
 		TranslationInfoItemFieldValuesExporterRegistry
 			translationInfoItemFieldValuesExporterRegistry) {
 
 		super(
 			depotEntryLocalService, null, groupLocalService, httpServletRequest,
-			language, objectDefinitionService,
-			objectDefinitionSettingLocalService,
-			objectEntryFolderModelResourcePermission, portal,
+			language, objectDefinitionService, portal,
 			translationInfoItemFieldValuesExporterRegistry);
 	}
 
 	@Override
 	public List<DropdownItem> getBulkActionDropdownItems() {
-		List<DropdownItem> fdsBulkActionDropdownItems =
-			super.getBulkActionDropdownItems();
-
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				null, "pencil", "edit-categories",
-				LanguageUtil.get(httpServletRequest, "edit-categories"), "post",
-				"edit-categories", null));
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				null, "pencil", "edit-tags",
-				LanguageUtil.get(httpServletRequest, "edit-tags"), "post",
-				"edit-tags", null));
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				"#", "password-policies", "permissions",
-				LanguageUtil.get(httpServletRequest, "permissions"), null, null,
-				null));
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				"#", "password-policies", "default-permissions",
-				LanguageUtil.get(httpServletRequest, "default-permissions"),
-				null, null, null));
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				StringPool.BLANK, "password-policies",
-				"edit-default-permissions-by-role",
-				LanguageUtil.get(
-					httpServletRequest, "edit-default-permissions-by-role"),
-				null, null, null));
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				StringPool.BLANK, "password-policies",
-				"edit-permissions-by-role",
-				LanguageUtil.get(
-					httpServletRequest, "edit-permissions-by-role"),
-				null, null, null));
-		fdsBulkActionDropdownItems.add(
-			new FDSActionDropdownItem(
-				StringPool.BLANK, "password-policies",
-				"reset-to-default-permissions",
-				LanguageUtil.get(
-					httpServletRequest, "reset-to-default-permissions"),
-				null, null, null));
-
-		return fdsBulkActionDropdownItems;
+		return SectionDisplayContextUtil.getContentsBulkActionDropdownItems(
+			httpServletRequest);
 	}
 
 	@Override
@@ -120,6 +65,12 @@ public abstract class BaseContentsSectionDisplayContext
 		).put(
 			"title", language.get(httpServletRequest, "no-content-yet")
 		).build();
+	}
+
+	@Override
+	public List<FDSActionDropdownItem> getFDSActionDropdownItems() {
+		return SectionDisplayContextUtil.getContentsFDSActionDropdownItems(
+			httpServletRequest);
 	}
 
 	protected abstract String getEmptyStateDescriptionKey();

@@ -48,6 +48,10 @@ import java.util.function.Supplier;
 @JsonSubTypes(
 	{
 		@JsonSubTypes.Type(
+			name = "BasicFragment",
+			value = BasicFragmentInstancePageElementDefinition.class
+		),
+		@JsonSubTypes.Type(
 			name = "CollectionDisplay",
 			value = CollectionDisplayPageElementDefinition.class
 		),
@@ -66,19 +70,15 @@ import java.util.function.Supplier;
 			value = FormContainerPageElementDefinition.class
 		),
 		@JsonSubTypes.Type(
+			name = "FormFragment",
+			value = FormFragmentInstancePageElementDefinition.class
+		),
+		@JsonSubTypes.Type(
 			name = "FormStep", value = FormStepPageElementDefinition.class
 		),
 		@JsonSubTypes.Type(
 			name = "FormStepContainer",
 			value = FormStepContainerPageElementDefinition.class
-		),
-		@JsonSubTypes.Type(
-			name = "Fragment",
-			value = FragmentInstancePageElementDefinition.class
-		),
-		@JsonSubTypes.Type(
-			name = "FragmentComposition",
-			value = FragmentCompositionInstancePageElementDefinition.class
 		),
 		@JsonSubTypes.Type(
 			name = "FragmentDropZone",
@@ -112,7 +112,7 @@ public abstract class PageElementDefinition implements Serializable {
 	}
 
 	@io.swagger.v3.oas.annotations.media.Schema(
-		description = "The page element definition's type (collection display, collection item, container, drop zone, form container, form step, form step container, fragment, fragment composition, fragment drop zone, grid,  module or widget)."
+		description = "The page element definition's type (basic fragment, collection display, collection item, container, drop zone, form container, form fragment, form step, form step container, fragment drop zone, grid,  module or widget)."
 	)
 	@JsonGetter("type")
 	@Valid
@@ -159,7 +159,7 @@ public abstract class PageElementDefinition implements Serializable {
 	}
 
 	@GraphQLField(
-		description = "The page element definition's type (collection display, collection item, container, drop zone, form container, form step, form step container, fragment, fragment composition, fragment drop zone, grid,  module or widget)."
+		description = "The page element definition's type (basic fragment, collection display, collection item, container, drop zone, form container, form fragment, form step, form step container, fragment drop zone, grid,  module or widget)."
 	)
 	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
 	protected Type type;
@@ -224,11 +224,12 @@ public abstract class PageElementDefinition implements Serializable {
 	@GraphQLName("Type")
 	public static enum Type {
 
+		BASIC_FRAGMENT("BasicFragment"),
 		COLLECTION_DISPLAY("CollectionDisplay"),
 		COLLECTION_ITEM("CollectionItem"), CONTAINER("Container"),
 		DROP_ZONE("DropZone"), FORM_CONTAINER("FormContainer"),
-		FORM_STEP("FormStep"), FORM_STEP_CONTAINER("FormStepContainer"),
-		FRAGMENT("Fragment"), FRAGMENT_COMPOSITION("FragmentComposition"),
+		FORM_FRAGMENT("FormFragment"), FORM_STEP("FormStep"),
+		FORM_STEP_CONTAINER("FormStepContainer"),
 		FRAGMENT_DROP_ZONE("FragmentDropZone"), GRID("Grid"), MODULE("Module"),
 		WIDGET("Widget");
 
@@ -354,3 +355,4 @@ public abstract class PageElementDefinition implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
+// LIFERAY-REST-BUILDER-HASH:2100635612

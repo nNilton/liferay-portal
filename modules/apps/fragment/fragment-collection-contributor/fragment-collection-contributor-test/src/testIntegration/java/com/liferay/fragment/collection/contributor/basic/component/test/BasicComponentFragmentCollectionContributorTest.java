@@ -86,12 +86,11 @@ public class BasicComponentFragmentCollectionContributorTest {
 			_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 				_fragmentEntryLinkService.addFragmentEntryLink(
 					null, _group.getGroupId(), null,
-					fragmentEntry.getExternalReferenceCode(),
-					fragmentEntry.getScopeERC(), 0, layout.getPlid(),
-					fragmentEntry.getCss(), fragmentEntry.getHtml(),
-					fragmentEntry.getJs(), fragmentEntry.getConfiguration(),
-					StringPool.BLANK, StringPool.BLANK, 0, null,
-					fragmentEntry.getType(),
+					fragmentEntry.getExternalReferenceCode(), null, 0,
+					layout.getPlid(), fragmentEntry.getCss(),
+					fragmentEntry.getHtml(), fragmentEntry.getJs(),
+					fragmentEntry.getConfiguration(), StringPool.BLANK,
+					StringPool.BLANK, 0, null, fragmentEntry.getType(),
 					ServiceContextTestUtil.getServiceContext(
 						_group.getGroupId())),
 				_getFragmentEntryProcessorContext(
@@ -120,12 +119,11 @@ public class BasicComponentFragmentCollectionContributorTest {
 			_fragmentEntryProcessorRegistry.processFragmentEntryLinkHTML(
 				_fragmentEntryLinkService.addFragmentEntryLink(
 					null, _group.getGroupId(), null,
-					fragmentEntry.getExternalReferenceCode(),
-					fragmentEntry.getScopeERC(), 0, layout.getPlid(),
-					fragmentEntry.getCss(), fragmentEntry.getHtml(),
-					fragmentEntry.getJs(), fragmentEntry.getConfiguration(),
-					StringPool.BLANK, StringPool.BLANK, 0, null,
-					fragmentEntry.getType(),
+					fragmentEntry.getExternalReferenceCode(), null, 0,
+					layout.getPlid(), fragmentEntry.getCss(),
+					fragmentEntry.getHtml(), fragmentEntry.getJs(),
+					fragmentEntry.getConfiguration(), StringPool.BLANK,
+					StringPool.BLANK, 0, null, fragmentEntry.getType(),
 					ServiceContextTestUtil.getServiceContext(
 						_group.getGroupId())),
 				_getFragmentEntryProcessorContext(
@@ -146,9 +144,9 @@ public class BasicComponentFragmentCollectionContributorTest {
 		throws Exception {
 
 		return new DefaultFragmentEntryProcessorContext(
-			_getHttpServletRequest(layout, locale),
-			new MockHttpServletResponse(), FragmentEntryLinkConstants.EDIT,
-			locale);
+			layout.getCompanyId(), _getHttpServletRequest(layout, locale),
+			new MockHttpServletResponse(), locale,
+			FragmentEntryLinkConstants.EDIT, layout.getGroupId());
 	}
 
 	private HttpServletRequest _getHttpServletRequest(

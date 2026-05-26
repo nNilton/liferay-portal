@@ -23,6 +23,8 @@ import com.liferay.headless.delivery.client.dto.v1_0.Creator;
 import com.liferay.headless.delivery.client.dto.v1_0.Document;
 import com.liferay.headless.delivery.client.dto.v1_0.DocumentType;
 import com.liferay.headless.delivery.client.http.HttpInvoker;
+import com.liferay.headless.delivery.client.pagination.Page;
+import com.liferay.headless.delivery.client.pagination.Pagination;
 import com.liferay.headless.delivery.client.permission.Permission;
 import com.liferay.headless.delivery.client.resource.v1_0.DocumentResource;
 import com.liferay.headless.delivery.client.serdes.v1_0.DocumentSerDes;
@@ -40,11 +42,13 @@ import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.test.constants.TestDataConstants;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.test.util.RoleTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
@@ -174,6 +178,14 @@ public class DocumentResourceTest extends BaseDocumentResourceTestCase {
 
 	@Override
 	@Test
+	public void testGetDocumentFolderDocumentsPage() throws Exception {
+		super.testGetDocumentFolderDocumentsPage();
+
+		_testGetDocumentFolderDocumentsPageActionsWithPermissions();
+	}
+
+	@Override
+	@Test
 	public void testGetDocumentRenderedContentByDisplayPageDisplayPageKey()
 		throws Exception {
 	}
@@ -257,6 +269,7 @@ public class DocumentResourceTest extends BaseDocumentResourceTestCase {
 	public void testPutDocument() throws Exception {
 		super.testPutDocument();
 
+		_testPutDocumentWithEmptyDocumentPartAndFileOnlyUpdate();
 		_testPutSiteDocumentByExternalReferenceCodeWithSameFolderId();
 		_testPutSiteDocumentWithFriendlyUrlPath();
 		_testPutSiteDocumentWithNoMultipartFiles();
@@ -312,7 +325,9 @@ public class DocumentResourceTest extends BaseDocumentResourceTestCase {
 
 		Assert.assertEquals(
 			new String(FileUtil.getBytes(multipartFiles.get("file"))),
-			_read("http://localhost:8080" + document.getContentUrl()));
+			_read(
+				"http://localhost:" + PortalUtil.getPortalServerPort(false) +
+					document.getContentUrl()));
 	}
 
 	@Override
@@ -564,6 +579,67 @@ public class DocumentResourceTest extends BaseDocumentResourceTestCase {
 		return httpResponse.getContent();
 	}
 
+	private void _testGetDocumentFolderDocumentsPageActionsWithPermissions()
+		throws Exception {
+
+		Long documentFolderId =
+			testGetDocumentFolderDocumentsPage_getDocumentFolderId();
+
+		Role role = RoleTestUtil.addRole(RoleConstants.TYPE_REGULAR);
+
+		User user = UserTestUtil.addUser();
+
+		_roleLocalService.addUserRole(user.getUserId(), role.getRoleId());
+
+		String password = RandomTestUtil.randomString();
+
+		_userLocalService.updatePassword(
+			user.getUserId(), password, password, false, true);
+
+		_resourcePermissionLocalService.setResourcePermissions(
+			TestPropsValues.getCompanyId(), DLFolderConstants.getClassName(),
+			ResourceConstants.SCOPE_INDIVIDUAL,
+			String.valueOf(documentFolderId), role.getRoleId(),
+			new String[] {ActionKeys.ADD_DOCUMENT});
+
+		DocumentResource documentResource = DocumentResource.builder(
+		).authentication(
+			user.getEmailAddress(), password
+		).endpoint(
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
+		).locale(
+			LocaleUtil.getDefault()
+		).build();
+
+		Page<Document> documentFolderDocumentsPage =
+			documentResource.getDocumentFolderDocumentsPage(
+				documentFolderId, false, null, null, null, Pagination.of(1, 10),
+				null);
+
+		Map<String, Map<String, String>> actions =
+			documentFolderDocumentsPage.getActions();
+
+		Assert.assertTrue(actions.containsKey("create"));
+		Assert.assertTrue(actions.containsKey("createBatch"));
+
+		_resourcePermissionLocalService.removeResourcePermission(
+			testCompany.getCompanyId(), DLFolderConstants.getClassName(),
+			ResourceConstants.SCOPE_INDIVIDUAL,
+			String.valueOf(documentFolderId), role.getRoleId(),
+			ActionKeys.ADD_DOCUMENT);
+
+		documentFolderDocumentsPage =
+			documentResource.getDocumentFolderDocumentsPage(
+				documentFolderId, false, null, null, null, Pagination.of(1, 10),
+				null);
+
+		actions = documentFolderDocumentsPage.getActions();
+
+		Assert.assertFalse(actions.containsKey("create"));
+		Assert.assertFalse(actions.containsKey("createBatch"));
+	}
+
 	private void _testPatchDocumentWithDates() throws Exception {
 		Document postDocument = testPatchDocument_addDocument();
 
@@ -746,6 +822,27 @@ public class DocumentResourceTest extends BaseDocumentResourceTestCase {
 			0, GetterUtil.getLong(postDocument.getSizeInBytes()));
 	}
 
+	private void _testPutDocumentWithEmptyDocumentPartAndFileOnlyUpdate()
+		throws Exception {
+
+		Document postDocument = testPutDocument_addDocument();
+
+		Document putDocument = documentResource.putDocument(
+			postDocument.getId(), null,
+			HashMapBuilder.<String, File>put(
+				"file",
+				() -> FileUtil.createTempFile("updated-content".getBytes())
+			).build());
+
+		Assert.assertEquals(
+			postDocument.getDateExpired(), putDocument.getDateExpired());
+		Assert.assertEquals(
+			postDocument.getDatePublished(), putDocument.getDatePublished());
+		Assert.assertEquals(
+			postDocument.getDescription(), putDocument.getDescription());
+		Assert.assertEquals(postDocument.getTitle(), putDocument.getTitle());
+	}
+
 	private void _testPutSiteDocumentByExternalReferenceCodeWithSameFolderId()
 		throws Exception {
 
@@ -837,5 +934,8 @@ public class DocumentResourceTest extends BaseDocumentResourceTestCase {
 
 	@Inject
 	private RoleLocalService _roleLocalService;
+
+	@Inject
+	private UserLocalService _userLocalService;
 
 }

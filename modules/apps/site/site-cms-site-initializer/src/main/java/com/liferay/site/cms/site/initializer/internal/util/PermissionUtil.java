@@ -30,7 +30,8 @@ import java.util.Map;
 public class PermissionUtil {
 
 	public static Map<String, Object> getDefaultPermissionAdditionalProps(
-		HttpServletRequest httpServletRequest, ThemeDisplay themeDisplay) {
+		boolean allowPropagate, HttpServletRequest httpServletRequest,
+		ThemeDisplay themeDisplay) {
 
 		return HashMapBuilder.<String, Object>put(
 			"actions",
@@ -114,6 +115,8 @@ public class PermissionUtil {
 				}
 			).build()
 		).put(
+			"allowPropagate", allowPropagate
+		).put(
 			"roles",
 			() -> TransformUtil.transformToArray(
 				RoleLocalServiceUtil.getGroupRolesAndTeamRoles(
@@ -125,7 +128,7 @@ public class PermissionUtil {
 					new int[] {
 						RoleConstants.TYPE_REGULAR, RoleConstants.TYPE_DEPOT
 					},
-					0, 0, QueryUtil.ALL_POS, QueryUtil.ALL_POS),
+					null, 0, 0, QueryUtil.ALL_POS, QueryUtil.ALL_POS),
 				role -> HashMapBuilder.put(
 					"key", role.getName()
 				).put(
@@ -135,6 +138,13 @@ public class PermissionUtil {
 				).build(),
 				Map.class)
 		).build();
+	}
+
+	public static Map<String, Object> getDefaultPermissionAdditionalProps(
+		HttpServletRequest httpServletRequest, ThemeDisplay themeDisplay) {
+
+		return getDefaultPermissionAdditionalProps(
+			false, httpServletRequest, themeDisplay);
 	}
 
 }

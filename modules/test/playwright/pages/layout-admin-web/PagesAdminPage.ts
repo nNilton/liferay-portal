@@ -10,6 +10,7 @@ import {clickAndExpectToBeVisible} from '../../utils/clickAndExpectToBeVisible';
 import fillAndClickOutside from '../../utils/fillAndClickOutside';
 import {PORTLET_URLS} from '../../utils/portletUrls';
 import {waitForAlert} from '../../utils/waitForAlert';
+import {waitForAllPortletsReady} from '../../utils/waitForAllPortletsReady';
 import {PageEditorPage} from '../layout-content-page-editor-web/PageEditorPage';
 
 export class PagesAdminPage {
@@ -27,6 +28,7 @@ export class PagesAdminPage {
 	private readonly pageTitleBox: Locator;
 	private readonly searchButton: Locator;
 	private readonly searchInput: Locator;
+	private readonly themeSelectorTitle: Locator;
 
 	constructor(page: Page) {
 		this.page = page;
@@ -34,7 +36,7 @@ export class PagesAdminPage {
 		const addPageIFrame = page.frameLocator(
 			'iframe[id="addLayoutDialog_iframe_"]'
 		);
-		this.addPageModal = page.locator('[id^="addLayoutDialog"]');
+		this.addPageModal = page.locator('[id="addLayoutDialog"]');
 		this.addButton = addPageIFrame.getByRole('button', {name: 'Add'});
 		this.configurationSaveButton = page.getByRole('button', {
 			exact: true,
@@ -58,6 +60,9 @@ export class PagesAdminPage {
 		);
 		this.searchButton = this.page.getByLabel('Search for', {exact: true});
 		this.searchInput = this.page.getByPlaceholder('Search for');
+		this.themeSelectorTitle = this.page.getByRole('heading', {
+			name: 'Available Themes',
+		});
 	}
 
 	getPageMenuItem(pageName: string): Locator {
@@ -155,6 +160,7 @@ export class PagesAdminPage {
 	}) {
 		await clickAndExpectToBeVisible({
 			target: this.addPageModal,
+			timeout: 5000,
 			trigger: this.page
 				.locator('.card-page-item')
 				.filter({hasText: template}),
@@ -164,11 +170,13 @@ export class PagesAdminPage {
 
 		await fillAndClickOutside(this.page, this.pageTitleBox, name);
 
-		await this.addButton.waitFor({state: 'attached'});
-		await this.addButton.hover();
-		await this.addButton.click();
+		await expect(async () => {
+			await this.addButton.click({timeout: 1000});
 
-		await waitForAlert(this.page, 'page was created successfully.');
+			await waitForAlert(this.page, 'page was created successfully.', {
+				timeout: 5000,
+			});
+		}).toPass();
 	}
 
 	private async addThemeFaviconClientExtension(clientExtensionName: string) {
@@ -191,6 +199,42 @@ export class PagesAdminPage {
 		await expect(
 			this.page.getByAltText(clientExtensionName, {exact: true})
 		).toBeVisible();
+
+		await this.configurationSaveButton.click();
+	}
+
+	private async addThemeSpritemapClientExtension(
+		clientExtensionName: string
+	) {
+		await this.page
+			.getByRole('link', {
+				name: 'Design',
+			})
+			.click();
+
+		const panel = this.page.locator(
+			'[id$="theme-spritemap-client-extension"]'
+		);
+
+		await waitForAllPortletsReady(this.page);
+
+		await panel.getByRole('button', {name: 'Select'}).click();
+
+		const iframe = this.page.frameLocator(
+			'#selectThemeSpritemapCET_iframe_'
+		);
+
+		const clientExtensionItem = iframe.getByText(clientExtensionName, {
+			exact: true,
+		});
+
+		await clientExtensionItem.click({trial: true});
+
+		await clientExtensionItem.click();
+
+		await expect(this.page.getByPlaceholder('Name')).toHaveValue(
+			clientExtensionName
+		);
 
 		await this.configurationSaveButton.click();
 	}
@@ -246,28 +290,46 @@ export class PagesAdminPage {
 	}
 
 	async changeTheme(themeName: string) {
-		await this.defineCustomThemeRadio.click();
+		await this.openThemeSelector();
 
-		await this.page
-			.getByRole('button', {name: 'Change Current Theme'})
-			.click();
+		const themeCard = this.getThemeCard(themeName);
 
-		const themeCard = this.page
-			.frameLocator(
-				'iframe[id="_com_liferay_layout_admin_web_portlet_GroupPagesPortlet_selectTheme_iframe_"]'
-			)
-			.getByText(themeName);
-
-		await themeCard.waitFor();
+		await expect(themeCard).toBeVisible();
 
 		await clickAndExpectToBeHidden({
-			target: themeCard,
+			target: this.themeSelectorTitle,
 			trigger: themeCard,
 		});
 
-		await this.configurationSaveButton.waitFor();
+		await expect(this.configurationSaveButton).toBeVisible();
 
 		await this.saveConfiguration();
+	}
+
+	getThemeCard(themeName: string) {
+		return this.page
+			.frameLocator(
+				'iframe[id="_com_liferay_layout_admin_web_portlet_GroupPagesPortlet_selectTheme_iframe_"]'
+			)
+			.getByLabel(`Select ${themeName}`, {exact: true});
+	}
+
+	async openThemeSelector() {
+		const changeThemeButton = this.page.getByRole('button', {
+			disabled: false,
+			exact: true,
+			name: 'Change Current Theme',
+		});
+
+		await clickAndExpectToBeVisible({
+			target: changeThemeButton,
+			trigger: this.defineCustomThemeRadio,
+		});
+
+		await clickAndExpectToBeVisible({
+			target: this.themeSelectorTitle,
+			trigger: changeThemeButton,
+		});
 	}
 
 	async clickOnJavaScriptClientExtensionsTab() {
@@ -486,7 +548,7 @@ export class PagesAdminPage {
 		layoutTitle?: string;
 		openConfiguration?: boolean;
 		siteUrl?: Site['friendlyUrlPath'];
-		type?: 'globalCSS' | 'globalJS' | 'themeFavicon';
+		type?: 'globalCSS' | 'globalJS' | 'themeFavicon' | 'themeSpritemap';
 	}) {
 		if (openConfiguration) {
 			if (!layoutTitle) {
@@ -504,6 +566,9 @@ export class PagesAdminPage {
 		}
 		else if (type && type === 'globalJS') {
 			await this.addJavaScriptClientExtension(clientExtensionName);
+		}
+		else if (type === 'themeSpritemap') {
+			await this.addThemeSpritemapClientExtension(clientExtensionName);
 		}
 		else {
 			await this.addThemeFaviconClientExtension(clientExtensionName);
@@ -558,7 +623,9 @@ export class PagesAdminPage {
 				await clickAndExpectToBeVisible({
 					target: this.page
 						.locator('.management-bar .nav-item')
-						.getByText(`${index + 1} of`),
+						.getByText(
+							new RegExp(`${index + 1} of \\d+ Items Selected`)
+						),
 					trigger: this.page.getByLabel(`Select ${pageName}`, {
 						exact: true,
 					}),

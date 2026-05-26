@@ -735,6 +735,11 @@ public class ObjectDefinitionWrapper
 	}
 
 	@Override
+	public ObjectFolder getObjectFolder() {
+		return model.getObjectFolder();
+	}
+
+	@Override
 	public String getObjectFolderExternalReferenceCode() {
 		return model.getObjectFolderExternalReferenceCode();
 	}
@@ -1051,8 +1056,18 @@ public class ObjectDefinitionWrapper
 	}
 
 	@Override
+	public boolean isAllowStandaloneObjectEntry() {
+		return model.isAllowStandaloneObjectEntry();
+	}
+
+	@Override
 	public boolean isApproved() {
 		return model.isApproved();
+	}
+
+	@Override
+	public boolean isCMP() {
+		return model.isCMP();
 	}
 
 	@Override
@@ -1589,6 +1604,11 @@ public class ObjectDefinitionWrapper
 		model.setObjectFieldBag(objectFieldBag);
 	}
 
+	@Override
+	public void setObjectFolder(ObjectFolder objectFolder) {
+		model.setObjectFolder(objectFolder);
+	}
+
 	/**
 	 * Sets the object folder ID of this object definition.
 	 *
@@ -1842,3 +1862,4 @@ public class ObjectDefinitionWrapper
 	}
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-269929950

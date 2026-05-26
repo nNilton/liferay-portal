@@ -348,10 +348,12 @@ public class SegmentsExperimentLocalServiceWrapper
 
 	@Override
 	public java.util.List<SegmentsExperiment>
-		getSegmentsEntrySegmentsExperiments(long segmentsEntryId) {
+		getSegmentsEntrySegmentsExperiments(
+			String segmentsEntryERC, long segmentsEntryGroupId) {
 
 		return _segmentsExperimentLocalService.
-			getSegmentsEntrySegmentsExperiments(segmentsEntryId);
+			getSegmentsEntrySegmentsExperiments(
+				segmentsEntryERC, segmentsEntryGroupId);
 	}
 
 	/**
@@ -560,3 +562,4 @@ public class SegmentsExperimentLocalServiceWrapper
 	private SegmentsExperimentLocalService _segmentsExperimentLocalService;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-1227256236

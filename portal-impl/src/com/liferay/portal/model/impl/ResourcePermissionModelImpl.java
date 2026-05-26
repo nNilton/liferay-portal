@@ -91,6 +91,8 @@ public class ResourcePermissionModelImpl
 
 	public static final String TABLE_SQL_DROP = "drop table ResourcePermission";
 
+	public static final String ENTITY_ALIAS = "resourcePermission";
+
 	public static final String ORDER_BY_JPQL =
 		" ORDER BY resourcePermission.resourcePermissionId ASC";
 
@@ -526,16 +528,6 @@ public class ResourcePermissionModelImpl
 		}
 
 		_primKeyId = primKeyId;
-	}
-
-	/**
-	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
-	 *             #getColumnOriginalValue(String)}
-	 */
-	@Deprecated
-	public long getOriginalPrimKeyId() {
-		return GetterUtil.getLong(
-			this.<Long>getColumnOriginalValue("primKeyId"));
 	}
 
 	@JSON
@@ -1002,3 +994,4 @@ public class ResourcePermissionModelImpl
 	private ResourcePermission _escapedModel;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:1933993030

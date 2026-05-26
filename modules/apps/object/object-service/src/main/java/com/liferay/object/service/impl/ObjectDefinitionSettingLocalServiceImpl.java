@@ -56,11 +56,28 @@ public class ObjectDefinitionSettingLocalServiceImpl
 	}
 
 	@Override
+	public void deleteObjectDefinitionSettingByObjectDefinitionId(
+			long objectDefinitionId)
+		throws PortalException {
+
+		objectDefinitionSettingPersistence.removeByObjectDefinitionId(
+			objectDefinitionId);
+	}
+
+	@Override
 	public ObjectDefinitionSetting fetchObjectDefinitionSetting(
 		long objectDefinitionId, String name) {
 
 		return objectDefinitionSettingPersistence.fetchByODI_N(
 			objectDefinitionId, name);
+	}
+
+	@Override
+	public ObjectDefinitionSetting fetchObjectDefinitionSetting(
+		long companyId, String name, String value) {
+
+		return objectDefinitionSettingPersistence.fetchByC_N_V_First(
+			companyId, name, value, null);
 	}
 
 	@Override

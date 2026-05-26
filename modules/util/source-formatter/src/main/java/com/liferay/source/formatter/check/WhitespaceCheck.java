@@ -5,11 +5,11 @@
 
 package com.liferay.source.formatter.check;
 
+import com.liferay.petra.io.unsync.UnsyncBufferedReader;
+import com.liferay.petra.io.unsync.UnsyncStringReader;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
-import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.tools.ToolsUtil;
 import com.liferay.source.formatter.check.util.XMLSourceUtil;
@@ -366,13 +366,6 @@ public class WhitespaceCheck extends BaseFileCheck {
 		return line;
 	}
 
-	protected String trimLine(
-		String fileName, String absolutePath, String content, String line,
-		int lineNumber) {
-
-		return trimLine(fileName, absolutePath, line);
-	}
-
 	private String _trimContent(
 			String fileName, String absolutePath, String content)
 		throws IOException {
@@ -383,14 +376,9 @@ public class WhitespaceCheck extends BaseFileCheck {
 				new UnsyncBufferedReader(new UnsyncStringReader(content))) {
 
 			String line = null;
-			int lineNumber = 0;
 
 			while ((line = unsyncBufferedReader.readLine()) != null) {
-				lineNumber++;
-
-				sb.append(
-					trimLine(
-						fileName, absolutePath, content, line, lineNumber));
+				sb.append(trimLine(fileName, absolutePath, line));
 				sb.append("\n");
 			}
 		}

@@ -6,6 +6,7 @@
 package com.liferay.cookies.banner.web.internal.display.context;
 
 import com.liferay.cookies.banner.web.internal.constants.CookiesBannerPortletKeys;
+import com.liferay.cookies.banner.web.internal.constants.CookiesBannerWebKeys;
 import com.liferay.cookies.configuration.CookiesConfigurationProvider;
 import com.liferay.layout.utility.page.kernel.constants.LayoutUtilityPageEntryConstants;
 import com.liferay.layout.utility.page.kernel.provider.LayoutUtilityPageEntryLayoutProvider;
@@ -18,6 +19,7 @@ import com.liferay.portal.kernel.portlet.RequestBackedPortletURLFactoryUtil;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.settings.LocalizedValuesMap;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -68,40 +70,47 @@ public class CookiesBannerDisplayContext
 	}
 
 	public Map<String, Object> getContext(Locale locale) {
-		HashMapBuilder.HashMapWrapper<String, Object> hashMapWrapper =
-			HashMapBuilder.<String, Object>put(
-				"configurationNamespace",
-				CookiesBannerPortletKeys.COOKIES_BANNER_CONFIGURATION
-			).put(
-				"configurationURL", getConfigurationURL()
-			).put(
-				"includeDeclineAllButton", isIncludeDeclineAllButton()
-			).put(
-				"optionalConsentCookieTypeNames",
-				getConsentCookieTypeNamesJSONArray(
-					getOptionalConsentCookieTypes())
-			).put(
-				"requiredConsentCookieTypeNames",
-				getConsentCookieTypeNamesJSONArray(
-					getRequiredConsentCookieTypes())
-			).put(
-				"title",
-				() -> {
-					LocalizedValuesMap titleLocalizedValuesMap =
-						cookiesConsentConfiguration.title();
-
-					return titleLocalizedValuesMap.get(locale);
-				}
-			);
-
-		if (!isConsentRenewalPeriodEnabled()) {
-			return hashMapWrapper.build();
-		}
-
-		return hashMapWrapper.put(
+		return HashMapBuilder.<String, Object>put(
+			"configurationNamespace",
+			CookiesBannerPortletKeys.COOKIES_BANNER_CONFIGURATION
+		).put(
+			"configurationURL", getConfigurationURL()
+		).put(
 			"consentRenewalPeriod", getConsentRenewalPeriod()
 		).put(
+			"consentRenewalPeriodTimeUnit", getConsentRenewalPeriodTimeUnit()
+		).put(
+			"dissentRenewalPeriod", getDissentRenewalPeriod()
+		).put(
+			"dissentRenewalPeriodTimeUnit", getDissentRenewalPeriodTimeUnit()
+		).put(
+			"globalPrivacyControlSignalActive",
+			Boolean.TRUE.equals(
+				httpServletRequest.getAttribute(
+					CookiesBannerWebKeys.GLOBAL_PRIVACY_CONTROL_SIGNAL_ACTIVE))
+		).put(
+			"includeDeclineAllButton", isIncludeDeclineAllButton()
+		).put(
 			"modifiedDate", getModifiedDate()
+		).put(
+			"optionalConsentCookieTypeNames",
+			getConsentCookieTypeNamesJSONArray(getOptionalConsentCookieTypes())
+		).put(
+			"previewMode",
+			GetterUtil.getBoolean(
+				httpServletRequest.getAttribute(
+					CookiesBannerWebKeys.COOKIES_BANNER_PREVIEW))
+		).put(
+			"requiredConsentCookieTypeNames",
+			getConsentCookieTypeNamesJSONArray(getRequiredConsentCookieTypes())
+		).put(
+			"title",
+			() -> {
+				LocalizedValuesMap titleLocalizedValuesMap =
+					cookiesConsentConfiguration.title();
+
+				return titleLocalizedValuesMap.get(locale);
+			}
 		).build();
 	}
 

@@ -38,6 +38,7 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.HttpComponentsUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PortletKeys;
+import com.liferay.portal.kernel.util.ScopeUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
@@ -116,8 +117,18 @@ public class SegmentsExperienceUtil {
 				).put(
 					"priority", segmentsExperience.getPriority()
 				).put(
-					"segmentsEntryId",
-					String.valueOf(segmentsExperience.getSegmentsEntryId())
+					"segmentsEntryERC", segmentsExperience.getSegmentsEntryERC()
+				).put(
+					"segmentsEntryGroupId",
+					ScopeUtil.getItemGroupId(
+						segmentsExperience.getCompanyId(),
+						segmentsExperience.getSegmentsEntryScopeERC(),
+						segmentsExperience.getGroupId())
+				).put(
+					"segmentsEntryId", segmentsExperience.getSegmentsEntryId()
+				).put(
+					"segmentsEntryScopeERC",
+					segmentsExperience.getSegmentsEntryScopeERC()
 				).put(
 					"segmentsExperienceId",
 					String.valueOf(segmentsExperience.getSegmentsExperienceId())
@@ -151,7 +162,18 @@ public class SegmentsExperienceUtil {
 		).put(
 			"priority", segmentsExperience.getPriority()
 		).put(
+			"segmentsEntryERC", segmentsExperience.getSegmentsEntryERC()
+		).put(
+			"segmentsEntryGroupId",
+			ScopeUtil.getItemGroupId(
+				segmentsExperience.getCompanyId(),
+				segmentsExperience.getSegmentsEntryScopeERC(),
+				segmentsExperience.getGroupId())
+		).put(
 			"segmentsEntryId", segmentsExperience.getSegmentsEntryId()
+		).put(
+			"segmentsEntryScopeERC",
+			segmentsExperience.getSegmentsEntryScopeERC()
 		).put(
 			"segmentsExperienceId", segmentsExperience.getSegmentsExperienceId()
 		);

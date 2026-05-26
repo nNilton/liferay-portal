@@ -26,10 +26,12 @@ import com.liferay.asset.list.service.AssetListEntryLocalServiceUtil;
 import com.liferay.asset.list.service.AssetListEntrySegmentsEntryRelLocalServiceUtil;
 import com.liferay.asset.list.util.comparator.ClassNameModelResourceComparator;
 import com.liferay.asset.list.web.internal.constants.AssetListWebKeys;
+import com.liferay.asset.list.web.internal.portlet.action.GetTypePropertiesMVCResourceCommand;
 import com.liferay.asset.tags.item.selector.AssetTagsItemSelectorCriterion;
 import com.liferay.asset.tags.item.selector.AssetTagsItemSelectorReturnType;
 import com.liferay.asset.util.AssetRendererFactoryClassProvider;
 import com.liferay.asset.util.comparator.AssetRendererFactoryTypeNameComparator;
+import com.liferay.depot.constants.DepotConstants;
 import com.liferay.dynamic.data.mapping.util.DDMIndexer;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItem;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItemList;
@@ -42,7 +44,6 @@ import com.liferay.item.selector.criteria.InfoItemItemSelectorReturnType;
 import com.liferay.item.selector.criteria.asset.criterion.AssetEntryItemSelectorCriterion;
 import com.liferay.item.selector.criteria.group.criterion.GroupItemSelectorCriterion;
 import com.liferay.item.selector.criteria.info.item.criterion.InfoItemItemSelectorCriterion;
-import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.function.transform.TransformUtil;
@@ -52,6 +53,7 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.dao.search.SearchContainer;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
@@ -61,8 +63,10 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.module.configuration.ConfigurationException;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
+import com.liferay.portal.kernel.portlet.LiferayPortletURL;
 import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
 import com.liferay.portal.kernel.portlet.RequestBackedPortletURLFactory;
 import com.liferay.portal.kernel.portlet.RequestBackedPortletURLFactoryUtil;
@@ -215,8 +219,11 @@ public class EditAssetListDisplayContext {
 			long[] classTypeIds = GetterUtil.getLongValues(
 				StringUtil.split(
 					unicodeProperties.getProperty(
-						"classTypeIds" + clazz.getSimpleName(), null)),
-				_getDefaultClassTypeIds(classTypeReader));
+						"classTypeIds" + clazz.getSimpleName(), null)));
+
+			if (classTypeIds.length == 0) {
+				classTypeIds = _getDefaultClassTypeIds(classTypeReader);
+			}
 
 			for (long classTypeId : classTypeIds) {
 				dropdownItemList.add(
@@ -747,6 +754,43 @@ public class EditAssetListDisplayContext {
 		return _ddmStructureFieldValue;
 	}
 
+	public List<Map<String, Object>> getFilters() {
+		String filters = _unicodeProperties.getProperty("filters");
+
+		if (Validator.isNull(filters)) {
+			return Collections.emptyList();
+		}
+
+		try {
+			JSONArray filtersJSONArray = JSONFactoryUtil.createJSONArray(
+				filters);
+
+			List<Map<String, Object>> filtersList = new ArrayList<>(
+				filtersJSONArray.length());
+
+			for (int i = 0; i < filtersJSONArray.length(); i++) {
+				JSONObject filterJSONObject = filtersJSONArray.getJSONObject(i);
+
+				Map<String, Object> filterMap = new HashMap<>();
+
+				for (String key : filterJSONObject.keySet()) {
+					filterMap.put(key, filterJSONObject.get(key));
+				}
+
+				filtersList.add(filterMap);
+			}
+
+			return filtersList;
+		}
+		catch (Exception exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(exception);
+			}
+
+			return Collections.emptyList();
+		}
+	}
+
 	public String getGroupItemSelectorURL() {
 		ItemSelectorCriterion itemSelectorCriterion =
 			new GroupItemSelectorCriterion();
@@ -831,9 +875,29 @@ public class EditAssetListDisplayContext {
 			return _referencedModelsGroupIds;
 		}
 
+		long[] groupIds = getSelectedGroupIds();
+
+		if (FeatureFlagManagerUtil.isEnabled(
+				_themeDisplay.getCompanyId(), "LPD-17564")) {
+
+			for (Group group : getSelectedGroups()) {
+				int depotEntryType = GetterUtil.getInteger(
+					group.getTypeSettingsProperty("depotEntryType"));
+
+				if (depotEntryType == DepotConstants.TYPE_SPACE) {
+					Group cmsGroup = GroupLocalServiceUtil.getGroup(
+						_themeDisplay.getCompanyId(), GroupConstants.CMS);
+
+					groupIds = ArrayUtil.append(
+						groupIds, cmsGroup.getGroupId());
+
+					break;
+				}
+			}
+		}
+
 		_referencedModelsGroupIds =
-			PortalUtil.getCurrentAndAncestorSiteGroupIds(
-				getSelectedGroupIds(), true);
+			PortalUtil.getCurrentAndAncestorSiteGroupIds(groupIds, true);
 
 		return _referencedModelsGroupIds;
 	}
@@ -895,6 +959,14 @@ public class EditAssetListDisplayContext {
 		SegmentsEntry segmentsEntry =
 			SegmentsEntryLocalServiceUtil.fetchSegmentsEntry(segmentsEntryId);
 
+		if (segmentsEntry == null) {
+			if (_log.isWarnEnabled()) {
+				_log.warn("Unable to get segments entry " + segmentsEntryId);
+			}
+
+			return StringPool.BLANK;
+		}
+
 		return segmentsEntry.getName(locale);
 	}
 
@@ -904,16 +976,24 @@ public class EditAssetListDisplayContext {
 	}
 
 	public List<Group> getSelectedGroups() throws PortalException {
+		if (_selectedGroups != null) {
+			return _selectedGroups;
+		}
+
 		long[] groupIds = GetterUtil.getLongValues(
 			StringUtil.split(
 				PropertiesParamUtil.getString(
 					_unicodeProperties, _httpServletRequest, "groupIds")));
 
 		if (ArrayUtil.isEmpty(groupIds)) {
-			return Collections.singletonList(_themeDisplay.getScopeGroup());
+			_selectedGroups = Collections.singletonList(
+				_themeDisplay.getScopeGroup());
+		}
+		else {
+			_selectedGroups = GroupLocalServiceUtil.getGroups(groupIds);
 		}
 
-		return GroupLocalServiceUtil.getGroups(groupIds);
+		return _selectedGroups;
 	}
 
 	public long[] getSelectedSegmentsEntryIds() {
@@ -991,6 +1071,43 @@ public class EditAssetListDisplayContext {
 				assetTagsItemSelectorCriterion));
 	}
 
+	public JSONArray getTypePropertiesJSONArray() {
+		long[] classNameIds = GetterUtil.getLongValues(
+			StringUtil.split(
+				_unicodeProperties.getProperty("classNameIds", null)));
+
+		List<Long> classTypeIdsList = new ArrayList<>();
+
+		for (String entryKey : _unicodeProperties.keySet()) {
+			if (!entryKey.startsWith("classTypeIds")) {
+				continue;
+			}
+
+			for (String classTypeId :
+					StringUtil.split(
+						_unicodeProperties.getProperty(entryKey))) {
+
+				classTypeIdsList.add(GetterUtil.getLong(classTypeId));
+			}
+		}
+
+		return GetTypePropertiesMVCResourceCommand.getTypePropertiesJSONArray(
+			classNameIds, ArrayUtil.toLongArray(classTypeIdsList));
+	}
+
+	public String getTypePropertiesURL() {
+		LiferayPortletResponse liferayPortletResponse =
+			PortalUtil.getLiferayPortletResponse(_portletResponse);
+
+		LiferayPortletURL getTypePropertiesURL =
+			(LiferayPortletURL)liferayPortletResponse.createResourceURL();
+
+		getTypePropertiesURL.setCopyCurrentRenderParameters(false);
+		getTypePropertiesURL.setResourceID("/asset_list/get_type_properties");
+
+		return getTypePropertiesURL.toString();
+	}
+
 	public UnicodeProperties getUnicodeProperties() {
 		return _unicodeProperties;
 	}
@@ -1008,9 +1125,23 @@ public class EditAssetListDisplayContext {
 						return true;
 					}
 
-					String className =
-						_infoSearchClassMapperRegistry.getSearchClassName(
-							PortalUtil.getClassName(classNameId));
+					String className = null;
+
+					try {
+						className =
+							_infoSearchClassMapperRegistry.getSearchClassName(
+								PortalUtil.getClassName(classNameId));
+					}
+					catch (Exception exception) {
+						if (_log.isDebugEnabled()) {
+							_log.debug(
+								"Unable to get class name for class name ID " +
+									classNameId,
+								exception);
+						}
+
+						continue;
+					}
 
 					AssetRendererFactory<?> assetRendererFactory =
 						AssetRendererFactoryRegistryUtil.
@@ -1273,7 +1404,7 @@ public class EditAssetListDisplayContext {
 				unicodeProperties.getProperty("classTypeIds" + className, null),
 				0L));
 
-		if (classTypeIds != null) {
+		if (ArrayUtil.isNotEmpty(classTypeIds)) {
 			return classTypeIds;
 		}
 
@@ -1394,18 +1525,7 @@ public class EditAssetListDisplayContext {
 						_httpServletRequest, "select-x", classTypeName,
 						false)));
 
-			ObjectDefinition objectDefinition =
-				_objectDefinitionLocalService.fetchObjectDefinitionByClassName(
-					_themeDisplay.getCompanyId(),
-					assetRendererFactory.getClassName());
-
-			if ((objectDefinition != null) && objectDefinition.isCMS()) {
-				dropdownItem.setLabel(
-					StringUtil.appendParentheticalSuffix(classTypeName, "CMS"));
-			}
-			else {
-				dropdownItem.setLabel(classTypeName);
-			}
+			dropdownItem.setLabel(classTypeName);
 		};
 	}
 
@@ -1494,6 +1614,7 @@ public class EditAssetListDisplayContext {
 	private SearchContainer<AssetListEntryAssetEntryRel> _searchContainer;
 	private final SegmentsConfigurationProvider _segmentsConfigurationProvider;
 	private Long _segmentsEntryId;
+	private List<Group> _selectedGroups;
 	private long[] _selectedSegmentsEntryIds;
 	private String _selectSegmentsEntryURL;
 	private Boolean _subtypeFieldsFilterEnabled;

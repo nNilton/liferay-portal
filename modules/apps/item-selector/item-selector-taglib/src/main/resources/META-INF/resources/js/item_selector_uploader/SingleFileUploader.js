@@ -23,6 +23,7 @@ import sendFile from './utils/sendFile';
 function SingleFileUploader({
 	closeCaption,
 	editImageURL,
+	folderId,
 	itemSelectedEventName,
 	maxFileSize: initialMaxFileSizeString = Liferay.PropsValues
 		.UPLOAD_SERVLET_REQUEST_IMPL_MAX_SIZE,
@@ -156,7 +157,19 @@ function SingleFileUploader({
 							</ClayLayout.ContentCol>
 
 							<ClayLayout.ContentCol expand>
-								<ClayProgressBar value={progress} />
+								<ClayProgressBar
+									messages={{
+										ariaLabelAttention:
+											Liferay.Language.get(
+												'attention-value-is-at-x'
+											),
+										ariaLabelComplete:
+											Liferay.Language.get('complete'),
+										ariaLabelInProgress:
+											Liferay.Language.get('progress-x'),
+									}}
+									value={progress}
+								/>
 							</ClayLayout.ContentCol>
 
 							<ClayLayout.ContentCol>
@@ -192,6 +205,7 @@ function SingleFileUploader({
 						{...getPreviewProps({
 							closeCaption,
 							file,
+							folderId,
 							itemData: itemServerData,
 							itemSelectedEventName,
 							uploadItemReturnType,
@@ -211,6 +225,7 @@ function SingleFileUploader({
 SingleFileUploader.propTypes = {
 	closeCaption: PropTypes.string.isRequired,
 	editImageURL: PropTypes.string,
+	folderId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 	itemSelectedEventName: PropTypes.string.isRequired,
 	maxFileSize: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 	uploadItemReturnType: PropTypes.string.isRequired,

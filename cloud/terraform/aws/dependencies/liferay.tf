@@ -1,16 +1,16 @@
 locals {
 	bucket_active=local.is_active_data_blue ? module.s3_bucket_blue : module.s3_bucket_green
 	bucket_inactive=local.is_active_data_blue ? module.s3_bucket_green : module.s3_bucket_blue
+	bucket_overlay=module.s3_bucket_liferay_overlay
 	data_inactive=local.is_active_data_blue ? "green" : "blue"
 	db_active=local.is_active_data_blue ? module.postgres_blue[0] : module.postgres_green[0]
 	is_active_data_blue=var.data_active=="blue"
 	is_active_data_green=var.data_active=="green"
-	oidc_provider=replace(data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer, "https://", "")
-	oidc_provider_arn="arn:${var.arn_partition}:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${local.oidc_provider}"
 	vpc_config=data.aws_eks_cluster.cluster.vpc_config[0]
 }
 module "postgres_blue" {
 	count=local.is_active_data_blue || var.is_restoring ? 1 : 0
+	arn_partition=var.arn_partition
 	db_subnet_group_name=aws_db_subnet_group.rds.name
 	identifier="${var.deployment_name}-postgres-db-blue"
 	password=random_password.postgres_password.result
@@ -24,6 +24,7 @@ module "postgres_blue" {
 }
 module "postgres_green" {
 	count=local.is_active_data_green || var.is_restoring ? 1 : 0
+	arn_partition=var.arn_partition
 	db_subnet_group_name=aws_db_subnet_group.rds.name
 	identifier="${var.deployment_name}-postgres-db-green"
 	password=random_password.postgres_password.result
@@ -49,9 +50,114 @@ module "s3_bucket_green" {
 	}
 	source="../modules/s3-bucket"
 }
+module "s3_bucket_liferay_overlay" {
+	block_public_acls=true
+	block_public_policy=true
+	bucket_prefix="${var.deployment_name}-overlay-"
+	control_object_ownership=true
+	force_destroy=true
+	ignore_public_acls=true
+	object_ownership="BucketOwnerPreferred"
+	restrict_public_buckets=true
+	server_side_encryption_configuration={
+		rule={
+			apply_server_side_encryption_by_default={
+				sse_algorithm="aws:kms"
+			}
+			bucket_key_enabled=true
+		}
+	}
+	source="git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket.git?ref=cd61253a03de4f99c77a8e45146bd65a55ab103e"
+	versioning={
+		enabled=true
+	}
+}
+resource "aws_cloudwatch_log_group" "opensearch_application" {
+	name="/aws/opensearch/${var.deployment_name}-os-d/application"
+	retention_in_days=365
+	tags={
+		Name="${var.deployment_name}-opensearch-application"
+	}
+}
+resource "aws_cloudwatch_log_group" "opensearch_audit" {
+	name="/aws/opensearch/${var.deployment_name}-os-d/audit"
+	retention_in_days=365
+	tags={
+		Name="${var.deployment_name}-opensearch-audit"
+	}
+}
+resource "aws_cloudwatch_log_group" "opensearch_index_slow" {
+	name="/aws/opensearch/${var.deployment_name}-os-d/index-slow"
+	retention_in_days=365
+	tags={
+		Name="${var.deployment_name}-opensearch-index-slow"
+	}
+}
+resource "aws_cloudwatch_log_group" "opensearch_search_slow" {
+	name="/aws/opensearch/${var.deployment_name}-os-d/search-slow"
+	retention_in_days=365
+	tags={
+		Name="${var.deployment_name}-opensearch-search-slow"
+	}
+}
+resource "aws_cloudwatch_log_resource_policy" "opensearch" {
+	policy_document=jsonencode(
+		{
+			Statement=[
+				{
+					Action=[
+						"logs:CreateLogStream",
+						"logs:PutLogEvents",
+						"logs:PutLogEventsBatch"
+					]
+					Effect="Allow"
+					Principal={
+						Service="es.amazonaws.com"
+					}
+					Resource="arn:${var.arn_partition}:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/opensearch/${var.deployment_name}-os-d/*"
+				}
+			]
+			Version="2012-10-17"
+		})
+	policy_name="${var.deployment_name}-opensearch-logs"
+}
 resource "aws_db_subnet_group" "rds" {
 	name="${var.deployment_name}-rds-sub-grp"
 	subnet_ids=var.private_subnet_ids
+}
+resource "aws_iam_access_key" "ci_uploader" {
+	user=aws_iam_user.ci_uploader.name
+}
+resource "aws_iam_policy" "ci_upload_only" {
+	name="${var.deployment_name}-ci_upload_only"
+	policy=jsonencode(
+		{
+			Statement=[
+				{
+					Action="s3:ListBucket",
+					Effect="Allow",
+					Resource=module.s3_bucket_liferay_overlay.s3_bucket_arn
+					Sid="AllowListBucket",
+				},
+				{
+					Action="s3:PutObject",
+					Effect="Allow",
+					Resource="${module.s3_bucket_liferay_overlay.s3_bucket_arn}/*"
+					Sid="AllowPutObject",
+				},
+				{
+					Action=[
+						"s3:DeleteObject",
+						"s3:DeleteObjectVersion"
+					],
+					Effect="Deny",
+					Resource="${module.s3_bucket_liferay_overlay.s3_bucket_arn}/*"
+					Sid="DenyDelete",
+				}
+			]
+			Version = "2012-10-17",
+		}
+	)
 }
 resource "aws_iam_policy" "s3" {
 	name="${var.deployment_name}-s3-policy"
@@ -81,6 +187,54 @@ resource "aws_iam_policy" "s3" {
 resource "aws_iam_role_policy_attachment" "s3" {
 	policy_arn=aws_iam_policy.s3.arn
 	role=var.liferay_sa_role_name
+}
+resource "aws_iam_user" "ci_uploader" {
+	name="${var.deployment_name}-ci_uploader"
+}
+resource "aws_iam_user_policy_attachment" "ci_uploader_attachment" {
+	policy_arn=aws_iam_policy.ci_upload_only.arn
+	user=aws_iam_user.ci_uploader.name
+}
+resource "aws_kms_alias" "os_kms_alias" {
+	depends_on=[aws_kms_key.os]
+	name="alias/${var.deployment_name}-os-d_kms"
+	target_key_id=aws_kms_key.os.key_id
+}
+resource "aws_kms_key" "os" {
+	deletion_window_in_days=7
+	description="KMS key for OpenSearch domain encryption"
+	enable_key_rotation=true
+	policy=jsonencode(
+		{
+			Statement=[
+				{
+					Action="kms:*"
+					Effect="Allow"
+					Principal={
+						AWS="arn:${var.arn_partition}:iam::${data.aws_caller_identity.current.account_id}:root"
+					}
+					Resource="*"
+					Sid="EnableIAMUserPermissions"
+				},
+				{
+					Action=[
+						"kms:CreateGrant",
+						"kms:Decrypt",
+						"kms:DescribeKey",
+						"kms:Encrypt",
+						"kms:GenerateDataKey*",
+						"kms:ReEncrypt*",
+					]
+					Effect="Allow"
+					Principal={
+						Service="es.amazonaws.com"
+					}
+					Resource="*"
+					Sid="KMSAllowOpenSearch"
+				},
+			]
+			Version="2012-10-17"
+		})
 }
 resource "aws_opensearch_domain" "os" {
 	access_policies=<<POLICY
@@ -129,8 +283,29 @@ POLICY
 	}
 	encrypt_at_rest {
 		enabled=true
+		kms_key_id=aws_kms_key.os.arn
 	}
 	engine_version="OpenSearch_2.17"
+	log_publishing_options {
+		cloudwatch_log_group_arn=aws_cloudwatch_log_group.opensearch_audit.arn
+		enabled=true
+		log_type="AUDIT_LOGS"
+	}
+	log_publishing_options {
+		cloudwatch_log_group_arn=aws_cloudwatch_log_group.opensearch_application.arn
+		enabled=true
+		log_type="ES_APPLICATION_LOGS"
+	}
+	log_publishing_options {
+		cloudwatch_log_group_arn=aws_cloudwatch_log_group.opensearch_index_slow.arn
+		enabled=true
+		log_type="INDEX_SLOW_LOGS"
+	}
+	log_publishing_options {
+		cloudwatch_log_group_arn=aws_cloudwatch_log_group.opensearch_search_slow.arn
+		enabled=true
+		log_type="SEARCH_SLOW_LOGS"
+	}
 	node_to_node_encryption {
 		enabled=true
 	}
@@ -193,24 +368,19 @@ resource "kubernetes_secret" "managed_service_details" {
 	}
 	type="Opaque"
 }
-resource "kubernetes_storage_class" "gp3_storage_class" {
-	allowed_topologies {
-		match_label_expressions {
-			key="eks.amazonaws.com/compute-type"
-			values=["auto"]
-		}
-	}
+resource "kubernetes_storage_class" "liferay_overlay_storage" {
+	allow_volume_expansion=false
+	depends_on=[
+		module.s3_bucket_liferay_overlay
+	]
 	metadata {
-		annotations={
-			"storageclass.kubernetes.io/is-default-class"="true"
-		}
-		name="gp3"
+		name=module.s3_bucket_liferay_overlay.s3_bucket_id
 	}
 	parameters={
-		type="gp3"
+		"bucketName"=module.s3_bucket_liferay_overlay.s3_bucket_id
 	}
-	storage_provisioner="ebs.csi.eks.amazonaws.com"
-	volume_binding_mode="Immediate"
+	storage_provisioner="s3.csi.aws.com"
+	volume_binding_mode="WaitForFirstConsumer"
 }
 resource "null_resource" "opensearch_service_role" {
 	provisioner "local-exec" {

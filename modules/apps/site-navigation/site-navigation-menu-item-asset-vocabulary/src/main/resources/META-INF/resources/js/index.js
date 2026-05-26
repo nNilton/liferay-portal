@@ -8,19 +8,66 @@ import {ClayButtonWithIcon} from '@clayui/button';
 import ClayForm, {ClayCheckbox, ClayInput} from '@clayui/form';
 import ClayIcon from '@clayui/icon';
 import ClayLabel from '@clayui/label';
+import {openItemSelectorModal} from '@liferay/frontend-js-item-selector-web';
 import classNames from 'classnames';
-import {
-	TranslationAdminSelector,
-	openSelectionModal,
-} from 'frontend-js-components-web';
-import {fetch, objectToFormData} from 'frontend-js-web';
+import {TranslationAdminSelector} from 'frontend-js-components-web';
+import {fetch, objectToFormData, sub} from 'frontend-js-web';
 import PropTypes from 'prop-types';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
+
+const HEADLESS_TAXONOMY_VOCABULARIES_BASE =
+	'/o/headless-admin-taxonomy/v1.0/sites';
+
+const VISIBILITY_TYPE_PUBLIC = 0;
+
+function buildVocabulariesURL(currentSiteId) {
+	const url = new URL(
+		`${HEADLESS_TAXONOMY_VOCABULARIES_BASE}/${String(
+			currentSiteId
+		)}/taxonomy-vocabularies`,
+		window.location.origin
+	);
+
+	url.searchParams.set(
+		'filter',
+		`visibilityType eq ${VISIBILITY_TYPE_PUBLIC}`
+	);
+
+	return url.toString();
+}
+
+function resolveScope(vocabulary, context) {
+	if (vocabulary.assetLibraryKey) {
+		const assetLibrary = context.assetLibrariesByKey.get(
+			vocabulary.assetLibraryKey
+		);
+
+		return {
+			scopeExternalReferenceCode:
+				assetLibrary?.externalReferenceCode ??
+				vocabulary.assetLibraryKey,
+			scopeName: assetLibrary?.name ?? vocabulary.assetLibraryKey,
+		};
+	}
+
+	if (String(vocabulary.siteId) === context.companyGroupId) {
+		return {
+			scopeExternalReferenceCode: context.companyExternalReferenceCode,
+			scopeName: Liferay.Language.get('global'),
+		};
+	}
+
+	return {
+		scopeExternalReferenceCode: context.siteExternalReferenceCode,
+		scopeName: context.siteName,
+	};
+}
 
 function AssetVocabularyContextualSidebar({
 	assetVocabulary,
 	chooseAssetVocabularyProps,
 	defaultLanguageId,
+	hasModel,
 	locales,
 	localizedNames,
 	namespace,
@@ -44,12 +91,43 @@ function AssetVocabularyContextualSidebar({
 		translations[selectedLocaleId] || assetVocabulary.title
 	);
 	const [customNameInvalid, setCustomNameInvalid] = useState(false);
+	const nameRef = useRef(null);
 
 	const {
-		assetVocabularySelectorURL,
-		eventName,
+		assetLibraries,
+		companyExternalReferenceCode,
+		companyGroupId,
+		currentSiteId,
 		getAssetVocabularyDetailsURL,
+		siteExternalReferenceCode,
+		siteName: chooseAssetVocabularySiteName,
 	} = chooseAssetVocabularyProps;
+
+	useEffect(() => {
+		if (!customNameEnabled) {
+			return;
+		}
+
+		if (
+			translations[selectedLocaleId] === undefined &&
+			selectedLocaleId !== defaultLanguageId
+		) {
+			setCustomName('');
+		}
+		else {
+			setCustomName(
+				translations[selectedLocaleId] ?? assetVocabulary.title
+			);
+		}
+
+		nameRef.current?.focus();
+	}, [
+		assetVocabulary.title,
+		customNameEnabled,
+		defaultLanguageId,
+		selectedLocaleId,
+		translations,
+	]);
 
 	useEffect(() => {
 		const onFormSubmit = (event) => {
@@ -57,6 +135,13 @@ function AssetVocabularyContextualSidebar({
 				event.preventDefault();
 
 				setCustomNameInvalid(true);
+			}
+
+			if (customName && translations[defaultLanguageId] === '') {
+				setTranslations({
+					...translations,
+					[defaultLanguageId]: assetVocabulary.title,
+				});
 			}
 		};
 
@@ -67,61 +152,119 @@ function AssetVocabularyContextualSidebar({
 		return () => {
 			submitButton?.removeEventListener('click', onFormSubmit);
 		};
-	}, [customName]);
+	}, [assetVocabulary.title, customName, defaultLanguageId, translations]);
 
-	const openChooseItemModal = () =>
-		openSelectionModal({
-			onSelect: (selectedItem) => {
-				if (selectedItem) {
-					let item = {
-						...selectedItem,
-					};
+	const openChooseItemModal = () => {
+		const scopeContext = {
+			assetLibrariesByKey: new Map(
+				(assetLibraries || []).map((assetLibrary) => [
+					assetLibrary.externalReferenceCode,
+					assetLibrary,
+				])
+			),
+			companyExternalReferenceCode,
+			companyGroupId: String(companyGroupId),
+			siteExternalReferenceCode,
+			siteName: chooseAssetVocabularySiteName,
+		};
 
-					let value;
+		const TitleCell = ({itemData}) => {
+			const {scopeName} = resolveScope(itemData, scopeContext);
 
-					if (typeof selectedItem.value === 'string') {
-						try {
-							value = JSON.parse(selectedItem.value);
-						}
-						catch (error) {}
-					}
-					else if (
-						selectedItem.value &&
-						typeof selectedItem.value === 'object'
-					) {
-						value = selectedItem.value;
-					}
+			return sub(
+				Liferay.Language.get('x-group-x'),
+				itemData.name,
+				scopeName
+			);
+		};
 
-					if (value) {
-						delete item.value;
-						item = {...value};
-					}
-
-					setSelectedVocabulary({
-						...item,
-						externalReferenceCode: item.externalReferenceCode,
-					});
-
-					const namespacedItem = Liferay.Util.ns(namespace, item);
-
-					fetch(getAssetVocabularyDetailsURL, {
-						body: objectToFormData(namespacedItem),
-						method: 'POST',
-					})
-						.then((response) => response.json())
-						.then((jsonResponse) => {
-							setNumberOfCategories(
-								jsonResponse.numberOfCategories
-							);
-							setSiteName(jsonResponse.siteName);
-						})
-						.catch(() => {});
-				}
+		openItemSelectorModal({
+			apiURL: buildVocabulariesURL(currentSiteId),
+			fdsProps: {
+				configInURLBehavior: 'OFF',
+				customRenderers: {
+					tableCell: [
+						{
+							component: TitleCell,
+							name: 'titleWithScope',
+							type: 'internal',
+						},
+					],
+				},
+				id: 'siteNavVocabularySelectorFDS',
+				pagination: {
+					deltas: [{label: 20}, {label: 50}],
+					initialDelta: 20,
+				},
+				views: [
+					{
+						contentRenderer: 'table',
+						label: '',
+						name: 'list',
+						schema: {
+							fields: [
+								{
+									contentRenderer: 'titleWithScope',
+									fieldName: 'name',
+									label: Liferay.Language.get('title'),
+								},
+								{
+									fieldName: 'creator.name',
+									label: Liferay.Language.get('user'),
+								},
+								{
+									contentRenderer: 'dateTime',
+									fieldName: 'dateModified',
+									label: Liferay.Language.get(
+										'modified-date'
+									),
+									sortable: true,
+								},
+							],
+						},
+					},
+				],
 			},
-			selectEventName: eventName,
+			itemTypeLabel: Liferay.Language.get('vocabulary'),
+			items: [],
+			locator: {id: 'id', label: 'name', value: 'id'},
+			multiSelect: false,
+			onItemsChange: (selected) => {
+				const [vocabulary] = selected;
+
+				if (!vocabulary) {
+					return;
+				}
+
+				const {scopeExternalReferenceCode} = resolveScope(
+					vocabulary,
+					scopeContext
+				);
+
+				const item = {
+					externalReferenceCode: vocabulary.externalReferenceCode,
+					scopeExternalReferenceCode,
+					title: vocabulary.name,
+					type: 'AssetVocabulary',
+				};
+
+				setSelectedVocabulary(item);
+
+				fetch(getAssetVocabularyDetailsURL, {
+					body: objectToFormData(Liferay.Util.ns(namespace, item)),
+					method: 'POST',
+				})
+					.then((response) => response.json())
+					.then((jsonResponse) => {
+						setNumberOfCategories(jsonResponse.numberOfCategories);
+						setSiteName(jsonResponse.siteName);
+					})
+					.catch(() => {});
+			},
+			size: 'lg',
 			title: Liferay.Language.get('select-vocabulary'),
-			url: assetVocabularySelectorURL,
 		});
+	};
 
 	return (
 		<>
@@ -185,6 +328,7 @@ function AssetVocabularyContextualSidebar({
 								setCustomName(event.target.value);
 								setCustomNameInvalid(false);
 							}}
+							ref={nameRef}
 							type="text"
 							value={customName}
 						/>
@@ -207,6 +351,14 @@ function AssetVocabularyContextualSidebar({
 					</ClayInput.GroupItem>
 				</ClayInput.Group>
 
+				{customNameEnabled &&
+					selectedLocaleId !== defaultLanguageId && (
+						<div className="form-text">
+							{translations[defaultLanguageId] ??
+								assetVocabulary.title}
+						</div>
+					)}
+
 				{customNameInvalid && (
 					<ClayForm.FeedbackItem>
 						{Liferay.Language.get('this-field-is-required')}
@@ -216,7 +368,7 @@ function AssetVocabularyContextualSidebar({
 
 			<ClayForm.Group
 				className={classNames({
-					'has-warning': !numberOfCategories,
+					'has-warning': !hasModel || !numberOfCategories,
 				})}
 			>
 				<label htmlFor={`${namespace}_itemInput`}>
@@ -251,14 +403,24 @@ function AssetVocabularyContextualSidebar({
 						<ClayAlert
 							className="mt-1"
 							displayType="warning"
-							title={Liferay.Language.get('no-categories-inside')}
+							title={
+								hasModel
+									? Liferay.Language.get(
+											'no-categories-inside'
+										)
+									: Liferay.Language.get('no-reference-found')
+							}
 							variant="feedback"
 						/>
 
 						<p className="small text-secondary">
-							{Liferay.Language.get(
-								'vocabularies-without-categories-are-hidden-from-navigation-menus'
-							)}
+							{hasModel
+								? Liferay.Language.get(
+										'vocabularies-without-categories-are-hidden-from-navigation-menus'
+									)
+								: Liferay.Language.get(
+										'this-item-references-an-entity-that-is-missing-or-not-yet-available'
+									)}
 						</p>
 					</>
 				)}
@@ -321,9 +483,19 @@ AssetVocabularyContextualSidebar.propTypes = {
 		type: PropTypes.string,
 	}).isRequired,
 	chooseAssetVocabularyProps: PropTypes.shape({
-		assetVocabularySelectorURL: PropTypes.string,
-		eventName: PropTypes.string,
+		assetLibraries: PropTypes.arrayOf(
+			PropTypes.shape({
+				externalReferenceCode: PropTypes.string,
+				id: PropTypes.string,
+				name: PropTypes.string,
+			})
+		),
+		companyExternalReferenceCode: PropTypes.string,
+		companyGroupId: PropTypes.string,
+		currentSiteId: PropTypes.string,
 		getAssetVocabularyDetailsURL: PropTypes.string,
+		siteExternalReferenceCode: PropTypes.string,
+		siteName: PropTypes.string,
 	}).isRequired,
 	defaultLanguageId: PropTypes.string.isRequired,
 	locales: PropTypes.array.isRequired,

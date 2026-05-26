@@ -10,24 +10,19 @@ package com.liferay.site.cms.site.initializer.internal.constants;
  */
 public class CMSSiteInitializerFDSNames {
 
+	public static final String ALL_RELATED_ASSETS_SECTION =
+		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +
+			"-allRelatedAssetsSection";
+
 	public static final String ALL_SECTION =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME + "-allSection";
 
 	public static final String ALL_SPACES_SECTION =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME + "-allSpacesSection";
 
-	public static final String BULK_ACTION_TASK_REPORT_ERROR_ITEMS_SECTION =
-		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +
-			"-bulkActionTaskReportErrorItemsSection";
-
 	public static final String BULK_ACTION_TASK_REPORT_SECTION =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +
 			"-bulkActionTaskReportSection";
-
-	public static final String
-		BULK_ACTION_TASK_REPORT_SUCCESSFUL_ITEMS_SECTION =
-			CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +
-				"-bulkActionTaskReportSuccessfulItemsSection";
 
 	public static final String CATEGORIES =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME + "-categories";
@@ -59,6 +54,10 @@ public class CMSSiteInitializerFDSNames {
 
 	public static final String RECYCLE_BIN_SECTION =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME + "-recycleBinSection";
+
+	public static final String RELATED_ASSETS_SECTION =
+		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME +
+			"-relatedAssetsSection";
 
 	public static final String SHARED_WITH_ME =
 		CMSSiteInitializerConstants.BUNDLE_SYMBOLIC_NAME + "-sharedWithMe";

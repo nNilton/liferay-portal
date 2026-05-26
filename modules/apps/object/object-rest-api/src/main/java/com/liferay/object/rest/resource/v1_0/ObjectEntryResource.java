@@ -6,6 +6,7 @@
 package com.liferay.object.rest.resource.v1_0;
 
 import com.liferay.object.rest.dto.v1_0.ObjectEntry;
+import com.liferay.object.rest.dto.v1_0.TranslationResponse;
 import com.liferay.object.rest.dto.v1_0.ValidationRequest;
 import com.liferay.object.rest.dto.v1_0.ValidationResponse;
 import com.liferay.portal.kernel.service.GroupLocalService;
@@ -18,6 +19,7 @@ import com.liferay.portal.odata.sort.SortParserProvider;
 import com.liferay.portal.vulcan.accept.language.AcceptLanguage;
 import com.liferay.portal.vulcan.batch.engine.resource.VulcanBatchEngineExportTaskResource;
 import com.liferay.portal.vulcan.batch.engine.resource.VulcanBatchEngineImportTaskResource;
+import com.liferay.portal.vulcan.multipart.MultipartBody;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 
@@ -177,6 +179,10 @@ public interface ObjectEntryResource {
 			String externalReferenceCode, Integer version)
 		throws Exception;
 
+	public ObjectEntry postByExternalReferenceCodeExpire(
+			String externalReferenceCode)
+		throws Exception;
+
 	public void postByExternalReferenceCodeSubscribe(
 			String externalReferenceCode)
 		throws Exception;
@@ -214,7 +220,8 @@ public interface ObjectEntryResource {
 			Long objectEntryId, Long objectEntryFolderId)
 		throws Exception;
 
-	public ObjectEntry postObjectEntryExpire(Long objectEntryId)
+	public TranslationResponse postObjectEntryTranslation(
+			Long objectEntryId, MultipartBody multipartBody)
 		throws Exception;
 
 	public ObjectEntry postScopeScopeKey(
@@ -235,6 +242,12 @@ public interface ObjectEntryResource {
 
 	public void postScopeScopeKeyByExternalReferenceCodeSubscribe(
 			String scopeKey, String externalReferenceCode)
+		throws Exception;
+
+	public TranslationResponse
+			postScopeScopeKeyByExternalReferenceCodeTranslation(
+				String scopeKey, String externalReferenceCode,
+				MultipartBody multipartBody)
 		throws Exception;
 
 	public void postScopeScopeKeyByExternalReferenceCodeUnsubscribe(
@@ -396,3 +409,4 @@ public interface ObjectEntryResource {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-1058332908

@@ -16,7 +16,9 @@ import com.liferay.jenkins.results.parser.failure.message.generator.LocalGitMirr
 import com.liferay.jenkins.results.parser.failure.message.generator.ModulesCompilationFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.PMDFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.PlaywrightCompilationFailureMessageGenerator;
+import com.liferay.jenkins.results.parser.failure.message.generator.PlaywrightTimeoutFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.PluginGitIDFailureMessageGenerator;
+import com.liferay.jenkins.results.parser.failure.message.generator.RESTBuilderFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.SemanticVersioningFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.ServiceBuilderFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.SourceFormatFailureMessageGenerator;
@@ -46,7 +48,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.zip.GZIPInputStream;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -176,8 +178,14 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 
 	@Override
 	public String getAxisName() {
-		return JenkinsResultsParserUtil.combine(
+		if (!JenkinsResultsParserUtil.isNullOrEmpty(_axisName)) {
+			return _axisName;
+		}
+
+		_axisName = JenkinsResultsParserUtil.combine(
 			getJobVariant(), "/", getAxisVariable());
+
+		return _axisName;
 	}
 
 	@Override
@@ -260,13 +268,7 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 
 	@Override
 	public String getDisplayName() {
-		StringBuilder sb = new StringBuilder();
-
-		sb.append(getJobVariant());
-		sb.append("/");
-		sb.append(getAxisVariable());
-
-		return sb.toString();
+		return getAxisName();
 	}
 
 	@Override
@@ -363,6 +365,23 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 		if (result.equals("UNSTABLE")) {
 			List<Element> failureElements = getTestResultGitHubElements(
 				getUniqueFailureTestResults(), true);
+
+			List<Element> upstreamJobFailureElements =
+				getTestResultGitHubElements(
+					getUpstreamJobFailureTestResults(), false);
+
+			if (!upstreamJobFailureElements.isEmpty()) {
+				upstreamJobFailureMessageElement = messageElement.createCopy();
+
+				Dom4JUtil.getOrderedListElement(
+					upstreamJobFailureElements,
+					upstreamJobFailureMessageElement, 3);
+
+				System.out.println(
+					JenkinsResultsParserUtil.combine(
+						"[", getBuildName(), "] Saved an upstream failure ",
+						"GitHub message"));
+			}
 
 			Dom4JUtil.getOrderedListElement(failureElements, messageElement, 3);
 
@@ -605,6 +624,7 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 		StringBuilder sb = new StringBuilder();
 
 		try (InputStream inputStream = poshiWarningsURL.openStream();
+
 			GZIPInputStream gzipInputStream = new GZIPInputStream(
 				inputStream)) {
 
@@ -626,7 +646,7 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 			for (Element valueElement : rootElement.elements("value")) {
 				String liferayErrorText = "LIFERAY_ERROR: ";
 
-				String valueElementText = StringEscapeUtils.escapeHtml(
+				String valueElementText = StringEscapeUtils.escapeHtml4(
 					valueElement.getText());
 
 				if (valueElementText.startsWith(liferayErrorText)) {
@@ -691,6 +711,10 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 		TopLevelBuild topLevelBuild) {
 
 		super(buildURL, cachedDownstreamBuildReport, topLevelBuild);
+
+		if (cachedDownstreamBuildReport != null) {
+			_axisName = cachedDownstreamBuildReport.getAxisName();
+		}
 	}
 
 	@Override
@@ -1242,7 +1266,9 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 		new JSUnitTestFailureMessageGenerator(),
 		new PMDFailureMessageGenerator(),
 		new PlaywrightCompilationFailureMessageGenerator(),
+		new PlaywrightTimeoutFailureMessageGenerator(),
 		new PluginGitIDFailureMessageGenerator(),
+		new RESTBuilderFailureMessageGenerator(),
 		new SemanticVersioningFailureMessageGenerator(),
 		new ServiceBuilderFailureMessageGenerator(),
 		new SourceFormatFailureMessageGenerator(),
@@ -1256,6 +1282,7 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 		new GenericFailureMessageGenerator()
 	};
 
+	private String _axisName;
 	private DownstreamBuildReport _downstreamBuildReport;
 	private Element _gitHubMessageElement;
 

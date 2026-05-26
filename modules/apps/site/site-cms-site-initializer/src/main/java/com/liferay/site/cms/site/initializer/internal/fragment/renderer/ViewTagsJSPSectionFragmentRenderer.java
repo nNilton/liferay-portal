@@ -31,6 +31,7 @@ public class ViewTagsJSPSectionFragmentRenderer
 		HttpServletRequest httpServletRequest) {
 
 		return new ViewTagsDisplayContext(
+			httpServletRequest,
 			(ThemeDisplay)httpServletRequest.getAttribute(
 				WebKeys.THEME_DISPLAY));
 	}

@@ -19,9 +19,11 @@ import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Localization;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.language.LanguageResources;
 import com.liferay.portal.search.spi.model.index.contributor.ModelDocumentContributor;
 
 import java.util.Locale;
+import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -45,6 +47,7 @@ public class LayoutModelDocumentContributor
 		document.addText(
 			Field.DEFAULT_LANGUAGE_ID, layout.getDefaultLanguageId());
 		document.addLocalizedText(Field.NAME, layout.getNameMap());
+		document.addNumberSortable(Field.PRIORITY, layout.getPriority());
 		document.addKeyword(Field.STATUS, _getStatus(layout));
 
 		_addLayoutContentFields(document, layout);
@@ -86,12 +89,23 @@ public class LayoutModelDocumentContributor
 			for (Locale locale :
 					_language.getAvailableLocales(layout.getGroupId())) {
 
+				String layoutContent = _layoutContentProvider.getLayoutContent(
+					themeDisplay.getRequest(), themeDisplay.getResponse(),
+					layout, locale);
+
+				if (layoutContent.isEmpty() ||
+					Objects.equals(
+						LanguageResources.getMessage(
+							locale, _PERMISSION_DENIED_KEY),
+						layoutContent)) {
+
+					break;
+				}
+
 				document.addText(
 					Field.getLocalizedName(
 						LocaleUtil.toLanguageId(locale), Field.CONTENT),
-					_layoutContentProvider.getLayoutContent(
-						themeDisplay.getRequest(), themeDisplay.getResponse(),
-						layout, locale));
+					layoutContent);
 			}
 		}
 		catch (Exception exception) {
@@ -114,6 +128,9 @@ public class LayoutModelDocumentContributor
 
 		return WorkflowConstants.STATUS_DRAFT;
 	}
+
+	private static final String _PERMISSION_DENIED_KEY =
+		"you-do-not-have-the-roles-required-to-access-this-portlet";
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		LayoutModelDocumentContributor.class);

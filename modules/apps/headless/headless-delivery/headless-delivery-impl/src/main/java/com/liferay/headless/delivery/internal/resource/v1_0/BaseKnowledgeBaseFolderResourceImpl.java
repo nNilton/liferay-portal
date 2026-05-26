@@ -5,6 +5,7 @@
 
 package com.liferay.headless.delivery.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.headless.delivery.dto.v1_0.DefaultValue;
 import com.liferay.headless.delivery.dto.v1_0.KnowledgeBaseFolder;
 import com.liferay.headless.delivery.resource.v1_0.KnowledgeBaseFolderResource;
@@ -1318,9 +1319,37 @@ public abstract class BaseKnowledgeBaseFolderResourceImpl
 
 		UnsafeFunction<KnowledgeBaseFolder, KnowledgeBaseFolder, Exception>
 			knowledgeBaseFolderUnsafeFunction = knowledgeBaseFolder -> {
-				deleteKnowledgeBaseFolder(knowledgeBaseFolder.getId());
+				if (knowledgeBaseFolder.getId() != null) {
+					try {
+						deleteKnowledgeBaseFolder(knowledgeBaseFolder.getId());
 
-				return knowledgeBaseFolder;
+						return knowledgeBaseFolder;
+					}
+					catch (Exception exception) {
+						if (knowledgeBaseFolder.getExternalReferenceCode() !=
+								null) {
+
+							if (parameters.containsKey("siteId")) {
+								deleteSiteKnowledgeBaseFolderByExternalReferenceCode(
+									(Long)parameters.get("siteId"),
+									knowledgeBaseFolder.
+										getExternalReferenceCode());
+
+								return knowledgeBaseFolder;
+							}
+						}
+					}
+				}
+				else if (parameters.containsKey("siteId")) {
+					deleteSiteKnowledgeBaseFolderByExternalReferenceCode(
+						(Long)parameters.get("siteId"),
+						knowledgeBaseFolder.getExternalReferenceCode());
+
+					return knowledgeBaseFolder;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
 			};
 
 		if (contextBatchUnsafeBiConsumer != null) {
@@ -1399,6 +1428,15 @@ public abstract class BaseKnowledgeBaseFolderResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -2194,3 +2232,4 @@ public abstract class BaseKnowledgeBaseFolderResourceImpl
 		LogFactoryUtil.getLog(BaseKnowledgeBaseFolderResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:-2128912750

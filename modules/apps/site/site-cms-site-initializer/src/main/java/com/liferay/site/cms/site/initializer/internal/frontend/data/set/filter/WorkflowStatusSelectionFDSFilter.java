@@ -5,6 +5,7 @@
 
 package com.liferay.site.cms.site.initializer.internal.frontend.data.set.filter;
 
+import com.liferay.frontend.data.set.constants.FDSEntityFieldTypes;
 import com.liferay.frontend.data.set.filter.BaseSelectionFDSFilter;
 import com.liferay.frontend.data.set.filter.FDSFilter;
 import com.liferay.frontend.data.set.filter.SelectionFDSFilterItem;
@@ -22,6 +23,7 @@ import org.osgi.service.component.annotations.Component;
  */
 @Component(
 	property = {
+		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.ALL_RELATED_ASSETS_SECTION,
 		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.ALL_SECTION,
 		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.CONTENTS_SECTION,
 		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.FILES_SECTION,
@@ -33,6 +35,11 @@ import org.osgi.service.component.annotations.Component;
 	service = FDSFilter.class
 )
 public class WorkflowStatusSelectionFDSFilter extends BaseSelectionFDSFilter {
+
+	@Override
+	public String getEntityFieldType() {
+		return FDSEntityFieldTypes.INTEGER;
+	}
 
 	@Override
 	public String getId() {

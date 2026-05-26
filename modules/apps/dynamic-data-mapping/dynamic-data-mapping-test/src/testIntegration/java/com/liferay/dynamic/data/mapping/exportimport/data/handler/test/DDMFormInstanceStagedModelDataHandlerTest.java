@@ -118,7 +118,7 @@ public class DDMFormInstanceStagedModelDataHandlerTest
 
 		Company company = CompanyTestUtil.addCompany();
 
-		try (SafeCloseable safeCloseable =
+		try (SafeCloseable safeCloseable1 =
 				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
 					company.getCompanyId())) {
 
@@ -134,26 +134,28 @@ public class DDMFormInstanceStagedModelDataHandlerTest
 			ObjectDefinition objectDefinition2 = _addObjectDefinition(
 				objectDefinition1.getExternalReferenceCode(), user.getUserId());
 
-			initImport();
+			try (SafeCloseable safeCloseable2 = initImportWithSafeCloseable()) {
+				_assertDDMFormInstanceSettings(
+					objectDefinition1.getObjectDefinitionId(),
+					portletDataContext.getZipEntryAsString(
+						ExportImportPathUtil.getModelPath(
+							ddmFormInstance1,
+							"settings-ddm-form-values.json")));
 
-			_assertDDMFormInstanceSettings(
-				objectDefinition1.getObjectDefinitionId(),
-				portletDataContext.getZipEntryAsString(
-					ExportImportPathUtil.getModelPath(
-						ddmFormInstance1, "settings-ddm-form-values.json")));
+				StagedModelDataHandlerUtil.importStagedModel(
+					portletDataContext, ddmFormInstance1);
 
-			StagedModelDataHandlerUtil.importStagedModel(
-				portletDataContext, ddmFormInstance1);
+				DDMFormInstance ddmFormInstance2 =
+					(DDMFormInstance)getStagedModel(
+						ddmFormInstance1.getUuid(), liveGroup);
 
-			DDMFormInstance ddmFormInstance2 = (DDMFormInstance)getStagedModel(
-				ddmFormInstance1.getUuid(), liveGroup);
+				_assertDDMFormInstanceSettings(
+					objectDefinition2.getObjectDefinitionId(),
+					ddmFormInstance2.getSettings());
 
-			_assertDDMFormInstanceSettings(
-				objectDefinition2.getObjectDefinitionId(),
-				ddmFormInstance2.getSettings());
-
-			ObjectDefinitionLocalServiceUtil.deleteObjectDefinition(
-				objectDefinition2.getObjectDefinitionId());
+				ObjectDefinitionLocalServiceUtil.deleteObjectDefinition(
+					objectDefinition2.getObjectDefinitionId());
+			}
 		}
 		finally {
 			PermissionThreadLocal.setPermissionChecker(
@@ -288,8 +290,8 @@ public class DDMFormInstanceStagedModelDataHandlerTest
 
 		ObjectDefinition objectDefinition =
 			ObjectDefinitionLocalServiceUtil.addCustomObjectDefinition(
-				null, userId, 0, null, false, true, false, true, false, false,
-				false, false, null,
+				null, userId, 0, null, true, false, true, false, true, false,
+				false, false, false, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 				ObjectDefinitionTestUtil.getRandomName(), null, null,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),

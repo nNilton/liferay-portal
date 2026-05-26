@@ -5,16 +5,16 @@
 
 package com.liferay.headless.admin.site.client.serdes.v1_0;
 
+import com.liferay.headless.admin.site.client.dto.v1_0.BasicFragmentInstancePageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.CollectionDisplayPageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.CollectionItemPageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.ContainerPageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.DropZonePageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.FormContainerPageElementDefinition;
+import com.liferay.headless.admin.site.client.dto.v1_0.FormFragmentInstancePageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.FormStepContainerPageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.FormStepPageElementDefinition;
-import com.liferay.headless.admin.site.client.dto.v1_0.FragmentCompositionInstancePageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.FragmentDropZonePageElementDefinition;
-import com.liferay.headless.admin.site.client.dto.v1_0.FragmentInstancePageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.GridPageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.ModulePageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.PageElementDefinition;
@@ -60,6 +60,12 @@ public class PageElementDefinitionSerDes {
 		if (type != null) {
 			String typeString = type.toString();
 
+			if (typeString.equals("BasicFragment")) {
+				return BasicFragmentInstancePageElementDefinitionSerDes.toJSON(
+					(BasicFragmentInstancePageElementDefinition)
+						pageElementDefinition);
+			}
+
 			if (typeString.equals("CollectionDisplay")) {
 				return CollectionDisplayPageElementDefinitionSerDes.toJSON(
 					(CollectionDisplayPageElementDefinition)
@@ -86,6 +92,12 @@ public class PageElementDefinitionSerDes {
 					(FormContainerPageElementDefinition)pageElementDefinition);
 			}
 
+			if (typeString.equals("FormFragment")) {
+				return FormFragmentInstancePageElementDefinitionSerDes.toJSON(
+					(FormFragmentInstancePageElementDefinition)
+						pageElementDefinition);
+			}
+
 			if (typeString.equals("FormStep")) {
 				return FormStepPageElementDefinitionSerDes.toJSON(
 					(FormStepPageElementDefinition)pageElementDefinition);
@@ -95,19 +107,6 @@ public class PageElementDefinitionSerDes {
 				return FormStepContainerPageElementDefinitionSerDes.toJSON(
 					(FormStepContainerPageElementDefinition)
 						pageElementDefinition);
-			}
-
-			if (typeString.equals("Fragment")) {
-				return FragmentInstancePageElementDefinitionSerDes.toJSON(
-					(FragmentInstancePageElementDefinition)
-						pageElementDefinition);
-			}
-
-			if (typeString.equals("FragmentComposition")) {
-				return FragmentCompositionInstancePageElementDefinitionSerDes.
-					toJSON(
-						(FragmentCompositionInstancePageElementDefinition)
-							pageElementDefinition);
 			}
 
 			if (typeString.equals("FragmentDropZone")) {
@@ -195,6 +194,11 @@ public class PageElementDefinitionSerDes {
 			if (type != null) {
 				String typeString = type.toString();
 
+				if (typeString.equals("BasicFragment")) {
+					return BasicFragmentInstancePageElementDefinition.toDTO(
+						json);
+				}
+
 				if (typeString.equals("CollectionDisplay")) {
 					return CollectionDisplayPageElementDefinition.toDTO(json);
 				}
@@ -215,21 +219,17 @@ public class PageElementDefinitionSerDes {
 					return FormContainerPageElementDefinition.toDTO(json);
 				}
 
+				if (typeString.equals("FormFragment")) {
+					return FormFragmentInstancePageElementDefinition.toDTO(
+						json);
+				}
+
 				if (typeString.equals("FormStep")) {
 					return FormStepPageElementDefinition.toDTO(json);
 				}
 
 				if (typeString.equals("FormStepContainer")) {
 					return FormStepContainerPageElementDefinition.toDTO(json);
-				}
-
-				if (typeString.equals("Fragment")) {
-					return FragmentInstancePageElementDefinition.toDTO(json);
-				}
-
-				if (typeString.equals("FragmentComposition")) {
-					return FragmentCompositionInstancePageElementDefinition.
-						toDTO(json);
 				}
 
 				if (typeString.equals("FragmentDropZone")) {
@@ -349,3 +349,4 @@ public class PageElementDefinitionSerDes {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:1275309391

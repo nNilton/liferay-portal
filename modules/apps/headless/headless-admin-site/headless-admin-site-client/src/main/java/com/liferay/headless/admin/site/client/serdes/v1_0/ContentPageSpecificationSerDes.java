@@ -97,6 +97,16 @@ public class ContentPageSpecificationSerDes {
 			sb.append("]");
 		}
 
+		if (contentPageSpecification.getSettings() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"settings\": ");
+
+			sb.append(String.valueOf(contentPageSpecification.getSettings()));
+		}
+
 		if (contentPageSpecification.getCustomFields() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
@@ -134,16 +144,6 @@ public class ContentPageSpecificationSerDes {
 				_escape(contentPageSpecification.getExternalReferenceCode()));
 
 			sb.append("\"");
-		}
-
-		if (contentPageSpecification.getSettings() != null) {
-			if (sb.length() > 1) {
-				sb.append(", ");
-			}
-
-			sb.append("\"settings\": ");
-
-			sb.append(String.valueOf(contentPageSpecification.getSettings()));
 		}
 
 		if (contentPageSpecification.
@@ -235,6 +235,15 @@ public class ContentPageSpecificationSerDes {
 				String.valueOf(contentPageSpecification.getPageExperiences()));
 		}
 
+		if (contentPageSpecification.getSettings() == null) {
+			map.put("settings", null);
+		}
+		else {
+			map.put(
+				"settings",
+				String.valueOf(contentPageSpecification.getSettings()));
+		}
+
 		if (contentPageSpecification.getCustomFields() == null) {
 			map.put("customFields", null);
 		}
@@ -252,15 +261,6 @@ public class ContentPageSpecificationSerDes {
 				"externalReferenceCode",
 				String.valueOf(
 					contentPageSpecification.getExternalReferenceCode()));
-		}
-
-		if (contentPageSpecification.getSettings() == null) {
-			map.put("settings", null);
-		}
-		else {
-			map.put(
-				"settings",
-				String.valueOf(contentPageSpecification.getSettings()));
 		}
 
 		if (contentPageSpecification.
@@ -319,15 +319,15 @@ public class ContentPageSpecificationSerDes {
 			else if (Objects.equals(jsonParserFieldName, "pageExperiences")) {
 				return false;
 			}
+			else if (Objects.equals(jsonParserFieldName, "settings")) {
+				return false;
+			}
 			else if (Objects.equals(jsonParserFieldName, "customFields")) {
 				return false;
 			}
 			else if (Objects.equals(
 						jsonParserFieldName, "externalReferenceCode")) {
 
-				return false;
-			}
-			else if (Objects.equals(jsonParserFieldName, "settings")) {
 				return false;
 			}
 			else if (Objects.equals(
@@ -378,6 +378,12 @@ public class ContentPageSpecificationSerDes {
 						pageExperiencesArray);
 				}
 			}
+			else if (Objects.equals(jsonParserFieldName, "settings")) {
+				if (jsonParserFieldValue != null) {
+					contentPageSpecification.setSettings(
+						SettingsSerDes.toDTO((String)jsonParserFieldValue));
+				}
+			}
 			else if (Objects.equals(jsonParserFieldName, "customFields")) {
 				if (jsonParserFieldValue != null) {
 					Object[] jsonParserFieldValues =
@@ -404,12 +410,6 @@ public class ContentPageSpecificationSerDes {
 				if (jsonParserFieldValue != null) {
 					contentPageSpecification.setExternalReferenceCode(
 						(String)jsonParserFieldValue);
-				}
-			}
-			else if (Objects.equals(jsonParserFieldName, "settings")) {
-				if (jsonParserFieldValue != null) {
-					contentPageSpecification.setSettings(
-						SettingsSerDes.toDTO((String)jsonParserFieldValue));
 				}
 			}
 			else if (Objects.equals(
@@ -517,3 +517,4 @@ public class ContentPageSpecificationSerDes {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-1295985525

@@ -76,7 +76,6 @@ import com.liferay.portal.search.searcher.SearchRequestBuilderFactory;
 import com.liferay.portal.search.searcher.SearchResponse;
 import com.liferay.portal.search.searcher.Searcher;
 import com.liferay.portal.search.test.util.DocumentsAssert;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -1870,7 +1869,6 @@ public class SXPBlueprintSearchResultTest {
 		_assertSearch("[Pepsi Cola]");
 	}
 
-	@FeatureFlag("LPS-129412")
 	@Test
 	public void testSearchableAssetTypesWithSubtype() throws Exception {
 		JournalTestUtil.addArticle(
@@ -2550,13 +2548,7 @@ public class SXPBlueprintSearchResultTest {
 
 	private static final LocalTime _LOCAL_TIME_20 = LocalTime.of(20, 0, 0);
 
-	@Inject
-	private static JournalArticleLocalService _journalArticleLocalService;
-
 	private static List<SXPElement> _sxpElements;
-
-	@Inject
-	private static UserLocalService _userLocalService;
 
 	private AssetCategory _assetCategory;
 	private AssetTag _assetTag;
@@ -2583,6 +2575,10 @@ public class SXPBlueprintSearchResultTest {
 	private List<Group> _groups = new ArrayList<>();
 
 	private JournalArticleBuilder _journalArticleBuilder;
+
+	@Inject
+	private JournalArticleLocalService _journalArticleLocalService;
+
 	private final List<JournalArticle> _journalArticles = new ArrayList<>();
 	private JournalFolder _journalFolder;
 	private String _keywords;
@@ -2606,6 +2602,9 @@ public class SXPBlueprintSearchResultTest {
 		_sxpBlueprintSearchRequestEnhancer;
 
 	private User _user;
+
+	@Inject
+	private UserLocalService _userLocalService;
 
 	@Inject(
 		filter = "segments.criteria.contributor.key=user",

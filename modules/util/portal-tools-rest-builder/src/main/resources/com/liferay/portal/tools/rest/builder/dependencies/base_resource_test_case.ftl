@@ -54,11 +54,21 @@ import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 	<#assign
 		generateDepotEntry = generateDepotEntry || javaMethodSignature.methodName?contains("AssetLibrary")
 		generatePermissionsJavaMethodSignatures = generatePermissionsJavaMethodSignatures + (isPermissionsCompatibleMethod(configYAML, javaMethodSignature, javaMethodSignatures, schema, schemaName)?then([javaMethodSignature], []))
-		useDeleteAssetLibrary = useDeleteAssetLibrary || (hasExternalReferenceCodeProperty && stringUtil.equals(javaMethodSignature.methodName, "deleteAssetLibrary" + schemaName))
 		useDeleteByExternalReferenceCode = useDeleteByExternalReferenceCode || (freeMarkerTool.isExternalReferenceCodeMethod("delete", javaMethodSignature) && hasExternalReferenceCodeProperty && !javaMethodSignature.parentSchemaName?has_content)
 		useDeleteById = useDeleteById || (stringUtil.equals(javaMethodSignature.methodName, "delete" + schemaName) && (freeMarkerTool.hasPathParameter(javaMethodSignature, "id") || freeMarkerTool.hasPathParameter(javaMethodSignature, schemaVarName + "Id")) && hasIdProperty)
-		useDeleteSite = useDeleteSite || (hasExternalReferenceCodeProperty && stringUtil.equals(javaMethodSignature.methodName, "deleteSite" + schemaName))
 	/>
+
+	<#if hasExternalReferenceCodeProperty && (stringUtil.equals(javaMethodSignature.methodName, "deleteAssetLibrary" + schemaName) || stringUtil.equals(javaMethodSignature.methodName, "deleteAssetLibrary" + schemaName + "ByExternalReferenceCode"))>
+		<#assign
+			deleteAssetLibraryBatchJavaMethodSignature = javaMethodSignature
+			useDeleteAssetLibrary = true
+		/>
+	<#elseif hasExternalReferenceCodeProperty && (stringUtil.equals(javaMethodSignature.methodName, "deleteSite" + schemaName) || stringUtil.equals(javaMethodSignature.methodName, "deleteSite" + schemaName + "ByExternalReferenceCode"))>
+		<#assign
+			deleteSiteBatchJavaMethodSignature = javaMethodSignature
+			useDeleteSite = true
+		/>
+	</#if>
 </#list>
 
 <#assign
@@ -113,6 +123,7 @@ import com.liferay.portal.kernel.util.FastDateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 
 <#if freeMarkerTool.isVersionCompatible(configYAML, 12)>
 	import com.liferay.portal.kernel.util.PropsValues;
@@ -124,7 +135,13 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.odata.entity.EntityField;
 import com.liferay.portal.odata.entity.EntityModel;
-import com.liferay.portal.search.test.rule.SearchTestRule;
+
+<#if freeMarkerTool.isVersionCompatible(configYAML, 6)>
+	import com.liferay.portal.search.test.rule.SearchTestRule;
+<#else>
+	import com.liferay.portal.search.test.util.SearchTestRule;
+</#if>
+
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -248,7 +265,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 		).authentication(
 			_testCompanyAdminUser.getEmailAddress(), PropsValues.DEFAULT_ADMIN_PASSWORD
 		).endpoint(
-			testCompany.getVirtualHostname(), 8080, "http"
+			testCompany.getVirtualHostname(), PortalUtil.getPortalServerPort(false), "http"
 		).locale(
 			LocaleUtil.getDefault()
 		).build();
@@ -258,7 +275,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 			).authentication(
 				_testCompanyAdminUser.getEmailAddress(), PropsValues.DEFAULT_ADMIN_PASSWORD
 			).endpoint(
-				testCompany.getVirtualHostname(), 8080, "http"
+				testCompany.getVirtualHostname(), PortalUtil.getPortalServerPort(false), "http"
 			).locale(
 				LocaleUtil.getDefault()
 			).build();
@@ -269,7 +286,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 			).authentication(
 				_testCompanyAdminUser.getEmailAddress(), PropsValues.DEFAULT_ADMIN_PASSWORD
 			).endpoint(
-				testCompany.getVirtualHostname(), 8080, "http"
+				testCompany.getVirtualHostname(), PortalUtil.getPortalServerPort(false), "http"
 			).locale(
 				LocaleUtil.getDefault()
 			).parameter(
@@ -280,6 +297,11 @@ public abstract class Base${schemaName}ResourceTestCase {
 
 	@After
 	public void tearDown() throws Exception {
+		<#if generateDepotEntry>
+			DepotEntryLocalServiceUtil.deleteDepotEntry(irrelevantDepotEntry);
+			DepotEntryLocalServiceUtil.deleteDepotEntry(testDepotEntry);
+		</#if>
+
 		GroupTestUtil.deleteGroup(irrelevantGroup);
 		GroupTestUtil.deleteGroup(testGroup);
 	}
@@ -764,7 +786,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 
 						Map createBatchAction = new HashMap<>();
 						createBatchAction.put("method", "POST");
-						createBatchAction.put("href", "http://localhost:8080/o${configYAML.application.baseURI}/${openAPIYAML.info.version}${javaMethodSignature.path}/batch".replace("{${firstPathJavaMethodParameter.parameterName}}", String.valueOf(${firstPathJavaMethodParameter.parameterName})));
+						createBatchAction.put("href", ("http://localhost:" + PortalUtil.getPortalServerPort(false) + "/o${configYAML.application.baseURI}/${openAPIYAML.info.version}${javaMethodSignature.path}/batch").replace("{${firstPathJavaMethodParameter.parameterName}}", String.valueOf(${firstPathJavaMethodParameter.parameterName})));
 
 						expectedActions.put("createBatch", createBatchAction);
 					</#if>
@@ -1360,7 +1382,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 					return new MockHttpServletRequest() {
 						@Override
 						public StringBuffer getRequestURL() {
-							return new StringBuffer(StringBundler.concat("http://localhost:8080/o/v1.0/", RandomTestUtil.randomString(), "/", RandomTestUtil.randomString()));
+							return new StringBuffer(StringBundler.concat("http://localhost:", String.valueOf(PortalUtil.getPortalServerPort(false)), "/o/v1.0/", RandomTestUtil.randomString(), "/", RandomTestUtil.randomString()));
 						}
 					};
 				}
@@ -1393,7 +1415,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 
 						@Override
 						public URI getRequestUri() {
-							return URI.create("http://localhost:8080/o/" + applicationPath + resourcePath);
+							return URI.create(StringBundler.concat("http://localhost:", PortalUtil.getPortalServerPort(false), "/o/", applicationPath, resourcePath));
 						}
 
 						@Override
@@ -1413,7 +1435,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 
 						@Override
 						public URI getBaseUri() {
-							return URI.create("http://localhost:8080/o/" + applicationPath);
+							return URI.create(StringBundler.concat("http://localhost:", PortalUtil.getPortalServerPort(false), "/o/", applicationPath));
 						}
 
 						@Override
@@ -2033,6 +2055,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 
 						// No namespace
 
+						@SuppressWarnings("PMD.UnusedLocalVariable")
 						${schemaName} ${schemaVarName}1 = testGraphQL${javaMethodSignature.methodName?cap_first}_add${schemaName}();
 
 						Assert.assertTrue(
@@ -2076,6 +2099,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 
 						// Using the configured namespace ${configYAML.getGraphQLNamespace()}
 
+						@SuppressWarnings("PMD.UnusedLocalVariable")
 						${schemaName} ${schemaVarName}1 = testGraphQL${javaMethodSignature.methodName?cap_first}_add${schemaName}();
 
 						Assert.assertTrue(
@@ -2128,6 +2152,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 
 						// Using the namespace ${graphQLNamespace}
 
+						@SuppressWarnings("PMD.UnusedLocalVariable")
 						${schemaName} ${schemaVarName}2 = testGraphQL${javaMethodSignature.methodName?cap_first}_add${schemaName}();
 
 						Assert.assertTrue(
@@ -2683,7 +2708,9 @@ public abstract class Base${schemaName}ResourceTestCase {
 				<#if useDeleteAssetLibrary>
 					${schemaName} ${schemaVarName}1 = testBatchEngineDeleteImportTask_addAssetLibrary${schemaName}();
 
-					testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}1.getExternalReferenceCode(),<#if useDeleteById> null,</#if> "assetLibraryExternalReferenceCode", testDepotEntryGroup.getExternalReferenceCode());
+					<#assign isExternalReferenceCodeExclusiveMethod = freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteAssetLibraryBatchJavaMethodSignature) />
+
+					testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}1.getExternalReferenceCode(),<#if useDeleteById> null,</#if> "${isExternalReferenceCodeExclusiveMethod?then("assetLibraryExternalReferenceCode", "assetLibraryId")}", ${isExternalReferenceCodeExclusiveMethod?then("testDepotEntryGroup.getExternalReferenceCode()", "String.valueOf(testDepotEntryGroup.getGroupId())")});
 
 					<#if getAssetLibraryJavaMethodSignature?has_content>
 						assertHttpResponseStatusCode(
@@ -2734,7 +2761,9 @@ public abstract class Base${schemaName}ResourceTestCase {
 				<#if useDeleteSite>
 					<#if !useDeleteAssetLibrary && !useDeleteByExternalReferenceCode && !useDeleteById>${schemaName}</#if> ${schemaVarName}1 = testBatchEngineDeleteImportTask_addSite${schemaName}();
 
-					testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}1.getExternalReferenceCode(),<#if useDeleteById> null,</#if> "siteExternalReferenceCode", testGroup.getExternalReferenceCode());
+					<#assign isExternalReferenceCodeExclusiveMethod = freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteSiteBatchJavaMethodSignature) />
+
+					testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}1.getExternalReferenceCode(),<#if useDeleteById> null,</#if> "${isExternalReferenceCodeExclusiveMethod?then("siteExternalReferenceCode", "siteId")}", ${isExternalReferenceCodeExclusiveMethod?then("testGroup.getExternalReferenceCode()", "String.valueOf(testGroup.getGroupId())")});
 
 					<#if getSiteJavaMethodSignature?has_content>
 						assertHttpResponseStatusCode(
@@ -2753,7 +2782,9 @@ public abstract class Base${schemaName}ResourceTestCase {
 						${schemaVarName}1 = testBatchEngineDeleteImportTask_addAssetLibrary${schemaName}();
 						${schemaName} ${schemaVarName}2 = testBatchEngineDeleteImportTask_addAssetLibrary${schemaName}();
 
-						testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}2.getExternalReferenceCode(), ${schemaVarName}1.${getIdMethodName}(), "assetLibraryExternalReferenceCode", testDepotEntryGroup.getExternalReferenceCode());
+						<#assign isExternalReferenceCodeExclusiveMethod = freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteAssetLibraryBatchJavaMethodSignature) />
+
+						testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}2.getExternalReferenceCode(), ${schemaVarName}1.${getIdMethodName}(), "${isExternalReferenceCodeExclusiveMethod?then("assetLibraryExternalReferenceCode", "assetLibraryId")}", ${isExternalReferenceCodeExclusiveMethod?then("testDepotEntryGroup.getExternalReferenceCode()", "String.valueOf(testDepotEntryGroup.getGroupId())")});
 
 						<#if getJavaMethodSignature?has_content>
 							assertHttpResponseStatusCode(
@@ -2774,7 +2805,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 									/>));
 						</#if>
 
-						testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}2.getExternalReferenceCode(), ${schemaVarName}1.${getIdMethodName}(), "assetLibraryExternalReferenceCode", testDepotEntryGroup.getExternalReferenceCode());
+						testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}2.getExternalReferenceCode(), ${schemaVarName}1.${getIdMethodName}(), "${isExternalReferenceCodeExclusiveMethod?then("assetLibraryExternalReferenceCode", "assetLibraryId")}", ${isExternalReferenceCodeExclusiveMethod?then("testDepotEntryGroup.getExternalReferenceCode()", "String.valueOf(testDepotEntryGroup.getGroupId())")});
 
 						<#if getJavaMethodSignature?has_content>
 							assertHttpResponseStatusCode(
@@ -2792,7 +2823,9 @@ public abstract class Base${schemaName}ResourceTestCase {
 						${schemaVarName}1 = testBatchEngineDeleteImportTask_addSite${schemaName}();
 						<#if !useDeleteAssetLibrary>${schemaName}</#if> ${schemaVarName}2 = testBatchEngineDeleteImportTask_addSite${schemaName}();
 
-						testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}2.getExternalReferenceCode(), ${schemaVarName}1.${getIdMethodName}(), "siteExternalReferenceCode", testGroup.getExternalReferenceCode());
+						<#assign isExternalReferenceCodeExclusiveMethod = freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteSiteBatchJavaMethodSignature) />
+
+						testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}2.getExternalReferenceCode(), ${schemaVarName}1.${getIdMethodName}(), "${isExternalReferenceCodeExclusiveMethod?then("siteExternalReferenceCode", "siteId")}", ${isExternalReferenceCodeExclusiveMethod?then("testGroup.getExternalReferenceCode()", "String.valueOf(testGroup.getGroupId())")});
 
 						<#if getJavaMethodSignature?has_content>
 							assertHttpResponseStatusCode(
@@ -2813,7 +2846,9 @@ public abstract class Base${schemaName}ResourceTestCase {
 									/>));
 						</#if>
 
-						testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}2.getExternalReferenceCode(), ${schemaVarName}1.${getIdMethodName}(), "siteExternalReferenceCode", testGroup.getExternalReferenceCode());
+						<#assign isExternalReferenceCodeExclusiveMethod = freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteSiteBatchJavaMethodSignature) />
+
+						testBatchEngineDeleteImportTask_delete${schemaName}(200, ${schemaVarName}2.getExternalReferenceCode(), ${schemaVarName}1.${getIdMethodName}(), "${isExternalReferenceCodeExclusiveMethod?then("siteExternalReferenceCode", "siteId")}", ${isExternalReferenceCodeExclusiveMethod?then("testGroup.getExternalReferenceCode()", "String.valueOf(testGroup.getGroupId())")});
 
 						<#if getJavaMethodSignature?has_content>
 							assertHttpResponseStatusCode(
@@ -2830,7 +2865,9 @@ public abstract class Base${schemaName}ResourceTestCase {
 					<#if useDeleteAssetLibrary && useDeleteSite>
 						${schemaVarName}1 = testBatchEngineDeleteImportTask_addSite${schemaName}();
 
-						testBatchEngineDeleteImportTask_delete${schemaName}(400, ${schemaVarName}1.getExternalReferenceCode(), ${schemaVarName}1.${getIdMethodName}(), "assetLibraryExternalReferenceCode", testDepotEntryGroup.getExternalReferenceCode(), "siteExternalReferenceCode", testGroup.getExternalReferenceCode());
+						<#assign isExternalReferenceCodeExclusiveMethod = freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteAssetLibraryBatchJavaMethodSignature) && freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteSiteBatchJavaMethodSignature) />
+
+						testBatchEngineDeleteImportTask_delete${schemaName}(400, ${schemaVarName}1.getExternalReferenceCode(), ${schemaVarName}1.${getIdMethodName}(), "${isExternalReferenceCodeExclusiveMethod?then("assetLibraryExternalReferenceCode", "assetLibraryId")}", ${isExternalReferenceCodeExclusiveMethod?then("testDepotEntryGroup.getExternalReferenceCode()", "String.valueOf(testDepotEntryGroup.getGroupId())")}, "${isExternalReferenceCodeExclusiveMethod?then("siteExternalReferenceCode", "siteId")}", ${isExternalReferenceCodeExclusiveMethod?then("testGroup.getExternalReferenceCode()", "String.valueOf(testGroup.getGroupId())")});
 
 						<#if getJavaMethodSignature?has_content>
 							assertHttpResponseStatusCode(
@@ -2898,8 +2935,8 @@ public abstract class Base${schemaName}ResourceTestCase {
 
 				<#if useDeleteAssetLibrary>
 					protected ${schemaName} testBatchEngineDeleteImportTask_addAssetLibrary${schemaName}() throws Exception {
-						<#if (hasExternalReferenceCodeProperty || hasIdProperty) && freeMarkerTool.hasJavaMethodSignature(javaMethodSignatures, "deleteAssetLibrary" + schemaName)>
-							return testDeleteAssetLibrary${schemaName}_add${schemaName}();
+						<#if hasExternalReferenceCodeProperty || hasIdProperty>
+							return test${deleteAssetLibraryBatchJavaMethodSignature.methodName?cap_first}_add${schemaName}();
 						<#else>
 							throw new UnsupportedOperationException("This method needs to be implemented");
 						</#if>
@@ -2908,8 +2945,8 @@ public abstract class Base${schemaName}ResourceTestCase {
 
 				<#if useDeleteSite>
 					protected ${schemaName} testBatchEngineDeleteImportTask_addSite${schemaName}() throws Exception {
-						<#if (hasExternalReferenceCodeProperty || hasIdProperty) && freeMarkerTool.hasJavaMethodSignature(javaMethodSignatures, "deleteSite" + schemaName)>
-							return testDeleteSite${schemaName}_add${schemaName}();
+						<#if hasExternalReferenceCodeProperty || hasIdProperty>
+							return test${deleteSiteBatchJavaMethodSignature.methodName?cap_first}_add${schemaName}();
 						<#else>
 							throw new UnsupportedOperationException("This method needs to be implemented");
 						</#if>
@@ -2921,7 +2958,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 						).authentication(
 							_testCompanyAdminUser.getEmailAddress(), PropsValues.DEFAULT_ADMIN_PASSWORD
 						).endpoint(
-							testCompany.getVirtualHostname(), 8080, "http"
+							testCompany.getVirtualHostname(), PortalUtil.getPortalServerPort(false), "http"
 						).parameters(
 							parameters
 						).build();
@@ -3178,13 +3215,19 @@ public abstract class Base${schemaName}ResourceTestCase {
 				else if (value instanceof Boolean || value instanceof Number) {
 					return value.toString();
 				}
-				else if (value instanceof Date date) {
+				else if (value instanceof Date) {
+					Date date = (Date)value;
+
 					return "\"" + DateUtil.getDate(date, "yyyy-MM-dd'T'HH:mm:ss'Z'", LocaleUtil.getDefault(), TimeZone.getTimeZone("UTC")) + "\"";
 				}
-				else if (value instanceof Enum<?> enm) {
+				else if (value instanceof Enum) {
+					Enum<?> enm = (Enum<?>)value;
+
 					return enm.name();
 				}
-				else if (value instanceof Map<?, ?> map) {
+				else if (value instanceof Map) {
+					Map<?, ?> map = (Map<?, ?>)value;
+
 					List<String> entries = new ArrayList<>();
 
 					for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -3197,7 +3240,9 @@ public abstract class Base${schemaName}ResourceTestCase {
 
 					return "{" + String.join(", ", entries) + "}";
 				}
-				else if (value instanceof Object[] array) {
+				else if (value instanceof Object[]) {
+					Object[] array = (Object[])value;
+
 					List<String> entries = new ArrayList<>();
 
 					for (Object entry : array) {
@@ -3863,7 +3908,7 @@ public abstract class Base${schemaName}ResourceTestCase {
 			).toString(),
 			"application/json");
 		httpInvoker.httpMethod(HttpInvoker.HttpMethod.POST);
-		httpInvoker.path("http://localhost:8080/o/graphql");
+		httpInvoker.path("http://localhost:" + PortalUtil.getPortalServerPort(false) + "/o/graphql");
 		httpInvoker.userNameAndPassword("test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD);
 
 		HttpInvoker.HttpResponse httpResponse = httpInvoker.invoke();

@@ -5,6 +5,7 @@
 
 package com.liferay.headless.delivery.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.headless.delivery.dto.v1_0.BlogPostingImage;
 import com.liferay.headless.delivery.dto.v1_0.DefaultValue;
 import com.liferay.headless.delivery.resource.v1_0.BlogPostingImageResource;
@@ -616,9 +617,37 @@ public abstract class BaseBlogPostingImageResourceImpl
 
 		UnsafeFunction<BlogPostingImage, BlogPostingImage, Exception>
 			blogPostingImageUnsafeFunction = blogPostingImage -> {
-				deleteBlogPostingImage(blogPostingImage.getId());
+				if (blogPostingImage.getId() != null) {
+					try {
+						deleteBlogPostingImage(blogPostingImage.getId());
 
-				return blogPostingImage;
+						return blogPostingImage;
+					}
+					catch (Exception exception) {
+						if (blogPostingImage.getExternalReferenceCode() !=
+								null) {
+
+							if (parameters.containsKey("siteId")) {
+								deleteSiteBlogPostingImageByExternalReferenceCode(
+									(Long)parameters.get("siteId"),
+									blogPostingImage.
+										getExternalReferenceCode());
+
+								return blogPostingImage;
+							}
+						}
+					}
+				}
+				else if (parameters.containsKey("siteId")) {
+					deleteSiteBlogPostingImageByExternalReferenceCode(
+						(Long)parameters.get("siteId"),
+						blogPostingImage.getExternalReferenceCode());
+
+					return blogPostingImage;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
 			};
 
 		if (contextBatchUnsafeBiConsumer != null) {
@@ -696,6 +725,15 @@ public abstract class BaseBlogPostingImageResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -1290,3 +1328,4 @@ public abstract class BaseBlogPostingImageResourceImpl
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-578971010

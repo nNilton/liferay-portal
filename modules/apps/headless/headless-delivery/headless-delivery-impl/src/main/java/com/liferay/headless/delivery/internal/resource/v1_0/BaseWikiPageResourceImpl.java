@@ -5,6 +5,7 @@
 
 package com.liferay.headless.delivery.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.headless.delivery.dto.v1_0.DefaultValue;
 import com.liferay.headless.delivery.dto.v1_0.WikiPage;
 import com.liferay.headless.delivery.resource.v1_0.WikiPageResource;
@@ -1047,9 +1048,34 @@ public abstract class BaseWikiPageResourceImpl
 
 		UnsafeFunction<WikiPage, WikiPage, Exception> wikiPageUnsafeFunction =
 			wikiPage -> {
-				deleteWikiPage(wikiPage.getId());
+				if (wikiPage.getId() != null) {
+					try {
+						deleteWikiPage(wikiPage.getId());
 
-				return wikiPage;
+						return wikiPage;
+					}
+					catch (Exception exception) {
+						if (wikiPage.getExternalReferenceCode() != null) {
+							if (parameters.containsKey("siteId")) {
+								deleteSiteWikiPageByExternalReferenceCode(
+									(Long)parameters.get("siteId"),
+									wikiPage.getExternalReferenceCode());
+
+								return wikiPage;
+							}
+						}
+					}
+				}
+				else if (parameters.containsKey("siteId")) {
+					deleteSiteWikiPageByExternalReferenceCode(
+						(Long)parameters.get("siteId"),
+						wikiPage.getExternalReferenceCode());
+
+					return wikiPage;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
 			};
 
 		if (contextBatchUnsafeBiConsumer != null) {
@@ -1127,6 +1153,15 @@ public abstract class BaseWikiPageResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -1912,3 +1947,4 @@ public abstract class BaseWikiPageResourceImpl
 		LogFactoryUtil.getLog(BaseWikiPageResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:614654014

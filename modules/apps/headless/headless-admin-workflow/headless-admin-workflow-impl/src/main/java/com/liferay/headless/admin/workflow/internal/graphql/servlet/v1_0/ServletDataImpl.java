@@ -206,6 +206,11 @@ public class ServletDataImpl implements ServletData {
 							WorkflowInstanceResourceImpl.class,
 							"deleteWorkflowInstanceBatch"));
 					put(
+						"mutation#patchWorkflowInstance",
+						new ObjectValuePair<>(
+							WorkflowInstanceResourceImpl.class,
+							"patchWorkflowInstance"));
+					put(
 						"mutation#createWorkflowInstanceChangeTransition",
 						new ObjectValuePair<>(
 							WorkflowInstanceResourceImpl.class,
@@ -411,35 +416,15 @@ public class ServletDataImpl implements ServletData {
 							"getWorkflowTasksSubmittingUserPage"));
 
 					put(
-						"query#WorkflowInstance.workflowTasks",
+						"query#WorkflowTasksBulkSelection.workflowDefinition",
 						new ObjectValuePair<>(
-							WorkflowTaskResourceImpl.class,
-							"getWorkflowInstanceWorkflowTasksPage"));
-					put(
-						"query#WorkflowInstance.workflowLogs",
-						new ObjectValuePair<>(
-							WorkflowLogResourceImpl.class,
-							"getWorkflowInstanceWorkflowLogsPage"));
-					put(
-						"query#WorkflowTask.hasAssignableUsers",
-						new ObjectValuePair<>(
-							WorkflowTaskResourceImpl.class,
-							"getWorkflowTaskHasAssignableUsers"));
-					put(
-						"query#WorkflowInstance.workflowTasksAssignedToMe",
-						new ObjectValuePair<>(
-							WorkflowTaskResourceImpl.class,
-							"getWorkflowInstanceWorkflowTasksAssignedToMePage"));
+							WorkflowDefinitionResourceImpl.class,
+							"getWorkflowDefinition"));
 					put(
 						"query#WorkflowTask.workflowInstance",
 						new ObjectValuePair<>(
 							WorkflowInstanceResourceImpl.class,
 							"getWorkflowInstance"));
-					put(
-						"query#WorkflowTasksBulkSelection.workflowDefinition",
-						new ObjectValuePair<>(
-							WorkflowDefinitionResourceImpl.class,
-							"getWorkflowDefinition"));
 					put(
 						"query#WorkflowTaskAssignToUser.workflowTask",
 						new ObjectValuePair<>(
@@ -449,6 +434,11 @@ public class ServletDataImpl implements ServletData {
 						new ObjectValuePair<>(
 							AssigneeResourceImpl.class,
 							"getWorkflowTaskAssignableUsersPage"));
+					put(
+						"query#WorkflowInstance.nextTransitions",
+						new ObjectValuePair<>(
+							TransitionResourceImpl.class,
+							"getWorkflowInstanceNextTransitionsPage"));
 					put(
 						"query#WorkflowTask.nextTransitions",
 						new ObjectValuePair<>(
@@ -460,15 +450,30 @@ public class ServletDataImpl implements ServletData {
 							WorkflowDefinitionLinkResourceImpl.class,
 							"getWorkflowDefinitionWorkflowDefinitionLinksPage"));
 					put(
+						"query#WorkflowInstance.workflowLogs",
+						new ObjectValuePair<>(
+							WorkflowLogResourceImpl.class,
+							"getWorkflowInstanceWorkflowLogsPage"));
+					put(
+						"query#WorkflowInstance.workflowTasks",
+						new ObjectValuePair<>(
+							WorkflowTaskResourceImpl.class,
+							"getWorkflowInstanceWorkflowTasksPage"));
+					put(
+						"query#WorkflowTask.hasAssignableUsers",
+						new ObjectValuePair<>(
+							WorkflowTaskResourceImpl.class,
+							"getWorkflowTaskHasAssignableUsers"));
+					put(
+						"query#WorkflowInstance.workflowTasksAssignedToMe",
+						new ObjectValuePair<>(
+							WorkflowTaskResourceImpl.class,
+							"getWorkflowInstanceWorkflowTasksAssignedToMePage"));
+					put(
 						"query#WorkflowInstance.workflowTasksAssignedToUser",
 						new ObjectValuePair<>(
 							WorkflowTaskResourceImpl.class,
 							"getWorkflowInstanceWorkflowTasksAssignedToUserPage"));
-					put(
-						"query#WorkflowInstance.nextTransitions",
-						new ObjectValuePair<>(
-							TransitionResourceImpl.class,
-							"getWorkflowInstanceNextTransitionsPage"));
 				}
 			};
 
@@ -509,3 +514,4 @@ public class ServletDataImpl implements ServletData {
 		_transitionResourceComponentServiceObjects;
 
 }
+// LIFERAY-REST-BUILDER-HASH:-92986052

@@ -12,6 +12,9 @@ public class CommerceOrderActionKeys {
 
 	public static final String ADD_COMMERCE_ORDER = "ADD_COMMERCE_ORDER";
 
+	public static final String ADD_COMMERCE_ORDER_ATTACHMENT =
+		"ADD_COMMERCE_ORDER_ATTACHMENT";
+
 	public static final String ADD_COMMERCE_ORDER_TYPE =
 		"ADD_COMMERCE_ORDER_TYPE";
 
@@ -29,6 +32,9 @@ public class CommerceOrderActionKeys {
 
 	public static final String DELETE_COMMERCE_ORDERS =
 		"DELETE_COMMERCE_ORDERS";
+
+	public static final String MANAGE_ACCOUNTS_SCOPED_COMMERCE_ORDERS =
+		"MANAGE_ACCOUNTS_SCOPED_COMMERCE_ORDERS";
 
 	public static final String MANAGE_ALL_ACCOUNTS = "MANAGE_ALL_ACCOUNTS";
 
@@ -76,5 +82,8 @@ public class CommerceOrderActionKeys {
 
 	public static final String VIEW_ORGANIZATION_COMMERCE_ORDERS =
 		"VIEW_ORGANIZATION_COMMERCE_ORDERS";
+
+	public static final String VIEW_RESTRICTED_COMMERCE_ORDER_ATTACHMENTS =
+		"VIEW_RESTRICTED_COMMERCE_ORDER_ATTACHMENTS";
 
 }

@@ -10,6 +10,7 @@ import React, {useEffect, useMemo, useState} from 'react';
 
 import {config} from '../../../app/config';
 import {LAYOUT_DATA_ITEM_TYPES} from '../../../app/config/constants/layoutDataItemTypes';
+import {LAYOUT_TYPES} from '../../../app/config/constants/layoutTypes';
 import {
 	ObjectField,
 	ObjectFields,
@@ -23,7 +24,6 @@ import {useSelector} from '../../../app/contexts/StoreContext';
 import selectFormConfiguration from '../../../app/selectors/selectFormConfiguration';
 import selectLayoutDataItemLabel from '../../../app/selectors/selectLayoutDataItemLabel';
 import FormService from '../../../app/services/FormService';
-import InfoItemService from '../../../app/services/InfoItemService';
 import RulesService from '../../../app/services/RulesService';
 import {CACHE_KEYS, getCacheItem, getCacheKey} from '../../../app/utils/cache';
 import {isLayoutDataItemDeleted} from '../../../app/utils/isLayoutDataItemDeleted';
@@ -31,14 +31,21 @@ import useCache from '../../../app/utils/useCache';
 import {visitSelectedInputLayoutDataItems} from '../../../app/utils/visitSelectedInputLayoutDataItems';
 import {State} from '../../../types/State';
 import {FragmentLayoutDataItem} from '../../../types/layout_data/FragmentLayoutDataItem';
-import {filterAndConvertMappingFields} from './Condition';
+import {MappingFieldItem} from '../utils/useMappingFieldItems';
 
 type Props = {
+	mappingFieldItems: MappingFieldItem[];
 	onChange: (value: string | undefined) => void;
 	value?: string;
 };
 
-export default function AdvancedRuleEditor({onChange, value}: Props) {
+type CodeEditorSidebarPanel = (typeof config.codeEditorSidebarPanels)[number];
+
+export default function AdvancedRuleEditor({
+	mappingFieldItems,
+	onChange,
+	value,
+}: Props) {
 	const id = useId();
 
 	const state = useSelector((state: State) => state);
@@ -49,9 +56,9 @@ export default function AdvancedRuleEditor({onChange, value}: Props) {
 
 	const editorRef = React.useRef<CodeMirror.Editor>(null);
 
-	const [codeEditorSidebarPanels, setCodeEditorSidebarPanels] = useState(
-		() => config.codeEditorSidebarPanels
-	);
+	const [codeEditorSidebarPanels, setCodeEditorSidebarPanels] = useState<
+		typeof config.codeEditorSidebarPanels
+	>(() => config.codeEditorSidebarPanels);
 
 	const roles = useCache({
 		fetcher: () => RulesService.getRoles(),
@@ -75,13 +82,14 @@ export default function AdvancedRuleEditor({onChange, value}: Props) {
 					label: segmentEntry.name,
 				})
 			),
+			key: 'segments',
 			label: Liferay.Language.get('segments'),
 		}),
 		[]
 	);
 
 	useEffect(() => {
-		getFormFieldsSections(state).then((sections) => {
+		getFormFieldsSections(state, mappingFieldItems).then((sections) => {
 			setCodeEditorSidebarPanels([
 				...config.codeEditorSidebarPanels,
 				...sections,
@@ -90,7 +98,13 @@ export default function AdvancedRuleEditor({onChange, value}: Props) {
 				segmentEntriesSection,
 			]);
 		});
-	}, [state, segmentEntriesSection, rolesSection, usersSection]);
+	}, [
+		mappingFieldItems,
+		rolesSection,
+		segmentEntriesSection,
+		state,
+		usersSection,
+	]);
 
 	useRuleValidation(() => {
 		setError(scriptError || '');
@@ -125,6 +139,7 @@ function getRolesSection(
 
 	return {
 		items: roles.map((role) => ({content: role.roleId, label: role.name})),
+		key: 'roles',
 		label: Liferay.Language.get('roles'),
 	};
 }
@@ -141,34 +156,32 @@ function getUsersSection(
 			content: user.userId,
 			label: user.screenName,
 		})),
+		key: 'users',
 		label: Liferay.Language.get('users'),
 	};
 }
 
-async function getFormFieldsSections(state: State) {
-	const sections = [];
+async function getFormFieldsSections(
+	state: State,
+	mappingFieldItems: MappingFieldItem[]
+) {
+	const sections: CodeEditorSidebarPanel[] = [];
 
-	if (config.selectedMappingTypes) {
-		const {subtype, type} = config.selectedMappingTypes;
-
-		const mappingFields =
-			(await InfoItemService.getAvailableStructureMappingFields({
-				classNameId: type.id,
-				classTypeId: subtype ? subtype.id : '',
-			})) as ObjectFields;
-
+	if (
+		config.layoutType === LAYOUT_TYPES.display &&
+		mappingFieldItems.length
+	) {
 		sections.push({
-			items: filterAndConvertMappingFields(mappingFields).map((field) => {
-				return {
-					content: field.value,
-					label: field.label,
-				};
-			}),
+			items: mappingFieldItems.map((field) => ({
+				content: field.value,
+				label: field.label,
+			})),
+			key: 'mappingFields',
 			label: sub(
 				Liferay.Language.get('x-default'),
-				config.selectedMappingTypes.subtype
+				config.selectedMappingTypes?.subtype
 					? config.selectedMappingTypes.subtype.label
-					: config.selectedMappingTypes.type.label
+					: config.selectedMappingTypes?.type.label ?? ''
 			),
 		});
 	}
@@ -251,6 +264,7 @@ async function getFormFieldsSections(state: State) {
 
 		sections.push({
 			items,
+			key: `form_${formItem.itemId}`,
 			label: `${selectedType.label} (${selectLayoutDataItemLabel(state, formItem)})`,
 		});
 	}

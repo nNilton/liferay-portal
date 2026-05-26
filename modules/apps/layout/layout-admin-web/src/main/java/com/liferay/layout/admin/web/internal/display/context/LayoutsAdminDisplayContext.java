@@ -46,6 +46,7 @@ import com.liferay.layout.theme.item.selector.LayoutThemeItemSelectorCriterion;
 import com.liferay.layout.util.comparator.LayoutCreateDateComparator;
 import com.liferay.layout.util.comparator.LayoutRelevanceComparator;
 import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.petra.string.StringUtil;
 import com.liferay.portal.kernel.dao.search.EmptyOnClickRowChecker;
@@ -74,8 +75,8 @@ import com.liferay.portal.kernel.portlet.constants.FriendlyURLResolverConstants;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.portlet.url.builder.ResourceURLBuilder;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
-import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalServiceUtil;
+import com.liferay.portal.kernel.service.LayoutService;
 import com.liferay.portal.kernel.service.LayoutServiceUtil;
 import com.liferay.portal.kernel.service.LayoutSetBranchLocalServiceUtil;
 import com.liferay.portal.kernel.service.LayoutSetLocalServiceUtil;
@@ -102,6 +103,7 @@ import com.liferay.portal.kernel.util.PrefsPropsUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.PropsValues;
+import com.liferay.portal.kernel.util.ScopeUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
@@ -138,14 +140,14 @@ public class LayoutsAdminDisplayContext {
 
 	public LayoutsAdminDisplayContext(
 		ItemSelector itemSelector, LayoutActionsHelper layoutActionsHelper,
-		LayoutLocalService layoutLocalService,
+		LayoutService layoutService,
 		LayoutSetPrototypeHelper layoutSetPrototypeHelper,
 		LiferayPortletRequest liferayPortletRequest,
 		LiferayPortletResponse liferayPortletResponse) {
 
 		_itemSelector = itemSelector;
 		_layoutActionsHelper = layoutActionsHelper;
-		_layoutLocalService = layoutLocalService;
+		_layoutService = layoutService;
 		_layoutSetPrototypeHelper = layoutSetPrototypeHelper;
 		_liferayPortletRequest = liferayPortletRequest;
 		_liferayPortletResponse = liferayPortletResponse;
@@ -467,8 +469,7 @@ public class LayoutsAdminDisplayContext {
 			unicodeProperties.toString(), true, true, Collections.emptyMap(),
 			layout.getMasterLayoutPageTemplateEntryERC(), serviceContext);
 
-		draftLayout = _layoutLocalService.copyLayoutContent(
-			layout, draftLayout);
+		draftLayout = _layoutService.copyLayoutContent(layout, draftLayout);
 
 		serviceContext.setAttribute(
 			LayoutTypeSettingsConstants.KEY_PUBLISHED, Boolean.TRUE);
@@ -534,11 +535,32 @@ public class LayoutsAdminDisplayContext {
 					if (Validator.isNotNull(
 							selLayout.getFaviconFileEntryERC())) {
 
+						Long groupId = ScopeUtil.getItemGroupId(
+							selLayout.getCompanyId(),
+							selLayout.getFaviconFileEntryScopeERC(),
+							selLayout.getGroupId());
+
+						if (groupId == null) {
+							if (_log.isDebugEnabled()) {
+								_log.debug(
+									StringBundler.concat(
+										"Unable to resolve group ID for ",
+										"favicon file entry in layout with ",
+										"PLID ", selLayout.getPlid(),
+										" using favicon file entry scope ",
+										"external reference code ",
+										selLayout.
+											getFaviconFileEntryScopeERC()));
+							}
+
+							return 0;
+						}
+
 						DLFileEntry dlFileEntry =
 							DLFileEntryLocalServiceUtil.
 								fetchDLFileEntryByExternalReferenceCode(
 									selLayout.getFaviconFileEntryERC(),
-									selLayout.getFaviconFileEntryGroupId());
+									groupId);
 
 						if (dlFileEntry != null) {
 							return dlFileEntry.getFileEntryId();
@@ -1658,14 +1680,8 @@ public class LayoutsAdminDisplayContext {
 			return StringPool.BLANK;
 		}
 
-		String virtualHostname = null;
-
-		NavigableMap<String, String> virtualHostnames =
-			PortalUtil.getVirtualHostnames(layoutSet);
-
-		if (!virtualHostnames.isEmpty()) {
-			virtualHostname = virtualHostnames.firstKey();
-		}
+		String virtualHostname = PortalUtil.getDefaultVirtualHostname(
+			true, layoutSet);
 
 		Group scopeGroup = themeDisplay.getScopeGroup();
 
@@ -1678,14 +1694,8 @@ public class LayoutsAdminDisplayContext {
 				liveGroupLayoutSet = liveGroup.getPrivateLayoutSet();
 			}
 
-			virtualHostname = null;
-
-			virtualHostnames = PortalUtil.getVirtualHostnames(
-				liveGroupLayoutSet);
-
-			if (!virtualHostnames.isEmpty()) {
-				virtualHostname = virtualHostnames.firstKey();
-			}
+			virtualHostname = PortalUtil.getDefaultVirtualHostname(
+				true, liveGroupLayoutSet);
 		}
 
 		return virtualHostname;
@@ -2556,7 +2566,7 @@ public class LayoutsAdminDisplayContext {
 	private final ItemSelector _itemSelector;
 	private String _keywords;
 	private final LayoutActionsHelper _layoutActionsHelper;
-	private final LayoutLocalService _layoutLocalService;
+	private final LayoutService _layoutService;
 	private final LayoutSetPrototypeHelper _layoutSetPrototypeHelper;
 	private SearchContainer<Layout> _layoutsSearchContainer;
 	private final LiferayPortletRequest _liferayPortletRequest;

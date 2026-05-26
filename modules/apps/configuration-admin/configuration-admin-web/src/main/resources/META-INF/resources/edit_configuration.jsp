@@ -54,13 +54,22 @@ portletDisplay.setURLBack(redirect);
 renderResponse.setTitle(categoryDisplayName);
 %>
 
+<liferay-ui:error exception="<%= ConfigurationValidationException.class %>">
+
+	<%
+	ConfigurationValidationException configurationValidationException = (ConfigurationValidationException)errorException;
+	%>
+
+	<liferay-ui:message arguments="<%= configurationValidationException.getMessageArguments() %>" key="<%= configurationValidationException.getMessageKey() %>" translateArguments="<%= false %>" />
+</liferay-ui:error>
+
 <liferay-ui:error exception="<%= ConfigurationModelListenerException.class %>">
 
 	<%
-	ConfigurationModelListenerException cmle = (ConfigurationModelListenerException)errorException;
+	ConfigurationModelListenerException configurationModelListenerException = (ConfigurationModelListenerException)errorException;
 	%>
 
-	<liferay-ui:message key="<%= HtmlUtil.escape(cmle.causeMessage) %>" localizeKey="<%= false %>" />
+	<liferay-ui:message key="<%= HtmlUtil.escape(configurationModelListenerException.causeMessage) %>" localizeKey="<%= false %>" />
 </liferay-ui:error>
 
 <portlet:actionURL name="/configuration_admin/bind_configuration" var="bindConfigurationActionURL" />
@@ -190,10 +199,10 @@ renderResponse.setTitle(categoryDisplayName);
 							<aui:button-row>
 								<c:choose>
 									<c:when test="<%= configurationModel.hasScopeConfiguration(configurationScopeDisplayContext.getScope()) %>">
-										<aui:button data-qa-id="submitConfiguration" name="update" type="submit" value="update" />
+										<aui:button cssClass="configuration-submit-button" data-qa-id="submitConfiguration" disabled="<%= true %>" name="update" type="submit" value="update" />
 									</c:when>
 									<c:otherwise>
-										<aui:button data-qa-id="submitConfiguration" name="save" type="submit" value="save" />
+										<aui:button cssClass="configuration-submit-button" data-qa-id="submitConfiguration" disabled="<%= true %>" name="save" type="submit" value="save" />
 									</c:otherwise>
 								</c:choose>
 
@@ -213,3 +222,34 @@ renderResponse.setTitle(categoryDisplayName);
 		</clay:col>
 	</clay:row>
 </clay:container-fluid>
+
+<c:if test="<%= !configurationModel.isReadOnly() %>">
+	<aui:script>
+		var form = document.forms['<portlet:namespace />fm'];
+
+		if (form) {
+			var handleInputs = function () {
+				var inputs = form.querySelectorAll(
+					'button[role="combobox"], input:not([type="hidden"]), select, textarea'
+				);
+
+				if (inputs.length) {
+					observer.disconnect();
+
+					form.querySelectorAll('.configuration-submit-button').forEach(
+						function (button) {
+							button.removeAttribute('disabled');
+							button.classList.remove('disabled');
+						}
+					);
+				}
+			};
+
+			var observer = new MutationObserver(handleInputs);
+
+			observer.observe(form, {childList: true, subtree: true});
+
+			handleInputs();
+		}
+	</aui:script>
+</c:if>

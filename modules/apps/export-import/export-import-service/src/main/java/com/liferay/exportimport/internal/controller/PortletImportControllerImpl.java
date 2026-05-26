@@ -45,6 +45,8 @@ import com.liferay.exportimport.kernel.staging.Staging;
 import com.liferay.exportimport.lar.DeletionSystemEventImporter;
 import com.liferay.exportimport.lar.PermissionImporter;
 import com.liferay.exportimport.portlet.data.handler.provider.PortletDataHandlerProvider;
+import com.liferay.exportimport.portlet.element.handler.PortletElementHandler;
+import com.liferay.exportimport.portlet.element.handler.PortletElementHandlerFactory;
 import com.liferay.exportimport.portlet.preferences.processor.Capability;
 import com.liferay.exportimport.portlet.preferences.processor.ExportImportPortletPreferencesProcessor;
 import com.liferay.exportimport.portlet.preferences.processor.ExportImportPortletPreferencesProcessorRegistryUtil;
@@ -146,7 +148,10 @@ public class PortletImportControllerImpl implements PortletImportController {
 		PortletDataHandler portletDataHandler =
 			portlet.getPortletDataHandlerInstance();
 
-		if (portletDataHandler.isBatch()) {
+		if (portletDataHandler.isBatch() ||
+			(portlet.isPreferencesUniquePerLayout() &&
+			 (portletDataContext.getPlid() == PortletKeys.PREFS_PLID_SHARED))) {
+
 			return;
 		}
 
@@ -157,15 +162,16 @@ public class PortletImportControllerImpl implements PortletImportController {
 				portletDataContext.getPlid(),
 				portletDataContext.getPortletId());
 
-		jakarta.portlet.PortletPreferences portletPreferences =
+		jakarta.portlet.PortletPreferences jxPortletPreferences =
 			_portletPreferencesLocalService.fetchPreferences(
 				portletPreferencesIds);
 
-		if (portletPreferences == null) {
-			portletPreferences = new PortletPreferencesImpl();
+		if (jxPortletPreferences == null) {
+			jxPortletPreferences = new PortletPreferencesImpl();
 		}
 
-		String xml = deletePortletData(portletDataContext, portletPreferences);
+		String xml = deletePortletData(
+			portletDataContext, jxPortletPreferences);
 
 		if (xml != null) {
 			_portletPreferencesLocalService.updatePreferences(
@@ -217,13 +223,11 @@ public class PortletImportControllerImpl implements PortletImportController {
 			ExportImportConfiguration exportImportConfiguration, File file)
 		throws Exception {
 
-		ZipReader zipReader = null;
+		ExportImportThreadLocal.setPortletDataDeletionImportInProcess(true);
 
 		try {
 
 			// LAR validation
-
-			ExportImportThreadLocal.setPortletDataDeletionImportInProcess(true);
 
 			Map<String, Serializable> settingsMap =
 				exportImportConfiguration.getSettingsMap();
@@ -236,41 +240,37 @@ public class PortletImportControllerImpl implements PortletImportController {
 
 			Layout layout = _layoutLocalService.getLayout(targetPlid);
 
-			zipReader = _zipReaderFactory.getZipReader(file);
+			try (ZipReader zipReader = _zipReaderFactory.getZipReader(file)) {
+				validateFile(
+					layout.getCompanyId(), targetGroupId, portletId, zipReader);
 
-			validateFile(
-				layout.getCompanyId(), targetGroupId, portletId, zipReader);
+				PortletDataContext portletDataContext = getPortletDataContext(
+					exportImportConfiguration, zipReader);
 
-			PortletDataContext portletDataContext = getPortletDataContext(
-				exportImportConfiguration, file);
+				boolean deletePortletData = MapUtil.getBoolean(
+					parameterMap, PortletDataHandlerKeys.DELETE_PORTLET_DATA);
 
-			boolean deletePortletData = MapUtil.getBoolean(
-				parameterMap, PortletDataHandlerKeys.DELETE_PORTLET_DATA);
+				// Portlet data deletion
 
-			// Portlet data deletion
+				if (deletePortletData) {
+					if (_log.isDebugEnabled()) {
+						_log.debug("Deleting portlet data");
+					}
 
-			if (deletePortletData) {
-				if (_log.isDebugEnabled()) {
-					_log.debug("Deleting portlet data");
+					deletePortletData(portletDataContext);
 				}
 
-				deletePortletData(portletDataContext);
+				// Deletion system events
+
+				populateDeletionStagedModelTypes(portletDataContext);
+
+				_deletionSystemEventImporter.importDeletionSystemEvents(
+					portletDataContext);
 			}
-
-			// Deletion system events
-
-			populateDeletionStagedModelTypes(portletDataContext);
-
-			_deletionSystemEventImporter.importDeletionSystemEvents(
-				portletDataContext);
 		}
 		finally {
 			ExportImportThreadLocal.setPortletDataDeletionImportInProcess(
 				false);
-
-			if (zipReader != null) {
-				zipReader.close();
-			}
 		}
 	}
 
@@ -279,13 +279,15 @@ public class PortletImportControllerImpl implements PortletImportController {
 			ExportImportConfiguration exportImportConfiguration, File file)
 		throws Exception {
 
+		ExportImportThreadLocal.setExportImportConfigurationId(
+			exportImportConfiguration.getExportImportConfigurationId());
+		ExportImportThreadLocal.setPortletImportInProcess(true);
+
 		PortletDataContext portletDataContext = null;
 
-		try {
-			ExportImportThreadLocal.setPortletImportInProcess(true);
-
+		try (ZipReader zipReader = _zipReaderFactory.getZipReader(file)) {
 			portletDataContext = getPortletDataContext(
-				exportImportConfiguration, file);
+				exportImportConfiguration, zipReader);
 
 			_exportImportLifecycleManager.fireExportImportLifecycleEvent(
 				ExportImportLifecycleConstants.EVENT_PORTLET_IMPORT_STARTED,
@@ -325,6 +327,9 @@ public class PortletImportControllerImpl implements PortletImportController {
 
 			throw throwable;
 		}
+		finally {
+			ExportImportThreadLocal.setExportImportConfigurationId(0);
+		}
 	}
 
 	@Override
@@ -340,9 +345,12 @@ public class PortletImportControllerImpl implements PortletImportController {
 			portlet.getPortletDataHandlerInstance();
 
 		PortletPreferencesIds portletPreferencesIds = null;
-		jakarta.portlet.PortletPreferences portletPreferences = null;
+		jakarta.portlet.PortletPreferences jxPortletPreferences = null;
 
-		if (!portletDataHandler.isBatch()) {
+		if (!portletDataHandler.isBatch() &&
+			(!portlet.isPreferencesUniquePerLayout() ||
+			 (portletDataContext.getPlid() != PortletKeys.PREFS_PLID_SHARED))) {
+
 			portletPreferencesIds =
 				_portletPreferencesFactory.getPortletPreferencesIds(
 					portletDataContext.getCompanyId(),
@@ -350,17 +358,17 @@ public class PortletImportControllerImpl implements PortletImportController {
 					portletDataContext.getPlid(),
 					portletDataContext.getPortletId());
 
-			portletPreferences =
+			jxPortletPreferences =
 				_portletPreferencesLocalService.fetchPreferences(
 					portletPreferencesIds);
 		}
 
-		if (portletPreferences == null) {
-			portletPreferences = new PortletPreferencesImpl();
+		if (jxPortletPreferences == null) {
+			jxPortletPreferences = new PortletPreferencesImpl();
 		}
 
 		String xml = importPortletData(
-			portletDataContext, portletPreferences, portletDataElement);
+			portletDataContext, jxPortletPreferences, portletDataElement);
 
 		if ((portletPreferencesIds != null) && Validator.isNotNull(xml)) {
 			_portletPreferencesLocalService.updatePreferences(
@@ -412,7 +420,8 @@ public class PortletImportControllerImpl implements PortletImportController {
 
 		if (ExportImportThreadLocal.isPortletStagingInProcess() &&
 			ExportImportDateUtil.isRangeFromLastPublishDate(
-				portletDataContext)) {
+				portletDataContext) &&
+			!portletDataHandler.isBatch()) {
 
 			String changesetPortletId = ChangesetPortletKeys.CHANGESET;
 
@@ -817,8 +826,6 @@ public class PortletImportControllerImpl implements PortletImportController {
 			ExportImportConfiguration exportImportConfiguration, File file)
 		throws Exception {
 
-		ZipReader zipReader = null;
-
 		try {
 			ExportImportThreadLocal.setPortletValidationInProcess(true);
 
@@ -832,14 +839,17 @@ public class PortletImportControllerImpl implements PortletImportController {
 
 			Layout layout = _layoutLocalService.getLayout(targetPlid);
 
-			zipReader = _zipReaderFactory.getZipReader(file);
+			MissingReferences missingReferences = null;
 
-			validateFile(
-				layout.getCompanyId(), targetGroupId, portletId, zipReader);
+			try (ZipReader zipReader = _zipReaderFactory.getZipReader(file)) {
+				validateFile(
+					layout.getCompanyId(), targetGroupId, portletId, zipReader);
 
-			MissingReferences missingReferences =
-				_exportImportHelper.validateMissingReferences(
-					getPortletDataContext(exportImportConfiguration, file));
+				missingReferences =
+					_exportImportHelper.validateMissingReferences(
+						getPortletDataContext(
+							exportImportConfiguration, zipReader));
+			}
 
 			Map<String, MissingReference> dependencyMissingReferences =
 				missingReferences.getDependencyMissingReferences();
@@ -870,10 +880,6 @@ public class PortletImportControllerImpl implements PortletImportController {
 		}
 		finally {
 			ExportImportThreadLocal.setPortletValidationInProcess(false);
-
-			if (zipReader != null) {
-				zipReader.close();
-			}
 		}
 	}
 
@@ -937,7 +943,8 @@ public class PortletImportControllerImpl implements PortletImportController {
 	}
 
 	protected PortletDataContext getPortletDataContext(
-			ExportImportConfiguration exportImportConfiguration, File file)
+			ExportImportConfiguration exportImportConfiguration,
+			ZipReader zipReader)
 		throws PortalException {
 
 		Map<String, Serializable> settingsMap =
@@ -960,7 +967,7 @@ public class PortletImportControllerImpl implements PortletImportController {
 				layout.getCompanyId(), targetGroupId, parameterMap,
 				_exportImportHelper.getUserIdStrategy(
 					userId, userIdStrategyString),
-				_zipReaderFactory.getZipReader(file));
+				zipReader);
 
 		portletDataContext.setExportImportProcessId(
 			String.valueOf(
@@ -1156,23 +1163,30 @@ public class PortletImportControllerImpl implements PortletImportController {
 		String expectedRootPortletId = PortletIdCodec.decodePortletName(
 			portletId);
 
-		if (!expectedRootPortletId.equals(rootPortletId)) {
+		PortletElementHandler portletElementHandler =
+			_portletElementHandlerFactory.create(
+				rootElement.element("portlet"));
+
+		String targetPortletId = portletElementHandler.getTargetPortletId(
+			companyId);
+
+		if (!expectedRootPortletId.equals(rootPortletId) &&
+			!expectedRootPortletId.equals(targetPortletId)) {
+
 			throw new PortletIdException(expectedRootPortletId);
 		}
 
-		Element portletElement = rootElement.element("portlet");
-
 		String schemaVersion = GetterUtil.getString(
-			portletElement.attributeValue("schema-version"), "1.0.0");
+			portletElementHandler.getSchemaVersion(), "1.0.0");
 
 		PortletDataHandler portletDataHandler =
-			_portletDataHandlerProvider.provide(companyId, portletId);
+			_portletDataHandlerProvider.provide(companyId, targetPortletId);
 
 		if (!portletDataHandler.validateSchemaVersion(schemaVersion)) {
 			throw new LayoutImportException(
 				LayoutImportException.TYPE_WRONG_PORTLET_SCHEMA_VERSION,
 				new Object[] {
-					schemaVersion, portletId,
+					schemaVersion, targetPortletId,
 					portletDataHandler.getSchemaVersion()
 				});
 		}
@@ -1440,10 +1454,6 @@ public class PortletImportControllerImpl implements PortletImportController {
 					portalException);
 			}
 		}
-
-		ZipReader zipReader = portletDataContext.getZipReader();
-
-		zipReader.close();
 	}
 
 	private void _updatePortletPreferences(
@@ -1457,35 +1467,35 @@ public class PortletImportControllerImpl implements PortletImportController {
 
 		// Current portlet preferences
 
-		jakarta.portlet.PortletPreferences portletPreferences =
+		jakarta.portlet.PortletPreferences jxPortletPreferences =
 			_portletPreferencesLocalService.getPreferences(
 				portletDataContext.getCompanyId(), ownerId, ownerType, plid,
 				portletId);
 
 		// New portlet preferences
 
-		jakarta.portlet.PortletPreferences jxPortletPreferences =
+		jakarta.portlet.PortletPreferences newJXPortletPreferences =
 			PortletPreferencesFactoryUtil.fromXML(
 				portletDataContext.getCompanyId(), ownerId, ownerType, plid,
 				portletId, xml);
 
 		if (importData || !MergeLayoutPrototypesThreadLocal.isInProgress()) {
-			String currentLastPublishDate = portletPreferences.getValue(
+			String currentLastPublishDate = jxPortletPreferences.getValue(
 				"last-publish-date", null);
-			String newLastPublishDate = jxPortletPreferences.getValue(
+			String newLastPublishDate = newJXPortletPreferences.getValue(
 				"last-publish-date", null);
 
 			if (Validator.isNotNull(currentLastPublishDate)) {
-				jxPortletPreferences.setValue(
+				newJXPortletPreferences.setValue(
 					"last-publish-date", currentLastPublishDate);
 			}
 			else if (Validator.isNotNull(newLastPublishDate)) {
-				jxPortletPreferences.reset("last-publish-date");
+				newJXPortletPreferences.reset("last-publish-date");
 			}
 
 			_portletPreferencesLocalService.updatePreferences(
 				ownerId, ownerType, plid, portletId,
-				PortletPreferencesFactoryUtil.toXML(jxPortletPreferences));
+				PortletPreferencesFactoryUtil.toXML(newJXPortletPreferences));
 
 			return;
 		}
@@ -1495,7 +1505,7 @@ public class PortletImportControllerImpl implements PortletImportController {
 		String[] dataPortletPreferences =
 			portletDataHandler.getDataPortletPreferences();
 
-		Enumeration<String> enumeration = jxPortletPreferences.getNames();
+		Enumeration<String> enumeration = newJXPortletPreferences.getNames();
 
 		while (enumeration.hasMoreElements()) {
 			String name = enumeration.nextElement();
@@ -1506,13 +1516,13 @@ public class PortletImportControllerImpl implements PortletImportController {
 				(Validator.isNull(portletDataContext.getScopeLayoutUuid()) &&
 				 scopeType.equals("company"))) {
 
-				portletPreferences.setValues(
-					name, jxPortletPreferences.getValues(name, null));
+				jxPortletPreferences.setValues(
+					name, newJXPortletPreferences.getValues(name, null));
 			}
 		}
 
 		_portletPreferencesLocalService.updatePreferences(
-			ownerId, ownerType, plid, portletId, portletPreferences);
+			ownerId, ownerType, plid, portletId, jxPortletPreferences);
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
@@ -1560,6 +1570,9 @@ public class PortletImportControllerImpl implements PortletImportController {
 	@Reference
 	private PortletDataHandlerStatusMessageSender
 		_portletDataHandlerStatusMessageSender;
+
+	@Reference
+	private PortletElementHandlerFactory _portletElementHandlerFactory;
 
 	@Reference
 	private PortletItemLocalService _portletItemLocalService;

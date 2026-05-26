@@ -5,6 +5,7 @@
 
 package com.liferay.fragment.entry.processor.background.image;
 
+import com.liferay.analytics.settings.rest.manager.AnalyticsSettingsManager;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.util.DLURLHelper;
 import com.liferay.fragment.entry.processor.constants.FragmentEntryProcessorConstants;
@@ -53,20 +54,32 @@ public class BackgroundImageDocumentFragmentEntryProcessor
 
 	@Override
 	public void processFragmentEntryLinkHTML(
-			FragmentEntryLink fragmentEntryLink, Document document,
+			Document document, FragmentEntryLink fragmentEntryLink,
 			FragmentEntryProcessorContext fragmentEntryProcessorContext)
 		throws PortalException {
 
-		JSONObject jsonObject = fragmentEntryLink.getEditableValuesJSONObject();
+		processFragmentEntryLinkHTML(
+			document, fragmentEntryLink.getEditableValuesJSONObject(),
+			fragmentEntryLink, fragmentEntryProcessorContext);
+	}
 
-		JSONObject editableValuesJSONObject = jsonObject.getJSONObject(
+	@Override
+	public void processFragmentEntryLinkHTML(
+			Document document, JSONObject editableValuesJSONObject,
+			FragmentEntryLink fragmentEntryLink,
+			FragmentEntryProcessorContext fragmentEntryProcessorContext)
+		throws PortalException {
+
+		JSONObject jsonObject = editableValuesJSONObject.getJSONObject(
 			FragmentEntryProcessorConstants.
 				KEY_BACKGROUND_IMAGE_FRAGMENT_ENTRY_PROCESSOR);
 
-		if (editableValuesJSONObject == null) {
+		if (jsonObject == null) {
 			return;
 		}
 
+		boolean analyticsEnabled = _isAnalyticsEnabled(
+			fragmentEntryLink.getCompanyId());
 		Map<InfoItemReference, InfoItemFieldValues> infoDisplaysFieldValues =
 			new HashMap<>();
 
@@ -76,12 +89,11 @@ public class BackgroundImageDocumentFragmentEntryProcessor
 
 			String id = element.attr("data-lfr-background-image-id");
 
-			if (!editableValuesJSONObject.has(id)) {
+			if (!jsonObject.has(id)) {
 				continue;
 			}
 
-			JSONObject editableValueJSONObject =
-				editableValuesJSONObject.getJSONObject(id);
+			JSONObject editableValueJSONObject = jsonObject.getJSONObject(id);
 
 			String value = StringPool.BLANK;
 
@@ -111,9 +123,7 @@ public class BackgroundImageDocumentFragmentEntryProcessor
 					if (fileEntryId == 0) {
 						fileEntryId =
 							_fragmentEntryProcessorHelper.getFileEntryId(
-								_getGroupId(
-									fragmentEntryProcessorContext.
-										getHttpServletRequest()),
+								_getGroupId(fragmentEntryProcessorContext),
 								valueJSONObject);
 					}
 
@@ -130,9 +140,7 @@ public class BackgroundImageDocumentFragmentEntryProcessor
 				if (fileEntryId == 0) {
 					fileEntryId = _fragmentEntryProcessorHelper.getFileEntryId(
 						editableValueJSONObject.getString("fieldId"),
-						_getGroupId(
-							fragmentEntryProcessorContext.
-								getHttpServletRequest()),
+						_getGroupId(fragmentEntryProcessorContext),
 						editableValueJSONObject,
 						fragmentEntryProcessorContext.getLocale());
 				}
@@ -171,17 +179,29 @@ public class BackgroundImageDocumentFragmentEntryProcessor
 				element.removeAttr("data-lfr-background-image-id");
 			}
 
-			if (fragmentEntryProcessorContext.isViewMode()) {
-				AnalyticsAttributesUtil.addAnalyticsAttributes(
-					editableValueJSONObject, element,
-					fragmentEntryProcessorContext,
-					_fragmentEntryProcessorHelper, infoDisplaysFieldValues,
-					_infoItemServiceRegistry);
+			if (analyticsEnabled &&
+				fragmentEntryProcessorContext.isViewMode()) {
+
+				_setAnalyticsAttributes(
+					element,
+					AnalyticsAttributesUtil.getAnalyticsAttributes(
+						editableValueJSONObject, fragmentEntryProcessorContext,
+						_fragmentEntryProcessorHelper, infoDisplaysFieldValues,
+						_infoItemServiceRegistry));
 			}
 		}
 	}
 
-	private long _getGroupId(HttpServletRequest httpServletRequest) {
+	private long _getGroupId(
+		FragmentEntryProcessorContext fragmentEntryProcessorContext) {
+
+		if (fragmentEntryProcessorContext.getScopeGroupId() > 0) {
+			return fragmentEntryProcessorContext.getScopeGroupId();
+		}
+
+		HttpServletRequest httpServletRequest =
+			fragmentEntryProcessorContext.getHttpServletRequest();
+
 		if (httpServletRequest == null) {
 			return 0;
 		}
@@ -238,8 +258,44 @@ public class BackgroundImageDocumentFragmentEntryProcessor
 		return String.valueOf(fieldValue);
 	}
 
+	private boolean _isAnalyticsEnabled(long companyId) {
+		try {
+			return _analyticsSettingsManager.isAnalyticsEnabled(companyId);
+		}
+		catch (Exception exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(exception);
+			}
+
+			return false;
+		}
+	}
+
+	private void _setAnalyticsAttributes(
+		Element element, Map<String, Object> analyticsAttributes) {
+
+		for (Map.Entry<String, Object> entry : analyticsAttributes.entrySet()) {
+			Object value = entry.getValue();
+
+			if (value == null) {
+				continue;
+			}
+
+			String stringValue = String.valueOf(value);
+
+			if (Validator.isNull(stringValue)) {
+				continue;
+			}
+
+			element.attr("data-" + entry.getKey(), stringValue);
+		}
+	}
+
 	private static final Log _log = LogFactoryUtil.getLog(
 		BackgroundImageDocumentFragmentEntryProcessor.class);
+
+	@Reference
+	private AnalyticsSettingsManager _analyticsSettingsManager;
 
 	@Reference
 	private DLAppLocalService _dlAppLocalService;

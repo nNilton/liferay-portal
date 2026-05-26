@@ -100,14 +100,14 @@ public interface RoleService extends BaseService {
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public List<Role> getGroupRolesAndTeamRoles(
 		long companyId, String name, List<String> excludedNames, String title,
-		String description, int[] types, long excludedTeamRoleId,
-		long teamGroupId, int start, int end);
+		String description, int[] types, String subtype,
+		long excludedTeamRoleId, long teamGroupId, int start, int end);
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public int getGroupRolesAndTeamRolesCount(
 		long companyId, String name, List<String> excludedNames, String title,
-		String description, int[] types, long excludedTeamRoleId,
-		long teamGroupId);
+		String description, int[] types, String subtype,
+		long excludedTeamRoleId, long teamGroupId);
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public Role getOrAddEmptyRole(
@@ -155,8 +155,7 @@ public interface RoleService extends BaseService {
 	public List<Role> getRoles(int type, String subtype) throws PortalException;
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public List<Role> getRoles(long companyId, int[] types)
-		throws PortalException;
+	public List<Role> getRoles(long companyId, int[] types);
 
 	/**
 	 * Returns all the user's roles within the user group.
@@ -287,3 +286,4 @@ public interface RoleService extends BaseService {
 		throws PortalException;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:423939638

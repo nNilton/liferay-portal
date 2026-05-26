@@ -6,7 +6,6 @@
 import {APIResponse, expect as baseExpect, mergeTests} from '@playwright/test';
 
 import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
-import {applicationsMenuPageTest} from '../../../fixtures/applicationsMenuPageTest';
 import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {isolatedSiteTest} from '../../../fixtures/isolatedSiteTest';
 import {loginTest} from '../../../fixtures/loginTest';
@@ -44,15 +43,12 @@ const translateNameAndMetadataFields = async (
 	);
 	await fillAndClickOutside(
 		page,
-		page
-			.frameLocator(':text("Description")+div iframe')
-			.getByRole('textbox')
+		page.getByText('Description Rich Text Editor').getByRole('textbox')
 	);
 };
 
 const baseTest = mergeTests(
 	apiHelpersTest,
-	applicationsMenuPageTest,
 	isolatedSiteTest,
 	journalPagesTest,
 	loginTest(),
@@ -81,12 +77,17 @@ const assetPublisherDeprecationTest = mergeTests(
 	})
 );
 
-const ckeditor4Test = mergeTests(baseTest);
+const ckeditor4Test = mergeTests(
+	baseTest,
+	featureFlagsTest({
+		'LPD-11235': {enabled: true},
+	})
+);
 
 const ckeditor5Test = mergeTests(
 	baseTest,
 	featureFlagsTest({
-		'LPD-11235': {enabled: true},
+		'LPD-11235': {enabled: false},
 	})
 );
 
@@ -291,7 +292,6 @@ baseTest(
 	{
 		tag: '@LPD-66008',
 	},
-
 	async ({apiHelpers, journalEditArticlePage, page, site}) => {
 		const structureName = 'Test Structure';
 
@@ -387,17 +387,15 @@ baseTest(
 
 		await journalEditArticlePage.defaultTemplateButton.click();
 
-		await page
-			.locator(
-				'[id="_com_liferay_journal_web_portlet_JournalPortlet_previewWithTemplate"]'
-			)
-			.waitFor();
+		const previewButton = page.locator(
+			'[id="_com_liferay_journal_web_portlet_JournalPortlet_previewWithTemplate"]'
+		);
 
-		await page
-			.locator(
-				'[id="_com_liferay_journal_web_portlet_JournalPortlet_previewWithTemplate"]'
-			)
-			.click();
+		await previewButton.waitFor({state: 'attached'});
+
+		await previewButton.scrollIntoViewIfNeeded();
+
+		await previewButton.click({force: true});
 
 		const dialog = page.getByRole('dialog');
 
@@ -682,7 +680,7 @@ baseTest(
 
 		await expect(page.getByText(`${title}`)).toBeVisible();
 
-		await page.getByLabel(`${title}`).check();
+		await page.getByRole('checkbox', {name: title}).check();
 
 		await journalPage.moveToFolder(folder.name);
 
@@ -1465,9 +1463,8 @@ baseTest(
 
 		await expect(
 			page
-				.getByLabel('Content', {exact: true})
-				.locator('iframe[title="editor"]')
-				.contentFrame()
+				.getByTestId('content')
+				.getByRole('textbox', {name: 'Rich Text Editor'})
 				.getByText(catalanContent)
 		).toBeVisible();
 	}
@@ -2199,13 +2196,15 @@ ckeditor5Test(
 		);
 
 		await ckeditor5Test.step(
-			'Change article in source editing',
+			'Change article in source editing and then switch to wyswyg view',
 			async () => {
 				await sourceButton.click();
 
 				await sourceTextarea.fill(
 					'<a href="#" onclick="alert()">foo</a><script>alert()</script>'
 				);
+
+				await sourceButton.click();
 			}
 		);
 
@@ -2512,5 +2511,337 @@ baseTest(
 				).toBeDisabled();
 			}
 		);
+	}
+);
+
+baseTest(
+	'A user can expire a Web Content through its actions',
+	async ({apiHelpers, journalPage, page, site}) => {
+		const basicWebContentStructureId =
+			await getBasicWebContentStructureId(apiHelpers);
+
+		const title = getRandomString();
+
+		await apiHelpers.jsonWebServicesJournal.addWebContent({
+			ddmStructureId: basicWebContentStructureId,
+			groupId: site.id,
+			titleMap: {en_US: title},
+		});
+
+		await journalPage.goto(site.friendlyUrlPath);
+
+		await expect(page.getByText(title)).toBeVisible();
+
+		await journalPage.goToJournalArticleAction('Expire', title);
+
+		await expect(page.locator('.alert-success')).toBeVisible();
+
+		await expect(
+			page.locator('span').filter({hasText: 'Expired'}).nth(1)
+		).toBeVisible();
+	}
+);
+
+baseTest(
+	'A user can expire multiple Web Content though the toolbar',
+	async ({apiHelpers, journalPage, page, site}) => {
+		const basicWebContentStructureId =
+			await getBasicWebContentStructureId(apiHelpers);
+
+		const title1 = getRandomString();
+		const title2 = getRandomString();
+
+		await Promise.all([
+			apiHelpers.jsonWebServicesJournal.addWebContent({
+				ddmStructureId: basicWebContentStructureId,
+				groupId: site.id,
+				titleMap: {en_US: title1},
+			}),
+			apiHelpers.jsonWebServicesJournal.addWebContent({
+				ddmStructureId: basicWebContentStructureId,
+				groupId: site.id,
+				titleMap: {en_US: title2},
+			}),
+		]);
+
+		await journalPage.goto(site.friendlyUrlPath);
+
+		await expect(page.getByText(title1)).toBeVisible();
+		await expect(page.getByText(title2)).toBeVisible();
+
+		await page.getByLabel('Select All Items on the Page').check();
+
+		await page.getByRole('button', {name: 'Expire'}).click();
+
+		await expect(page.locator('.alert-success')).toBeVisible();
+
+		await expect(
+			page.locator('span').filter({hasText: 'Expired'}).nth(1)
+		).toBeVisible();
+
+		await expect(
+			page.locator('span').filter({hasText: 'Expired'}).nth(2)
+		).toBeVisible();
+	}
+);
+
+baseTest(
+	'The user can search for a specific Web Content in Web Content Admin',
+	async ({apiHelpers, journalPage, page, site}) => {
+		const basicWebContentStructureId =
+			await getBasicWebContentStructureId(apiHelpers);
+
+		const title1 = getRandomString();
+		const title2 = getRandomString();
+
+		await Promise.all([
+			apiHelpers.jsonWebServicesJournal.addWebContent({
+				ddmStructureId: basicWebContentStructureId,
+				groupId: site.id,
+				titleMap: {en_US: title1},
+			}),
+			apiHelpers.jsonWebServicesJournal.addWebContent({
+				ddmStructureId: basicWebContentStructureId,
+				groupId: site.id,
+				titleMap: {en_US: title2},
+			}),
+		]);
+
+		await journalPage.goto(site.friendlyUrlPath);
+
+		await expect(page.getByText(title1)).toBeVisible();
+		await expect(page.getByText(title2)).toBeVisible();
+
+		await page.getByPlaceholder('Search for').fill(title1);
+		await page.getByLabel('Search for', {exact: true}).click();
+
+		await expect(page.getByText(title1, {exact: true})).toBeVisible();
+		await expect(page.getByText(title2)).not.toBeVisible();
+
+		await page.getByPlaceholder('Search for').fill(title2);
+		await page.getByLabel('Search for', {exact: true}).click();
+
+		await expect(page.getByText(title1)).not.toBeVisible();
+		await expect(page.getByText(title2, {exact: true})).toBeVisible();
+
+		await page.getByPlaceholder('Search for').fill('Random Text');
+		await page.getByLabel('Search for', {exact: true}).click();
+
+		await expect(page.getByText(title1)).not.toBeVisible();
+		await expect(page.getByText(title2)).not.toBeVisible();
+	}
+);
+
+baseTest(
+	'Publish and Schedule button is not disabled and shows validation error for custom structures required fields',
+	{
+		tag: '@LPD-75537',
+	},
+	async ({apiHelpers, journalEditArticlePage, page, site}) => {
+		const structureName = 'Structure 1';
+		const title = getRandomString();
+
+		const dataDefinition = getDataStructureDefinition({
+			defaultLanguageId: 'en_US',
+			fields: [
+				{name: 'Text'},
+				{
+					name: 'TextRequired',
+					required: true,
+				},
+			],
+			name: structureName,
+		});
+
+		await apiHelpers.dataEngine.createStructure(site.id, dataDefinition);
+
+		await journalEditArticlePage.goto({
+			siteUrl: site.friendlyUrlPath,
+			structureName,
+		});
+
+		await journalEditArticlePage.fillTitle(title);
+
+		await baseTest.step(
+			'Publish button is not disabled and shows validation error',
+			async () => {
+				await journalEditArticlePage.publishArticle(true);
+
+				await expect(
+					journalEditArticlePage.publishButton
+				).not.toBeDisabled();
+				await expect(
+					page.getByText('This field is required.')
+				).toBeVisible();
+			}
+		);
+
+		await baseTest.step(
+			'Schedule Publication button shows validation error',
+			async () => {
+				await clickAndExpectToBeVisible({
+					autoClick: true,
+					target: page.getByRole('menuitem', {
+						name: 'Schedule Publication',
+					}),
+					trigger: journalEditArticlePage.publishDropdown,
+				});
+
+				await expect(page.locator('.modal-dialog')).not.toBeVisible();
+				await expect(
+					page.getByText('This field is required.')
+				).toBeVisible();
+			}
+		);
+	}
+);
+
+baseTest(
+	'Cannot Publish, Schedule or Save as Draft a web content if title for default language is not set',
+	{
+		tag: '@LPD-76463',
+	},
+	async ({journalEditArticlePage, journalPage, page, site}) => {
+		await journalPage.goto();
+
+		await journalEditArticlePage.goto({siteUrl: site.friendlyUrlPath});
+
+		baseTest.step(
+			'Change language without filling title for default language',
+			async () => {
+				await journalEditArticlePage.fillTitle('');
+
+				const translationButton = page.getByRole('combobox', {
+					name: 'Select a language',
+				});
+
+				await clickAndExpectToBeVisible({
+					autoClick: true,
+					target: page.getByRole('option', {
+						name: 'Catalan Language: Not',
+					}),
+					trigger: translationButton,
+				});
+
+				await expect(
+					page.getByLabel('Translation Options')
+				).toBeVisible();
+
+				await journalEditArticlePage.fillTitle(getRandomString());
+			}
+		);
+
+		baseTest.step('Cannot Publish With Permissions', async () => {
+			await clickAndExpectToBeVisible({
+				autoClick: true,
+				target: page.getByRole('menuitem', {
+					name: 'Publish With Permissions',
+				}),
+				trigger: journalEditArticlePage.publishDropdown,
+			});
+
+			await page
+				.locator('.alert-danger', {
+					hasText:
+						'Please enter a valid title for the default language',
+				})
+				.waitFor();
+
+			await expect(page.locator('.modal-dialog')).not.toBeVisible();
+
+			await page.getByLabel('Close').click();
+		});
+
+		baseTest.step('Cannot Schedule Publication', async () => {
+			await clickAndExpectToBeVisible({
+				autoClick: true,
+				target: page.getByRole('menuitem', {
+					name: 'Schedule Publication',
+				}),
+				trigger: journalEditArticlePage.publishDropdown,
+			});
+
+			await page
+				.locator('.alert-danger', {
+					hasText:
+						'Please enter a valid title for the default language',
+				})
+				.waitFor();
+
+			await expect(page.locator('.modal-dialog')).not.toBeVisible();
+			await page.getByLabel('Close').click();
+		});
+
+		baseTest.step('Cannot Save as Draft', async () => {
+			await page.getByRole('button', {name: 'Save as Draft'}).click();
+
+			await expect(page.locator('.modal-dialog')).not.toBeVisible();
+		});
+
+		baseTest.step(
+			'Can Save as Draft if default language title is filled',
+			async () => {
+				const translationButton = page.getByRole('combobox', {
+					name: 'Select a language',
+				});
+
+				await clickAndExpectToBeVisible({
+					autoClick: true,
+					target: page.getByRole('option', {
+						name: 'English Language: Default',
+					}),
+					trigger: translationButton,
+				});
+
+				await journalEditArticlePage.fillTitle(getRandomString());
+
+				await clickAndExpectToBeVisible({
+					autoClick: true,
+					target: page.getByRole('option', {
+						name: 'Catalan Language: Translating 1/',
+					}),
+					trigger: translationButton,
+				});
+
+				await expect(page.locator('.modal-dialog')).toBeVisible();
+
+				await expect(async () => {
+					page.getByRole('heading', {
+						name: 'Save as Draft With Permissions',
+					});
+				}).toPass();
+			}
+		);
+	}
+);
+
+baseTest(
+	'Display Page Preview button is disabled when draft does not exist',
+	{
+		tag: '@LPD-77694',
+	},
+	async ({journalEditArticlePage, page, site}) => {
+		page.on('dialog', (dialog) => dialog.accept());
+
+		await journalEditArticlePage.goto({siteUrl: site.friendlyUrlPath});
+
+		const title = getRandomString();
+
+		await journalEditArticlePage.content.waitFor();
+
+		await journalEditArticlePage.fillTitle(title);
+
+		await journalEditArticlePage.content.waitFor();
+
+		await journalEditArticlePage.openFieldSet(
+			'Display Page',
+			'displayPage'
+		);
+
+		await journalEditArticlePage.previewButton.waitFor();
+
+		await journalEditArticlePage.previewButton.scrollIntoViewIfNeeded();
+
+		await expect(journalEditArticlePage.previewButton).toBeDisabled();
 	}
 );

@@ -17,6 +17,7 @@ import com.liferay.document.library.kernel.model.DLFolder;
 import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
 import com.liferay.expando.kernel.service.ExpandoRowLocalService;
+import com.liferay.exportimport.kernel.empty.model.EmptyModelManager;
 import com.liferay.mail.kernel.service.MailService;
 import com.liferay.message.boards.constants.MBCategoryConstants;
 import com.liferay.message.boards.constants.MBConstants;
@@ -383,7 +384,9 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 
 		MBMessage parentMBMessage = fetchMBMessage(parentMessageId);
 
-		if ((parentMBMessage != null) && !parentMBMessage.isApproved()) {
+		if ((parentMBMessage != null) && !parentMBMessage.isApproved() &&
+			(parentMBMessage.getStatus() != WorkflowConstants.STATUS_EMPTY)) {
+
 			throw new PortalException("Parent message is not approved");
 		}
 
@@ -472,7 +475,16 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 		message.setUrlSubject(
 			_getUniqueUrlSubject(groupId, messageId, subject));
 		message.setAllowPingbacks(allowPingbacks);
-		message.setStatus(WorkflowConstants.STATUS_DRAFT);
+
+		int status = WorkflowConstants.STATUS_DRAFT;
+
+		if (_emptyModelManager.isEmptyModel() &&
+			(parentMessageId != MBMessageConstants.DEFAULT_PARENT_MESSAGE_ID)) {
+
+			status = WorkflowConstants.STATUS_EMPTY;
+		}
+
+		message.setStatus(status);
 		message.setStatusByUserId(user.getUserId());
 		message.setStatusByUserName(userName);
 		message.setStatusDate(modifiedDate);
@@ -586,6 +598,10 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 			serviceContext.isAssetEntryVisible());
 
 		// Workflow
+
+		if (status == WorkflowConstants.STATUS_EMPTY) {
+			return message;
+		}
 
 		return _startWorkflowInstance(userId, message, serviceContext);
 	}
@@ -850,18 +866,32 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 				else if (message.getStatus() ==
 							WorkflowConstants.STATUS_APPROVED) {
 
-					MessageCreateDateComparator comparator =
-						MessageCreateDateComparator.getInstance(true);
+					int approvedCount = mbMessagePersistence.countByT_S(
+						thread.getThreadId(),
+						WorkflowConstants.STATUS_APPROVED);
 
-					MBMessage[] prevAndNextMessages =
-						mbMessagePersistence.findByT_S_PrevAndNext(
-							message.getMessageId(), thread.getThreadId(),
-							WorkflowConstants.STATUS_APPROVED, comparator);
+					if (approvedCount > 1) {
+						List<MBMessage> lastTwoMessages =
+							mbMessagePersistence.findByT_S(
+								thread.getThreadId(),
+								WorkflowConstants.STATUS_APPROVED,
+								approvedCount - 2, approvedCount,
+								MessageCreateDateComparator.getInstance(true));
 
-					if (prevAndNextMessages[2] == null) {
-						_mbThreadLocalService.updateLastPostDate(
-							thread.getThreadId(),
-							prevAndNextMessages[0].getModifiedDate());
+						if (lastTwoMessages.size() == 2) {
+							MBMessage lastMessage = lastTwoMessages.get(1);
+
+							if (lastMessage.getMessageId() ==
+									message.getMessageId()) {
+
+								MBMessage secondLastMessage =
+									lastTwoMessages.get(0);
+
+								_mbThreadLocalService.updateLastPostDate(
+									thread.getThreadId(),
+									secondLastMessage.getModifiedDate());
+							}
+						}
 					}
 				}
 			}
@@ -1433,7 +1463,8 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 	public MBMessage getLastThreadMessage(long threadId, int status)
 		throws PortalException {
 
-		return mbMessagePersistence.findByT_S_Last(threadId, status, null);
+		return mbMessagePersistence.findByT_S_First(
+			threadId, status, MessageCreateDateComparator.getInstance(false));
 	}
 
 	@Override
@@ -1537,6 +1568,37 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 		}
 
 		return mbMessagePersistence.findByC_C_S(classNameId, classPK, status);
+	}
+
+	@Indexable(type = IndexableType.REINDEX)
+	public MBMessage getOrAddEmptyDiscussionMessage(
+			String externalReferenceCode, long userId, long groupId,
+			String className, long classPK)
+		throws PortalException {
+
+		Group group = _groupLocalService.getGroup(groupId);
+
+		User user = _userLocalService.getUser(userId);
+
+		return _emptyModelManager.getOrAddEmptyModel(
+			MBMessage.class.getName(), group.getCompanyId(),
+			() -> {
+				MBMessageDisplay mbMessageDisplay =
+					mbMessageLocalService.getDiscussionMessageDisplay(
+						userId, groupId, className, classPK,
+						WorkflowConstants.STATUS_APPROVED);
+
+				MBThread mbThread = mbMessageDisplay.getThread();
+
+				return mbMessageLocalService.addDiscussionMessage(
+					externalReferenceCode, userId, user.getFullName(), groupId,
+					className, classPK, mbThread.getThreadId(),
+					mbThread.getRootMessageId(), String.valueOf(classPK),
+					StringPool.BLANK, new ServiceContext());
+			},
+			externalReferenceCode, this::fetchMBMessageByExternalReferenceCode,
+			this::getMBMessageByExternalReferenceCode, groupId,
+			MBMessage.class.getName());
 	}
 
 	@Override
@@ -3071,6 +3133,9 @@ public class MBMessageLocalServiceImpl extends MBMessageLocalServiceBaseImpl {
 
 	@Reference
 	private DLFileEntryLocalService _dlFileEntryLocalService;
+
+	@Reference
+	private EmptyModelManager _emptyModelManager;
 
 	@Reference
 	private ExpandoRowLocalService _expandoRowLocalService;

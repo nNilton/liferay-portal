@@ -269,27 +269,29 @@ public class UtilityPage implements Cloneable, Serializable {
 	protected com.liferay.headless.admin.site.client.permission.Permission[]
 		permissions;
 
-	public ItemExternalReference getThumbnail() {
-		return thumbnail;
+	public ThumbnailURLReference getThumbnailURLReference() {
+		return thumbnailURLReference;
 	}
 
-	public void setThumbnail(ItemExternalReference thumbnail) {
-		this.thumbnail = thumbnail;
+	public void setThumbnailURLReference(
+		ThumbnailURLReference thumbnailURLReference) {
+
+		this.thumbnailURLReference = thumbnailURLReference;
 	}
 
-	public void setThumbnail(
-		UnsafeSupplier<ItemExternalReference, Exception>
-			thumbnailUnsafeSupplier) {
+	public void setThumbnailURLReference(
+		UnsafeSupplier<ThumbnailURLReference, Exception>
+			thumbnailURLReferenceUnsafeSupplier) {
 
 		try {
-			thumbnail = thumbnailUnsafeSupplier.get();
+			thumbnailURLReference = thumbnailURLReferenceUnsafeSupplier.get();
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	protected ItemExternalReference thumbnail;
+	protected ThumbnailURLReference thumbnailURLReference;
 
 	public Type getType() {
 		return type;
@@ -396,8 +398,9 @@ public class UtilityPage implements Cloneable, Serializable {
 
 		COOKIE_POLICY("CookiePolicy"), CREATE_ACCOUNT("CreateAccount"),
 		ERROR("Error"), ERROR_CODE404("ErrorCode404"),
-		ERROR_CODE500("ErrorCode500"), FORGOT_PASSWORD("ForgotPassword"),
-		LOGIN("Login"), TERMS_OF_USE("TermsOfUse");
+		ERROR_CODE500("ErrorCode500"), ERROR_CODE503("ErrorCode503"),
+		FORGOT_PASSWORD("ForgotPassword"), LOGIN("Login"),
+		TERMS_OF_USE("TermsOfUse");
 
 		public static Type create(String value) {
 			for (Type type : values()) {
@@ -429,3 +432,4 @@ public class UtilityPage implements Cloneable, Serializable {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:1200512460

@@ -7,6 +7,7 @@ import {ReporterDescription, defineConfig, devices} from '@playwright/test';
 
 import 'dotenv/config';
 
+import {liferayConfig} from './liferay.config';
 import {config as accessibilityMenuWeb} from './tests/accessibility-menu-web/main/config';
 import {config as accountAdminWebConfig} from './tests/account-admin-web/main/config';
 import {config as addressWebConfig} from './tests/address-web/main/config';
@@ -15,6 +16,7 @@ import {config as analyticsReportsJsComponentsWeb} from './tests/analytics-repor
 import {config as analyticsSettingsWebConfig} from './tests/analytics-settings-web/main/config';
 import {config as analyticsWebConfig} from './tests/analytics-web/main/config';
 import {config as announcementsWebConfig} from './tests/announcements-web/main/config';
+import {config as applicationListTaglibConfig} from './tests/application-list-taglib/main/config';
 import {config as assetCategoriesAdminWebConfig} from './tests/asset-categories-admin-web/main/config';
 import {config as assetPublisherWebConfig} from './tests/asset-publisher-web/main/config';
 import {config as assetTagsAdminWebConfig} from './tests/asset-tags-admin-web/main/config';
@@ -23,6 +25,7 @@ import {config as blogsWebConfig} from './tests/blogs-web/main/config';
 import {config as calendarWebConfig} from './tests/calendar-web/main/config';
 import {config as captchaWebClientExtensionConfig} from './tests/captcha-web/client-extension/config';
 import {config as captchaWebConfig} from './tests/captcha-web/main/config';
+import {config as changeTrackingWebLocalePrependConfig} from './tests/change-tracking-web/main-locale-prepend/config';
 import {config as changeTrackingWebConfig} from './tests/change-tracking-web/main/config';
 import {config as clientExtensionWebClusterConfig} from './tests/client-extension-web/cluster/config';
 import {config as clientExtensionWebConfig} from './tests/client-extension-web/main/config';
@@ -30,6 +33,7 @@ import {config as commerceAccountWebConfig} from './tests/commerce/commerce-acco
 import {config as commerceCartContentWebConfig} from './tests/commerce/commerce-cart-content-web/main/config';
 import {config as commerceCatalogWebConfig} from './tests/commerce/commerce-catalog-web/main/config';
 import {config as commerceChannelWebConfig} from './tests/commerce/commerce-channel-web/main/config';
+import {config as commerceCheckoutWebClientExtensionConfig} from './tests/commerce/commerce-checkout-web/client-extension/config';
 import {config as commerceCheckoutWebConfig} from './tests/commerce/commerce-checkout-web/main/config';
 import {config as commerceCurrencyWebConfig} from './tests/commerce/commerce-currency-web/main/config';
 import {config as commerceDiscountContentWebConfig} from './tests/commerce/commerce-discount-content-web/main/config';
@@ -37,8 +41,10 @@ import {config as commerceFragmentImplConfig} from './tests/commerce/commerce-fr
 import {config as commerceInitializerUtilConfig} from './tests/commerce/commerce-initializer-util/main/config';
 import {config as commerceInventoryWebConfig} from './tests/commerce/commerce-inventory-web/main/config';
 import {config as commerceOrderContentWebConfig} from './tests/commerce/commerce-order-content-web/main/config';
+import {config as commerceOrderManagementConfig} from './tests/commerce/commerce-order-management/main/config';
 import {config as commerceOrderWebConfig} from './tests/commerce/commerce-order-web/main/config';
 import {config as commercePaymentsWebConfig} from './tests/commerce/commerce-payment-web/main/config';
+import {config as commercePricingWebConfig} from './tests/commerce/commerce-pricing-web/main/config';
 import {config as commerceProductAssetCategoriesWebConfig} from './tests/commerce/commerce-product-asset-categories-web/main/config';
 import {config as commerceProductContentSearchWebConfig} from './tests/commerce/commerce-product-content-search-web/main/config';
 import {config as commerceProductContentWebConfig} from './tests/commerce/commerce-product-content-web/main/config';
@@ -50,11 +56,16 @@ import {config as commerceTaxEngineWebConfig} from './tests/commerce/commerce-ta
 import {config as commerceThemeMiniumWebConfig} from './tests/commerce/commerce-theme-minium/main/config';
 import {config as commerceWishListWebConfig} from './tests/commerce/commerce-wish-list-web/main/config';
 import {config as configurationAdminWebConfig} from './tests/configuration-admin-web/main/config';
+import {config as systemSettingsOverrideConfig} from './tests/configuration-admin-web/override-properties-only/config';
+import {config as systemSettingsOverrideOsgiConfig} from './tests/configuration-admin-web/override-with-osgi/config';
+import {config as systemSettingsExportConfig} from './tests/configuration-admin-web/site-settings-export/config';
+import {config as systemSettingsWithUIConfig} from './tests/configuration-admin-web/system-settings-with-ui/config';
+import {config as contactsWebConfig} from './tests/contacts-web/main/config';
 import {config as contentDashboardWebConfig} from './tests/content-dashboard-web/main/config';
 import {config as cookiesBannerWebConfig} from './tests/cookies-banner-web/main/config';
 import {config as dataCleanupConfig} from './tests/data-cleanup/main/config';
 import {config as depotWebConfig} from './tests/depot-web/main/config';
-import {config as digitalSalesRoomWebConfig} from './tests/digital-sales-room-web/main/config';
+import {config as designLibraryWebConfig} from './tests/design-library-web/main/config';
 import {config as dispatchWebConfig} from './tests/dispatch-web/main/config';
 import {config as documentLibraryWebConfig} from './tests/document-library-web/main/config';
 import {config as dynamicDataMappingFormWebConfig} from './tests/dynamic-data-mapping-form-web/main/config';
@@ -62,16 +73,19 @@ import {config as expandoWebConfig} from './tests/expando-web/main/config';
 import {config as exportImportServiceConfig} from './tests/export-import-service/main/config';
 import {config as exportImportWebConfig} from './tests/export-import-web/main/config';
 import {config as exportImportWebRevampConfig} from './tests/export-import-web/revamp/config';
+import {config as facebookLinkConfig} from './tests/facebook-link/main/config';
 import {config as featureFlagWebConfig} from './tests/feature-flag-web/main/config';
 import {config as fragmentWebConfig} from './tests/fragment-web/main/config';
 import {config as friendlyURLConfig} from './tests/friendly-url-web/main/config';
 import {config as frontendCssCadminWebConfig} from './tests/frontend-css-cadmin-web/main/config';
 import {config as frontendDataSetAdminWebConfig} from './tests/frontend-data-set-admin-web/main/config';
+import {config as frontendDataSetFragmentWebConfig} from './tests/frontend-data-set-fragment-web/main/config';
 import {config as frontendDataSetWebConfig} from './tests/frontend-data-set-web/main/config';
 import {config as frontendEditorAlloyEditorWebConfig} from './tests/frontend-editor-alloyeditor-web/main/config';
 import {config as frontendEditorCKEditorWebConfig} from './tests/frontend-editor-ckeditor-web/main/config';
 import {config as frontendJsAuiWebConfig} from './tests/frontend-js-aui-web/main/config';
 import {config as frontendJsBootstrapSupportWebConfig} from './tests/frontend-js-bootstrap-support-web/main/config';
+import {config as frontendJsClayWebConfig} from './tests/frontend-js-clay-web/main/config';
 import {config as frontendJsComponentsWebConfig} from './tests/frontend-js-components-web/main/config';
 import {config as frontendJsItemSelectorWebConfig} from './tests/frontend-js-item-selector-web/main/config';
 import {config as frontendJsSpaWebConfig} from './tests/frontend-js-spa-web/main/config';
@@ -105,13 +119,34 @@ import {config as multifactorAuthenticationWebConfig} from './tests/multi-factor
 import {config as nestedPortletsWebConfig} from './tests/nested-portlets-web/main/config';
 import {config as notificationWebConfig} from './tests/notification-web/main/config';
 import {config as notificationsWebConfig} from './tests/notifications-web/main/config';
-import {config as objectWebConfig} from './tests/object-web/main/config';
+import {config as oauthClientAdministrationConfig} from './tests/oauth-client-administration/main/config';
+import {config as oauth2ProviderWebConfig} from './tests/oauth2-provider-web/main/config';
+import {config as objectActionWebConfig} from './tests/object-web/action/config';
+import {config as objectClientExtensionWebConfig} from './tests/object-web/client-extension/config';
+import {config as objectContentPageIntegrationWebConfig} from './tests/object-web/content-page-integration/config';
+import {config as objectEntryWebConfig} from './tests/object-web/entry/config';
+import {config as objectExportImportWebConfig} from './tests/object-web/export-import/config';
+import {config as objectFieldWebConfig} from './tests/object-web/field/config';
+import {config as objectFolderWebConfig} from './tests/object-web/folder/config';
+import {config as objectFormsIntegrationWebConfig} from './tests/object-web/forms-integration/config';
+import {config as objectHierarchyWebConfig} from './tests/object-web/hierarchy/config';
+import {config as objectLayoutWebConfig} from './tests/object-web/layout/config';
+import {config as listTypeDefinitionsWebConfig} from './tests/object-web/list-type-definition/config';
+import {config as objectDefinitionWebConfig} from './tests/object-web/main/config';
+import {config as objectNotificationWebConfig} from './tests/object-web/notification/config';
+import {config as objectRelationshipWebConfig} from './tests/object-web/relationship/config';
+import {config as objectSalesforceWebConfig} from './tests/object-web/salesforce/config';
+import {config as objectUpgradeWebConfig} from './tests/object-web/upgrade/config';
+import {config as objectValidationWebConfig} from './tests/object-web/validation/config';
+import {config as objectViewWebConfig} from './tests/object-web/view/config';
+import {config as objectWorkflowWebConfig} from './tests/object-web/workflow/config';
 import {config as openIdLinkConfig} from './tests/openid-link/main/config';
 import {config as osbFaroWebConfig} from './tests/osb-faro-web/main/config';
 import {config as passwordPoliciesAdminWebFirstLoginConfig} from './tests/password-policies-admin-web/first-login/config';
 import {config as passwordPoliciesAdminWebConfig} from './tests/password-policies-admin-web/main/config';
 import {config as passwordPoliciesAdminWebSetupAdminConfig} from './tests/password-policies-admin-web/setup-admin/config';
 import {config as portalDefaultPermissionsWebConfig} from './tests/portal-default-permissions-web/main/config';
+import {config as portalImplMainConfig} from './tests/portal-impl/main/config';
 import {config as portalImplPortletConfig} from './tests/portal-impl/portlet/config';
 import {config as portalLanguageOverrideWebConfig} from './tests/portal-language-override-web/main/config';
 import {config as portalSearchAdminWebConfig} from './tests/portal-search-admin-web/main/config';
@@ -121,6 +156,7 @@ import {config as portalSecurityContentSecurityPolicyConfig} from './tests/porta
 import {config as portalSecurityLdapConfig} from './tests/portal-security-ldap/main/config';
 import {config as portalSecurityScriptManagementWebConfig} from './tests/portal-security-script-management-web/main/config';
 import {config as portalSecurityServiceAccessPolicyService} from './tests/portal-security-service-access-policy-service/main/config';
+import {config as portalSettingsAuthenticationOpenSSOWebConfig} from './tests/portal-settings-authentication-opensso-web/main/config';
 import {config as portalToolsRestBuilderTestImpl} from './tests/portal-tools-rest-builder-test-impl/main/config';
 import {config as portalUserLocaleOptionsConfig} from './tests/portal-user-locale-options-web/main/config';
 import {config as portalWebCDNConfig} from './tests/portal-web/cdn/config';
@@ -131,6 +167,7 @@ import {config as portalWorkflowMetricsWebConfig} from './tests/portal-workflow-
 import {config as portalWorkflowTaskWebConfig} from './tests/portal-workflow-task-web/main/config';
 import {config as portletConfigurationCssWebConfig} from './tests/portlet-configuration-css-web/main/config';
 import {config as productAnalyticsWebConfig} from './tests/product-analytics-web/main/config';
+import {config as productNavigationApplicationsMenuConfig} from './tests/product-navigation-applications-menu/main/config';
 import {config as productNavigationControlMenuWeb} from './tests/product-navigation-control-menu-web/main/config';
 import {config as productNavigationProductMenuWeb} from './tests/product-navigation-product-menu-web/main/config';
 import {config as productNavigationUserPersonalBarWebConfig} from './tests/product-navigation-user-personal-bar-web/main/config';
@@ -149,24 +186,29 @@ import {config as pageManagementSiteTeardownConfig} from './tests/setup/page-man
 import {config as siteCmsSiteConfig} from './tests/setup/site-cms-site/main/config';
 import {config as siteCmsSiteTeardownConfig} from './tests/setup/site-cms-site/teardown/config';
 import {config as siteAdminWebConfig} from './tests/site-admin-web/main/config';
+import {config as siteCmpSiteInitializerConfig} from './tests/site-cmp-site-initializer/main/config';
 import {config as siteCmsSiteInitializerConfig} from './tests/site-cms-site-initializer/main/config';
 import {config as siteCmsSiteInitializerPermissionsConfig} from './tests/site-cms-site-initializer/permissions/config';
 import {config as siteCmsSiteInitializerStructureBuilderConfig} from './tests/site-cms-site-initializer/structure-builder/config';
+import {config as siteDsrSiteInitializerConfig} from './tests/site-dsr-site-initializer/main/config';
 import {config as siteMySitesWebConfig} from './tests/site-my-sites-web/main/config';
 import {config as siteNavigationAdminWebConfig} from './tests/site-navigation-admin-web/main/config';
 import {config as siteNavigationBreadcrumbWebConfig} from './tests/site-navigation-breadcrumb-web/main/config';
 import {config as siteNavigationDirectoryWebConfig} from './tests/site-navigation-directory-web/main/config';
 import {config as siteNavigationLanguageWebConfig} from './tests/site-navigation-language-web/main/config';
 import {config as siteNavigationMenuWebConfig} from './tests/site-navigation-menu-web/main/config';
+import {config as siteNavigationSiteMapWebConfig} from './tests/site-navigation-site-map-web/main/config';
 import {config as siteSitemapWebConfig} from './tests/site-sitemap-web/main/config';
 import {config as siteTeamsWebConfig} from './tests/site-teams-web/main/config';
 import {config as smokeConfig} from './tests/smoke/main/config';
 import {config as stagingConfig} from './tests/staging-configuration-web/main/config';
 import {config as stylebookWebConfig} from './tests/style-book-web/main/config';
 import {config as templateWebConfig} from './tests/template-web/main/config';
+import {config as trashWebConfig} from './tests/trash-web/main/config';
 import {config as usersAdminWebEmailConfig} from './tests/users-admin-web/email/config';
 import {config as usersAdminWebConfig} from './tests/users-admin-web/main/config';
 import {config as usersAdminWebPermissionsConfig} from './tests/users-admin-web/permissions/config';
+import {config as usersAdminWebPropertiesConfig} from './tests/users-admin-web/properties/config';
 import {config as utilTaglibConfig} from './tests/util-taglib/main/config';
 import {config as wikiWebConfig} from './tests/wiki-web/main/config';
 import {config as customerConfig} from './tests/workspaces/liferay-customer-workspace/main/config';
@@ -198,6 +240,7 @@ export default defineConfig({
 		analyticsSettingsWebConfig,
 		analyticsWebConfig,
 		announcementsWebConfig,
+		applicationListTaglibConfig,
 		assetCategoriesAdminWebConfig,
 		assetPublisherWebConfig,
 		assetTagsAdminWebConfig,
@@ -207,21 +250,25 @@ export default defineConfig({
 		captchaWebClientExtensionConfig,
 		captchaWebConfig,
 		changeTrackingWebConfig,
+		changeTrackingWebLocalePrependConfig,
 		clientExtensionWebConfig,
 		clientExtensionWebClusterConfig,
 		commerceAccountWebConfig,
 		commerceCartContentWebConfig,
 		commerceCatalogWebConfig,
 		commerceChannelWebConfig,
+		commerceCheckoutWebClientExtensionConfig,
 		commerceCheckoutWebConfig,
 		commerceCurrencyWebConfig,
 		commerceDiscountContentWebConfig,
 		commerceFragmentImplConfig,
 		commerceInitializerUtilConfig,
 		commerceInventoryWebConfig,
+		commerceOrderManagementConfig,
 		commerceOrderWebConfig,
 		commerceOrderContentWebConfig,
 		commercePaymentsWebConfig,
+		commercePricingWebConfig,
 		commerceProductAssetCategoriesWebConfig,
 		commerceProductContentSearchWebConfig,
 		commerceProductContentWebConfig,
@@ -234,11 +281,16 @@ export default defineConfig({
 		commerceWishListWebConfig,
 		commerceWorkspaceConfig,
 		configurationAdminWebConfig,
+		contactsWebConfig,
+		systemSettingsExportConfig,
+		systemSettingsOverrideOsgiConfig,
+		systemSettingsOverrideConfig,
+		systemSettingsWithUIConfig,
 		contentDashboardWebConfig,
 		cookiesBannerWebConfig,
 		customerConfig,
 		depotWebConfig,
-		digitalSalesRoomWebConfig,
+		designLibraryWebConfig,
 		dispatchWebConfig,
 		documentLibraryWebConfig,
 		dynamicDataMappingFormWebConfig,
@@ -246,16 +298,19 @@ export default defineConfig({
 		exportImportServiceConfig,
 		exportImportWebConfig,
 		exportImportWebRevampConfig,
+		facebookLinkConfig,
 		featureFlagWebConfig,
 		fragmentWebConfig,
 		friendlyURLConfig,
 		frontendCssCadminWebConfig,
 		frontendDataSetAdminWebConfig,
+		frontendDataSetFragmentWebConfig,
 		frontendDataSetWebConfig,
 		frontendEditorAlloyEditorWebConfig,
 		frontendEditorCKEditorWebConfig,
 		frontendJsAuiWebConfig,
 		frontendJsBootstrapSupportWebConfig,
+		frontendJsClayWebConfig,
 		frontendJsComponentsWebConfig,
 		frontendJsItemSelectorWebConfig,
 		frontendJsSpaWebConfig,
@@ -291,13 +346,34 @@ export default defineConfig({
 		nestedPortletsWebConfig,
 		notificationWebConfig,
 		notificationsWebConfig,
-		objectWebConfig,
+		oauthClientAdministrationConfig,
+		oauth2ProviderWebConfig,
+		listTypeDefinitionsWebConfig,
+		objectActionWebConfig,
+		objectClientExtensionWebConfig,
+		objectContentPageIntegrationWebConfig,
+		objectDefinitionWebConfig,
+		objectEntryWebConfig,
+		objectExportImportWebConfig,
+		objectFieldWebConfig,
+		objectFolderWebConfig,
+		objectFormsIntegrationWebConfig,
+		objectHierarchyWebConfig,
+		objectLayoutWebConfig,
+		objectNotificationWebConfig,
+		objectRelationshipWebConfig,
+		objectSalesforceWebConfig,
+		objectUpgradeWebConfig,
+		objectValidationWebConfig,
+		objectViewWebConfig,
+		objectWorkflowWebConfig,
 		openIdLinkConfig,
 		osbFaroWebConfig,
 		passwordPoliciesAdminWebConfig,
 		passwordPoliciesAdminWebFirstLoginConfig,
 		passwordPoliciesAdminWebSetupAdminConfig,
 		portalDefaultPermissionsWebConfig,
+		portalImplMainConfig,
 		portalImplPortletConfig,
 		portalLanguageOverrideWebConfig,
 		portalSearchAdminWebConfig,
@@ -307,6 +383,7 @@ export default defineConfig({
 		portalSecurityLdapConfig,
 		portalSecurityScriptManagementWebConfig,
 		portalSecurityServiceAccessPolicyService,
+		portalSettingsAuthenticationOpenSSOWebConfig,
 		portalToolsRestBuilderTestImpl,
 		portalUserLocaleOptionsConfig,
 		portalWebCDNConfig,
@@ -317,6 +394,7 @@ export default defineConfig({
 		portalWorkflowTaskWebConfig,
 		portletConfigurationCssWebConfig,
 		productAnalyticsWebConfig,
+		productNavigationApplicationsMenuConfig,
 		productNavigationControlMenuWeb,
 		productNavigationProductMenuWeb,
 		productNavigationUserPersonalBarWebConfig,
@@ -332,24 +410,29 @@ export default defineConfig({
 		segmentExperimentWebConfig,
 		segmentsWebConfig,
 		siteAdminWebConfig,
+		siteCmpSiteInitializerConfig,
 		siteCmsSiteInitializerConfig,
 		siteCmsSiteInitializerPermissionsConfig,
 		siteCmsSiteInitializerStructureBuilderConfig,
+		siteDsrSiteInitializerConfig,
 		siteMySitesWebConfig,
 		siteNavigationAdminWebConfig,
 		siteNavigationBreadcrumbWebConfig,
 		siteNavigationDirectoryWebConfig,
 		siteNavigationLanguageWebConfig,
 		siteNavigationMenuWebConfig,
+		siteNavigationSiteMapWebConfig,
 		siteSitemapWebConfig,
 		siteTeamsWebConfig,
 		smokeConfig,
 		stagingConfig,
 		stylebookWebConfig,
 		templateWebConfig,
+		trashWebConfig,
 		usersAdminWebConfig,
 		usersAdminWebEmailConfig,
 		usersAdminWebPermissionsConfig,
+		usersAdminWebPropertiesConfig,
 		utilTaglibConfig,
 		wikiWebConfig,
 		...setupProjects,
@@ -383,12 +466,10 @@ export default defineConfig({
 	],
 	retries: process.env.CI ? 1 : 0,
 	testDir: './tests',
-	timeout: 60 * 1000,
+	timeout: 90 * 1000,
 	use: {
 		...devices['Desktop Chrome'],
-		baseURL: process.env.PORTAL_URL
-			? process.env.PORTAL_URL
-			: 'http://localhost:8080',
+		baseURL: liferayConfig.environment.baseUrl,
 		screenshot: 'only-on-failure',
 		trace: 'retain-on-failure',
 	},

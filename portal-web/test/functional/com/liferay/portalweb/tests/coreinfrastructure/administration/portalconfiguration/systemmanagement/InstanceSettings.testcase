@@ -1,6 +1,7 @@
 @component-name = "portal-platform-experience"
 definition {
 
+	property browser.chrome.version = "139.0";
 	property portal.release = "true";
 	property portal.upstream = "true";
 	property test.assert.warning.exceptions = "true";
@@ -420,47 +421,6 @@ definition {
 		PortalSettings.viewToggleSwitchNotChecked(portalSetting = "Enable Email Domain Validation");
 
 		AssertElementPresent(locator1 = "Button#SAVE");
-	}
-
-	@description = "This is a use case for LPS-97907."
-	@priority = 5
-	test ViewSystemSettingsSavedByKeyboard {
-		property test.liferay.virtual.instance = "false";
-		property test.run.type = "single";
-
-		ApplicationsMenu.gotoPortlet(
-			category = "Configuration",
-			panel = "Control Panel",
-			portlet = "System Settings");
-
-		SystemSettings.gotoConfiguration(
-			configurationCategory = "Assets",
-			configurationName = "Asset Auto Tagging",
-			configurationScope = "System Scope");
-
-		SystemSettings.editTextSetting(
-			settingName = "Maximum Number of Tags",
-			settingValue = 2);
-
-		FormFields.editTextFieldWithEnterKey(fieldName = "maximumNumberOfTags");
-
-		Alert.viewSuccessMessage();
-
-		Navigator.openURL();
-
-		ApplicationsMenu.gotoPortlet(
-			category = "Configuration",
-			panel = "Control Panel",
-			portlet = "System Settings");
-
-		SystemSettings.gotoConfiguration(
-			configurationCategory = "Assets",
-			configurationName = "Asset Auto Tagging",
-			configurationScope = "System Scope");
-
-		FormFields.viewTextValue(
-			fieldName = "maximumNumberOfTags",
-			fieldValue = 2);
 	}
 
 }

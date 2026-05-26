@@ -6,6 +6,9 @@ components:
                     type: string
                 name:
                     type: string
+                portrait:
+                    readOnly: true
+                    type: string
                 type:
                     enum: [Role, User]
                     type: string
@@ -35,9 +38,36 @@ components:
                     type: object
                 oldValue:
                     type: object
+        CollaboratorBrief:
+            description:
+                Brief of the collaborator record for the user making the request, present only when this asset is shared
+                with them.
+            properties:
+                actionIds:
+                    description:
+                        The sharing actions granted to the user making the request (e.g. VIEW, UPDATE).
+                    items:
+                        type: string
+                    readOnly: true
+                    type: array
+                dateExpired:
+                    description:
+                        The date when the sharing access expires, or null if it never expires.
+                    format: date-time
+                    readOnly: true
+                    type: string
+                share:
+                    description:
+                        Whether the user making the request can reshare this asset with others.
+                    readOnly: true
+                    type: boolean
+            type: object
         FileEntry:
             properties:
                 alternativeText:
+                    readOnly: true
+                    type: string
+                extension:
                     readOnly: true
                     type: string
                 externalReferenceCode:
@@ -85,6 +115,9 @@ components:
                     type: string
                 scope:
                     type: scope
+                size:
+                    readOnly: true
+                    type: string
                 thumbnailURL:
                     # @review
                     description:
@@ -120,6 +153,12 @@ components:
                     type: object
         ObjectDefinitionBrief:
             properties:
+                classNameId:
+                    description:
+                        The object definition's class name ID.
+                    format: int64
+                    readOnly: true
+                    type: integer
                 externalReferenceCode:
                     description:
                         The object definition's external reference code.
@@ -264,6 +303,8 @@ components:
             type: object
         SystemProperties:
             properties:
+                collaboratorBrief:
+                    $ref: "#/components/schemas/CollaboratorBrief"
                 objectDefinitionBrief:
                     $ref: "#/components/schemas/ObjectDefinitionBrief"
                 scope:
@@ -288,7 +329,6 @@ components:
                             description:
                                 The parent taxonomy category's external reference code.
                             type: string
-                    readOnly: true
                     type: object
                 parentTaxonomyVocabulary:
                     description:
@@ -299,7 +339,6 @@ components:
                             description:
                                 The parent category's `TaxonomyVocabulary` external reference code.
                             type: string
-                    readOnly: true
                     type: object
                 scope:
                     type: scope
@@ -329,6 +368,18 @@ components:
                     readOnly: true
                     type: object
             type: object
+        TranslationResponse:
+            properties:
+                failureMessagesJSON:
+                    items:
+                        type: string
+                    readOnly: true
+                    type: array
+                successMessages:
+                    items:
+                        type: string
+                    readOnly: true
+                    type: array
         ValidationError:
             properties:
                 errorMessage:
@@ -1004,6 +1055,25 @@ paths:
                             schema:
                                 $ref: "#/components/schemas/Comment"
             tags: ["Comment"]
+    "/by-external-reference-code/{externalReferenceCode}/expire":
+        post:
+            operationId: postByExternalReferenceCodeExpire
+            parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ObjectEntry"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/ObjectEntry"
+            tags: ["ObjectEntry"]
     "/by-external-reference-code/{externalReferenceCode}/object-actions/{objectActionName}":
         put:
             operationId: putByExternalReferenceCodeObjectActionObjectActionName
@@ -1502,6 +1572,113 @@ paths:
                                 items:
                                     $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
                                 type: array
+            tags: ["Collaborator"]
+    "/scopes/{scopeKey}/by-external-reference-code/{externalReferenceCode}/collaborators/by-email-address/{emailAddress}":
+        delete:
+            description:
+                Deletes the collaborator for an object entry and returns a 204 if the operation succeeds.
+            operationId: deleteScopeScopeKeyByExternalReferenceCodeCollaboratorByEmailAddress
+            parameters:
+                -   in: path
+                    name: scopeKey
+                    required: true
+                    schema:
+                        type: string
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+                -   in: path
+                    name: emailAddress
+                    required: true
+                    schema:
+                        type: string
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+            tags: ["Collaborator"]
+        get:
+            description:
+                Retrieves the collaborator for an object entry.
+            operationId: getScopeScopeKeyByExternalReferenceCodeCollaboratorByEmailAddress
+            parameters:
+                -   in: path
+                    name: scopeKey
+                    required: true
+                    schema:
+                        type: string
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+                -   in: path
+                    name: emailAddress
+                    required: true
+                    schema:
+                        type: string
+                -   in: query
+                    name: fields
+                    schema:
+                        type: string
+                -   in: query
+                    name: nestedFields
+                    schema:
+                        type: string
+                -   in: query
+                    name: restrictFields
+                    schema:
+                        type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+                        application/xml:
+                            schema:
+                                $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+            tags: ["Collaborator"]
+        put:
+            description:
+                Add or update a collaborator received in the request.
+            operationId: putScopeScopeKeyByExternalReferenceCodeCollaboratorByEmailAddress
+            parameters:
+                -   in: path
+                    name: scopeKey
+                    required: true
+                    schema:
+                        type: string
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+                -   in: path
+                    name: emailAddress
+                    required: true
+                    schema:
+                        type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+                    application/xml:
+                        schema:
+                            $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+                        application/xml:
+                            schema:
+                                $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
             tags: ["Collaborator"]
     "/scopes/{scopeKey}/by-external-reference-code/{externalReferenceCode}/collaborators/by-type/{type}/{collaboratorId}":
         delete:
@@ -2050,6 +2227,38 @@ paths:
                                 format: binary
                                 type: string
             tags: ["ObjectEntry"]
+        post:
+            operationId: postScopeScopeKeyByExternalReferenceCodeTranslation
+            parameters:
+                -   in: path
+                    name: scopeKey
+                    required: true
+                    schema:
+                        type: string
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+            requestBody:
+                content:
+                    multipart/form-data:
+                        schema:
+                            properties:
+                                file:
+                                    format: binary
+                                    type: string
+                            type: object
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/TranslationResponse"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/TranslationResponse"
+            tags: ["ObjectEntry"]
     "/scopes/{scopeKey}/by-external-reference-code/{externalReferenceCode}/translations/{languageId}":
         get:
             operationId: getScopeScopeKeyByExternalReferenceCodeTranslationLanguage
@@ -2493,6 +2702,101 @@ paths:
                                     $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
                                 type: array
             tags: ["Collaborator"]
+    "/{objectEntryId}/collaborators/by-email-address/{emailAddress}":
+        delete:
+            description:
+                Deletes the collaborator for an object entry and returns a 204 if the operation succeeds.
+            operationId: deleteObjectEntryCollaboratorByEmailAddress
+            parameters:
+                -   in: path
+                    name: objectEntryId
+                    required: true
+                    schema:
+                        format: int64
+                        type: integer
+                -   in: path
+                    name: emailAddress
+                    required: true
+                    schema:
+                        type: string
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+            tags: ["Collaborator"]
+        get:
+            description:
+                Retrieves the collaborator for an object entry.
+            operationId: getObjectEntryCollaboratorByEmailAddress
+            parameters:
+                -   in: path
+                    name: objectEntryId
+                    required: true
+                    schema:
+                        format: int64
+                        type: integer
+                -   in: path
+                    name: emailAddress
+                    required: true
+                    schema:
+                        type: string
+                -   in: query
+                    name: fields
+                    schema:
+                        type: string
+                -   in: query
+                    name: nestedFields
+                    schema:
+                        type: string
+                -   in: query
+                    name: restrictFields
+                    schema:
+                        type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+                        application/xml:
+                            schema:
+                                $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+            tags: ["Collaborator"]
+        put:
+            description:
+                Add or update a collaborator received in the request.
+            operationId: putObjectEntryCollaboratorByEmailAddress
+            parameters:
+                -   in: path
+                    name: objectEntryId
+                    required: true
+                    schema:
+                        format: int64
+                        type: integer
+                -   in: path
+                    name: emailAddress
+                    required: true
+                    schema:
+                        type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+                    application/xml:
+                        schema:
+                            $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+                        application/xml:
+                            schema:
+                                $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
+            tags: ["Collaborator"]
     "/{objectEntryId}/collaborators/by-type/{type}/{collaboratorId}":
         delete:
             description:
@@ -2606,26 +2910,6 @@ paths:
                             schema:
                                 $ref: ../../headless/headless-object/headless-object-impl/rest-openapi.yaml#Collaborator
             tags: ["Collaborator"]
-    "/{objectEntryId}/expire":
-        post:
-            operationId: postObjectEntryExpire
-            parameters:
-                -   in: path
-                    name: objectEntryId
-                    required: true
-                    schema:
-                        format: int64
-                        type: integer
-            responses:
-                200:
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/ObjectEntry"
-                        application/xml:
-                            schema:
-                                $ref: "#/components/schemas/ObjectEntry"
-            tags: ["ObjectEntry"]
     "/{objectEntryId}/object-actions/{objectActionName}":
         put:
             operationId: putObjectEntryObjectActionObjectActionName
@@ -2738,6 +3022,34 @@ paths:
                             schema:
                                 format: binary
                                 type: string
+            tags: ["ObjectEntry"]
+        post:
+            operationId: postObjectEntryTranslation
+            parameters:
+                -   in: path
+                    name: objectEntryId
+                    required: true
+                    schema:
+                        format: int64
+                        type: integer
+            requestBody:
+                content:
+                    multipart/form-data:
+                        schema:
+                            properties:
+                                file:
+                                    format: binary
+                                    type: string
+                            type: object
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/TranslationResponse"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/TranslationResponse"
             tags: ["ObjectEntry"]
     "/{objectEntryId}/translations/{languageId}":
         get:

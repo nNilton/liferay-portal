@@ -42,27 +42,24 @@ public class CookiesBannerConfigurationDisplayContext
 	}
 
 	public Map<String, Object> getContext() {
-		HashMapBuilder.HashMapWrapper<String, Object> hashMapWrapper =
-			HashMapBuilder.<String, Object>put(
-				"optionalConsentCookieTypeNames",
-				getConsentCookieTypeNamesJSONArray(
-					getOptionalConsentCookieTypes())
-			).put(
-				"requiredConsentCookieTypeNames",
-				getConsentCookieTypeNamesJSONArray(
-					getRequiredConsentCookieTypes())
-			).put(
-				"showButtons", isShowButtons()
-			);
-
-		if (!isConsentRenewalPeriodEnabled()) {
-			return hashMapWrapper.build();
-		}
-
-		return hashMapWrapper.put(
+		return HashMapBuilder.<String, Object>put(
 			"consentRenewalPeriod", getConsentRenewalPeriod()
 		).put(
+			"consentRenewalPeriodTimeUnit", getConsentRenewalPeriodTimeUnit()
+		).put(
+			"dissentRenewalPeriod", getDissentRenewalPeriod()
+		).put(
+			"dissentRenewalPeriodTimeUnit", getDissentRenewalPeriodTimeUnit()
+		).put(
 			"modifiedDate", getModifiedDate()
+		).put(
+			"optionalConsentCookieTypeNames",
+			getConsentCookieTypeNamesJSONArray(getOptionalConsentCookieTypes())
+		).put(
+			"requiredConsentCookieTypeNames",
+			getConsentCookieTypeNamesJSONArray(getRequiredConsentCookieTypes())
+		).put(
+			"showButtons", isShowButtons()
 		).build();
 	}
 

@@ -1,30 +1,46 @@
 components:
     schemas:
-        Chat:
+        AgentDefinition:
             properties:
-                externalReferenceCode:
-                    type: string
-            type: object
-        Message:
-            properties:
-                chat:
-                    $ref: "#/components/schemas/Chat"
+                actions:
+                    additionalProperties:
+                        additionalProperties:
+                            type: string
+                        type: object
                     readOnly: true
-                context:
-                    additionalProperties: true
                     type: object
-                scope:
-                    $ref: "#/components/schemas/Scope"
-                text:
+                active:
+                    type: boolean
+                description:
                     type: string
-            type: object
-        Scope:
-            properties:
                 externalReferenceCode:
+                    readOnly: true
+                    type: string
+                id:
+                    format: int64
+                    readOnly: true
+                    type: integer
+                inputVariables:
+                    items:
+                        $ref: "#/components/schemas/Variable"
+                    type: array
+                outputVariable:
+                    $ref: "#/components/schemas/Variable"
+                status:
+                    $ref: "#/components/schemas/Status"
+                    readOnly: true
+                title:
+                    type: string
+                version:
+                    readOnly: true
+                    type: integer
+                workflowDefinitionName:
                     type: string
             type: object
-        Task:
+        AgentInstance:
             properties:
+                agentDefinitionExternalReferenceCode:
+                    type: string
                 context:
                     additionalProperties: true
                     type: object
@@ -32,22 +48,169 @@ components:
                 externalReferenceCode:
                     readOnly: true
                     type: string
-                scope:
-                    $ref: "#/components/schemas/Scope"
-                type:
+                instructionDefinitionScope:
+                    enum:
+                        -   clickToChat
+                        -   cms
+                        -   everywhere
+                    type: string
+                sseEventSinkKey:
                     type: string
             type: object
-        TaskDefinition:
+        Chat:
+            properties:
+                externalReferenceCode:
+                    type: string
+            type: object
+        ContentRetriever:
+            properties:
+                crawlDate:
+                    format: date-time
+                    type: string
+                description:
+                    readOnly: true
+                    type: string
+                description_i18n:
+                    additionalProperties:
+                        type: string
+                    type: object
+                externalReferenceCode:
+                    type: string
+                indexName:
+                    type: string
+                title:
+                    readOnly: true
+                    type: string
+                title_i18n:
+                    additionalProperties:
+                        type: string
+                    type: object
+                type:
+                    type: string
+                url:
+                    type: string
+            type: object
+        Message:
+            properties:
+                chat:
+                    $ref: "#/components/schemas/Chat"
+                    readOnly: true
+                chatbotExternalReferenceCode:
+                    type: string
+                context:
+                    additionalProperties: true
+                    type: object
+                instructionDefinitionScope:
+                    enum:
+                        -   clickToChat
+                        -   cms
+                        -   everywhere
+                    type: string
+                text:
+                    type: string
+            type: object
+        ModelArmorTemplate:
+            properties:
+                active:
+                    type: boolean
+                description:
+                    type: string
+                externalReferenceCode:
+                    type: string
+                guardrailType:
+                    enum:
+                        -   input
+                        -   output
+                    type: string
+                location:
+                    type: string
+                maliciousUriFilterEnabled:
+                    type: boolean
+                multiLanguageDetectionEnabled:
+                    type: boolean
+                piAndJailbreakConfidenceLevel:
+                    default: mediumAndAbove
+                    enum:
+                        -   high
+                        -   lowAndAbove
+                        -   mediumAndAbove
+                    type: string
+                piAndJailbreakFilterEnabled:
+                    type: boolean
+                raiDangerousLevel:
+                    default: none
+                    enum:
+                        -   high
+                        -   lowAndAbove
+                        -   mediumAndAbove
+                        -   none
+                    type: string
+                raiHarassmentLevel:
+                    default: none
+                    enum:
+                        -   high
+                        -   lowAndAbove
+                        -   mediumAndAbove
+                        -   none
+                    type: string
+                raiHateSpeechLevel:
+                    default: none
+                    enum:
+                        -   high
+                        -   lowAndAbove
+                        -   mediumAndAbove
+                        -   none
+                    type: string
+                raiSexuallyExplicitLevel:
+                    default: none
+                    enum:
+                        -   high
+                        -   lowAndAbove
+                        -   mediumAndAbove
+                        -   none
+                    type: string
+                sdpFilterEnabled:
+                    type: boolean
+                title:
+                    readOnly: true
+                    type: string
+                title_i18n:
+                    additionalProperties:
+                        type: string
+                    type: object
+            type: object
+        ProvisioningRequest:
+            properties:
+                customerName:
+                    type: string
+            type: object
+        Site:
+            properties:
+                externalReferenceCode:
+                    readOnly: true
+                    type: string
+            type: object
+        Status:
+            properties:
+                code:
+                    format: int32
+                    type: integer
+                label:
+                    type: string
+                label_i18n:
+                    type: string
+            type: object
+        Variable:
             properties:
                 name:
                     type: string
-                version:
-                    type: integer
+                type:
+                    type: string
             type: object
 info:
     description:
         "A Java client JAR is available for use with the group ID 'com.liferay', artifact ID
-        'com.liferay.ai.hub.rest.client', and version '1.0.4'."
+        'com.liferay.ai.hub.rest.client', and version '1.0.6'."
     license:
         name: Apache 2.0
         url: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -55,33 +218,136 @@ info:
     version: v1.0
 openapi: 3.0.1
 paths:
-    "/by-external-reference-code/{externalReferenceCode}/tasks":
-        post:
-            operationId: postByExternalReferenceCodeTask
+    "/agent-definitions":
+        get:
+            operationId: getAgentDefinitionsPage
+            parameters:
+                -   in: query
+                    name: filter
+                    schema:
+                        type: string
+                -   in: query
+                    name: page
+                    schema:
+                        type: integer
+                -   in: query
+                    name: pageSize
+                    schema:
+                        type: integer
+                -   in: query
+                    name: search
+                    schema:
+                        type: string
+                -   in: query
+                    name: sort
+                    schema:
+                        type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/AgentDefinition"
+                                type: array
+                        application/xml:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/AgentDefinition"
+                                type: array
+            tags: ["AgentDefinition"]
+    "/agent-definitions/by-external-reference-code/{externalReferenceCode}":
+        delete:
+            operationId: deleteAgentDefinitionByExternalReferenceCode
             parameters:
                 -   in: path
                     name: externalReferenceCode
                     required: true
                     schema:
                         type: string
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/Task"
-                    application/xml:
-                        schema:
-                            $ref: "#/components/schemas/Task"
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+            tags: ["AgentDefinition"]
+    "/agent-definitions/by-external-reference-code/{externalReferenceCode}/copy":
+        post:
+            operationId: postAgentDefinitionByExternalReferenceCodeCopy
+            parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
             responses:
                 200:
                     content:
                         application/json:
                             schema:
-                                $ref: "#/components/schemas/Task"
+                                $ref: "#/components/schemas/AgentDefinition"
                         application/xml:
                             schema:
-                                $ref: "#/components/schemas/Task"
-            tags: ["Task"]
+                                $ref: "#/components/schemas/AgentDefinition"
+            tags: ["AgentDefinition"]
+    "/agent-definitions/by-external-reference-code/{externalReferenceCode}/update-active":
+        patch:
+            operationId: patchAgentDefinitionByExternalReferenceCodeUpdateActive
+            parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+                -   in: query
+                    name: active
+                    required: true
+                    schema:
+                        type: boolean
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AgentDefinition"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/AgentDefinition"
+            tags: ["AgentDefinition"]
+    "/agent-instances":
+        post:
+            operationId: postAgentInstance
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/AgentInstance"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/AgentInstance"
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AgentInstance"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/AgentInstance"
+            tags: ["AgentInstance"]
+    "/agent-instances/subscribe":
+        get:
+            operationId: getAgentInstanceSubscribe
+            parameters:
+                -   in: context
+                    name: sseEventSink
+                    schema:
+                        type: sseEventSink
+            responses:
+                200:
+                    content:
+                        text/event-stream: {}
+            tags: ["AgentInstance"]
     "/chats/by-external-reference-code/{externalReferenceCode}/messages":
         post:
             operationId: postChatByExternalReferenceCodeMessage
@@ -122,54 +388,117 @@ paths:
                     content:
                         text/event-stream: {}
             tags: ["Chat"]
-    "/task-definitions":
-        get:
-            operationId: getTaskDefinitionsPage
+    "/content-retrievers/by-external-reference-code/{externalReferenceCode}":
+        delete:
+            operationId: deleteContentRetrieverByExternalReferenceCode
             parameters:
-                -   in: query
-                    name: filter
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
                     schema:
                         type: string
-                -   in: query
-                    name: page
-                    schema:
-                        type: integer
-                -   in: query
-                    name: pageSize
-                    schema:
-                        type: integer
-                -   in: query
-                    name: search
-                    schema:
-                        type: string
-                -   in: query
-                    name: sort
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+            tags: ["ContentRetriever"]
+        put:
+            operationId: putContentRetrieverByExternalReferenceCode
+            parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
                     schema:
                         type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ContentRetriever"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/ContentRetriever"
             responses:
                 200:
                     content:
                         application/json:
                             schema:
-                                items:
-                                    $ref: "#/components/schemas/TaskDefinition"
-                                type: array
+                                $ref: "#/components/schemas/ContentRetriever"
                         application/xml:
                             schema:
-                                items:
-                                    $ref: "#/components/schemas/TaskDefinition"
-                                type: array
-            tags: ["TaskDefinition"]
-    "/tasks/subscribe":
-        get:
-            operationId: getTaskSubscribe
+                                $ref: "#/components/schemas/ContentRetriever"
+            tags: ["ContentRetriever"]
+    "/model-armor-templates/by-external-reference-code/{externalReferenceCode}":
+        delete:
+            operationId: deleteModelArmorTemplateByExternalReferenceCode
             parameters:
-                -   in: context
-                    name: sseEventSink
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
                     schema:
-                        type: sseEventSink
+                        type: string
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+            tags: ["ModelArmorTemplate"]
+        put:
+            operationId: putModelArmorTemplateByExternalReferenceCode
+            parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ModelArmorTemplate"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/ModelArmorTemplate"
             responses:
                 200:
                     content:
-                        text/event-stream: {}
-            tags: ["Task"]
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ModelArmorTemplate"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/ModelArmorTemplate"
+            tags: ["ModelArmorTemplate"]
+    "/provisioning":
+        post:
+            operationId: postProvisioning
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ProvisioningRequest"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/ProvisioningRequest"
+            responses:
+                200:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+            tags: ["ProvisioningRequest"]
+    "/sites/by-external-reference-code/{externalReferenceCode}/site-initializer":
+        put:
+            operationId: putSiteByExternalReferenceCodeSiteInitializer
+            parameters:
+                -   in: path
+                    name: externalReferenceCode
+                    required: true
+                    schema:
+                        type: string
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+            tags: ["Site"]

@@ -32,7 +32,7 @@ interface ContentContainerProps {
 	editorConfig: object;
 	errors: FormError<NotificationTemplate>;
 	objectDefinitions: ObjectDefinition[];
-	selectedLocale: Locale;
+	selectedLocale: Liferay.Language.Locale;
 	setSelectedLocale: React.Dispatch<
 		React.SetStateAction<Liferay.Language.Locale>
 	>;
@@ -75,7 +75,6 @@ export default function ContentContainer({
 				}}
 				placeholder=""
 				required
-				selectedLocale={selectedLocale}
 				translations={values.subject}
 			/>
 

@@ -7,7 +7,6 @@ package com.liferay.headless.admin.site.client.serdes.v1_0;
 
 import com.liferay.headless.admin.site.client.dto.v1_0.PageElement;
 import com.liferay.headless.admin.site.client.dto.v1_0.PageExperience;
-import com.liferay.headless.admin.site.client.dto.v1_0.PageRule;
 import com.liferay.headless.admin.site.client.json.BaseJSONParser;
 
 import jakarta.annotation.Generated;
@@ -106,26 +105,6 @@ public class PageExperienceSerDes {
 			sb.append("]");
 		}
 
-		if (pageExperience.getPageRules() != null) {
-			if (sb.length() > 1) {
-				sb.append(", ");
-			}
-
-			sb.append("\"pageRules\": ");
-
-			sb.append("[");
-
-			for (int i = 0; i < pageExperience.getPageRules().length; i++) {
-				sb.append(String.valueOf(pageExperience.getPageRules()[i]));
-
-				if ((i + 1) < pageExperience.getPageRules().length) {
-					sb.append(", ");
-				}
-			}
-
-			sb.append("]");
-		}
-
 		if (pageExperience.getPageSpecificationExternalReferenceCode() !=
 				null) {
 
@@ -155,17 +134,28 @@ public class PageExperienceSerDes {
 			sb.append(pageExperience.getPriority());
 		}
 
-		if (pageExperience.getSegmentExternalReferenceCode() != null) {
+		if (pageExperience.getSegmentItemExternalReference() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
 			}
 
-			sb.append("\"segmentExternalReferenceCode\": ");
+			sb.append("\"segmentItemExternalReference\": ");
+
+			sb.append(
+				String.valueOf(
+					pageExperience.getSegmentItemExternalReference()));
+		}
+
+		if (pageExperience.getUuid() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"uuid\": ");
 
 			sb.append("\"");
 
-			sb.append(
-				_escape(pageExperience.getSegmentExternalReferenceCode()));
+			sb.append(_escape(pageExperience.getUuid()));
 
 			sb.append("\"");
 		}
@@ -221,13 +211,6 @@ public class PageExperienceSerDes {
 				String.valueOf(pageExperience.getPageElements()));
 		}
 
-		if (pageExperience.getPageRules() == null) {
-			map.put("pageRules", null);
-		}
-		else {
-			map.put("pageRules", String.valueOf(pageExperience.getPageRules()));
-		}
-
 		if (pageExperience.getPageSpecificationExternalReferenceCode() ==
 				null) {
 
@@ -248,14 +231,21 @@ public class PageExperienceSerDes {
 			map.put("priority", String.valueOf(pageExperience.getPriority()));
 		}
 
-		if (pageExperience.getSegmentExternalReferenceCode() == null) {
-			map.put("segmentExternalReferenceCode", null);
+		if (pageExperience.getSegmentItemExternalReference() == null) {
+			map.put("segmentItemExternalReference", null);
 		}
 		else {
 			map.put(
-				"segmentExternalReferenceCode",
+				"segmentItemExternalReference",
 				String.valueOf(
-					pageExperience.getSegmentExternalReferenceCode()));
+					pageExperience.getSegmentItemExternalReference()));
+		}
+
+		if (pageExperience.getUuid() == null) {
+			map.put("uuid", null);
+		}
+		else {
+			map.put("uuid", String.valueOf(pageExperience.getUuid()));
 		}
 
 		return map;
@@ -288,9 +278,6 @@ public class PageExperienceSerDes {
 			else if (Objects.equals(jsonParserFieldName, "pageElements")) {
 				return false;
 			}
-			else if (Objects.equals(jsonParserFieldName, "pageRules")) {
-				return false;
-			}
 			else if (Objects.equals(
 						jsonParserFieldName,
 						"pageSpecificationExternalReferenceCode")) {
@@ -301,8 +288,11 @@ public class PageExperienceSerDes {
 				return false;
 			}
 			else if (Objects.equals(
-						jsonParserFieldName, "segmentExternalReferenceCode")) {
+						jsonParserFieldName, "segmentItemExternalReference")) {
 
+				return false;
+			}
+			else if (Objects.equals(jsonParserFieldName, "uuid")) {
 				return false;
 			}
 
@@ -347,22 +337,6 @@ public class PageExperienceSerDes {
 					pageExperience.setPageElements(pageElementsArray);
 				}
 			}
-			else if (Objects.equals(jsonParserFieldName, "pageRules")) {
-				if (jsonParserFieldValue != null) {
-					Object[] jsonParserFieldValues =
-						(Object[])jsonParserFieldValue;
-
-					PageRule[] pageRulesArray =
-						new PageRule[jsonParserFieldValues.length];
-
-					for (int i = 0; i < pageRulesArray.length; i++) {
-						pageRulesArray[i] = PageRuleSerDes.toDTO(
-							(String)jsonParserFieldValues[i]);
-					}
-
-					pageExperience.setPageRules(pageRulesArray);
-				}
-			}
 			else if (Objects.equals(
 						jsonParserFieldName,
 						"pageSpecificationExternalReferenceCode")) {
@@ -379,11 +353,17 @@ public class PageExperienceSerDes {
 				}
 			}
 			else if (Objects.equals(
-						jsonParserFieldName, "segmentExternalReferenceCode")) {
+						jsonParserFieldName, "segmentItemExternalReference")) {
 
 				if (jsonParserFieldValue != null) {
-					pageExperience.setSegmentExternalReferenceCode(
-						(String)jsonParserFieldValue);
+					pageExperience.setSegmentItemExternalReference(
+						ItemExternalReferenceSerDes.toDTO(
+							(String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(jsonParserFieldName, "uuid")) {
+				if (jsonParserFieldValue != null) {
+					pageExperience.setUuid((String)jsonParserFieldValue);
 				}
 			}
 		}
@@ -467,3 +447,4 @@ public class PageExperienceSerDes {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:2136584983

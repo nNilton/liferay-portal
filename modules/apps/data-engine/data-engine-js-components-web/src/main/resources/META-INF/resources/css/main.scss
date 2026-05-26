@@ -43,8 +43,6 @@
 }
 
 .ddm-field-container {
-	padding: 0 12px;
-
 	.ddm-form-builder-app.borderless & {
 		padding: 0;
 	}
@@ -240,6 +238,7 @@ body .ddm-user-view-content {
 	}
 
 	.row {
+		margin: 0;
 		min-height: auto;
 	}
 
@@ -530,40 +529,6 @@ body .ddm-user-view-content {
 .lfr-ddm-form-paginated .pagination {
 	justify-content: center;
 	padding-bottom: 30px;
-}
-
-.lfr-ddm-form-field-repeatable-toolbar {
-	.ddm-form-field-repeatable-add-button,
-	.ddm-form-field-repeatable-delete-button {
-		border-radius: 10px !important;
-		height: 18px;
-		padding: 2px !important;
-		position: absolute;
-		width: 18px;
-
-		.lexicon-icon {
-			height: 10px;
-			margin-bottom: 7px;
-			margin-top: 0;
-		}
-
-		.lexicon-icon-hr {
-			width: 8px;
-		}
-
-		.lexicon-icon-plus {
-			width: 10px;
-		}
-	}
-
-	.ddm-form-field-repeatable-delete-button {
-		margin-right: 4px !important;
-		right: 26px;
-	}
-
-	.ddm-form-field-repeatable-add-button {
-		right: 8px;
-	}
 }
 
 .liferay-ddm-form-field-fieldset {

@@ -20,7 +20,7 @@ function createBuildCountLineChart(timelineData, elementID) {
 
 		        label += ' (';
 
-		        label += Math.round(tooltipItem.yLabel * 10000 / MAX_WEEKLY_SERVER_DURATION_MILLIS) / 100;
+		        label += Math.round(tooltipItem.yLabel * 10000 / (maxWeeklyServerDurationMillis || MAX_WEEKLY_SERVER_DURATION_MILLIS)) / 100;
 
 		        label += '%)'
 
@@ -161,6 +161,8 @@ function getLineChart(chartTitle, datasets, elementID, yLabel) {
 		type: 'line'
 	});
 }
+
+addDateText(document.getElementById("build-history-data-date"), dataGeneratedDate);
 
 let buttonElements = document.getElementsByClassName('accordion');
 

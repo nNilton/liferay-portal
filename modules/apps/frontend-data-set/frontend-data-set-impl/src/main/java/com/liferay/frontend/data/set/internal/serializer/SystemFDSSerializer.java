@@ -17,6 +17,8 @@ import com.liferay.frontend.data.set.filter.FDSFilter;
 import com.liferay.frontend.data.set.filter.FDSFilterContextContributor;
 import com.liferay.frontend.data.set.filter.FDSFilterContextContributorRegistry;
 import com.liferay.frontend.data.set.filter.FDSFilterRegistry;
+import com.liferay.frontend.data.set.filter.GroupedFDSFilters;
+import com.liferay.frontend.data.set.filter.GroupedFDSFiltersRegistry;
 import com.liferay.frontend.data.set.model.FDSActionDropdownItem;
 import com.liferay.frontend.data.set.model.FDSSortItem;
 import com.liferay.frontend.data.set.serializer.FDSSerializer;
@@ -39,6 +41,7 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.ResourceBundleUtil;
+import com.liferay.portal.kernel.util.Validator;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -173,6 +176,42 @@ public class SystemFDSSerializer
 	}
 
 	@Override
+	public JSONArray serializeGroupedFilters(
+		String fdsName, HttpServletRequest httpServletRequest) {
+
+		JSONArray jsonArray = JSONUtil.putAll();
+
+		GroupedFDSFilters groupedFDSFilters =
+			groupedFDSFiltersRegistry.getGroupedFDSFilters(fdsName);
+
+		if (groupedFDSFilters == null) {
+			return jsonArray;
+		}
+
+		JSONArray groupedFDSFiltersJSONArray =
+			groupedFDSFilters.getGroupedFDSFiltersJSONArray(httpServletRequest);
+
+		for (int i = 0; i < groupedFDSFiltersJSONArray.length(); i++) {
+			JSONObject jsonObject = groupedFDSFiltersJSONArray.getJSONObject(i);
+
+			for (String key : jsonObject.keySet()) {
+				if (Validator.isBlank(key)) {
+					continue;
+				}
+
+				jsonArray.put(
+					JSONUtil.put(
+						"filters", jsonObject.getJSONArray(key)
+					).put(
+						"label", key
+					));
+			}
+		}
+
+		return jsonArray;
+	}
+
+	@Override
 	public boolean serializeHideManagementBarInEmptyState(
 		String fdsName, HttpServletRequest httpServletRequest) {
 
@@ -180,7 +219,7 @@ public class SystemFDSSerializer
 			systemFDSEntryRegistry.getSystemFDSEntry(fdsName);
 
 		if (systemFDSEntry == null) {
-			return false;
+			return _systemFDSEntry.getHideManagementBarInEmptyState();
 		}
 
 		return systemFDSEntry.getHideManagementBarInEmptyState();
@@ -256,6 +295,20 @@ public class SystemFDSSerializer
 		}
 
 		return systemFDSEntry.getPropsTransformer();
+	}
+
+	@Override
+	public boolean serializeShowSearch(
+		String fdsName, HttpServletRequest httpServletRequest) {
+
+		SystemFDSEntry systemFDSEntry =
+			systemFDSEntryRegistry.getSystemFDSEntry(fdsName);
+
+		if (systemFDSEntry == null) {
+			return _systemFDSEntry.getShowSearch();
+		}
+
+		return systemFDSEntry.getShowSearch();
 	}
 
 	@Override
@@ -381,6 +434,9 @@ public class SystemFDSSerializer
 
 	@Reference
 	protected FDSViewRegistry fdsViewRegistry;
+
+	@Reference
+	protected GroupedFDSFiltersRegistry groupedFDSFiltersRegistry;
 
 	@Reference
 	protected SystemFDSEntryRegistry systemFDSEntryRegistry;

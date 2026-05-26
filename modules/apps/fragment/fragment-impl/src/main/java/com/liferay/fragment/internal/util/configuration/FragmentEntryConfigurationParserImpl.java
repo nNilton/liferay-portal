@@ -211,7 +211,8 @@ public class FragmentEntryConfigurationParserImpl
 				}
 
 				Object contextListObject = _getInfoListObjectEntry(
-					themeDisplay.getScopeGroupId(), segmentsEntryIds,
+					themeDisplay.getCompanyId(), themeDisplay.getScopeGroupId(),
+					segmentsEntryIds,
 					fragmentConfigurationField.getTypeOptionsJSONObject(),
 					configurationValuesJSONObject.getString(name));
 
@@ -296,6 +297,15 @@ public class FragmentEntryConfigurationParserImpl
 		}
 
 		return null;
+	}
+
+	@Override
+	public Object getFieldValue(
+		JSONObject configurationJSONObject, JSONObject editableValuesJSONObject,
+		String name) {
+
+		return getFieldValue(
+			configurationJSONObject, editableValuesJSONObject, null, name);
 	}
 
 	@Override
@@ -437,7 +447,7 @@ public class FragmentEntryConfigurationParserImpl
 		String parsedValue = GetterUtil.getString(value);
 
 		if (fragmentConfigurationField.isLocalizable() &&
-			JSONUtil.isJSONObject(parsedValue)) {
+			JSONUtil.isJSONObject(parsedValue) && (locale != null)) {
 
 			try {
 				JSONObject valueJSONObject = _jsonFactory.createJSONObject(
@@ -460,6 +470,13 @@ public class FragmentEntryConfigurationParserImpl
 
 		if (StringUtil.equalsIgnoreCase(
 				fragmentConfigurationField.getType(), "checkbox")) {
+
+			if (fragmentConfigurationField.isLocalizable() &&
+				(locale == null)) {
+
+				return _getFieldValue(
+					FragmentConfigurationFieldDataType.OBJECT, parsedValue);
+			}
 
 			return _getFieldValue(
 				FragmentConfigurationFieldDataType.BOOLEAN, parsedValue);
@@ -487,6 +504,13 @@ public class FragmentEntryConfigurationParserImpl
 		else if (StringUtil.equalsIgnoreCase(
 					fragmentConfigurationField.getType(), "colorPicker")) {
 
+			if (fragmentConfigurationField.isLocalizable() &&
+				(locale == null)) {
+
+				return _getFieldValue(
+					FragmentConfigurationFieldDataType.OBJECT, parsedValue);
+			}
+
 			String fieldValue = (String)_getFieldValue(
 				FragmentConfigurationFieldDataType.STRING, parsedValue);
 
@@ -502,7 +526,17 @@ public class FragmentEntryConfigurationParserImpl
 				 StringUtil.equalsIgnoreCase(
 					 fragmentConfigurationField.getType(), "select") ||
 				 StringUtil.equalsIgnoreCase(
+					 fragmentConfigurationField.getType(),
+					 "targetCollectionDisplay") ||
+				 StringUtil.equalsIgnoreCase(
 					 fragmentConfigurationField.getType(), "text")) {
+
+			if (fragmentConfigurationField.isLocalizable() &&
+				(locale == null)) {
+
+				return _getFieldValue(
+					FragmentConfigurationFieldDataType.OBJECT, parsedValue);
+			}
 
 			FragmentConfigurationFieldDataType
 				fragmentConfigurationFieldDataType =
@@ -693,7 +727,7 @@ public class FragmentEntryConfigurationParserImpl
 	}
 
 	private Object _getInfoListObjectEntry(
-		long scopeGroupId, long[] segmentsEntryIds,
+		long companyId, long scopeGroupId, long[] segmentsEntryIds,
 		JSONObject typeOptionsJSONObject, String value) {
 
 		if (Validator.isNull(value)) {
@@ -744,7 +778,8 @@ public class FragmentEntryConfigurationParserImpl
 				segmentsEntryIds);
 
 			InfoPage<?> infoPage = layoutListRetriever.getInfoPage(
-				listObjectReferenceFactory.getListObjectReference(jsonObject),
+				listObjectReferenceFactory.getListObjectReference(
+					companyId, scopeGroupId, jsonObject),
 				defaultLayoutListRetrieverContext);
 
 			return infoPage.getPageItems();

@@ -15,12 +15,25 @@ import com.liferay.osb.faro.engine.client.constants.FieldMappingConstants;
 import com.liferay.osb.faro.engine.client.constants.FilterConstants;
 import com.liferay.osb.faro.engine.client.exception.FaroEngineClientException;
 import com.liferay.osb.faro.engine.client.model.Account;
+import com.liferay.osb.faro.engine.client.model.AccountDetails;
+import com.liferay.osb.faro.engine.client.model.AccountLifecycle;
+import com.liferay.osb.faro.engine.client.model.AccountLifecycleMetric;
+import com.liferay.osb.faro.engine.client.model.AccountLifecycleStageMetric;
+import com.liferay.osb.faro.engine.client.model.AccountLifecycleStageRule;
+import com.liferay.osb.faro.engine.client.model.AccountLifecycleStatus;
+import com.liferay.osb.faro.engine.client.model.AccountMetric;
 import com.liferay.osb.faro.engine.client.model.Activity;
 import com.liferay.osb.faro.engine.client.model.ActivityAggregation;
 import com.liferay.osb.faro.engine.client.model.ActivityAsset;
 import com.liferay.osb.faro.engine.client.model.ActivityGroup;
 import com.liferay.osb.faro.engine.client.model.AsahProject;
 import com.liferay.osb.faro.engine.client.model.Asset;
+import com.liferay.osb.faro.engine.client.model.AssetSummary;
+import com.liferay.osb.faro.engine.client.model.AssetSummaryCategory;
+import com.liferay.osb.faro.engine.client.model.AssetSummaryMimeType;
+import com.liferay.osb.faro.engine.client.model.AssetSummaryTag;
+import com.liferay.osb.faro.engine.client.model.AssetSummaryType;
+import com.liferay.osb.faro.engine.client.model.AssetSummaryVocabulary;
 import com.liferay.osb.faro.engine.client.model.Author;
 import com.liferay.osb.faro.engine.client.model.BlockedKeyword;
 import com.liferay.osb.faro.engine.client.model.Channel;
@@ -46,12 +59,15 @@ import com.liferay.osb.faro.engine.client.model.IndividualSegmentMembershipChang
 import com.liferay.osb.faro.engine.client.model.IndividualSegmentRealTimeMembership;
 import com.liferay.osb.faro.engine.client.model.IndividualTransformation;
 import com.liferay.osb.faro.engine.client.model.Interest;
+import com.liferay.osb.faro.engine.client.model.PageExperience;
 import com.liferay.osb.faro.engine.client.model.PageVisited;
 import com.liferay.osb.faro.engine.client.model.PagedModel;
 import com.liferay.osb.faro.engine.client.model.ProjectUsageMetric;
 import com.liferay.osb.faro.engine.client.model.Provider;
+import com.liferay.osb.faro.engine.client.model.RealTimeMembershipMetric;
 import com.liferay.osb.faro.engine.client.model.Rels;
 import com.liferay.osb.faro.engine.client.model.Results;
+import com.liferay.osb.faro.engine.client.model.SegmentActivation;
 import com.liferay.osb.faro.engine.client.model.StringPagedModel;
 import com.liferay.osb.faro.engine.client.model.credentials.TokenCredentials;
 import com.liferay.osb.faro.engine.client.model.provider.LiferayProvider;
@@ -110,6 +126,22 @@ import org.springframework.web.client.RestTemplate;
 @Component(service = ContactsEngineClient.class)
 public class ContactsEngineClientImpl
 	extends BaseEngineClient implements ContactsEngineClient {
+
+	@Override
+	public AccountLifecycle addAccountLifecycle(
+		FaroProject faroProject, String description, String name,
+		String segmentId) {
+
+		AccountLifecycle accountLifecycle = new AccountLifecycle();
+
+		accountLifecycle.setDescription(description);
+		accountLifecycle.setName(name);
+		accountLifecycle.setSegmentId(segmentId);
+
+		return post(
+			faroProject, Rels.ACCOUNT_LIFECYCLES, accountLifecycle,
+			AccountLifecycle.class);
+	}
 
 	@Override
 	public Results<BlockedKeyword> addBlockedKeywords(
@@ -291,19 +323,22 @@ public class ContactsEngineClientImpl
 
 	@Override
 	public IndividualSegment addIndividualSegment(
-		FaroProject faroProject, long userId, String channelId, String filter,
+		FaroProject faroProject, long userId, String channelId,
+		String externalReferenceCode, String filterString,
 		boolean includeAnonymousUsers, String name, String segmentType,
-		String status) {
+		boolean sequential, String status) {
 
 		IndividualSegment individualSegment = new IndividualSegment();
 
 		individualSegment.setAuthor(getAuthor(userId));
 		individualSegment.setChannelId(channelId);
 		individualSegment.setDateModified(new Date());
-		individualSegment.setFilter(filter);
+		individualSegment.setExternalReferenceCode(externalReferenceCode);
+		individualSegment.setFilterString(filterString);
 		individualSegment.setIncludeAnonymousUsers(includeAnonymousUsers);
 		individualSegment.setName(name);
 		individualSegment.setSegmentType(segmentType);
+		individualSegment.setSequential(sequential);
 		individualSegment.setStatus(status);
 
 		return post(
@@ -394,7 +429,9 @@ public class ContactsEngineClientImpl
 		post(
 			faroProject, Collections.emptyMap(), "/projects",
 			Collections.emptyMap(),
-			new AsahProject(projectId, faroProject.getLastAnniversaryDate()),
+			new AsahProject(
+				projectId, faroProject.getLastAnniversaryDate(),
+				faroProject.getSubscription()),
 			Void.class);
 
 		return projectId;
@@ -555,6 +592,13 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
+	public AccountDetails getAccountDetails(FaroProject faroProject, String id)
+		throws FaroEngineClientException {
+
+		return get(faroProject, Rels.ACCOUNT, id, AccountDetails.class);
+	}
+
+	@Override
 	public Results<Object> getAccountFieldValues(
 		FaroProject faroProject, Long channelId, String fieldMappingFieldName,
 		String query, int cur, int delta) {
@@ -611,6 +655,38 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
+	public Results<Individual> getAccountIndividuals(
+		FaroProject faroProject, String accountId, String query, int cur,
+		int delta, String sortString) {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		uriVariables.put("id", accountId);
+
+		if (Validator.isNotNull(query)) {
+			uriVariables.put("query", query);
+		}
+
+		if (Validator.isNotNull(sortString)) {
+			uriVariables.put(
+				"sort",
+				Arrays.asList(
+					StringUtil.replace(
+						sortString, CharPool.COLON, CharPool.COMMA)));
+		}
+
+		PagedModel<?, Individual> pagedModel = get(
+			faroProject, Rels.ACCOUNT_INDIVIDUALS,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<Individual>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
 	public Results<IndividualSegment> getAccountIndividualSegments(
 		FaroProject faroProject, String accountId, String channelId,
 		String query, String status, int cur, int delta,
@@ -647,44 +723,176 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
-	public Results<Account> getAccounts(
-		FaroProject faroProject, String channelId, String dataSourceId,
-		String individualSegmentId, String filter, String query,
-		List<String> fields, int cur, int delta,
-		List<OrderByField> orderByFields) {
+	public AccountLifecycle getAccountLifecycle(
+			FaroProject faroProject, String id)
+		throws FaroEngineClientException {
+
+		return get(
+			faroProject, Rels.ACCOUNT_LIFECYCLE, id, AccountLifecycle.class);
+	}
+
+	@Override
+	public Results<Account> getAccountLifecycleAccounts(
+			FaroProject faroProject, String country, String id, String industry,
+			String query, String stageType, int cur, int delta,
+			String sortString)
+		throws FaroEngineClientException {
 
 		Map<String, Object> uriVariables = getUriVariables(
-			faroProject, cur, delta, orderByFields,
-			FilterConstants.FIELD_NAME_CONTEXT_ACCOUNT);
+			faroProject, cur, delta, null);
+
+		if (Validator.isNotNull(country)) {
+			uriVariables.put("country", country);
+		}
+
+		uriVariables.put("id", id);
+
+		if (Validator.isNotNull(industry)) {
+			uriVariables.put("industry", industry);
+		}
+
+		if (Validator.isNotNull(query)) {
+			uriVariables.put("query", query);
+		}
+
+		if (Validator.isNotNull(sortString)) {
+			uriVariables.put(
+				"sort",
+				Arrays.asList(
+					StringUtil.replace(
+						sortString, CharPool.COLON, CharPool.COMMA)));
+		}
+
+		if (Validator.isNotNull(stageType)) {
+			uriVariables.put("stageType", stageType);
+		}
+
+		PagedModel<?, Account> pagedModel = get(
+			faroProject, Rels.ACCOUNT_LIFECYCLE_ACCOUNTS,
+			new ParameterizedTypeReference<EntityModelPagedModel<Account>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
+	public List<AccountLifecycleMetric> getAccountLifecycleMetrics(
+			FaroProject faroProject, String country, String id, String industry)
+		throws FaroEngineClientException {
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject, id);
+
+		if (Validator.isNotNull(country)) {
+			uriVariables.put("country", country);
+		}
+
+		if (Validator.isNotNull(industry)) {
+			uriVariables.put("industry", industry);
+		}
+
+		return get(
+			faroProject, Rels.ACCOUNT_LIFECYCLE_OVERVIEW,
+			new ParameterizedTypeReference<List<AccountLifecycleMetric>>() {
+			},
+			uriVariables);
+	}
+
+	@Override
+	public List<AccountLifecycle> getAccountLifecycles(FaroProject faroProject)
+		throws FaroEngineClientException {
+
+		return get(
+			faroProject, Rels.ACCOUNT_LIFECYCLES,
+			new ParameterizedTypeReference<List<AccountLifecycle>>() {
+			},
+			getUriVariables(faroProject));
+	}
+
+	@Override
+	public List<AccountLifecycleStageMetric> getAccountLifecycleStageMetrics(
+			FaroProject faroProject, String country, String id, String industry)
+		throws FaroEngineClientException {
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject, id);
+
+		if (Validator.isNotNull(country)) {
+			uriVariables.put("country", country);
+		}
+
+		if (Validator.isNotNull(industry)) {
+			uriVariables.put("industry", industry);
+		}
+
+		return get(
+			faroProject, Rels.ACCOUNT_LIFECYCLE_STAGES,
+			new ParameterizedTypeReference
+				<List<AccountLifecycleStageMetric>>() {
+			},
+			uriVariables);
+	}
+
+	@Override
+	public AccountLifecycleStatus getAccountLifecycleStatus(
+			FaroProject faroProject, String accountLifecycleId, String id)
+		throws FaroEngineClientException {
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject, id);
+
+		uriVariables.put("accountLifecycleId", accountLifecycleId);
+
+		return get(
+			faroProject, Rels.ACCOUNT_LIFECYCLE_STATUS, id,
+			AccountLifecycleStatus.class, uriVariables);
+	}
+
+	@Override
+	public List<AccountMetric> getAccountMetrics(
+		FaroProject faroProject, Long channelId) {
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject);
 
 		if (Validator.isNotNull(channelId)) {
 			uriVariables.put("channelId", channelId);
 		}
 
-		FilterBuilder filterBuilder = new FilterBuilder();
+		return get(
+			faroProject, Rels.ACCOUNTS_METRICS,
+			new ParameterizedTypeReference<List<AccountMetric>>() {
+			},
+			uriVariables);
+	}
 
-		filterBuilder.addFilter(
-			"dataSourceId", FilterConstants.COMPARISON_OPERATOR_EQUALS,
-			dataSourceId);
-		filterBuilder.addFilter(filter);
-		filterBuilder.addSearchFilter(
-			query, fields, FilterConstants.FIELD_NAME_CONTEXT_ACCOUNT);
+	@Override
+	public Results<Account> getAccounts(
+		FaroProject faroProject, String channelId, String filterString,
+		String query, int cur, int delta, String sortString) {
 
-		uriVariables.put("filter", filterBuilder.build());
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
 
-		String type = null;
-
-		if (Validator.isNotNull(individualSegmentId)) {
-			type = Rels.INDIVIDUAL_SEGMENT_ACCOUNTS;
-
-			uriVariables.put("id", individualSegmentId);
+		if (Validator.isNotNull(channelId)) {
+			uriVariables.put("channelId", channelId);
 		}
-		else {
-			type = Rels.ACCOUNTS;
+
+		if (Validator.isNotNull(filterString)) {
+			uriVariables.put("filter", filterString);
+		}
+
+		if (Validator.isNotNull(query)) {
+			uriVariables.put("query", query);
+		}
+
+		if (Validator.isNotNull(sortString)) {
+			uriVariables.put(
+				"sort",
+				Arrays.asList(
+					StringUtil.replace(
+						sortString, CharPool.COLON, CharPool.COMMA)));
 		}
 
 		PagedModel<?, Account> pagedModel = get(
-			faroProject, type,
+			faroProject, Rels.ACCOUNTS,
 			new ParameterizedTypeReference<EntityModelPagedModel<Account>>() {
 			},
 			uriVariables);
@@ -695,15 +903,15 @@ public class ContactsEngineClientImpl
 	@Override
 	public Results<Distribution> getAccountsDistribution(
 		FaroProject faroProject, String channelId, String fieldMappingFieldName,
-		String filter, String individualSegmentId, int count, int numberOfBins,
-		List<OrderByField> orderByFields) {
+		String filterString, String individualSegmentId, int count,
+		int numberOfBins, List<OrderByField> orderByFields) {
 
 		Map<String, Object> uriVariables = getUriVariables(
 			faroProject, 0, count, orderByFields);
 
 		uriVariables.put("channelId", channelId);
 		uriVariables.put("fieldMappingFieldName", fieldMappingFieldName);
-		uriVariables.put("filter", filter);
+		uriVariables.put("filter", filterString);
 		uriVariables.put("individualSegmentId", individualSegmentId);
 		uriVariables.put("numberOfBins", numberOfBins);
 
@@ -961,6 +1169,235 @@ public class ContactsEngineClientImpl
 		PagedModel<?, Asset> pagedModel = get(
 			faroProject, Rels.ASSETS,
 			new ParameterizedTypeReference<EntityModelPagedModel<Asset>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
+	public Results<AssetSummary> getAssetSummaries(
+		FaroProject faroProject, long channelId, String filterString,
+		String keywords, int rangeKey, int cur, int delta, String sortString) {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		uriVariables.put("channelId", channelId);
+
+		if (Validator.isNotNull(filterString)) {
+			uriVariables.put("filter", filterString);
+		}
+
+		uriVariables.put("keywords", keywords);
+		uriVariables.put("rangeKey", rangeKey);
+		uriVariables.put(
+			"sort",
+			Arrays.asList(
+				StringUtil.replace(
+					sortString, CharPool.COLON, CharPool.COMMA)));
+
+		PagedModel<?, AssetSummary> pagedModel = get(
+			faroProject, Rels.ASSET_SUMMARIES,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<AssetSummary>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
+	public Results<AssetSummaryCategory> getAssetSummaryCategories(
+		FaroProject faroProject, String accountId, long channelId,
+		String keywords, String rangeEnd, int rangeKey, String rangeStart,
+		String selectedMetric, String sort, String vocabularyId, int cur,
+		int delta) {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		if (Validator.isNotNull(accountId)) {
+			uriVariables.put("accountId", accountId);
+		}
+
+		uriVariables.put("channelId", channelId);
+
+		if (Validator.isNotNull(keywords)) {
+			uriVariables.put("keywords", keywords);
+		}
+
+		if ((rangeEnd != null) && (rangeStart != null)) {
+			uriVariables.put("rangeEnd", rangeEnd);
+			uriVariables.put("rangeStart", rangeStart);
+		}
+		else {
+			uriVariables.put("rangeKey", rangeKey);
+		}
+
+		if (Validator.isNotNull(selectedMetric)) {
+			uriVariables.put("selectedMetric", selectedMetric);
+		}
+
+		if (Validator.isNotNull(sort)) {
+			uriVariables.put(
+				"sort",
+				Arrays.asList(
+					StringUtil.replace(sort, CharPool.COLON, CharPool.COMMA)));
+		}
+
+		if (Validator.isNotNull(vocabularyId)) {
+			uriVariables.put("vocabularyId", vocabularyId);
+		}
+
+		PagedModel<?, AssetSummaryCategory> pagedModel = get(
+			faroProject, Rels.ASSET_SUMMARY_CATEGORIES,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<AssetSummaryCategory>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
+	public Results<AssetSummaryMimeType> getAssetSummaryMimeTypes(
+		FaroProject faroProject, long channelId, String rangeEnd, int rangeKey,
+		String rangeStart, int cur, int delta) {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		uriVariables.put("channelId", channelId);
+
+		if ((rangeEnd != null) && (rangeStart != null)) {
+			uriVariables.put("rangeEnd", rangeEnd);
+			uriVariables.put("rangeStart", rangeStart);
+		}
+		else {
+			uriVariables.put("rangeKey", rangeKey);
+		}
+
+		PagedModel<?, AssetSummaryMimeType> pagedModel = get(
+			faroProject, Rels.ASSET_SUMMARY_MIME_TYPES,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<AssetSummaryMimeType>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
+	public Results<AssetSummaryTag> getAssetSummaryTags(
+		FaroProject faroProject, String accountId, long channelId,
+		String keywords, String rangeEnd, int rangeKey, String rangeStart,
+		String selectedMetric, String sort, int cur, int delta) {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		if (Validator.isNotNull(accountId)) {
+			uriVariables.put("accountId", accountId);
+		}
+
+		uriVariables.put("channelId", channelId);
+
+		if (Validator.isNotNull(keywords)) {
+			uriVariables.put("keywords", keywords);
+		}
+
+		if ((rangeEnd != null) && (rangeStart != null)) {
+			uriVariables.put("rangeEnd", rangeEnd);
+			uriVariables.put("rangeStart", rangeStart);
+		}
+		else {
+			uriVariables.put("rangeKey", rangeKey);
+		}
+
+		if (Validator.isNotNull(selectedMetric)) {
+			uriVariables.put("selectedMetric", selectedMetric);
+		}
+
+		if (Validator.isNotNull(sort)) {
+			uriVariables.put(
+				"sort",
+				Arrays.asList(
+					StringUtil.replace(sort, CharPool.COLON, CharPool.COMMA)));
+		}
+
+		PagedModel<?, AssetSummaryTag> pagedModel = get(
+			faroProject, Rels.ASSET_SUMMARY_TAGS,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<AssetSummaryTag>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
+	public Results<AssetSummaryType> getAssetSummaryTypes(
+		FaroProject faroProject, long channelId, String rangeEnd, int rangeKey,
+		String rangeStart, int cur, int delta) {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		uriVariables.put("channelId", channelId);
+
+		if ((rangeEnd != null) && (rangeStart != null)) {
+			uriVariables.put("rangeEnd", rangeEnd);
+			uriVariables.put("rangeStart", rangeStart);
+		}
+		else {
+			uriVariables.put("rangeKey", rangeKey);
+		}
+
+		PagedModel<?, AssetSummaryType> pagedModel = get(
+			faroProject, Rels.ASSET_SUMMARY_TYPES,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<AssetSummaryType>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
+	public Results<AssetSummaryVocabulary> getAssetSummaryVocabularies(
+		FaroProject faroProject, long channelId, String keywords,
+		String rangeEnd, int rangeKey, String rangeStart, String sort, int cur,
+		int delta) {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		uriVariables.put("channelId", channelId);
+
+		if (Validator.isNotNull(keywords)) {
+			uriVariables.put("keywords", keywords);
+		}
+
+		if ((rangeEnd != null) && (rangeStart != null)) {
+			uriVariables.put("rangeEnd", rangeEnd);
+			uriVariables.put("rangeStart", rangeStart);
+		}
+		else {
+			uriVariables.put("rangeKey", rangeKey);
+		}
+
+		if (Validator.isNotNull(sort)) {
+			uriVariables.put(
+				"sort",
+				Arrays.asList(
+					StringUtil.replace(sort, CharPool.COLON, CharPool.COMMA)));
+		}
+
+		PagedModel<?, AssetSummaryVocabulary> pagedModel = get(
+			faroProject, Rels.ASSET_SUMMARY_VOCABULARIES,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<AssetSummaryVocabulary>>() {
 			},
 			uriVariables);
 
@@ -1279,6 +1716,70 @@ public class ContactsEngineClientImpl
 			new ParameterizedTypeReference<List<DataSourceField>>() {
 			},
 			uriVariables);
+	}
+
+	@Override
+	public long getDataSourceMetricsAccountsCount(
+		FaroProject faroProject, String dataSourceId) {
+
+		RestTemplate restTemplate = getRestTemplate(faroProject);
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject);
+
+		uriVariables.put("dataSourceId", dataSourceId);
+
+		ResponseEntity<Long> responseEntity = restTemplate.exchange(
+			getTemplatedURL(
+				faroProject, Rels.DATA_SOURCE_METRICS_ACCOUNTS_COUNT),
+			HttpMethod.GET, HttpEntity.EMPTY, Long.class, uriVariables);
+
+		if (responseEntity.getBody() == null) {
+			return 0L;
+		}
+
+		return responseEntity.getBody();
+	}
+
+	@Override
+	public long getDataSourceMetricsEventsCount(
+		FaroProject faroProject, String dataSourceId) {
+
+		RestTemplate restTemplate = getRestTemplate(faroProject);
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject);
+
+		uriVariables.put("dataSourceId", dataSourceId);
+
+		ResponseEntity<Long> responseEntity = restTemplate.exchange(
+			getTemplatedURL(faroProject, Rels.DATA_SOURCE_METRICS_EVENTS_COUNT),
+			HttpMethod.GET, HttpEntity.EMPTY, Long.class, uriVariables);
+
+		if (responseEntity.getBody() == null) {
+			return 0L;
+		}
+
+		return responseEntity.getBody();
+	}
+
+	@Override
+	public long getDataSourceMetricsUsersCount(
+		FaroProject faroProject, String dataSourceId) {
+
+		RestTemplate restTemplate = getRestTemplate(faroProject);
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject);
+
+		uriVariables.put("dataSourceId", dataSourceId);
+
+		ResponseEntity<Long> responseEntity = restTemplate.exchange(
+			getTemplatedURL(faroProject, Rels.DATA_SOURCE_METRICS_USERS_COUNT),
+			HttpMethod.GET, HttpEntity.EMPTY, Long.class, uriVariables);
+
+		if (responseEntity.getBody() == null) {
+			return 0L;
+		}
+
+		return responseEntity.getBody();
 	}
 
 	@Override
@@ -1927,9 +2428,10 @@ public class ContactsEngineClientImpl
 	public Results<Individual> getIndividuals(
 		FaroProject faroProject, String accountId, String channelId,
 		String dataSourceId, String individualSegmentId,
-		String notIndividualSegmentId, String interestName, String filter,
-		String query, List<String> fields, boolean includeAnonymousUsers,
-		int cur, int delta, List<OrderByField> orderByFields) {
+		String notIndividualSegmentId, String interestName, String filterString,
+		List<String> profileTypes, String query, List<String> fields,
+		boolean includeAnonymousUsers, int cur, int delta,
+		List<OrderByField> orderByFields) {
 
 		Map<String, Object> uriVariables = getUriVariables(
 			faroProject, cur, delta, orderByFields,
@@ -1947,8 +2449,8 @@ public class ContactsEngineClientImpl
 			uriVariables.put("dataSourceId", dataSourceId);
 		}
 
-		if (Validator.isNotNull(filter)) {
-			uriVariables.put("filter", filter);
+		if (Validator.isNotNull(filterString)) {
+			uriVariables.put("filter", filterString);
 		}
 
 		uriVariables.put("includeAnonymousUsers", includeAnonymousUsers);
@@ -1963,6 +2465,11 @@ public class ContactsEngineClientImpl
 
 		if (Validator.isNotNull(notIndividualSegmentId)) {
 			uriVariables.put("notSegmentId", notIndividualSegmentId);
+		}
+
+		if (profileTypes != null) {
+			uriVariables.put(
+				"profileTypes", String.join(StringPool.COMMA, profileTypes));
 		}
 
 		if (Validator.isNotNull(query)) {
@@ -2014,9 +2521,10 @@ public class ContactsEngineClientImpl
 
 	@Override
 	public Results<Individual> getIndividualsByIndividualSegment(
-		FaroProject faroProject, String individualSegmentId, String filter,
-		String query, List<String> fields, boolean includeAnonymousUsers,
-		int cur, int delta, List<OrderByField> orderByFields) {
+		FaroProject faroProject, String individualSegmentId,
+		String filterString, String query, List<String> fields,
+		boolean includeAnonymousUsers, int cur, int delta,
+		List<OrderByField> orderByFields) {
 
 		Map<String, Object> uriVariables = getUriVariables(
 			faroProject, cur, delta, orderByFields,
@@ -2024,7 +2532,7 @@ public class ContactsEngineClientImpl
 
 		FilterBuilder filterBuilder = new FilterBuilder();
 
-		filterBuilder.addFilter(filter);
+		filterBuilder.addFilter(filterString);
 		filterBuilder.addSearchFilter(
 			query, fields, FilterConstants.FIELD_NAME_CONTEXT_INDIVIDUAL);
 
@@ -2232,9 +2740,9 @@ public class ContactsEngineClientImpl
 	@Override
 	public Results<IndividualSegmentRealTimeMembership>
 		getIndividualSegmentRealTimeMemberships(
-			FaroProject faroProject, String day, String filter,
-			String individualSegmentId, int cur, int delta,
-			List<OrderByField> orderByFields) {
+			FaroProject faroProject, String day, String individualSegmentId,
+			List<String> profileTypes, String query, List<String> types,
+			int cur, int delta, List<OrderByField> orderByFields) {
 
 		Map<String, Object> uriVariables = getUriVariables(
 			faroProject, cur, delta, orderByFields);
@@ -2243,8 +2751,18 @@ public class ContactsEngineClientImpl
 			uriVariables.put("day", day);
 		}
 
-		uriVariables.put("filter", filter);
 		uriVariables.put("id", individualSegmentId);
+
+		if (profileTypes != null) {
+			uriVariables.put(
+				"profileTypes", String.join(StringPool.COMMA, profileTypes));
+		}
+
+		uriVariables.put("query", query);
+
+		if (types != null) {
+			uriVariables.put("types", String.join(StringPool.COMMA, types));
+		}
 
 		PagedModel<?, IndividualSegmentRealTimeMembership> pagedModel = get(
 			faroProject, Rels.INDIVIDUAL_SEGMENT_REAL_TIME_MEMBERSHIPS,
@@ -2424,6 +2942,25 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
+	public List<PageExperience> getPageExperiences(
+			FaroProject faroProject, String canonicalUrl, String channelId,
+			String pageTitle)
+		throws Exception {
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject);
+
+		uriVariables.put("canonicalUrl", canonicalUrl);
+		uriVariables.put("channelId", channelId);
+		uriVariables.put("pageTitle", pageTitle);
+
+		return get(
+			faroProject, Rels.PAGE_EXPERIENCES,
+			new ParameterizedTypeReference<List<PageExperience>>() {
+			},
+			uriVariables);
+	}
+
+	@Override
 	public Results<PageVisited> getPagesVisited(
 		FaroProject faroProject, String channelId, String ownerId,
 		String ownerType, String query, String interestName, Date startDate,
@@ -2480,6 +3017,15 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
+	public RealTimeMembershipMetric getRealTimeMembershipMetric(
+		FaroProject faroProject, String individualSegmentId) {
+
+		return get(
+			faroProject, Rels.INDIVIDUAL_SEGMENT_REAL_TIME_MEMBERSHIP_METRIC,
+			individualSegmentId, RealTimeMembershipMetric.class);
+	}
+
+	@Override
 	public long getReportsExportCSVCount(
 			FaroProject faroProject, String path,
 			Map<String, List<String>> queryParameters)
@@ -2491,56 +3037,9 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
-	public long getSalesforceAccountsCount(
-		String dataSourceId, FaroProject faroProject) {
-
-		RestTemplate restTemplate = getRestTemplate(faroProject);
-
-		Map<String, Object> uriVariables = getUriVariables(faroProject);
-
-		if (!Validator.isBlank(dataSourceId)) {
-			uriVariables.put("dataSourceId", dataSourceId);
-		}
-
-		ResponseEntity<Long> responseEntity = restTemplate.exchange(
-			getTemplatedURL(
-				faroProject, Rels.SALESFORCE_ENTITIES_ACCOUNTS_COUNT),
-			HttpMethod.GET, HttpEntity.EMPTY, Long.class, uriVariables);
-
-		if (responseEntity.getBody() == null) {
-			return 0L;
-		}
-
-		return responseEntity.getBody();
-	}
-
-	@Override
-	public long getSalesforceUsersCount(
-		String dataSourceId, FaroProject faroProject) {
-
-		RestTemplate restTemplate = getRestTemplate(faroProject);
-
-		Map<String, Object> uriVariables = getUriVariables(faroProject);
-
-		if (!Validator.isBlank(dataSourceId)) {
-			uriVariables.put("dataSourceId", dataSourceId);
-		}
-
-		ResponseEntity<Long> responseEntity = restTemplate.exchange(
-			getTemplatedURL(faroProject, Rels.SALESFORCE_ENTITIES_USERS_COUNT),
-			HttpMethod.GET, HttpEntity.EMPTY, Long.class, uriVariables);
-
-		if (responseEntity.getBody() == null) {
-			return 0L;
-		}
-
-		return responseEntity.getBody();
-	}
-
-	@Override
 	public Results<String> getSessionValues(
 		FaroProject faroProject, String channelId, String fieldName,
-		String filter, String query, int cur, int delta) {
+		String filterString, String query, int cur, int delta) {
 
 		Map<String, Object> uriVariables = getUriVariables(
 			faroProject, cur, delta, null);
@@ -2549,7 +3048,7 @@ public class ContactsEngineClientImpl
 
 		FilterBuilder filterBuilder = new FilterBuilder();
 
-		filterBuilder.addFilter(filter);
+		filterBuilder.addFilter(filterString);
 		filterBuilder.addFilter(
 			"channelId", FilterConstants.COMPARISON_OPERATOR_EQUALS,
 			Long.valueOf(channelId));
@@ -2841,6 +3340,44 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
+	public AccountLifecycle updateAccountLifecycle(
+		FaroProject faroProject, String description, String id, String name,
+		String segmentId) {
+
+		AccountLifecycle accountLifecycle = new AccountLifecycle();
+
+		accountLifecycle.setDescription(description);
+		accountLifecycle.setId(id);
+		accountLifecycle.setName(name);
+		accountLifecycle.setSegmentId(segmentId);
+
+		return put(
+			faroProject, Rels.ACCOUNT_LIFECYCLE, accountLifecycle,
+			AccountLifecycle.class, getUriVariables(faroProject, id));
+	}
+
+	@Override
+	public void updateAccountLifecycleStageRule(
+		FaroProject faroProject, String filterMetadata, String filterString,
+		String id, String name, String stageId) {
+
+		AccountLifecycleStageRule accountLifecycleStageRule =
+			new AccountLifecycleStageRule();
+
+		accountLifecycleStageRule.setFilterMetadata(filterMetadata);
+		accountLifecycleStageRule.setFilterString(filterString);
+		accountLifecycleStageRule.setName(name);
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject, id);
+
+		uriVariables.put("stageId", stageId);
+
+		put(
+			faroProject, Rels.ACCOUNT_LIFECYCLE_STAGE_RULES,
+			accountLifecycleStageRule, Void.class, uriVariables);
+	}
+
+	@Override
 	public void updateBQProject(FaroProject faroProject, Date startDate)
 		throws Exception {
 
@@ -2896,23 +3433,56 @@ public class ContactsEngineClientImpl
 	@Override
 	public IndividualSegment updateIndividualSegment(
 		FaroProject faroProject, String id, long userId, String channelId,
-		String filter, boolean includeAnonymousUsers, String name,
-		String segmentType) {
+		String externalReferenceCode, String filterString,
+		boolean includeAnonymousUsers, String name, String segmentType,
+		boolean sequential) {
 
 		IndividualSegment individualSegment = new IndividualSegment();
 
 		individualSegment.setId(id);
 		individualSegment.setAuthor(getAuthor(userId));
 		individualSegment.setChannelId(channelId);
-		individualSegment.setFilter(filter);
+		individualSegment.setExternalReferenceCode(externalReferenceCode);
+		individualSegment.setFilterString(filterString);
 		individualSegment.setIncludeAnonymousUsers(includeAnonymousUsers);
 		individualSegment.setName(name);
 		individualSegment.setSegmentType(segmentType);
+		individualSegment.setSequential(sequential);
 		individualSegment.setStatus(IndividualSegment.Status.ACTIVE.name());
 
 		return put(
 			faroProject, Rels.INDIVIDUAL_SEGMENT, individualSegment,
 			IndividualSegment.class, getUriVariables(faroProject, id));
+	}
+
+	@Override
+	public SegmentActivation updateSegmentActivation(
+		FaroProject faroProject, String cronExpression, String frequencyType,
+		Date scheduleEndDate, Date scheduleStartDate, String scheduleType,
+		Long segmentId) {
+
+		SegmentActivation segmentActivation = new SegmentActivation();
+
+		segmentActivation.setCronExpression(cronExpression);
+		segmentActivation.setFrequencyType(
+			SegmentActivation.FrequencyType.valueOf(frequencyType));
+
+		if (scheduleEndDate != null) {
+			segmentActivation.setScheduleEndDate(scheduleEndDate);
+		}
+
+		if (scheduleStartDate != null) {
+			segmentActivation.setScheduleStartDate(scheduleStartDate);
+		}
+
+		segmentActivation.setScheduleType(
+			SegmentActivation.ScheduleType.valueOf(scheduleType));
+		segmentActivation.setSegmentId(String.valueOf(segmentId));
+
+		return put(
+			faroProject, Rels.INDIVIDUAL_SEGMENT_ACTIVATION, segmentActivation,
+			SegmentActivation.class,
+			getUriVariables(faroProject, String.valueOf(segmentId)));
 	}
 
 	protected void addActionFilter(

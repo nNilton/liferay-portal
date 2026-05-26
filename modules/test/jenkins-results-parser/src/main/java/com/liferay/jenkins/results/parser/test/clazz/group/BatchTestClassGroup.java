@@ -7,7 +7,6 @@ package com.liferay.jenkins.results.parser.test.clazz.group;
 
 import com.google.common.collect.Lists;
 
-import com.liferay.jenkins.results.parser.BatchHistory;
 import com.liferay.jenkins.results.parser.BuildDatabase;
 import com.liferay.jenkins.results.parser.BuildDatabaseUtil;
 import com.liferay.jenkins.results.parser.BuildReportFactory;
@@ -17,17 +16,17 @@ import com.liferay.jenkins.results.parser.GitWorkingDirectory;
 import com.liferay.jenkins.results.parser.JenkinsMaster;
 import com.liferay.jenkins.results.parser.JenkinsResultsParserUtil;
 import com.liferay.jenkins.results.parser.Job;
-import com.liferay.jenkins.results.parser.JobHistory;
 import com.liferay.jenkins.results.parser.PortalGitWorkingDirectory;
 import com.liferay.jenkins.results.parser.PortalTestClassJob;
 import com.liferay.jenkins.results.parser.RootCauseAnalysisToolJob;
 import com.liferay.jenkins.results.parser.TestClassReport;
-import com.liferay.jenkins.results.parser.TestHistory;
 import com.liferay.jenkins.results.parser.TestReport;
 import com.liferay.jenkins.results.parser.TestSuiteJob;
-import com.liferay.jenkins.results.parser.TestTaskHistory;
 import com.liferay.jenkins.results.parser.Workspace;
 import com.liferay.jenkins.results.parser.WorkspaceGitRepository;
+import com.liferay.jenkins.results.parser.history.BatchHistory;
+import com.liferay.jenkins.results.parser.history.JobHistory;
+import com.liferay.jenkins.results.parser.history.TestTaskHistory;
 import com.liferay.jenkins.results.parser.job.property.GlobJobProperty;
 import com.liferay.jenkins.results.parser.job.property.JobProperty;
 import com.liferay.jenkins.results.parser.job.property.JobPropertyFactory;
@@ -40,7 +39,6 @@ import java.nio.file.PathMatcher;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -55,7 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -74,84 +72,6 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		SegmentTestClassGroup segmentTestClassGroup) {
 
 		_segmentTestClassGroups.add(segmentTestClassGroup);
-	}
-
-	public long getAverageTestDuration(String testName) {
-		if (_averageTestDurations.containsKey(testName)) {
-			return _averageTestDurations.get(testName);
-		}
-
-		long averageTestDuration = _getDefaultTestDuration();
-
-		BatchHistory batchHistory = getBatchHistory();
-
-		if (batchHistory != null) {
-			TestHistory testHistory = batchHistory.getTestHistory(testName);
-
-			if (testHistory != null) {
-				averageTestDuration = testHistory.getAverageDuration();
-			}
-		}
-
-		_averageTestDurations.put(testName, averageTestDuration);
-
-		return averageTestDuration;
-	}
-
-	public long getAverageTestOverheadDuration(String testName) {
-		if (_averageTestOverheadDurations.containsKey(testName)) {
-			return _averageTestOverheadDurations.get(testName);
-		}
-
-		long averageTestOverheadDuration = _getDefaultTestOverheadDuration();
-
-		BatchHistory batchHistory = getBatchHistory();
-
-		if (batchHistory != null) {
-			TestHistory testHistory = batchHistory.getTestHistory(testName);
-
-			if (testHistory != null) {
-				averageTestOverheadDuration =
-					testHistory.getAverageOverheadDuration();
-			}
-		}
-
-		_averageTestOverheadDurations.put(
-			testName, averageTestOverheadDuration);
-
-		return averageTestOverheadDuration;
-	}
-
-	public long getAverageTestTaskDuration(String testName) {
-		TestTaskHistory testTaskHistory = _getTestTaskHistory(testName);
-
-		if (testTaskHistory == null) {
-			return _getDefaultTestTaskDuration();
-		}
-
-		long averageDuration = testTaskHistory.getAverageDuration();
-
-		if (averageDuration == 0) {
-			return _getDefaultTestTaskDuration();
-		}
-
-		return averageDuration;
-	}
-
-	public long getAverageTotalTestTaskDuration(String testName) {
-		TestTaskHistory testTaskHistory = _getTestTaskHistory(testName);
-
-		if (testTaskHistory == null) {
-			return _getDefaultTestTaskDuration();
-		}
-
-		long averageTotalDuration = testTaskHistory.getAverageTotalDuration();
-
-		if (averageTotalDuration == 0) {
-			return _getDefaultTestTaskDuration();
-		}
-
-		return testTaskHistory.getAverageTotalDuration();
 	}
 
 	public int getAxisCount() {
@@ -318,6 +238,63 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		return "test-1";
 	}
 
+	public long getDefaultTestDuration() {
+		JobProperty jobProperty = getJobProperty(
+			"test.batch.default.test.duration");
+
+		if (jobProperty == null) {
+			return 0;
+		}
+
+		String jobPropertyValue = jobProperty.getValue();
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(jobPropertyValue)) {
+			return 0;
+		}
+
+		recordJobProperty(jobProperty);
+
+		return Long.valueOf(jobPropertyValue);
+	}
+
+	public long getDefaultTestOverheadDuration() {
+		JobProperty jobProperty = getJobProperty(
+			"test.batch.default.test.overhead.duration");
+
+		if (jobProperty == null) {
+			return 0;
+		}
+
+		String jobPropertyValue = jobProperty.getValue();
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(jobPropertyValue)) {
+			return 0;
+		}
+
+		recordJobProperty(jobProperty);
+
+		return Long.valueOf(jobPropertyValue);
+	}
+
+	public long getDefaultTestTaskDuration() {
+		JobProperty jobProperty = getJobProperty(
+			"test.batch.default.test.task.duration");
+
+		if (jobProperty == null) {
+			return 0;
+		}
+
+		String jobPropertyValue = jobProperty.getValue();
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(jobPropertyValue)) {
+			return 0;
+		}
+
+		recordJobProperty(jobProperty);
+
+		return Long.valueOf(jobPropertyValue);
+	}
+
 	public String getDownstreamJobName() {
 		String topLevelJobName = portalTestClassJob.getJobName();
 
@@ -411,22 +388,6 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		return jsonObject;
 	}
 
-	public long getLongestTestTaskDuration(String testName) {
-		TestTaskHistory testTaskHistory = _getTestTaskHistory(testName);
-
-		if (testTaskHistory == null) {
-			return 0L;
-		}
-
-		long longestDuration = testTaskHistory.getLongestDuration();
-
-		if (longestDuration <= 0) {
-			return 0L;
-		}
-
-		return longestDuration;
-	}
-
 	public Integer getMaximumSlavesPerHost() {
 		JobProperty jobProperty = getJobProperty(
 			"test.batch.maximum.slaves.per.host");
@@ -442,6 +403,7 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		return JenkinsMaster.getSlavesPerHostDefault();
 	}
 
+	@Override
 	public Integer getMinimumSlaveRAM() {
 		JobProperty jobProperty = getJobProperty(
 			"test.batch.minimum.slave.ram");
@@ -507,14 +469,18 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		return sb.toString();
 	}
 
-	public String getTestTaskName(String testName) {
-		TestTaskHistory testTaskHistory = _getTestTaskHistory(testName);
+	public String getTestSuiteName() {
+		return testSuiteName;
+	}
 
-		if (testTaskHistory == null) {
+	public TestTaskHistory getTestTaskHistory(String testTaskName) {
+		BatchHistory batchHistory = getBatchHistory();
+
+		if (batchHistory == null) {
 			return null;
 		}
 
-		return testTaskHistory.getTestTaskName();
+		return batchHistory.getTestTaskHistory(testTaskName);
 	}
 
 	public boolean isBuildCachingEnabled() {
@@ -541,6 +507,25 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		_testAnalyticsCloud = false;
 
 		return _testAnalyticsCloud;
+	}
+
+	public boolean isUnifiedBuilderSupported() {
+		JobProperty jobProperty = getJobProperty(
+			"test.batch.unified.builder.supported");
+
+		if (jobProperty == null) {
+			return false;
+		}
+
+		String jobPropertyValue = jobProperty.getValue();
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(jobPropertyValue)) {
+			return false;
+		}
+
+		recordJobProperty(jobProperty);
+
+		return Boolean.parseBoolean(jobPropertyValue);
 	}
 
 	protected BatchTestClassGroup(
@@ -657,8 +642,9 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		String slaveLabel = null;
 
 		try {
-			slaveLabel = JenkinsResultsParserUtil.getBuildProperty(
-				"jenkins.osb.jenkins.web.slave.label", getBatchJobName(),
+			slaveLabel = JenkinsResultsParserUtil.getProperty(
+				JenkinsResultsParserUtil.getBuildProperties(),
+				"jenkins.osb.jenkins.web.slave.label", false, getBatchJobName(),
 				getTestSuiteName());
 
 			if (JenkinsResultsParserUtil.isNullOrEmpty(slaveLabel)) {
@@ -1019,10 +1005,6 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		return targetAxisDuration;
 	}
 
-	protected String getTestSuiteName() {
-		return testSuiteName;
-	}
-
 	protected boolean ignore() {
 		if (!isStableTestSuiteBatch() && testRelevantJUnitTestsOnly) {
 			return true;
@@ -1079,6 +1061,10 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		}
 
 		int axisCount = getAxisCount();
+
+		if (axisCount == 0) {
+			return;
+		}
 
 		int axisSize = (int)Math.ceil((double)getTestClassCount() / axisCount);
 
@@ -1242,23 +1228,6 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 
 	}
 
-	protected static class TestClassDurationComparator
-		implements Comparator<TestClass> {
-
-		@Override
-		public int compare(TestClass testClass1, TestClass testClass2) {
-			Long duration1 =
-				testClass1.getAverageDuration() +
-					testClass1.getAverageOverheadDuration();
-			Long duration2 =
-				testClass2.getAverageDuration() +
-					testClass2.getAverageOverheadDuration();
-
-			return duration2.compareTo(duration1);
-		}
-
-	}
-
 	private synchronized void _downloadBuildReports() {
 		if (_buildReportsDownloaded.get()) {
 			return;
@@ -1315,63 +1284,6 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		}
 
 		_buildReportsDownloaded.set(true);
-	}
-
-	private long _getDefaultTestDuration() {
-		JobProperty jobProperty = getJobProperty(
-			"test.batch.default.test.duration");
-
-		if (jobProperty == null) {
-			return 0;
-		}
-
-		String jobPropertyValue = jobProperty.getValue();
-
-		if (JenkinsResultsParserUtil.isNullOrEmpty(jobPropertyValue)) {
-			return 0;
-		}
-
-		recordJobProperty(jobProperty);
-
-		return Long.valueOf(jobPropertyValue);
-	}
-
-	private long _getDefaultTestOverheadDuration() {
-		JobProperty jobProperty = getJobProperty(
-			"test.batch.default.test.overhead.duration");
-
-		if (jobProperty == null) {
-			return 0;
-		}
-
-		String jobPropertyValue = jobProperty.getValue();
-
-		if (JenkinsResultsParserUtil.isNullOrEmpty(jobPropertyValue)) {
-			return 0;
-		}
-
-		recordJobProperty(jobProperty);
-
-		return Long.valueOf(jobPropertyValue);
-	}
-
-	private long _getDefaultTestTaskDuration() {
-		JobProperty jobProperty = getJobProperty(
-			"test.batch.default.test.task.duration");
-
-		if (jobProperty == null) {
-			return 0;
-		}
-
-		String jobPropertyValue = jobProperty.getValue();
-
-		if (JenkinsResultsParserUtil.isNullOrEmpty(jobPropertyValue)) {
-			return 0;
-		}
-
-		recordJobProperty(jobProperty);
-
-		return Long.valueOf(jobPropertyValue);
 	}
 
 	private Map<String, Properties> _getJobPropertiesMap() {
@@ -1491,28 +1403,6 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 		return new ArrayList<>(requiredModuleDirs);
 	}
 
-	private TestTaskHistory _getTestTaskHistory(String testName) {
-		if (_testTaskHistories.containsKey(testName)) {
-			return _testTaskHistories.get(testName);
-		}
-
-		BatchHistory batchHistory = getBatchHistory();
-
-		if (batchHistory == null) {
-			return null;
-		}
-
-		TestHistory testHistory = batchHistory.getTestHistory(testName);
-
-		if (testHistory == null) {
-			return null;
-		}
-
-		_testTaskHistories.put(testName, testHistory.getTestTaskHistory());
-
-		return _testTaskHistories.get(testName);
-	}
-
 	private synchronized void _initializeCachedReports() {
 		if (_cachedReportsInitialized.get()) {
 			return;
@@ -1579,6 +1469,10 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 					BuildReportFactory.newDownstreamBuildReport(
 						getBatchName(), new JSONObject(buildReportFileContent),
 						null);
+
+				if (downstreamBuildReport == null) {
+					continue;
+				}
 
 				List<DownstreamBuildReport> cachedDownstreamBuildReports =
 					_cachedDownstreamBuildReportsMap.computeIfAbsent(
@@ -1820,9 +1714,6 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 	private static final Pattern _jobNamePattern = Pattern.compile(
 		"(?<jobBaseName>.*)(?<jobVariant>\\([^\\)]+\\))");
 
-	private final Map<String, Long> _averageTestDurations = new HashMap<>();
-	private final Map<String, Long> _averageTestOverheadDurations =
-		new HashMap<>();
 	private BatchHistory _batchHistory;
 	private final Map<String, List<DownstreamBuildReport>>
 		_cachedDownstreamBuildReportsMap = new TreeMap<>();
@@ -1837,7 +1728,5 @@ public abstract class BatchTestClassGroup extends BaseTestClassGroup {
 	private final List<SegmentTestClassGroup> _segmentTestClassGroups =
 		new ArrayList<>();
 	private Boolean _testAnalyticsCloud;
-	private final Map<String, TestTaskHistory> _testTaskHistories =
-		new HashMap<>();
 
 }

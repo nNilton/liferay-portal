@@ -108,6 +108,22 @@ public class SegmentsEntryServiceImpl extends SegmentsEntryServiceBaseImpl {
 	}
 
 	@Override
+	public SegmentsEntry fetchSegmentsEntryByExternalReferenceCode(
+			String segmentsEntryERC, long groupId)
+		throws PortalException {
+
+		SegmentsEntry segmentsEntry =
+			segmentsEntryLocalService.fetchSegmentsEntryByExternalReferenceCode(
+				segmentsEntryERC, groupId);
+
+		_segmentsEntryResourcePermission.check(
+			getPermissionChecker(), segmentsEntry.getSegmentsEntryId(),
+			ActionKeys.VIEW);
+
+		return segmentsEntry;
+	}
+
+	@Override
 	public List<SegmentsEntry> getSegmentsEntries(long groupId) {
 		return segmentsEntryPersistence.filterFindByGroupId(
 			_portal.getCurrentAndAncestorSiteGroupIds(groupId));
@@ -124,9 +140,24 @@ public class SegmentsEntryServiceImpl extends SegmentsEntryServiceBaseImpl {
 	}
 
 	@Override
+	public List<SegmentsEntry> getSegmentsEntries(
+		long groupId, String source, int start, int end,
+		OrderByComparator<SegmentsEntry> orderByComparator) {
+
+		return segmentsEntryLocalService.getSegmentsEntries(
+			groupId, source, start, end, orderByComparator);
+	}
+
+	@Override
 	public int getSegmentsEntriesCount(long groupId) {
 		return segmentsEntryPersistence.filterCountByGroupId(
 			_portal.getCurrentAndAncestorSiteGroupIds(groupId));
+	}
+
+	@Override
+	public int getSegmentsEntriesCount(long groupId, String source) {
+		return segmentsEntryPersistence.filterCountByG_SRC(
+			_portal.getCurrentAndAncestorSiteGroupIds(groupId), source);
 	}
 
 	@Override
@@ -138,6 +169,22 @@ public class SegmentsEntryServiceImpl extends SegmentsEntryServiceBaseImpl {
 
 		_segmentsEntryResourcePermission.check(
 			getPermissionChecker(), segmentsEntryId, ActionKeys.VIEW);
+
+		return segmentsEntry;
+	}
+
+	@Override
+	public SegmentsEntry getSegmentsEntryByExternalReferenceCode(
+			String segmentsEntryERC, long groupId)
+		throws PortalException {
+
+		SegmentsEntry segmentsEntry =
+			segmentsEntryLocalService.getSegmentsEntryByExternalReferenceCode(
+				segmentsEntryERC, groupId);
+
+		_segmentsEntryResourcePermission.check(
+			getPermissionChecker(), segmentsEntry.getSegmentsEntryId(),
+			ActionKeys.VIEW);
 
 		return segmentsEntry;
 	}

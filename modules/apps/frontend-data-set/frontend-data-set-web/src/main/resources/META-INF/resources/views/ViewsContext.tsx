@@ -5,18 +5,15 @@
 
 import {createContext} from 'react';
 
-import {IFilter} from '../management_bar/controls/filters/Filter';
-
 export interface IViewsContext {
 	activeSnapshotERC: null | string;
 	activeView: any;
 	defaultSnapshot?: any;
-	filters: IFilter[];
-	filtersGroups: Array<any>;
+	groupedFilters: Array<any>;
 	modifiedFields: any;
 	paginationDelta: any;
 	snapshotUpdated: boolean;
-	snapshots: Array<ISnapshot>;
+	snapshots: Array<ISnapshots>;
 	snapshotsEnabled: boolean;
 	sorts: Array<any>;
 	views: Array<any>;
@@ -26,7 +23,14 @@ export interface IViewsContext {
 export interface ISnapshot {
 	configuration?: any;
 	erc: string;
+	id?: number;
 	label: string;
+}
+
+export interface ISnapshots {
+	headerVisible: boolean;
+	items: Array<ISnapshot>;
+	label?: string;
 }
 
 export type TViewsContextDispatch = ({
@@ -41,8 +45,7 @@ const ViewsContext = createContext<[IViewsContext, any]>([
 	{
 		activeSnapshotERC: null,
 		activeView: null,
-		filters: [],
-		filtersGroups: [],
+		groupedFilters: [],
 		modifiedFields: {},
 		paginationDelta: null,
 		snapshotUpdated: false,

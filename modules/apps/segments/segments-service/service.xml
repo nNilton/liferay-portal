@@ -46,9 +46,6 @@
 		<finder name="GroupId" return-type="Collection">
 			<finder-column arrayable-operator="OR" name="groupId" />
 		</finder>
-		<finder name="CompanyId" return-type="Collection">
-			<finder-column arrayable-operator="OR" name="companyId" />
-		</finder>
 		<finder name="Active" return-type="Collection">
 			<finder-column name="active" />
 		</finder>
@@ -66,6 +63,11 @@
 		<finder name="G_SRC" return-type="Collection">
 			<finder-column arrayable-operator="OR" name="groupId" />
 			<finder-column name="source" />
+		</finder>
+		<finder name="G_A_SRC" return-type="Collection">
+			<finder-column arrayable-operator="OR" name="groupId" />
+			<finder-column name="active" />
+			<finder-column arrayable-operator="OR" name="source" />
 		</finder>
 	</entity>
 	<entity local-service="true" name="SegmentsEntryRel" remote-service="true">
@@ -164,7 +166,8 @@
 
 		<!-- Other fields -->
 
-		<column name="segmentsEntryId" type="long" />
+		<column name="segmentsEntryERC" type="String" />
+		<column name="segmentsEntryScopeERC" type="String" />
 		<column name="segmentsExperienceKey" type="String" />
 		<column name="plid" type="long" />
 		<column localized="true" name="name" type="String" />
@@ -184,17 +187,22 @@
 		<finder name="GroupId" return-type="Collection">
 			<finder-column name="groupId" />
 		</finder>
-		<finder name="SegmentsEntryId" return-type="Collection">
-			<finder-column name="segmentsEntryId" />
-		</finder>
 		<finder name="G_P" return-type="Collection">
 			<finder-column name="groupId" />
 			<finder-column name="plid" />
 		</finder>
-		<finder name="G_S_P" return-type="Collection">
+		<finder name="G_A" return-type="Collection">
+			<finder-column arrayable-operator="OR" name="groupId" />
+			<finder-column name="active" />
+		</finder>
+		<finder name="SEERC_SESERC" return-type="Collection">
+			<finder-column name="segmentsEntryERC" />
+			<finder-column name="segmentsEntryScopeERC" />
+		</finder>
+		<finder name="G_SEERC_SESERC" return-type="Collection">
 			<finder-column name="groupId" />
-			<finder-column name="segmentsEntryId" />
-			<finder-column name="plid" />
+			<finder-column name="segmentsEntryERC" />
+			<finder-column name="segmentsEntryScopeERC" />
 		</finder>
 		<finder name="G_SEK_P" return-type="SegmentsExperience" unique="true">
 			<finder-column name="groupId" />
@@ -221,9 +229,16 @@
 			<finder-column name="plid" />
 			<finder-column name="active" />
 		</finder>
-		<finder name="G_S_P_A" return-type="Collection">
+		<finder name="G_SEERC_SESERC_P" return-type="Collection">
 			<finder-column name="groupId" />
-			<finder-column arrayable-operator="OR" name="segmentsEntryId" />
+			<finder-column name="segmentsEntryERC" />
+			<finder-column name="segmentsEntryScopeERC" />
+			<finder-column name="plid" />
+		</finder>
+		<finder name="G_SEERC_SESERC_P_A" return-type="Collection">
+			<finder-column name="groupId" />
+			<finder-column arrayable-operator="OR" name="segmentsEntryERC" />
+			<finder-column name="segmentsEntryScopeERC" />
 			<finder-column name="plid" />
 			<finder-column name="active" />
 		</finder>

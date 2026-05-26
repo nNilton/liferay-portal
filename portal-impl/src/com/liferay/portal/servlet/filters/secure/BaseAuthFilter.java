@@ -17,6 +17,7 @@ import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
 import com.liferay.portal.kernel.security.auth.http.HttpAuthorizationHeader;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
+import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
 import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.servlet.ProtectedServletRequest;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -210,8 +211,6 @@ public abstract class BaseAuthFilter extends BasePortalFilter {
 	}
 
 	protected void initThreadLocals(User user) throws Exception {
-		CompanyThreadLocal.setCompanyId(user.getCompanyId());
-
 		PrincipalThreadLocal.setName(user.getUserId());
 
 		if (!_usePermissionChecker) {
@@ -315,7 +314,8 @@ public abstract class BaseAuthFilter extends BasePortalFilter {
 					httpServletRequest, "authType");
 
 				if (authType == null) {
-					Company company = PortalUtil.getCompany(httpServletRequest);
+					Company company = CompanyLocalServiceUtil.getCompany(
+						CompanyThreadLocal.getCompanyId());
 
 					authType = company.getAuthType();
 				}

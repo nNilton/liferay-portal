@@ -30,6 +30,7 @@ jest.mock('@ckeditor/ckeditor5-style/dist/index', () => ({}));
 jest.mock('@ckeditor/ckeditor5-table/dist/index', () => ({}));
 jest.mock('@ckeditor/ckeditor5-ui/dist/index', () => ({}));
 jest.mock('@ckeditor/ckeditor5-widget/dist/index', () => ({}));
+jest.mock('@jsonurl/jsonurl', () => ({}));
 
 class MockBroadcastChannel {
 	name: string;
@@ -62,6 +63,10 @@ class MockBroadcastChannel {
 
 (globalThis as any).Liferay = {
 	...(globalThis.Liferay || {}),
+	Browser: {
+		...(globalThis.Liferay.Browser || {}),
+		isMac: () => false,
+	},
 	Language: {
 		...(globalThis.Liferay.Language || {}),
 		direction: {en_US: 'rtl'},
@@ -72,6 +77,7 @@ class MockBroadcastChannel {
 		getBCP47LanguageId: () => 'en-US',
 		getDefaultLanguageId: () => 'en_US',
 		getLanguageId: () => 'en_US',
+		getTimeZone: () => 'UTC',
 		getUserId: () => '1',
 	},
 	Util: {
@@ -80,4 +86,7 @@ class MockBroadcastChannel {
 		formatStorage: (size: number) => `${size / 1024} KB`,
 	},
 	authToken: 'mocked-auth-token',
+	detach: () => {},
+	fire: () => {},
+	on: () => {},
 };

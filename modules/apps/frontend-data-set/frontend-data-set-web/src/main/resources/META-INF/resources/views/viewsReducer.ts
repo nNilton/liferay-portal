@@ -6,23 +6,35 @@
 import {deepClone} from 'frontend-js-web';
 
 import {IView} from '../utils/types';
-import {ISnapshot} from './ViewsContext';
+import {ISnapshot, ISnapshots} from './ViewsContext';
 import getViewComponent from './getViewComponent';
+
+const mapSnapshots = (
+	snapshots: Array<ISnapshots>,
+	erc: string,
+	updater: (snapshot: ISnapshot) => ISnapshot
+) =>
+	snapshots.map((group) => ({
+		...group,
+		items: group.items.map((snapshot) =>
+			snapshot.erc === erc ? updater(snapshot) : snapshot
+		),
+	}));
 
 export enum EViewsActionTypes {
 	ADD_OR_UPDATE_SNAPSHOT = 'ADD_OR_UPDATE_SNAPSHOT',
 	BATCH_UPDATE = 'BATCH_UPDATE',
 	DELETE_SNAPSHOT = 'DELETE_SNAPSHOT',
+	NOOP = 'NOOP',
 	RENAME_ACTIVE_SNAPSHOT = 'RENAME_ACTIVE_SNAPSHOT',
 	RESET_TO_DEFAULT_SNAPSHOT = 'RESET_TO_DEFAULT_SNAPSHOT',
 	UPDATE_ACTIVE_SNAPSHOT = 'UPDATE_ACTIVE_SNAPSHOT',
 	UPDATE_ACTIVE_VIEW = 'UPDATE_ACTIVE_VIEW',
 	UPDATE_FIELD = 'UPDATE_FIELD',
-	UPDATE_FILTERS = 'UPDATE_FILTERS',
-	UPDATE_FILTERS_CX = 'UPDATE_FILTERS_CX',
 	UPDATE_PAGE_NUMBER = 'UPDATE_PAGE_NUMBER',
 	UPDATE_PAGINATION_DELTA = 'UPDATE_PAGINATION_DELTA',
 	UPDATE_SEARCH_PARAM = 'UPDATE_SEARCH_PARAM',
+	UPDATE_SNAPSHOT_UPDATED = 'UPDATE_SNAPSHOT_UPDATED',
 	UPDATE_SORTING = 'UPDATE_SORTING',
 	UPDATE_VIEW_COMPONENT = 'UPDATE_VIEW_COMPONENT',
 	UPDATE_VISIBLE_FIELD_NAMES = 'UPDATE_VISIBLE_FIELD_NAMES',
@@ -34,27 +46,40 @@ type TViewsActions = {
 
 const viewsActions: TViewsActions = {
 	[EViewsActionTypes.ADD_OR_UPDATE_SNAPSHOT]: (state, value) => {
-		const {snapshots} = state;
+		const {snapshots}: {snapshots: Array<ISnapshots>} = state;
 
 		const {configuration, erc} = value;
 
-		const existentSnapshot = snapshots.find(
-			(snapshot: ISnapshot) => snapshot.erc === erc
+		const existsInSnapshots = snapshots.some((group) =>
+			group.items.some((snapshot) => snapshot.erc === erc)
 		);
 
-		let updatedSnapshots;
+		let updatedSnapshots: Array<ISnapshots>;
 
-		if (!existentSnapshot) {
-			updatedSnapshots = snapshots.concat([value]);
+		if (existsInSnapshots) {
+			updatedSnapshots = mapSnapshots(snapshots, erc, (snapshot) => ({
+				...snapshot,
+				configuration,
+			}));
 		}
 		else {
-			updatedSnapshots = snapshots.map((snapshot: ISnapshot) => {
-				if (snapshot.erc === erc) {
-					snapshot.configuration = configuration;
-				}
+			const hiddenHeaderSnapshotsIndex = snapshots.findIndex(
+				(group) => !group.headerVisible
+			);
 
-				return snapshot;
-			});
+			if (hiddenHeaderSnapshotsIndex >= 0) {
+				updatedSnapshots = snapshots.map((group, index) =>
+					index === hiddenHeaderSnapshotsIndex
+						? {...group, items: [...group.items, value]}
+						: group
+				);
+			}
+			else {
+				updatedSnapshots = [
+					{headerVisible: false, items: [value]},
+					...snapshots,
+				];
+			}
 		}
 
 		return {
@@ -80,35 +105,49 @@ const viewsActions: TViewsActions = {
 		}, state);
 	},
 	[EViewsActionTypes.DELETE_SNAPSHOT]: (state, value) => {
-		const {defaultSnapshot, snapshots} = state;
+		const {
+			defaultSnapshot,
+			snapshots,
+		}: {
+			defaultSnapshot: any;
+			snapshots: Array<ISnapshots>;
+		} = state;
 
-		const remainingSnapshots = snapshots.filter(
-			(snapshot: ISnapshot) => snapshot.erc !== value.snapshotERC
-		);
+		const updatedSnapshots = snapshots.map((group) => ({
+			...group,
+			items: group.items.filter(
+				(snapshot) => snapshot.erc !== value.snapshotERC
+			),
+		}));
 
 		return {
 			...state,
 			...defaultSnapshot,
 			activeSnapshotERC: null,
 			snapshotUpdated: false,
-			snapshots: remainingSnapshots,
+			snapshots: updatedSnapshots,
 		};
 	},
+	[EViewsActionTypes.NOOP]: (state) => state,
 	[EViewsActionTypes.RENAME_ACTIVE_SNAPSHOT]: (state, value) => {
-		const {activeSnapshotERC, snapshots} = state;
+		const {
+			activeSnapshotERC,
+			snapshots,
+		}: {
+			activeSnapshotERC: string;
+			snapshots: Array<ISnapshots>;
+		} = state;
 
-		const updatedSnapshots = snapshots.map((snapshot: ISnapshot) => {
-			if (snapshot.erc === activeSnapshotERC) {
-				snapshot.label = value.label;
-			}
-
-			return snapshot;
-		});
+		const updatedSnapshots = mapSnapshots(
+			snapshots,
+			activeSnapshotERC,
+			(snapshot) => ({...snapshot, label: value.label})
+		);
 
 		return {
 			...state,
 			snapshotUpdated: false,
-			snapshots: [...updatedSnapshots],
+			snapshots: updatedSnapshots,
 		};
 	},
 	[EViewsActionTypes.RESET_TO_DEFAULT_SNAPSHOT]: (state) => {
@@ -156,22 +195,6 @@ const viewsActions: TViewsActions = {
 			snapshotUpdated: true,
 		};
 	},
-	[EViewsActionTypes.UPDATE_FILTERS]: (state, value) => {
-		return {
-			...state,
-			filters: value,
-			snapshotUpdated: true,
-		};
-	},
-	[EViewsActionTypes.UPDATE_FILTERS_CX]: (state, value) => {
-		const {defaultSnapshot} = state;
-
-		return {
-			...state,
-			defaultSnapshot: {...defaultSnapshot, filters: deepClone(value)},
-			filters: value,
-		};
-	},
 	[EViewsActionTypes.UPDATE_FIELD]: (state, value) => {
 		const {defaultSnapshot, modifiedFields} = state;
 
@@ -213,6 +236,12 @@ const viewsActions: TViewsActions = {
 			searchParam: value,
 		};
 	},
+	[EViewsActionTypes.UPDATE_SNAPSHOT_UPDATED]: (state, value: boolean) => {
+		return {
+			...state,
+			snapshotUpdated: value,
+		};
+	},
 	[EViewsActionTypes.UPDATE_SORTING]: (state, value) => {
 		return {
 			...state,
@@ -220,7 +249,6 @@ const viewsActions: TViewsActions = {
 			sorts: value,
 		};
 	},
-
 	[EViewsActionTypes.UPDATE_VIEW_COMPONENT]: (state, value) => {
 		const {activeView, views} = state;
 

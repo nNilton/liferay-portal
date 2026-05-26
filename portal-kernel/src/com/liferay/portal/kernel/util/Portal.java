@@ -571,6 +571,9 @@ public interface Portal {
 
 	public long getDefaultCompanyId();
 
+	public String getDefaultVirtualHostname(
+		boolean companyFallback, LayoutSet layoutSet);
+
 	public String getEmailFromAddress(
 		PortletPreferences portletPreferences, long companyId,
 		String defaultValue);
@@ -618,9 +621,10 @@ public interface Portal {
 
 	public String getJsSafePortletId(String portletId);
 
-	public String getLayoutActualURL(Layout layout);
+	public String getLayoutActualURL(Layout layout) throws PortalException;
 
-	public String getLayoutActualURL(Layout layout, String mainPath);
+	public String getLayoutActualURL(Layout layout, String mainPath)
+		throws PortalException;
 
 	public String getLayoutActualURL(
 			long groupId, boolean privateLayout, String mainPath,

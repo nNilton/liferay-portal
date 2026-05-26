@@ -186,10 +186,12 @@ public class CommerceProductPriceEntryCalculationTest {
 				cpInstance.getCPInstanceId(), BigDecimal.ONE, true,
 				StringPool.BLANK, commerceContext);
 
-		CommerceMoney commerceMoney = commerceProductPrice.getFinalPrice();
+		CommerceMoney finalPriceCommerceMoney =
+			commerceProductPrice.getFinalPrice();
 
 		Assert.assertTrue(
-			BigDecimalUtil.eq(new BigDecimal(20), commerceMoney.getPrice()));
+			BigDecimalUtil.eq(
+				new BigDecimal(20), finalPriceCommerceMoney.getPrice()));
 
 		CommerceDiscount commerceDiscount1 =
 			CommerceDiscountTestUtil.addAccountCommerceDiscount(
@@ -239,7 +241,7 @@ public class CommerceProductPriceEntryCalculationTest {
 				cpInstance.getCPInstanceId(), BigDecimal.ONE, true,
 				StringPool.BLANK, commerceContext);
 
-		commerceMoney = commerceProductPrice.getFinalPrice();
+		finalPriceCommerceMoney = commerceProductPrice.getFinalPrice();
 
 		BigDecimal price = commercePriceEntry.getPrice();
 
@@ -248,11 +250,11 @@ public class CommerceProductPriceEntryCalculationTest {
 			BigDecimalUtil.divide(
 				commerceDiscount2.getLevel1(), 100, 2, RoundingMode.HALF_UP));
 
+		BigDecimal finalPrice = finalPriceCommerceMoney.getPrice();
+
 		Assert.assertEquals(
 			BigDecimalUtil.subtract(price, discountValue),
-			commerceMoney.getPrice(
-			).doubleValue(),
-			0);
+			finalPrice.doubleValue(), 0);
 	}
 
 	@Test
@@ -328,7 +330,102 @@ public class CommerceProductPriceEntryCalculationTest {
 			BigDecimalUtil.eq(new BigDecimal(50), commerceMoney.getPrice()));
 
 		UnsafeRunnable<Exception> unsafeRunnable =
-			_schedulerJobConfiguration.getJobExecutorUnsafeRunnable();
+			_priceEntrySchedulerJobConfiguration.getJobExecutorUnsafeRunnable();
+
+		unsafeRunnable.run();
+
+		commerceProductPrice =
+			_commerceProductPriceCalculation.getCommerceProductPrice(
+				cpInstance.getCPInstanceId(), BigDecimal.ONE, true,
+				StringPool.BLANK, commerceContext);
+
+		commerceMoney = commerceProductPrice.getFinalPrice();
+
+		Assert.assertTrue(
+			BigDecimalUtil.eq(new BigDecimal(20), commerceMoney.getPrice()));
+	}
+
+	@Test
+	public void testPriceListExpirationDate() throws Exception {
+		frutillaRule.scenario(
+			"The price of a product is calculated correctly"
+		).given(
+			"A product with a base price and a higher-priority price list"
+		).when(
+			"The higher-priority price list expires"
+		).then(
+			"The product price falls back to the base price list"
+		);
+
+		CPDefinition cpDefinition = CPTestUtil.addCPDefinitionFromCatalog(
+			_commerceCatalog.getGroupId(), SimpleCPTypeConstants.NAME, true,
+			true);
+
+		List<CPInstance> cpInstances = cpDefinition.getCPInstances();
+
+		CPInstance cpInstance = cpInstances.get(0);
+
+		_commercePriceEntryLocalService.addCommercePriceEntry(
+			RandomTestUtil.randomString(), cpDefinition.getCProductId(),
+			cpInstance.getCPInstanceUuid(),
+			_commercePriceList.getCommercePriceListId(), new BigDecimal(20),
+			false, BigDecimal.ZERO, StringPool.BLANK, _serviceContext);
+
+		CommerceContext commerceContext = new TestCommerceContext(
+			_accountEntry, _commerceCurrency, _commerceChannel, _user, _group,
+			null);
+
+		CommerceProductPrice commerceProductPrice =
+			_commerceProductPriceCalculation.getCommerceProductPrice(
+				cpInstance.getCPInstanceId(), BigDecimal.ONE, true,
+				StringPool.BLANK, commerceContext);
+
+		CommerceMoney commerceMoney = commerceProductPrice.getFinalPrice();
+
+		Assert.assertTrue(
+			BigDecimalUtil.eq(new BigDecimal(20), commerceMoney.getPrice()));
+
+		CommercePriceList commercePriceList =
+			_commercePriceListLocalService.addCommercePriceList(
+				RandomTestUtil.randomString(), TestPropsValues.getUserId(),
+				_commerceCatalog.getGroupId(), 0, false,
+				_commerceCurrency.getCode(), 1, 1, 0, 1, 2020, 1, 1, 0, 1, 2100,
+				RandomTestUtil.randomString(), false, false, 10.0,
+				CommercePriceListConstants.TYPE_PRICE_LIST, _serviceContext);
+
+		_commercePriceEntryLocalService.addCommercePriceEntry(
+			RandomTestUtil.randomString(), cpDefinition.getCProductId(),
+			cpInstance.getCPInstanceUuid(),
+			commercePriceList.getCommercePriceListId(), new BigDecimal(50),
+			false, BigDecimal.ZERO, StringPool.BLANK, _serviceContext);
+
+		commerceProductPrice =
+			_commerceProductPriceCalculation.getCommerceProductPrice(
+				cpInstance.getCPInstanceId(), BigDecimal.ONE, true,
+				StringPool.BLANK, commerceContext);
+
+		commerceMoney = commerceProductPrice.getFinalPrice();
+
+		Assert.assertTrue(
+			BigDecimalUtil.eq(new BigDecimal(50), commerceMoney.getPrice()));
+
+		commercePriceList.setExpirationDate(RandomTestUtil.nextDate());
+
+		_commercePriceListLocalService.updateCommercePriceList(
+			commercePriceList);
+
+		commerceProductPrice =
+			_commerceProductPriceCalculation.getCommerceProductPrice(
+				cpInstance.getCPInstanceId(), BigDecimal.ONE, true,
+				StringPool.BLANK, commerceContext);
+
+		commerceMoney = commerceProductPrice.getFinalPrice();
+
+		Assert.assertTrue(
+			BigDecimalUtil.eq(new BigDecimal(50), commerceMoney.getPrice()));
+
+		UnsafeRunnable<Exception> unsafeRunnable =
+			_priceListSchedulerJobConfiguration.getJobExecutorUnsafeRunnable();
 
 		unsafeRunnable.run();
 
@@ -392,7 +489,12 @@ public class CommerceProductPriceEntryCalculationTest {
 	@Inject(
 		filter = "component.name=com.liferay.commerce.price.list.internal.scheduler.CheckCommercePriceEntrySchedulerJobConfiguration"
 	)
-	private SchedulerJobConfiguration _schedulerJobConfiguration;
+	private SchedulerJobConfiguration _priceEntrySchedulerJobConfiguration;
+
+	@Inject(
+		filter = "component.name=com.liferay.commerce.price.list.internal.scheduler.CheckCommercePriceListSchedulerJobConfiguration"
+	)
+	private SchedulerJobConfiguration _priceListSchedulerJobConfiguration;
 
 	private ServiceContext _serviceContext;
 	private User _user;

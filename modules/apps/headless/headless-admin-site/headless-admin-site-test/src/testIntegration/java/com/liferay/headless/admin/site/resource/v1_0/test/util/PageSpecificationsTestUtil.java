@@ -15,10 +15,14 @@ import com.liferay.headless.admin.site.client.custom.field.CustomField;
 import com.liferay.headless.admin.site.client.custom.field.CustomValue;
 import com.liferay.headless.admin.site.client.dto.v1_0.BasicWidgetPageWidgetInstance;
 import com.liferay.headless.admin.site.client.dto.v1_0.ContentPageSpecification;
+import com.liferay.headless.admin.site.client.dto.v1_0.EmbeddedPageSpecification;
 import com.liferay.headless.admin.site.client.dto.v1_0.GeneralConfig;
+import com.liferay.headless.admin.site.client.dto.v1_0.LinkToPagePageSpecification;
+import com.liferay.headless.admin.site.client.dto.v1_0.LinkToURLPageSpecification;
 import com.liferay.headless.admin.site.client.dto.v1_0.NestedApplicationsWidgetPageWidgetInstance;
 import com.liferay.headless.admin.site.client.dto.v1_0.NestedWidgetSection;
 import com.liferay.headless.admin.site.client.dto.v1_0.PageExperience;
+import com.liferay.headless.admin.site.client.dto.v1_0.PageSetPageSpecification;
 import com.liferay.headless.admin.site.client.dto.v1_0.PageSpecification;
 import com.liferay.headless.admin.site.client.dto.v1_0.Settings;
 import com.liferay.headless.admin.site.client.dto.v1_0.SitePage;
@@ -35,9 +39,11 @@ import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalServ
 import com.liferay.layout.test.util.ContentLayoutTestUtil;
 import com.liferay.petra.function.UnsafeFunction;
 import com.liferay.petra.function.UnsafeRunnable;
+import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Layout;
+import com.liferay.portal.kernel.model.LayoutTypePortletConstants;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
@@ -303,6 +309,21 @@ public class PageSpecificationsTestUtil {
 			pageSpecifications[1], draftLayout.getPlid());
 	}
 
+	public static void assertPageSpecifications(
+		PageSpecification[] actualPageSpecifications,
+		PageSpecification[] expectedPageSpecifications) {
+
+		Assert.assertEquals(
+			actualPageSpecifications.toString(),
+			expectedPageSpecifications.length, actualPageSpecifications.length);
+		Assert.assertEquals(
+			actualPageSpecifications.toString(), 1,
+			actualPageSpecifications.length);
+
+		Assert.assertEquals(
+			expectedPageSpecifications[0], actualPageSpecifications[0]);
+	}
+
 	public static void assertWidgetPageSpecification(
 		WidgetPageSpecification expectedWidgetPageSpecification,
 		WidgetPageSpecification actualWidgetPageSpecification) {
@@ -366,8 +387,11 @@ public class PageSpecificationsTestUtil {
 			contentPageSpecificationExternalReferenceCode);
 
 		if (pageExperiences == null) {
-			pageExperiences = PageExperiencesTestUtil.getPageExperiences(
-				contentPageSpecificationExternalReferenceCode, scopeGroupId);
+			pageExperiences = PageExperiencesTestUtil.getDefaultPageExperiences(
+				PageElementsTestUtil.getPageElements(
+					RandomTestUtil.randomInt(1, 3), StringPool.BLANK,
+					scopeGroupId),
+				contentPageSpecificationExternalReferenceCode);
 		}
 		else {
 			PageExperiencesTestUtil.modifyPageExperiences(
@@ -408,10 +432,54 @@ public class PageSpecificationsTestUtil {
 		};
 	}
 
+	public static PageSpecification[] getEmbeddedPageSpecifications(
+			String externalReferenceCode)
+		throws Exception {
+
+		return new PageSpecification[] {
+			_getPageSpecification(
+				externalReferenceCode, EmbeddedPageSpecification::new,
+				PageSpecification.Type.EMBEDDED_PAGE_SPECIFICATION)
+		};
+	}
+
 	public static ExpandoTableAutocloseable getExpandoTableAutoCloseable()
 		throws Exception {
 
 		return new ExpandoTableAutocloseable();
+	}
+
+	public static PageSpecification[] getLinkToPagePageSpecifications(
+			String externalReferenceCode)
+		throws Exception {
+
+		return new PageSpecification[] {
+			_getPageSpecification(
+				externalReferenceCode, LinkToPagePageSpecification::new,
+				PageSpecification.Type.LINK_TO_PAGE_PAGE_SPECIFICATION)
+		};
+	}
+
+	public static PageSpecification[] getLinkToURLPageSpecifications(
+			String externalReferenceCode)
+		throws Exception {
+
+		return new PageSpecification[] {
+			_getPageSpecification(
+				externalReferenceCode, LinkToURLPageSpecification::new,
+				PageSpecification.Type.LINK_TO_URL_PAGE_SPECIFICATION)
+		};
+	}
+
+	public static PageSpecification[] getPageSetPageSpecifications(
+			String externalReferenceCode)
+		throws Exception {
+
+		return new PageSpecification[] {
+			_getPageSpecification(
+				externalReferenceCode, PageSetPageSpecification::new,
+				PageSpecification.Type.PAGE_SET_PAGE_SPECIFICATION)
+		};
 	}
 
 	public static PageSpecification[] getPageSpecifications(
@@ -521,6 +589,11 @@ public class PageSpecificationsTestUtil {
 			columns.add("column-2");
 			columns.add("column-3");
 		}
+		else {
+			for (int i = 1; i <= 100; i++) {
+				columns.add(LayoutTypePortletConstants.COLUMN_PREFIX + i);
+			}
+		}
 
 		return TransformUtil.transformToArray(
 			columns,
@@ -596,6 +669,8 @@ public class PageSpecificationsTestUtil {
 			layout.getExternalReferenceCode());
 
 		_assertProblemException(
+			"The draft page specification's external reference code does not " +
+				"match the expected value",
 			() -> unsafeFunction.apply(publishedContentPageSpecification));
 
 		Assert.assertEquals(
@@ -618,7 +693,9 @@ public class PageSpecificationsTestUtil {
 			draftLayout.getStatus(), WorkflowConstants.STATUS_DRAFT);
 
 		_assertProblemException(
-			() -> unsafeFunction.apply(draftContentPageSpecification));
+			"The draft page specification's external reference code does not " +
+				"match the expected value",
+			() -> unsafeFunction.apply(publishedContentPageSpecification));
 
 		ContentLayoutTestUtil.publishLayout(layout.fetchDraftLayout(), layout);
 
@@ -634,12 +711,14 @@ public class PageSpecificationsTestUtil {
 			PageSpecification.Status.APPROVED);
 
 		_assertProblemException(
+			"The draft page specification is not in draft status",
 			() -> unsafeFunction.apply(publishedContentPageSpecification));
 
 		publishedContentPageSpecification.setExternalReferenceCode(
 			layout.getExternalReferenceCode());
 
 		_assertProblemException(
+			"The draft page specification is not in draft status",
 			() -> unsafeFunction.apply(publishedContentPageSpecification));
 
 		draftContentPageSpecification.setExternalReferenceCode(
@@ -656,6 +735,8 @@ public class PageSpecificationsTestUtil {
 			draftLayout.getPlid());
 
 		_assertProblemException(
+			"The draft page specification's external reference code does not " +
+				"match the expected value",
 			() -> unsafeFunction.apply(draftContentPageSpecification));
 
 		draftLayout = LayoutLocalServiceUtil.updateStatus(
@@ -675,6 +756,8 @@ public class PageSpecificationsTestUtil {
 			draftLayout.getStatus(), WorkflowConstants.STATUS_DRAFT);
 
 		_assertProblemException(
+			"The draft page specification's external reference code does not " +
+				"match the expected value",
 			() -> unsafeFunction.apply(draftContentPageSpecification));
 	}
 
@@ -747,7 +830,7 @@ public class PageSpecificationsTestUtil {
 	}
 
 	private static void _assertProblemException(
-			UnsafeRunnable<Exception> unsafeRunnable)
+			String expectedTitle, UnsafeRunnable<Exception> unsafeRunnable)
 		throws Exception {
 
 		try {
@@ -758,7 +841,7 @@ public class PageSpecificationsTestUtil {
 			Problem problem = problemException.getProblem();
 
 			Assert.assertEquals("BAD_REQUEST", problem.getStatus());
-			Assert.assertNull(problem.getTitle());
+			Assert.assertEquals(expectedTitle, problem.getTitle());
 		}
 	}
 
@@ -996,6 +1079,24 @@ public class PageSpecificationsTestUtil {
 				}
 			},
 			NestedWidgetSection.class);
+	}
+
+	private static PageSpecification _getPageSpecification(
+			String externalReferenceCode,
+			UnsafeSupplier<PageSpecification, Exception>
+				pageSpecificationUnsafeSupplier,
+			PageSpecification.Type type)
+		throws Exception {
+
+		PageSpecification pageSpecification =
+			pageSpecificationUnsafeSupplier.get();
+
+		pageSpecification.setCustomFields(new CustomField[0]);
+		pageSpecification.setExternalReferenceCode(externalReferenceCode);
+		pageSpecification.setStatus(PageSpecification.Status.APPROVED);
+		pageSpecification.setType(type);
+
+		return pageSpecification;
 	}
 
 	private static GeneralConfig.ApplicationDecorator

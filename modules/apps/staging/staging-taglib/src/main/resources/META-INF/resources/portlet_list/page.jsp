@@ -29,19 +29,15 @@ StagingGroupHelper stagingGroupHelper = StagingGroupHelperUtil.getStagingGroupHe
 
 		PortletDataHandler portletDataHandler = portlet.getPortletDataHandlerInstance();
 
-		if (!portletDataHandler.isEnabled(company.getCompanyId()) || (portletDataHandler.isDataPortalLevel() && !stagingGroupHelper.isCompanyGroup(group))) {
+		if (portletDataHandler.isHidden() || !portletDataHandler.isEnabled(company.getCompanyId()) || (portletDataHandler.isDataPortalLevel() && !stagingGroupHelper.isCompanyGroup(group))) {
 			continue;
 		}
 
-		String portletDataHandlerName = portletDataHandler.getName();
+		String portletTitle = portletDataHandler.getTitle(locale);
 
-		if (portletDataHandlerNames.contains(portletDataHandlerName)) {
-			continue;
+		if (portletTitle == null) {
+			portletTitle = PortalUtil.getPortletTitle(portlet, application, locale);
 		}
-
-		portletDataHandlerNames.add(portletDataHandlerName);
-
-		String portletTitle = PortalUtil.getPortletTitle(portlet, application, locale);
 
 		PortletDataHandlerControl[] exportMetadataPortletDataHandlerControls = portletDataHandler.getExportMetadataPortletDataHandlerControls();
 
@@ -80,29 +76,19 @@ StagingGroupHelper stagingGroupHelper = StagingGroupHelperUtil.getStagingGroupHe
 			}
 		}
 
-		List<String> subtitles = null;
-		String tag = null;
-
-		if (exportPortletDataHandlerControls.length == 1) {
-			PortletDataHandlerControl portletDataHandlerControl = exportPortletDataHandlerControls[0];
-
-			subtitles = portletDataHandlerControl.getSubtitles();
-			tag = portletDataHandlerControl.getTag();
-		}
-
 		boolean showPortletDataInput = MapUtil.getBoolean(parameterMap, PortletDataHandlerKeys.PORTLET_DATA + StringPool.UNDERLINE + portlet.getPortletId(), portletDataHandler.isPublishToLiveByDefault()) || MapUtil.getBoolean(parameterMap, PortletDataHandlerKeys.PORTLET_DATA_ALL);
 	%>
 
-		<li class="tree-item <%= ((exportModelCount > 0) || showAllPortlets) ? StringPool.BLANK : "deletions" %> <%= !portletDataHandler.isHidden() ? StringPool.BLANK : "hide" %>">
+		<li class="tree-item <%= ((exportModelCount > 0) || showAllPortlets) ? StringPool.BLANK : "deletions" %>" <%= portletDataHandler.isBatch() ? "data-portlet-type=\"batch\"" : StringPool.BLANK %>>
 			<liferay-staging:checkbox
 				checked="<%= showPortletDataInput %>"
 				deletions="<%= modelDeletionCount %>"
+				description="<%= portletDataHandler.getDescription(locale) %>"
 				disabled="<%= disableInputs %>"
 				items="<%= exportModelCount %>"
 				label="<%= portletTitle %>"
 				name="<%= PortletDataHandlerKeys.PORTLET_DATA + StringPool.UNDERLINE + portlet.getPortletId() %>"
-				subtitles="<%= subtitles %>"
-				tag="<%= tag %>"
+				tag="<%= portletDataHandler.getTag(locale) %>"
 			/>
 
 			<%
@@ -113,124 +99,126 @@ StagingGroupHelper stagingGroupHelper = StagingGroupHelperUtil.getStagingGroupHe
 			}
 			%>
 
-			<ul class="hide" id="<portlet:namespace />showChangeContent_<%= portlet.getPortletId() %>">
-				<li>
-					<span class="selected-labels" id="<portlet:namespace />selectedContent_<%= portlet.getPortletId() %>"></span>
+			<c:if test="<%= ArrayUtil.isNotEmpty(exportMetadataPortletDataHandlerControls) || ArrayUtil.isNotEmpty(exportPortletDataHandlerControls) %>">
+				<ul class="hide" id="<portlet:namespace />showChangeContent_<%= portlet.getPortletId() %>">
+					<li>
+						<span class="selected-labels" id="<portlet:namespace />selectedContent_<%= portlet.getPortletId() %>"></span>
 
-					<span <%= !disableInputs ? StringPool.BLANK : "class=\"hide\"" %>>
-						<clay:button
-							cssClass="content-link modify-link pr-1"
-							data-portletid="<%= portletId %>"
-							data-portlettitle="<%= portletTitle %>"
-							displayType="link"
-							id='<%= liferayPortletResponse.getNamespace() + "contentLink_" + portlet.getPortletId() %>'
-							label="change"
-						/>
-
-						<span id="<portlet:namespace />rightContentArrow_<%= portlet.getPortletId() %>">
-							<clay:icon
-								symbol="angle-right-small"
+						<span <%= !disableInputs ? StringPool.BLANK : "class=\"hide\"" %>>
+							<clay:button
+								cssClass="content-link modify-link pr-1"
+								data-portletid="<%= portletId %>"
+								data-portlettitle="<%= portletTitle %>"
+								displayType="link"
+								id='<%= liferayPortletResponse.getNamespace() + "contentLink_" + portlet.getPortletId() %>'
+								label="change"
 							/>
+
+							<span id="<portlet:namespace />rightContentArrow_<%= portlet.getPortletId() %>">
+								<clay:icon
+									symbol="angle-right-small"
+								/>
+							</span>
+							<span class="hide" id="<portlet:namespace />downContentArrow_<%= portlet.getPortletId() %>">
+								<clay:icon
+									symbol="angle-down-small"
+								/>
+							</span>
 						</span>
-						<span class="hide" id="<portlet:namespace />downContentArrow_<%= portlet.getPortletId() %>">
-							<clay:icon
-								symbol="angle-down-small"
-							/>
-						</span>
-					</span>
-				</li>
-			</ul>
-
-			<div class="<%= (disableInputs && showPortletDataInput) ? StringPool.BLANK : "hide " %>" id="<portlet:namespace />content_<%= portlet.getPortletId() %>">
-				<ul class="lfr-tree list-unstyled">
-					<li class="tree-item">
-						<aui:fieldset cssClass="portlet-type-data-section" label="<%= portletTitle %>">
-							<c:if test="<%= (exportPortletDataHandlerControls != null) && !portletDataHandler.isEmptyControlsAllowed() %>">
-								<c:choose>
-									<c:when test="<%= type.equals(Constants.EXPORT) %>">
-
-										<%
-										request.setAttribute("render_controls.jsp-action", Constants.EXPORT);
-										request.setAttribute("render_controls.jsp-childControl", false);
-										request.setAttribute("render_controls.jsp-controls", exportPortletDataHandlerControls);
-										request.setAttribute("render_controls.jsp-disableInputs", disableInputs);
-										request.setAttribute("render_controls.jsp-manifestSummary", manifestSummary);
-										request.setAttribute("render_controls.jsp-parameterMap", parameterMap);
-										request.setAttribute("render_controls.jsp-portletDisabled", !portletDataHandler.isPublishToLiveByDefault());
-										request.setAttribute("render_controls.jsp-portletId", portlet.getPortletId());
-										%>
-
-										<aui:field-wrapper label='<%= ArrayUtil.isNotEmpty(exportMetadataPortletDataHandlerControls) ? "content" : StringPool.BLANK %>'>
-											<ul class="lfr-tree list-unstyled">
-												<liferay-util:include page="/portlet_list/render_controls.jsp" servletContext="<%= application %>" />
-											</ul>
-										</aui:field-wrapper>
-									</c:when>
-									<c:when test="<%= (liveGroup != null) && liveGroup.isStagedPortlet(portlet.getRootPortletId()) %>">
-
-										<%
-										request.setAttribute("render_controls.jsp-action", Constants.PUBLISH);
-										request.setAttribute("render_controls.jsp-childControl", false);
-										request.setAttribute("render_controls.jsp-controls", exportPortletDataHandlerControls);
-										request.setAttribute("render_controls.jsp-disableInputs", disableInputs);
-										request.setAttribute("render_controls.jsp-manifestSummary", manifestSummary);
-										request.setAttribute("render_controls.jsp-parameterMap", parameterMap);
-										request.setAttribute("render_controls.jsp-portletDisabled", !portletDataHandler.isPublishToLiveByDefault());
-										request.setAttribute("render_controls.jsp-portletId", portlet.getPortletId());
-										%>
-
-										<aui:field-wrapper label='<%= ArrayUtil.isNotEmpty(exportMetadataPortletDataHandlerControls) ? "content" : StringPool.BLANK %>'>
-											<ul class="lfr-tree list-unstyled">
-												<liferay-util:include page="/portlet_list/render_controls.jsp" servletContext="<%= application %>" />
-											</ul>
-										</aui:field-wrapper>
-									</c:when>
-								</c:choose>
-							</c:if>
-
-							<c:if test="<%= exportMetadataPortletDataHandlerControls != null %>">
-
-								<%
-								for (PortletDataHandlerControl portletDataHandlerControl : exportMetadataPortletDataHandlerControls) {
-									if (displayedControls.contains(portletDataHandlerControl.getName())) {
-										continue;
-									}
-
-									displayedControls.add(portletDataHandlerControl.getName());
-
-									PortletDataHandlerBoolean portletDataHandlerBoolean = (PortletDataHandlerBoolean)portletDataHandlerControl;
-								%>
-
-									<c:if test="<%= ArrayUtil.isNotEmpty(portletDataHandlerBoolean.getChildrenPortletDataHandlerControls()) %>">
-
-										<%
-										request.setAttribute("render_controls.jsp-controls", portletDataHandlerBoolean.getChildrenPortletDataHandlerControls());
-										request.setAttribute("render_controls.jsp-portletId", portlet.getPortletId());
-										%>
-
-										<aui:field-wrapper label="content-metadata">
-											<ul class="lfr-tree list-unstyled">
-												<liferay-util:include page="/portlet_list/render_controls.jsp" servletContext="<%= application %>" />
-											</ul>
-										</aui:field-wrapper>
-									</c:if>
-
-								<%
-								}
-								%>
-
-							</c:if>
-						</aui:fieldset>
 					</li>
 				</ul>
-			</div>
 
-			<aui:script>
-				Liferay.Util.toggleBoxes(
-					'<portlet:namespace /><%= PortletDataHandlerKeys.PORTLET_DATA + StringPool.UNDERLINE + portlet.getPortletId() %>',
-					'<portlet:namespace />showChangeContent<%= StringPool.UNDERLINE + portlet.getPortletId() %>'
-				);
-			</aui:script>
+				<div class="<%= (disableInputs && showPortletDataInput) ? StringPool.BLANK : "hide " %>" id="<portlet:namespace />content_<%= portlet.getPortletId() %>">
+					<ul class="lfr-tree list-unstyled">
+						<li class="tree-item">
+							<aui:fieldset cssClass="portlet-type-data-section" label="<%= portletTitle %>">
+								<c:if test="<%= (exportPortletDataHandlerControls != null) && !portletDataHandler.isEmptyControlsAllowed() %>">
+									<c:choose>
+										<c:when test="<%= type.equals(Constants.EXPORT) %>">
+
+											<%
+											request.setAttribute("render_controls.jsp-action", Constants.EXPORT);
+											request.setAttribute("render_controls.jsp-childControl", false);
+											request.setAttribute("render_controls.jsp-controls", exportPortletDataHandlerControls);
+											request.setAttribute("render_controls.jsp-disableInputs", disableInputs);
+											request.setAttribute("render_controls.jsp-manifestSummary", manifestSummary);
+											request.setAttribute("render_controls.jsp-parameterMap", parameterMap);
+											request.setAttribute("render_controls.jsp-portletDisabled", !portletDataHandler.isPublishToLiveByDefault());
+											request.setAttribute("render_controls.jsp-portletId", portlet.getPortletId());
+											%>
+
+											<aui:field-wrapper label='<%= ArrayUtil.isNotEmpty(exportMetadataPortletDataHandlerControls) ? "content" : StringPool.BLANK %>'>
+												<ul class="lfr-tree list-unstyled">
+													<liferay-util:include page="/portlet_list/render_controls.jsp" servletContext="<%= application %>" />
+												</ul>
+											</aui:field-wrapper>
+										</c:when>
+										<c:when test="<%= (liveGroup != null) && liveGroup.isStagedPortlet(portlet.getRootPortletId()) %>">
+
+											<%
+											request.setAttribute("render_controls.jsp-action", Constants.PUBLISH);
+											request.setAttribute("render_controls.jsp-childControl", false);
+											request.setAttribute("render_controls.jsp-controls", exportPortletDataHandlerControls);
+											request.setAttribute("render_controls.jsp-disableInputs", disableInputs);
+											request.setAttribute("render_controls.jsp-manifestSummary", manifestSummary);
+											request.setAttribute("render_controls.jsp-parameterMap", parameterMap);
+											request.setAttribute("render_controls.jsp-portletDisabled", !portletDataHandler.isPublishToLiveByDefault());
+											request.setAttribute("render_controls.jsp-portletId", portlet.getPortletId());
+											%>
+
+											<aui:field-wrapper label='<%= ArrayUtil.isNotEmpty(exportMetadataPortletDataHandlerControls) ? "content" : StringPool.BLANK %>'>
+												<ul class="lfr-tree list-unstyled">
+													<liferay-util:include page="/portlet_list/render_controls.jsp" servletContext="<%= application %>" />
+												</ul>
+											</aui:field-wrapper>
+										</c:when>
+									</c:choose>
+								</c:if>
+
+								<c:if test="<%= exportMetadataPortletDataHandlerControls != null %>">
+
+									<%
+									for (PortletDataHandlerControl portletDataHandlerControl : exportMetadataPortletDataHandlerControls) {
+										if (displayedControls.contains(portletDataHandlerControl.getName())) {
+											continue;
+										}
+
+										displayedControls.add(portletDataHandlerControl.getName());
+
+										PortletDataHandlerBoolean portletDataHandlerBoolean = (PortletDataHandlerBoolean)portletDataHandlerControl;
+									%>
+
+										<c:if test="<%= ArrayUtil.isNotEmpty(portletDataHandlerBoolean.getChildrenPortletDataHandlerControls()) %>">
+
+											<%
+											request.setAttribute("render_controls.jsp-controls", portletDataHandlerBoolean.getChildrenPortletDataHandlerControls());
+											request.setAttribute("render_controls.jsp-portletId", portlet.getPortletId());
+											%>
+
+											<aui:field-wrapper label="content-metadata">
+												<ul class="lfr-tree list-unstyled">
+													<liferay-util:include page="/portlet_list/render_controls.jsp" servletContext="<%= application %>" />
+												</ul>
+											</aui:field-wrapper>
+										</c:if>
+
+									<%
+									}
+									%>
+
+								</c:if>
+							</aui:fieldset>
+						</li>
+					</ul>
+				</div>
+
+				<aui:script>
+					Liferay.Util.toggleBoxes(
+						'<portlet:namespace /><%= PortletDataHandlerKeys.PORTLET_DATA + StringPool.UNDERLINE + portlet.getPortletId() %>',
+						'<portlet:namespace />showChangeContent<%= StringPool.UNDERLINE + portlet.getPortletId() %>'
+					);
+				</aui:script>
+			</c:if>
 		</li>
 
 	<%
@@ -247,17 +235,19 @@ html = html.trim();
 	<%= html %>
 </ul>
 
-<c:if test="<%= type.equals(Constants.EXPORT) && !stagingGroupHelper.isCompanyGroup(group) %>">
+<c:if test='<%= type.equals(Constants.EXPORT) && (!stagingGroupHelper.isCompanyGroup(group) || FeatureFlagManagerUtil.isEnabled(company.getCompanyId(), "LPD-43996")) %>'>
 	<liferay-util:buffer
 		var="selectedContentOptionsLabel"
 	>
 		<liferay-ui:message key="for-each-of-the-selected-content-types,-export-their" />
 
-		<span aria-label="<%= LanguageUtil.get(request, "comments-associated-to-object-entries-are-currently-excluded-from-the-export") %>" class="lfr-portal-tooltip ml-1" title="<%= LanguageUtil.get(request, "comments-associated-to-object-entries-are-currently-excluded-from-the-export") %>">
-			<clay:icon
-				symbol="question-circle-full"
-			/>
-		</span>
+		<c:if test='<%= stagingGroupHelper.isCompanyGroup(group) && !FeatureFlagManagerUtil.isEnabled(company.getCompanyId(), "LPD-43996") %>'>
+			<span aria-label="<%= LanguageUtil.get(request, "comments-associated-to-object-entries-are-currently-excluded-from-the-export") %>" class="lfr-portal-tooltip ml-1" title="<%= LanguageUtil.get(request, "comments-associated-to-object-entries-are-currently-excluded-from-the-export") %>">
+				<clay:icon
+					symbol="question-circle-full"
+				/>
+			</span>
+		</c:if>
 	</liferay-util:buffer>
 
 	<aui:fieldset cssClass="content-options" label="<%= selectedContentOptionsLabel %>">

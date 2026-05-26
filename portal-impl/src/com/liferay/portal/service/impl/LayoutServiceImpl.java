@@ -199,8 +199,6 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 	 *         To see how the URL is normalized when accessed, see {@link
 	 *         com.liferay.portal.kernel.util.FriendlyURLNormalizerUtil#normalize(
 	 *         String)}.
-	 * @param  masterLayoutPageTemplateEntryERC the external reference code key
-	 *         of the master layout page template entry
 	 * @param  serviceContext the service context to be applied. Must set the
 	 *         UUID for the layout. Can set the creation date, modification
 	 *         date, and expando bridge attributes for the layout. For layouts
@@ -218,15 +216,14 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 			Map<Locale, String> descriptionMap, Map<Locale, String> keywordsMap,
 			Map<Locale, String> robotsMap, String type, String typeSettings,
 			boolean hidden, Map<Locale, String> friendlyURLMap,
-			String masterLayoutPageTemplateEntryERC,
 			ServiceContext serviceContext)
 		throws PortalException {
 
 		return addLayout(
 			externalReferenceCode, groupId, privateLayout, parentLayoutId, 0, 0,
 			localeNamesMap, localeTitlesMap, descriptionMap, keywordsMap,
-			robotsMap, type, typeSettings, hidden, false, friendlyURLMap,
-			masterLayoutPageTemplateEntryERC, serviceContext);
+			robotsMap, type, typeSettings, hidden, false, friendlyURLMap, null,
+			serviceContext);
 	}
 
 	/**
@@ -260,6 +257,8 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 	 *         To see how the URL is normalized when accessed, see {@link
 	 *         com.liferay.portal.kernel.util.FriendlyURLNormalizerUtil#normalize(
 	 *         String)}.
+	 * @param  masterLayoutPageTemplateEntryERC the external reference code key
+	 *         of the master layout page template entry
 	 * @param  serviceContext the service context to be applied. Must set the
 	 *         UUID for the layout. Can set the creation date, modification
 	 *         date, and expando bridge attributes for the layout. For layouts
@@ -277,14 +276,15 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 			Map<Locale, String> descriptionMap, Map<Locale, String> keywordsMap,
 			Map<Locale, String> robotsMap, String type, String typeSettings,
 			boolean hidden, Map<Locale, String> friendlyURLMap,
+			String masterLayoutPageTemplateEntryERC,
 			ServiceContext serviceContext)
 		throws PortalException {
 
 		return addLayout(
 			externalReferenceCode, groupId, privateLayout, parentLayoutId, 0, 0,
 			localeNamesMap, localeTitlesMap, descriptionMap, keywordsMap,
-			robotsMap, type, typeSettings, hidden, false, friendlyURLMap, null,
-			serviceContext);
+			robotsMap, type, typeSettings, hidden, false, friendlyURLMap,
+			masterLayoutPageTemplateEntryERC, serviceContext);
 	}
 
 	/**
@@ -365,6 +365,22 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 	}
 
 	@Override
+	public Layout convertEmptyLayout(
+			long plid, Map<Locale, String> nameMap, String type,
+			long classNameId, long classPK,
+			String masterLayoutPageTemplateEntryERC,
+			ServiceContext serviceContext)
+		throws Exception {
+
+		LayoutPermissionUtil.checkLayoutUpdatePermission(
+			getPermissionChecker(), layoutLocalService.getLayout(plid));
+
+		return layoutLocalService.convertEmptyLayout(
+			getUserId(), plid, nameMap, type, classNameId, classPK,
+			masterLayoutPageTemplateEntryERC, serviceContext);
+	}
+
+	@Override
 	public Layout copyLayout(
 			long groupId, boolean privateLayout,
 			Map<Locale, String> localeNamesMap, boolean hidden, boolean system,
@@ -374,7 +390,7 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 
 		PermissionChecker permissionChecker = getPermissionChecker();
 
-		Layout sourceLayout = layoutLocalService.getLayout(sourcePlid);
+		Layout sourceLayout = getLayout(sourcePlid);
 
 		long parentLayoutId = sourceLayout.getParentLayoutId();
 
@@ -391,6 +407,36 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 		return layoutLocalService.copyLayout(
 			getUserId(), groupId, privateLayout, localeNamesMap, hidden, system,
 			copyPermissions, sourcePlid, serviceContext);
+	}
+
+	@Override
+	public Layout copyLayoutContent(Layout sourceLayout, Layout targetLayout)
+		throws Exception {
+
+		LayoutPermissionUtil.check(
+			getPermissionChecker(), sourceLayout, ActionKeys.VIEW);
+
+		LayoutPermissionUtil.checkLayoutUpdatePermission(
+			getPermissionChecker(), targetLayout);
+
+		return layoutLocalService.copyLayoutContent(sourceLayout, targetLayout);
+	}
+
+	@Override
+	public Layout copyLayoutContent(
+			long sourceSegmentsExperienceId, Layout sourceLayout,
+			long targetSegmentsExperienceId, Layout targetLayout)
+		throws Exception {
+
+		LayoutPermissionUtil.check(
+			getPermissionChecker(), sourceLayout, ActionKeys.VIEW);
+
+		LayoutPermissionUtil.checkLayoutUpdatePermission(
+			getPermissionChecker(), targetLayout);
+
+		return layoutLocalService.copyLayoutContent(
+			sourceSegmentsExperienceId, sourceLayout,
+			targetSegmentsExperienceId, targetLayout);
 	}
 
 	/**
@@ -1068,7 +1114,7 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 
 	@Override
 	public Layout getOrAddEmptyLayout(
-			String externalReferenceCode, long groupId,
+			String externalReferenceCode, long groupId, boolean privateLayout,
 			ServiceContext serviceContext)
 		throws Exception {
 
@@ -1083,7 +1129,8 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 			getPermissionChecker(), groupId, ActionKeys.ADD_LAYOUT);
 
 		return layoutLocalService.getOrAddEmptyLayout(
-			externalReferenceCode, getUserId(), groupId, serviceContext);
+			externalReferenceCode, getUserId(), groupId, privateLayout,
+			serviceContext);
 	}
 
 	@Override
@@ -1385,6 +1432,16 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 		return layoutLocalService.updateIconImage(plid, bytes);
 	}
 
+	@Override
+	public Layout updateIconImageId(long plid, long iconImageId)
+		throws PortalException {
+
+		LayoutPermissionUtil.checkLayoutUpdatePermission(
+			getPermissionChecker(), plid);
+
+		return layoutLocalService.updateIconImageId(plid, iconImageId);
+	}
+
 	/**
 	 * Updates the layout with additional parameters.
 	 *
@@ -1475,13 +1532,15 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 			String colorSchemeId, String css)
 		throws PortalException {
 
+		PermissionChecker permissionChecker = getPermissionChecker();
+
 		LayoutPermissionUtil.checkLayoutUpdatePermission(
-			getPermissionChecker(),
+			permissionChecker,
 			layoutLocalService.getLayout(groupId, privateLayout, layoutId));
 
 		if (Validator.isNotNull(themeId)) {
 			_pluginSettingLocalService.checkPermission(
-				getUserId(), themeId, Plugin.TYPE_THEME);
+				permissionChecker.getUserId(), themeId, Plugin.TYPE_THEME);
 		}
 
 		return layoutLocalService.updateLookAndFeel(

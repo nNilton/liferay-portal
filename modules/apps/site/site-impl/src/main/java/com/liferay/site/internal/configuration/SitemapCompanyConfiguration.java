@@ -13,7 +13,7 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
  * @author Lourdes Fernández Besada
  */
 @ExtendedObjectClassDefinition(
-	category = "seo", generateUI = false,
+	category = "aeo-seo", generateUI = false,
 	scope = ExtendedObjectClassDefinition.Scope.COMPANY
 )
 @Meta.OCD(
@@ -22,6 +22,15 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
 	name = "sitemap-company-configuration-name"
 )
 public interface SitemapCompanyConfiguration {
+
+	@Meta.AD(deflt = "", name = "company-sitemap-group-ids", required = false)
+	public String[] companySitemapGroupIds();
+
+	@Meta.AD(
+		deflt = "", name = "company-sitemap-object-definition-ids",
+		required = false
+	)
+	public String[] companySitemapObjectDefinitionIds();
 
 	@Meta.AD(
 		deflt = "true", name = "include-category-urls-in-the-xml-sitemap",
@@ -46,13 +55,9 @@ public interface SitemapCompanyConfiguration {
 	)
 	public boolean xmlSitemapIndexEnabled();
 
-	@Meta.AD(deflt = "", name = "company-sitemap-group-ids", required = false)
-	public String[] companySitemapGroupIds();
-
 	@Meta.AD(
-		deflt = "", name = "company-sitemap-object-definition-ids",
-		required = false
+		deflt = "page-layout", name = "xml-sitemap-index-mode", required = false
 	)
-	public String[] companySitemapObjectDefinitionIds();
+	public String xmlSitemapIndexMode();
 
 }

@@ -5,9 +5,9 @@
 
 import {expect, mergeTests} from '@playwright/test';
 
-import {applicationsMenuPageTest} from '../../../../fixtures/applicationsMenuPageTest';
 import {commercePagesTest} from '../../../../fixtures/commercePagesTest';
 import {dataApiHelpersTest} from '../../../../fixtures/dataApiHelpersTest';
+import {globalMenuPagesTest} from '../../../../fixtures/globalMenuPagesTest';
 import {isolatedSiteTest} from '../../../../fixtures/isolatedSiteTest';
 import {loginTest} from '../../../../fixtures/loginTest';
 import {getRandomInt} from '../../../../utils/getRandomInt';
@@ -20,9 +20,9 @@ import performLogin, {
 import {miniumSetUp} from '../../utils/commerce';
 
 export const test = mergeTests(
-	applicationsMenuPageTest,
 	commercePagesTest,
 	dataApiHelpersTest,
+	globalMenuPagesTest,
 	isolatedSiteTest,
 	loginTest()
 );
@@ -32,11 +32,9 @@ test('LPD-44010 Check no delete dropdown in order admin page without delete perm
 	commerceAdminOrdersPage,
 	page,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
-
-	apiHelpers.data.push({id: site.id, type: 'site'});
 
 	const channel = await apiHelpers.headlessCommerceAdminChannel.postChannel({
 		siteGroupId: site.id,
@@ -206,7 +204,7 @@ test('LPD-45268 Notes tab should not be visible if user does not have required p
 	commerceAdminOrdersPage,
 	page,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
 
@@ -691,100 +689,64 @@ test('LPD-47793 Notes should be visible using their respective permissions in th
 	).toBeVisible();
 });
 
-test.skip('LPD-31378 Check order date formatted correctly', async ({
+test('LPD-31378 Check order date formatted correctly', async ({
 	apiHelpers,
-	applicationsMenuPage,
+	checkoutPage,
+	commerceAdminOrdersPage,
+	commerceMiniCartPage,
+	commerceThemeMiniumCatalogPage,
 	page,
 }) => {
-	await test.step('Create commerce site', async () => {
-		const site = await apiHelpers.headlessSite.createSite({
-			name: 'Minium',
-			templateKey: 'minium-initializer',
-			templateType: 'site-initializer',
-		});
+	const {site} = await miniumSetUp(apiHelpers);
 
-		apiHelpers.data.push({id: site.id, type: 'site'});
-
-		await applicationsMenuPage.goToSite('Minium');
+	await apiHelpers.headlessAdminUser.postAccount({
+		name: getRandomString(),
+		type: 'business',
 	});
 
-	await test.step('Add transmission to shopping cart', async () => {
-		const accountNameField = page.getByText('There is no order selected.');
-		await accountNameField.waitFor({state: 'visible'});
+	await page.goto(`/web/${site.name}/catalog`);
 
-		const transmissionButton = page
-			.locator('#wwxc_column_2d_2_1_add_to_cart')
-			.getByRole('button', {name: 'Add to Cart'});
+	await commerceThemeMiniumCatalogPage.addToCart('Mount');
 
-		await transmissionButton.waitFor({state: 'visible'});
-		await transmissionButton.click();
+	await commerceMiniCartPage.miniCartButton.click();
+	await commerceMiniCartPage.submitButton.click();
 
-		const cartButton = page.locator('[data-qa-id="miniCartButton"]');
-
-		await cartButton.waitFor({state: 'visible'});
-		await cartButton.click();
+	await checkoutPage.addAddress({
+		city: 'testCity',
+		countryLabel: 'United States',
+		name: 'John Doe',
+		regionLabel: 'Florida',
+		street: 'testStreet',
+		zip: '12345',
 	});
 
-	await test.step('Complete order', async () => {
-		const submitButton = page.getByRole('button', {name: 'Submit'});
-		await submitButton.waitFor({state: 'visible'});
-		await submitButton.click();
+	await checkoutPage.continueButton.click();
+	await expect(page.getByText('Standard Delivery (+$ 15.00)')).toBeVisible();
+	await checkoutPage.continueButton.click();
+	await expect(page.getByText('Mount')).toBeVisible();
+	await checkoutPage.continueButton.click();
+	await expect(checkoutPage.orderSuccessMessage).toBeVisible();
 
-		await page.getByPlaceholder('Name', {exact: true}).fill('Name');
+	await checkoutPage.goToOrderDetailsButton.click();
 
-		await page.getByPlaceholder('Phone Number').fill('Number');
+	const orderDate = await commerceAdminOrdersPage.orderDate.textContent();
+	const cleanedOrderDate = orderDate.replace(/\s+/g, ' ').trim();
 
-		await page.getByPlaceholder('Address', {exact: true}).fill('Address');
+	const orderId = await commerceAdminOrdersPage.orderId.textContent();
 
-		await page
-			.locator(
-				'[id="_com_liferay_commerce_checkout_web_internal_portlet_CommerceCheckoutPortlet_countryId"]'
-			)
-			.selectOption('United States');
+	apiHelpers.data.push({id: orderId, type: 'order'});
 
-		await page.getByPlaceholder('Zip').fill('Zip');
+	await commerceAdminOrdersPage.goto();
 
-		await page.getByPlaceholder('City').fill('City');
+	const orderDate2 = await commerceAdminOrdersPage
+		.orderDateByOrderId(orderId)
+		.textContent();
+	const cleanedOrderDate2 = orderDate2.replace(
+		/(\d{2}),(\s*\d{1,2}:)/,
+		'$1$2'
+	);
 
-		await page.getByRole('button', {name: 'Continue'}).click();
-
-		await page.getByRole('button', {name: 'Continue'}).click();
-
-		await page.getByRole('button', {name: 'Continue'}).click();
-	});
-
-	await test.step('Check date and time of order', async () => {
-		await page.getByRole('button', {name: 'Go to Order Details'}).click();
-
-		const orderDate = await page
-			.locator('dl.commerce-list:has-text("Order Date") dd')
-			.textContent();
-
-		const orderId = await page
-			.locator('dl.commerce-list:has-text("Order ID") dd')
-			.textContent();
-
-		await page.getByRole('link', {name: 'Placed Orders'}).click();
-
-		const cleanedDateText = orderDate.replace(/\s+/g, ' ').trim();
-
-		const cleanedDateText2 = cleanedDateText.replace(
-			/(\w+ \d+, )(\d{2})/,
-			'$120$2,'
-		);
-
-		await page.getByTestId('applicationsMenu').click();
-
-		await page.getByRole('tab', {name: 'Commerce'}).click();
-
-		await page.getByRole('menuitem', {name: 'Orders'}).click();
-
-		const orderDate2 = await page
-			.locator(`tr:has-text("${orderId}") .cell-orderDate`)
-			.textContent();
-
-		expect(cleanedDateText2).toBe(orderDate2);
-	});
+	expect(cleanedOrderDate).toBe(cleanedOrderDate2);
 });
 
 test(
@@ -797,7 +759,8 @@ test(
 		page,
 		pendingOrdersPage,
 	}) => {
-		test.setTimeout(180000);
+		test.setTimeout(90000);
+
 		const account = await apiHelpers.headlessAdminUser.postAccount({
 			name: getRandomString(),
 			type: 'business',
@@ -838,11 +801,11 @@ test(
 			);
 		});
 
-		await test.step('Verify note label in an order created via the account selector ', async () => {
+		await test.step('Verify note label in an order created via the account selector', async () => {
 			await page.goto(`/web/${site.name}`);
 
 			await commerceLayoutsPage
-				.accountSelectorButton(account.name)
+				.accountSelectorButton('Account Selector')
 				.click();
 			await commerceLayoutsPage.createNewOrderButton.click();
 
@@ -851,31 +814,31 @@ test(
 			).toBeVisible();
 		});
 
-		await test.step('Verify inactive order type is not assigned to an order created via the account selector ', async () => {
+		await test.step('Verify inactive order type is not assigned to an order created via the account selector', async () => {
 			await page.goto(`/web/${site.name}`);
 
 			await commerceLayoutsPage
-				.accountSelectorButton(account.name)
+				.accountSelectorButton('Account Selector')
 				.click();
 			await commerceLayoutsPage.createNewOrderButton.click();
 
 			await expect(pendingOrdersPage.orderType).toBeEmpty();
 		});
 
-		await test.step('Verify inactive order type is not assigned to an order created via the account selector ', async () => {
+		await test.step('Verify inactive order type is not assigned to an order created via the account selector', async () => {
 			await commerceAdminOrderTypesPage.addOrderType(apiHelpers, false);
 
 			await page.goto(`/web/${site.name}`);
 
 			await commerceLayoutsPage
-				.accountSelectorButton(account.name)
+				.accountSelectorButton('Account Selector')
 				.click();
 			await commerceLayoutsPage.createNewOrderButton.click();
 
 			await expect(pendingOrdersPage.orderType).toBeEmpty();
 		});
 
-		await test.step('Verify single active order type is automatically assigned to orders created via the account selector. ', async () => {
+		await test.step('Verify single active order type is automatically assigned to orders created via the account selector.', async () => {
 			const {orderTypeName} =
 				await commerceAdminOrderTypesPage.addOrderType(
 					apiHelpers,
@@ -885,14 +848,14 @@ test(
 			await page.goto(`/web/${site.name}`);
 
 			await commerceLayoutsPage
-				.accountSelectorButton(account.name)
+				.accountSelectorButton('Account Selector')
 				.click();
 			await commerceLayoutsPage.createNewOrderButton.click();
 
 			await expect(pendingOrdersPage.orderType).toHaveText(orderTypeName);
 		});
 
-		await test.step('Verify user can select order type when creating a new order via the account selector ', async () => {
+		await test.step('Verify user can select order type when creating a new order via the account selector', async () => {
 			const {orderTypeName} =
 				await commerceAdminOrderTypesPage.addOrderType(
 					apiHelpers,
@@ -906,7 +869,7 @@ test(
 			await page.goto(`/web/${site.name}`);
 
 			await commerceLayoutsPage
-				.accountSelectorButton(account.name)
+				.accountSelectorButton('Account Selector')
 				.click();
 			await commerceLayoutsPage.createNewOrderButton.click();
 			await expect(
@@ -973,43 +936,50 @@ test(
 			);
 		});
 
-		await test.step('Verify inactive order type is not assigned to an order created via pending orders ', async () => {
-			await page.goto(`/web/${site.name}`);
-
-			await page.goto(`/web/${site.name}/pending-orders`);
+		await test.step('Verify inactive order type is not assigned to an order created via pending orders', async () => {
+			await page.goto(`/web/${site.name}/pending-orders`, {
+				waitUntil: 'networkidle',
+			});
 
 			await commerceLayoutsPage.addOrderButton.click();
+
+			await expect(page).not.toHaveURL(/pending-orders$/);
 
 			await expect(pendingOrdersPage.orderType).toBeEmpty();
 		});
 
-		await test.step('Verify inactive order type is not assigned to an order created via pending orders ', async () => {
+		await test.step('Verify inactive order type is not assigned to an order created via pending orders', async () => {
 			await commerceAdminOrderTypesPage.addOrderType(apiHelpers, false);
-			await page.goto(`/web/${site.name}`);
 
-			await page.goto(`/web/${site.name}/pending-orders`);
+			await page.goto(`/web/${site.name}/pending-orders`, {
+				waitUntil: 'networkidle',
+			});
 
 			await commerceLayoutsPage.addOrderButton.click();
+
+			await expect(page).not.toHaveURL(/pending-orders$/);
 
 			await expect(pendingOrdersPage.orderType).toBeEmpty();
 		});
 
-		await test.step('Verify single active order type is automatically assigned to orders created via pending orders ', async () => {
+		await test.step('Verify single active order type is automatically assigned to orders created via pending orders', async () => {
 			const {orderTypeName} =
 				await commerceAdminOrderTypesPage.addOrderType(
 					apiHelpers,
 					true
 				);
-			await page.goto(`/web/${site.name}`);
-
-			await page.goto(`/web/${site.name}/pending-orders`);
+			await page.goto(`/web/${site.name}/pending-orders`, {
+				waitUntil: 'networkidle',
+			});
 
 			await commerceLayoutsPage.addOrderButton.click();
+
+			await expect(page).not.toHaveURL(/pending-orders$/);
 
 			await expect(pendingOrdersPage.orderType).toHaveText(orderTypeName);
 		});
 
-		await test.step('Verify user can select order type when creating a new order via pending orders ', async () => {
+		await test.step('Verify user can select order type when creating a new order via pending orders', async () => {
 			const {orderTypeName} =
 				await commerceAdminOrderTypesPage.addOrderType(
 					apiHelpers,
@@ -1017,12 +987,11 @@ test(
 				);
 
 			await performLogout(page);
-
 			await performLoginViaApi({page, screenName: user.alternateName});
 
-			await page.goto(`/web/${site.name}`);
-
-			await page.goto(`/web/${site.name}/pending-orders`);
+			await page.goto(`/web/${site.name}/pending-orders`, {
+				waitUntil: 'networkidle',
+			});
 
 			await commerceLayoutsPage.addOrderButton.click();
 
@@ -1052,6 +1021,7 @@ test(
 		pendingOrdersPage,
 	}) => {
 		test.setTimeout(180000);
+
 		const account = await apiHelpers.headlessAdminUser.postAccount({
 			name: getRandomString(),
 			type: 'business',
@@ -1092,7 +1062,7 @@ test(
 			);
 		});
 
-		await test.step('Verify inactive order type is not assigned to an order created via add to cart ', async () => {
+		await test.step('Verify inactive order type is not assigned to an order created via add to cart', async () => {
 			await page.goto(`/web/${site.name}`);
 
 			await commerceThemeMiniumCatalogPage.addToCart('U-Joint');
@@ -1110,7 +1080,7 @@ test(
 			);
 		});
 
-		await test.step('Verify inactive order type is not assigned to an order created via add to cart ', async () => {
+		await test.step('Verify inactive order type is not assigned to an order created via add to cart', async () => {
 			await commerceAdminOrderTypesPage.addOrderType(apiHelpers, false);
 
 			await page.goto(`/web/${site.name}`);
@@ -1130,7 +1100,7 @@ test(
 			);
 		});
 
-		await test.step('Verify when creating a new order with add to cart and there is only 1 order type active for the channel, that order type is set in the order ', async () => {
+		await test.step('Verify when creating a new order with add to cart and there is only 1 order type active for the channel, that order type is set in the order', async () => {
 			const {orderTypeName} =
 				await commerceAdminOrderTypesPage.addOrderType(
 					apiHelpers,
@@ -1153,7 +1123,7 @@ test(
 			);
 		});
 
-		await test.step('Verify user can select order type when creating a new order via add to cart ', async () => {
+		await test.step('Verify user can select order type when creating a new order via add to cart', async () => {
 			const {orderTypeName} =
 				await commerceAdminOrderTypesPage.addOrderType(
 					apiHelpers,
@@ -1185,6 +1155,237 @@ test(
 			await pendingOrdersPage.viewButton.click();
 
 			await expect(pendingOrdersPage.orderType).toHaveText(orderTypeName);
+		});
+	}
+);
+
+test(
+	'Order Manager can only manage its account orders in control panel',
+	{tag: ['@LPD-74672']},
+	async ({apiHelpers, commerceAdminOrdersPage, page, site}) => {
+		const channel =
+			await apiHelpers.headlessCommerceAdminChannel.postChannel({
+				siteGroupId: site.id,
+			});
+
+		const catalog =
+			await apiHelpers.headlessCommerceAdminCatalog.postCatalog();
+
+		const product =
+			await apiHelpers.headlessCommerceAdminCatalog.postProduct({
+				catalogId: catalog.id,
+				name: {en_US: 'Product1'},
+			});
+
+		const productSkus = await apiHelpers.headlessCommerceAdminCatalog
+			.getProduct(product.productId)
+			.then((product) => {
+				return product.skus;
+			});
+
+		const sku = productSkus[0];
+
+		const account1 = await apiHelpers.headlessAdminUser.postAccount({
+			name: getRandomString(),
+			type: 'business',
+		});
+		const account2 = await apiHelpers.headlessAdminUser.postAccount({
+			name: getRandomString(),
+			type: 'business',
+		});
+		const account3 = await apiHelpers.headlessAdminUser.postAccount({
+			name: getRandomString(),
+			type: 'business',
+		});
+
+		const user =
+			await apiHelpers.headlessAdminUser.getUserAccountByEmailAddress(
+				'demo.unprivileged@liferay.com'
+			);
+
+		await test.step('Setup Order Manager user', async () => {
+			await apiHelpers.headlessAdminUser.assignUserToAccountByEmailAddress(
+				account1.id,
+				['demo.unprivileged@liferay.com']
+			);
+			await apiHelpers.headlessAdminUser.assignUserToAccountByEmailAddress(
+				account2.id,
+				['demo.unprivileged@liferay.com']
+			);
+			await apiHelpers.headlessAdminUser.assignUserToAccountByEmailAddress(
+				account3.id,
+				['demo.unprivileged@liferay.com']
+			);
+
+			const rolesResponse =
+				await apiHelpers.headlessAdminUser.getAccountRoles(account1.id);
+
+			const accountRoleOrderManager = rolesResponse?.items?.filter(
+				(role) => {
+					return role.name === 'Order Manager';
+				}
+			);
+
+			await apiHelpers.headlessAdminUser.assignAccountRoles(
+				account1.externalReferenceCode,
+				accountRoleOrderManager[0].id,
+				user.emailAddress
+			);
+			await apiHelpers.headlessAdminUser.assignAccountRoles(
+				account2.externalReferenceCode,
+				accountRoleOrderManager[0].id,
+				user.emailAddress
+			);
+
+			const accountRoleBuyer = rolesResponse?.items?.filter((role) => {
+				return role.name === 'Buyer';
+			});
+
+			await apiHelpers.headlessAdminUser.assignAccountRoles(
+				account3.externalReferenceCode,
+				accountRoleBuyer[0].id,
+				user.emailAddress
+			);
+
+			const orderAdministratorRole =
+				await apiHelpers.headlessAdminUser.getRoleByName(
+					'Order Administrator'
+				);
+
+			await apiHelpers.headlessAdminUser.assignUserToRole(
+				orderAdministratorRole.externalReferenceCode,
+				user.id
+			);
+
+			const siteRole =
+				await apiHelpers.headlessAdminUser.getRoleByName('Site Member');
+
+			await apiHelpers.headlessAdminUser.assignUserToSite(
+				siteRole.id,
+				site.id,
+				user.id
+			);
+		});
+
+		await test.step('Create some orders with different accounts', async () => {
+			const address1 =
+				await apiHelpers.headlessCommerceAdminAccount.postAddress(
+					account1.id,
+					{phoneNumber: '12345', regionISOCode: 'AL'}
+				);
+			const address2 =
+				await apiHelpers.headlessCommerceAdminAccount.postAddress(
+					account2.id,
+					{phoneNumber: '12345', regionISOCode: 'AL'}
+				);
+			const address3 =
+				await apiHelpers.headlessCommerceAdminAccount.postAddress(
+					account3.id,
+					{phoneNumber: '12345', regionISOCode: 'AL'}
+				);
+
+			await apiHelpers.headlessCommerceAdminOrder.postOrder({
+				accountId: account1.id,
+				billingAddressId: address1.id,
+				channelId: channel.id,
+				orderItems: [
+					{
+						decimalQuantity: 10,
+						quantity: 2,
+						skuId: sku.id,
+					},
+				],
+				orderStatus: '0',
+				paymentStatus: '0',
+				shippingAddressId: address1.id,
+			});
+			await apiHelpers.headlessCommerceAdminOrder.postOrder({
+				accountId: account1.id,
+				billingAddressId: address1.id,
+				channelId: channel.id,
+				orderItems: [
+					{
+						decimalQuantity: 5,
+						quantity: 1,
+						skuId: sku.id,
+					},
+				],
+				orderStatus: '0',
+				paymentStatus: '0',
+				shippingAddressId: address1.id,
+			});
+			await apiHelpers.headlessCommerceAdminOrder.postOrder({
+				accountId: account2.id,
+				billingAddressId: address2.id,
+				channelId: channel.id,
+				orderItems: [
+					{
+						decimalQuantity: 10,
+						quantity: 2,
+						skuId: sku.id,
+					},
+				],
+				orderStatus: '0',
+				paymentStatus: '0',
+				shippingAddressId: address2.id,
+			});
+			await apiHelpers.headlessCommerceAdminOrder.postOrder({
+				accountId: account2.id,
+				billingAddressId: address2.id,
+				channelId: channel.id,
+				orderItems: [
+					{
+						decimalQuantity: 5,
+						quantity: 1,
+						skuId: sku.id,
+					},
+				],
+				orderStatus: '0',
+				paymentStatus: '0',
+				shippingAddressId: address2.id,
+			});
+			await apiHelpers.headlessCommerceAdminOrder.postOrder({
+				accountId: account3.id,
+				billingAddressId: address3.id,
+				channelId: channel.id,
+				orderItems: [
+					{
+						decimalQuantity: 10,
+						quantity: 2,
+						skuId: sku.id,
+					},
+				],
+				orderStatus: '0',
+				paymentStatus: '0',
+				shippingAddressId: address3.id,
+			});
+			await apiHelpers.headlessCommerceAdminOrder.postOrder({
+				accountId: account3.id,
+				billingAddressId: address3.id,
+				channelId: channel.id,
+				orderItems: [
+					{
+						decimalQuantity: 5,
+						quantity: 1,
+						skuId: sku.id,
+					},
+				],
+				orderStatus: '0',
+				paymentStatus: '0',
+				shippingAddressId: address3.id,
+			});
+		});
+
+		await test.step('Verify Order Manager can only see account1 and account2 orders', async () => {
+			await performLogout(page);
+
+			await performLoginViaApi({page, screenName: user.alternateName});
+
+			await commerceAdminOrdersPage.goto();
+
+			await expect(page.getByText(account1.name)).toHaveCount(2);
+			await expect(page.getByText(account2.name)).toHaveCount(2);
+			await expect(page.getByText(account3.name)).toHaveCount(0);
 		});
 	}
 );

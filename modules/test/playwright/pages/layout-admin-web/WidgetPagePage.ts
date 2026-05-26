@@ -96,10 +96,6 @@ export class WidgetPagePage {
 		}
 
 		await expect(async () => {
-			if ((await item.getAttribute('class')).includes('disabled')) {
-				return;
-			}
-
 			const addButton = item
 				.getByRole('button', {name: 'Add Content'})
 				.first();
@@ -115,14 +111,16 @@ export class WidgetPagePage {
 	}
 
 	async clickOnAction(portletName: string, action: string) {
-		await this.page
-			.locator('.portlet-topper', {hasText: portletName})
-			.getByLabel('Options')
-			.click();
-
-		await this.page
-			.getByRole('menuitem', {exact: true, name: action})
-			.click();
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: this.page.getByRole('menuitem', {
+				exact: true,
+				name: action,
+			}),
+			trigger: this.page
+				.locator('.portlet-topper', {hasText: portletName})
+				.getByLabel('Options'),
+		});
 	}
 
 	async deletePortlet(portletName: string) {
@@ -130,23 +128,29 @@ export class WidgetPagePage {
 			await dialog.accept();
 		});
 
-		await this.page
-			.locator('.portlet-topper', {hasText: portletName})
-			.getByLabel('Options')
-			.click();
-
-		await this.page
-			.getByRole('menuitem', {
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: this.page.getByRole('menuitem', {
 				name: 'Delete',
-			})
-			.click();
+			}),
+			trigger: this.page
+				.locator('.portlet-topper', {hasText: portletName})
+				.getByLabel('Options'),
+		});
 	}
 
-	async dragPortlet(portletName: string, target: Locator) {
-		const topper = this.page.locator(
-			'.portlet-journal-content .portlet-topper',
-			{hasText: portletName}
-		);
+	async dragPortlet({
+		portletName,
+		target,
+		topperSelector = '.portlet-journal-content .portlet-topper',
+	}: {
+		portletName: string;
+		target: Locator;
+		topperSelector?: string;
+	}) {
+		const topper = this.page.locator(topperSelector, {
+			hasText: portletName,
+		});
 
 		const targetRect = await target.evaluate((element) =>
 			element.getBoundingClientRect()
@@ -167,6 +171,10 @@ export class WidgetPagePage {
 			.waitFor({state: 'visible'});
 
 		await this.page.mouse.up();
+
+		await expect(
+			this.page.locator('.sortable-layout-drag-indicator')
+		).toBeHidden();
 	}
 
 	async goto(
@@ -216,17 +224,17 @@ export class WidgetPagePage {
 	}
 
 	async toggleControls(state: 'visible' | 'hidden') {
-		const isOpen = await this.toggleControlsButton
-			.locator('svg')
-			.evaluate((element) =>
-				element.classList.contains('lexicon-icon-view')
-			);
+		const body = this.page.locator('body');
 
-		if (
-			(state === 'visible' && !isOpen) ||
-			(state === 'hidden' && isOpen)
-		) {
-			await this.toggleControlsButton.click();
-		}
+		const targetClass =
+			state === 'visible' ? 'controls-visible' : 'controls-hidden';
+
+		await expect(async () => {
+			await this.toggleControlsButton.click({timeout: 2000});
+
+			await expect(body).toHaveClass(new RegExp(`\\b${targetClass}\\b`), {
+				timeout: 3000,
+			});
+		}).toPass();
 	}
 }

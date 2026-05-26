@@ -15,6 +15,7 @@ import com.liferay.changeset.service.ChangesetEntryLocalService;
 import com.liferay.exportimport.changeset.Changeset;
 import com.liferay.exportimport.changeset.ChangesetManager;
 import com.liferay.exportimport.changeset.constants.ChangesetPortletKeys;
+import com.liferay.exportimport.constants.ExportImportConstants;
 import com.liferay.exportimport.kernel.exception.ExportImportRuntimeException;
 import com.liferay.exportimport.kernel.lar.BasePortletDataHandler;
 import com.liferay.exportimport.kernel.lar.ExportImportClassedModelUtil;
@@ -48,7 +49,6 @@ import com.liferay.portal.model.adapter.util.ModelAdapterUtil;
 
 import jakarta.portlet.PortletPreferences;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -101,6 +101,11 @@ public class ChangesetPortletDataHandler extends BasePortletDataHandler {
 	@Override
 	public String getSchemaVersion() {
 		return SCHEMA_VERSION;
+	}
+
+	@Override
+	public String getSectionKey() {
+		return ExportImportConstants.SECTION_KEY_OTHER;
 	}
 
 	@Activate
@@ -334,33 +339,15 @@ public class ChangesetPortletDataHandler extends BasePortletDataHandler {
 	}
 
 	private String _getPortletId(String className) {
-		List<Portlet> dataSiteLevelPortlets = Collections.emptyList();
+		Portlet dataSiteLevelPortlet =
+			_exportImportHelper.getDataSiteLevelPortlet(
+				className, CompanyThreadLocal.getCompanyId(), true);
 
-		try {
-			dataSiteLevelPortlets =
-				_exportImportHelper.getDataSiteLevelPortlets(
-					CompanyThreadLocal.getCompanyId());
-		}
-		catch (Exception exception) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(exception);
-			}
-
+		if (dataSiteLevelPortlet == null) {
 			return null;
 		}
 
-		for (Portlet dataSiteLevelPortlet : dataSiteLevelPortlets) {
-			PortletDataHandler portletDataHandler =
-				dataSiteLevelPortlet.getPortletDataHandlerInstance();
-
-			if (ArrayUtil.contains(
-					portletDataHandler.getClassNames(), className)) {
-
-				return dataSiteLevelPortlet.getRootPortletId();
-			}
-		}
-
-		return null;
+		return dataSiteLevelPortlet.getRootPortletId();
 	}
 
 	private String[] _getPortletResourceNames(

@@ -48,6 +48,7 @@ import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.PortletPreferences;
 import com.liferay.portal.kernel.model.PortletPreferencesIds;
 import com.liferay.portal.kernel.model.ResourceConstants;
+import com.liferay.portal.kernel.model.ResourcePermission;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
@@ -55,7 +56,6 @@ import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.portlet.PortletPreferencesFactory;
 import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
 import com.liferay.portal.kernel.security.auth.GuestOrUserUtil;
-import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
 import com.liferay.portal.kernel.service.ImageLocalService;
 import com.liferay.portal.kernel.service.PortletLocalService;
 import com.liferay.portal.kernel.service.PortletPreferencesLocalService;
@@ -71,6 +71,7 @@ import com.liferay.portal.kernel.transaction.TransactionConfig;
 import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.CopyLayoutThreadLocal;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
@@ -195,6 +196,8 @@ public class LayoutLocalServiceWrapper
 		ServiceContext currentServiceContext =
 			ServiceContextThreadLocal.getServiceContext();
 
+		boolean pushedServiceContext = false;
+
 		try (SafeCloseable safeCloseable =
 				CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
 					layout.getCtCollectionId())) {
@@ -212,6 +215,8 @@ public class LayoutLocalServiceWrapper
 				serviceContext.setUserId(user.getUserId());
 
 				ServiceContextThreadLocal.pushServiceContext(serviceContext);
+
+				pushedServiceContext = true;
 			}
 
 			TransactionInvokerUtil.invoke(
@@ -235,7 +240,9 @@ public class LayoutLocalServiceWrapper
 		finally {
 			CopyLayoutThreadLocal.setCopyLayout(copyLayout);
 
-			ServiceContextThreadLocal.pushServiceContext(currentServiceContext);
+			if (pushedServiceContext) {
+				ServiceContextThreadLocal.popServiceContext();
+			}
 		}
 	}
 
@@ -332,10 +339,16 @@ public class LayoutLocalServiceWrapper
 		ServiceContext currentServiceContext =
 			ServiceContextThreadLocal.getServiceContext();
 
+		boolean pushedServiceContext = false;
+
 		long ctCollectionId = sourceLayout.getCtCollectionId();
 
 		if (ctCollectionId == 0) {
 			ctCollectionId = targetLayout.getCtCollectionId();
+		}
+
+		if (ctCollectionId == 0) {
+			ctCollectionId = CTCollectionThreadLocal.getCTCollectionId();
 		}
 
 		try (SafeCloseable safeCloseable =
@@ -357,6 +370,8 @@ public class LayoutLocalServiceWrapper
 				serviceContext.setUserId(user.getUserId());
 
 				ServiceContextThreadLocal.pushServiceContext(serviceContext);
+
+				pushedServiceContext = true;
 			}
 
 			return TransactionInvokerUtil.invoke(
@@ -376,7 +391,9 @@ public class LayoutLocalServiceWrapper
 		finally {
 			CopyLayoutThreadLocal.setCopyLayout(copyLayout);
 
-			ServiceContextThreadLocal.pushServiceContext(currentServiceContext);
+			if (pushedServiceContext) {
+				ServiceContextThreadLocal.popServiceContext();
+			}
 		}
 	}
 
@@ -449,11 +466,15 @@ public class LayoutLocalServiceWrapper
 				_segmentsExperienceLocalService.fetchSegmentsExperience(
 					entry.getKey());
 
-			targetSegmentsExperience.setPriority(
-				sourceSegmentsExperience.getPriority());
+			if (targetSegmentsExperience.getPriority() !=
+					sourceSegmentsExperience.getPriority()) {
 
-			_segmentsExperienceLocalService.updateSegmentsExperience(
-				targetSegmentsExperience);
+				targetSegmentsExperience.setPriority(
+					sourceSegmentsExperience.getPriority());
+
+				_segmentsExperienceLocalService.updateSegmentsExperience(
+					targetSegmentsExperience);
+			}
 		}
 
 		_fragmentEntryLinkLocalService.deleteFragmentEntryLinks(
@@ -527,16 +548,12 @@ public class LayoutLocalServiceWrapper
 			String sourceResourcePrimKey = PortletPermissionUtil.getPrimaryKey(
 				sourceLayout.getPlid(), portletId);
 
-			Map<Long, Set<String>> sourceRoleIdsToActionIds =
-				_resourcePermissionLocalService.
-					getAvailableResourcePermissionActionIds(
-						targetLayout.getCompanyId(), resourceName,
-						ResourceConstants.SCOPE_INDIVIDUAL,
-						sourceResourcePrimKey,
-						ResourceActionsUtil.getPortletResourceActions(
-							resourceName));
+			List<ResourcePermission> sourceResourcePermissions =
+				_resourcePermissionLocalService.getResourcePermissions(
+					sourceLayout.getCompanyId(), resourceName,
+					ResourceConstants.SCOPE_INDIVIDUAL, sourceResourcePrimKey);
 
-			if (sourceRoleIdsToActionIds.isEmpty()) {
+			if (sourceResourcePermissions.isEmpty()) {
 				continue;
 			}
 
@@ -547,28 +564,50 @@ public class LayoutLocalServiceWrapper
 					role -> !Objects.equals(
 						RoleConstants.ADMINISTRATOR, role.getName())),
 				Role::getRoleId);
+			String targetResourcePrimKey = PortletPermissionUtil.getPrimaryKey(
+				targetLayout.getPlid(), portletId);
 
-			Map<Long, String[]> targetRoleIdsToActionIds = new HashMap<>();
+			for (ResourcePermission sourceResourcePermission :
+					sourceResourcePermissions) {
 
-			for (Map.Entry<Long, Set<String>> entry :
-					sourceRoleIdsToActionIds.entrySet()) {
+				long roleId = sourceResourcePermission.getRoleId();
 
-				Long roleId = entry.getKey();
-
-				if (roleIds.contains(roleId)) {
-					Set<String> sourceActionIds = entry.getValue();
-
-					targetRoleIdsToActionIds.put(
-						roleId, sourceActionIds.toArray(new String[0]));
+				if (!roleIds.contains(roleId)) {
+					continue;
 				}
-			}
 
-			_resourcePermissionLocalService.setResourcePermissions(
-				targetLayout.getCompanyId(), resourceName,
-				ResourceConstants.SCOPE_INDIVIDUAL,
-				PortletPermissionUtil.getPrimaryKey(
-					targetLayout.getPlid(), portletId),
-				targetRoleIdsToActionIds);
+				ResourcePermission targetResourcePermission =
+					_resourcePermissionLocalService.fetchResourcePermission(
+						targetLayout.getCompanyId(), resourceName,
+						ResourceConstants.SCOPE_INDIVIDUAL,
+						targetResourcePrimKey, roleId);
+
+				if (targetResourcePermission == null) {
+					targetResourcePermission =
+						_resourcePermissionLocalService.
+							createResourcePermission(
+								_counterLocalService.increment(
+									ResourcePermission.class.getName()));
+
+					targetResourcePermission.setCompanyId(
+						targetLayout.getCompanyId());
+					targetResourcePermission.setName(resourceName);
+					targetResourcePermission.setScope(
+						ResourceConstants.SCOPE_INDIVIDUAL);
+					targetResourcePermission.setPrimKey(targetResourcePrimKey);
+					targetResourcePermission.setPrimKeyId(
+						GetterUtil.getLong(targetResourcePrimKey));
+					targetResourcePermission.setRoleId(roleId);
+				}
+
+				targetResourcePermission.setActionIds(
+					sourceResourcePermission.getActionIds());
+				targetResourcePermission.setViewActionId(
+					sourceResourcePermission.isViewActionId());
+
+				_resourcePermissionLocalService.updateResourcePermission(
+					targetResourcePermission);
+			}
 		}
 	}
 
@@ -792,8 +831,12 @@ public class LayoutLocalServiceWrapper
 						SegmentsExperienceConstants.KEY_DEFAULT,
 						targetSegmentsExperience.getSegmentsExperienceKey())) {
 
-					targetSegmentsExperience.setSegmentsEntryId(
-						sourceSegmentsExperience.getSegmentsEntryId());
+					targetSegmentsExperience.setSegmentsEntryERC(
+						sourceSegmentsExperience.getSegmentsEntryERC());
+					targetSegmentsExperience.setSegmentsEntryScopeERC(
+						sourceSegmentsExperience.getSegmentsEntryScopeERC());
+					targetSegmentsExperience.setNameMap(
+						sourceSegmentsExperience.getNameMap());
 					targetSegmentsExperience.setPriority(minPriority++);
 
 					_segmentsExperienceLocalService.updateSegmentsExperience(
@@ -955,6 +998,33 @@ public class LayoutLocalServiceWrapper
 		return false;
 	}
 
+	private boolean _isUnmodifiedFragmentEntryLink(
+		FragmentEntryLink sourceLayoutFragmentEntryLink,
+		FragmentEntryLink targetLayoutFragmentEntryLink) {
+
+		if ((targetLayoutFragmentEntryLink != null) &&
+			Objects.equals(
+				sourceLayoutFragmentEntryLink.getConfiguration(),
+				targetLayoutFragmentEntryLink.getConfiguration()) &&
+			Objects.equals(
+				sourceLayoutFragmentEntryLink.getCss(),
+				targetLayoutFragmentEntryLink.getCss()) &&
+			Objects.equals(
+				sourceLayoutFragmentEntryLink.getHtml(),
+				targetLayoutFragmentEntryLink.getHtml()) &&
+			Objects.equals(
+				sourceLayoutFragmentEntryLink.getJs(),
+				targetLayoutFragmentEntryLink.getJs()) &&
+			Objects.equals(
+				sourceLayoutFragmentEntryLink.getLastPropagationDate(),
+				targetLayoutFragmentEntryLink.getLastPropagationDate())) {
+
+			return true;
+		}
+
+		return false;
+	}
+
 	private JSONObject _processDataJSONObject(
 			Map<String, String> instanceIdsMap, LayoutStructure layoutStructure,
 			boolean masterLayoutCopy, Layout sourceLayout,
@@ -1027,7 +1097,59 @@ public class LayoutLocalServiceWrapper
 					originalFragmentEntryLink.getExternalReferenceCode(),
 					targetLayout.getPlid());
 
-			if (targetLayoutFragmentEntryLink != null) {
+			if (targetLayoutFragmentEntryLink == null) {
+				newFragmentEntryLink =
+					(FragmentEntryLink)sourceLayoutFragmentEntryLink.clone();
+
+				newFragmentEntryLink.setUuid(serviceContext.getUuid());
+				newFragmentEntryLink.setExternalReferenceCode(null);
+				newFragmentEntryLink.setFragmentEntryLinkId(
+					_counterLocalService.increment());
+				newFragmentEntryLink.setUserId(user.getUserId());
+				newFragmentEntryLink.setUserName(user.getFullName());
+				newFragmentEntryLink.setCreateDate(
+					serviceContext.getCreateDate(new Date()));
+				newFragmentEntryLink.setModifiedDate(
+					serviceContext.getModifiedDate(new Date()));
+
+				if (sourceLayout.getClassPK() == targetLayout.getPlid()) {
+					newFragmentEntryLink.setOriginalFragmentEntryLinkERC(
+						sourceLayoutFragmentEntryLink.
+							getExternalReferenceCode());
+				}
+				else {
+					newFragmentEntryLink.setOriginalFragmentEntryLinkERC(null);
+				}
+
+				newFragmentEntryLink.setSegmentsExperienceId(
+					targetSegmentsExperienceId);
+				newFragmentEntryLink.setClassNameId(
+					_portal.getClassNameId(Layout.class));
+				newFragmentEntryLink.setClassPK(targetLayout.getPlid());
+				newFragmentEntryLink.setPlid(targetLayout.getPlid());
+				newFragmentEntryLink.setEditableValues(
+					editableValuesJSONObject.toString());
+				newFragmentEntryLink.setNamespace(namespace);
+				newFragmentEntryLink.setLastPropagationDate(
+					sourceLayoutFragmentEntryLink.getLastPropagationDate());
+
+				newFragmentEntryLink =
+					_fragmentEntryLinkLocalService.addFragmentEntryLink(
+						newFragmentEntryLink);
+			}
+			else if (_isUnmodifiedFragmentEntryLink(
+						sourceLayoutFragmentEntryLink,
+						targetLayoutFragmentEntryLink) &&
+					 Objects.equals(
+						 editableValuesJSONObject.toString(),
+						 targetLayoutFragmentEntryLink.getEditableValues()) &&
+					 Objects.equals(
+						 namespace,
+						 targetLayoutFragmentEntryLink.getNamespace())) {
+
+				newFragmentEntryLink = targetLayoutFragmentEntryLink;
+			}
+			else {
 				targetLayoutFragmentEntryLink.setUserId(user.getUserId());
 				targetLayoutFragmentEntryLink.setUserName(user.getFullName());
 				targetLayoutFragmentEntryLink.setModifiedDate(
@@ -1073,46 +1195,6 @@ public class LayoutLocalServiceWrapper
 
 				_fragmentEntryLinkCache.removeFragmentEntryLinkCache(
 					newFragmentEntryLink);
-			}
-			else {
-				newFragmentEntryLink =
-					(FragmentEntryLink)sourceLayoutFragmentEntryLink.clone();
-
-				newFragmentEntryLink.setUuid(serviceContext.getUuid());
-				newFragmentEntryLink.setExternalReferenceCode(null);
-				newFragmentEntryLink.setFragmentEntryLinkId(
-					_counterLocalService.increment());
-				newFragmentEntryLink.setUserId(user.getUserId());
-				newFragmentEntryLink.setUserName(user.getFullName());
-				newFragmentEntryLink.setCreateDate(
-					serviceContext.getCreateDate(new Date()));
-				newFragmentEntryLink.setModifiedDate(
-					serviceContext.getModifiedDate(new Date()));
-
-				if (sourceLayout.getClassPK() == targetLayout.getPlid()) {
-					newFragmentEntryLink.setOriginalFragmentEntryLinkERC(
-						sourceLayoutFragmentEntryLink.
-							getExternalReferenceCode());
-				}
-				else {
-					newFragmentEntryLink.setOriginalFragmentEntryLinkERC(null);
-				}
-
-				newFragmentEntryLink.setSegmentsExperienceId(
-					targetSegmentsExperienceId);
-				newFragmentEntryLink.setClassNameId(
-					_portal.getClassNameId(Layout.class));
-				newFragmentEntryLink.setClassPK(targetLayout.getPlid());
-				newFragmentEntryLink.setPlid(targetLayout.getPlid());
-				newFragmentEntryLink.setEditableValues(
-					editableValuesJSONObject.toString());
-				newFragmentEntryLink.setNamespace(namespace);
-				newFragmentEntryLink.setLastPropagationDate(
-					sourceLayoutFragmentEntryLink.getLastPropagationDate());
-
-				newFragmentEntryLink =
-					_fragmentEntryLinkLocalService.addFragmentEntryLink(
-						newFragmentEntryLink);
 			}
 
 			fragmentStyledLayoutStructureItem.setFragmentEntryLinkId(

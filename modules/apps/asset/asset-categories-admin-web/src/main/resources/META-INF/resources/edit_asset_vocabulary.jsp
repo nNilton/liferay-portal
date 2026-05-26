@@ -53,7 +53,7 @@ renderResponse.setTitle((vocabulary == null) ? LanguageUtil.get(request, "add-vo
 		>
 			<aui:input label="name" name="title" placeholder="name" />
 
-			<aui:input disabled='<%= (vocabulary != null) && !FeatureFlagManagerUtil.isEnabled("LPD-31228") %>' label="external-reference-code" name="externalReferenceCode" placeholder="external-reference-code" />
+			<aui:input label="external-reference-code" name="externalReferenceCode" placeholder="external-reference-code" />
 
 			<aui:input name="description" placeholder="description" />
 
@@ -70,9 +70,9 @@ renderResponse.setTitle((vocabulary == null) ? LanguageUtil.get(request, "add-vo
 					</span>
 				</label>
 
-				<aui:input checked="<%= (vocabulary != null) ? (vocabulary.getVisibilityType() == AssetVocabularyConstants.VISIBILITY_TYPE_PUBLIC) : true %>" disabled="<%= !(vocabulary == null) %>" id="visibilityTypePublic" label="public" name="visibilityType" type="radio" value="<%= AssetVocabularyConstants.VISIBILITY_TYPE_PUBLIC %>" />
+				<aui:input checked="<%= assetCategoriesDisplayContext.isVisibilityTypePublicChecked(vocabulary) %>" disabled="<%= assetCategoriesDisplayContext.isVisibilityTypeDisabled(vocabulary) %>" id="visibilityTypePublic" label="public" name="visibilityType" type="radio" value="<%= AssetVocabularyConstants.VISIBILITY_TYPE_PUBLIC %>" />
 
-				<aui:input checked="<%= (vocabulary != null) ? (vocabulary.getVisibilityType() == AssetVocabularyConstants.VISIBILITY_TYPE_INTERNAL) : false %>" disabled="<%= !(vocabulary == null) %>" label="internal" name="visibilityType" type="radio" value="<%= AssetVocabularyConstants.VISIBILITY_TYPE_INTERNAL %>" />
+				<aui:input checked="<%= assetCategoriesDisplayContext.isVisibilityTypeInternalChecked(vocabulary) %>" disabled="<%= assetCategoriesDisplayContext.isVisibilityTypeDisabled(vocabulary) %>" label="internal" name="visibilityType" type="radio" value="<%= AssetVocabularyConstants.VISIBILITY_TYPE_INTERNAL %>" />
 			</div>
 		</liferay-frontend:fieldset>
 

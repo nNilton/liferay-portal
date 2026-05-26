@@ -6,44 +6,35 @@
 import {Icon} from '@clayui/core';
 import DropDown, {Align} from '@clayui/drop-down';
 import Tabs from '@clayui/tabs';
-import React, {useState} from 'react';
+import React, {useContext, useState} from 'react';
 
+import {AssetTypeInfoPanelContext, IAssetTypeInfoPanelContext} from './context';
 import {TABS} from './tab_content';
 
-const DropDownWithState = ({
-	children,
-	trigger,
-	...others
-}: {
-	children: any;
-	trigger: any;
-}) => {
-	return (
-		<DropDown
-			alignmentPosition={Align.BottomLeft}
-			closeOnClick={true}
-			hasRightSymbols
-			trigger={trigger}
-			{...others}
-		>
-			{children}
-		</DropDown>
-	);
-};
+const DEFAULT_DROPDOWN_TABS = [TABS.VERSIONS, TABS.COMMENTS];
+const DEFAULT_MAIN_TABS = [TABS.DETAILS, TABS.CATEGORIZATION, TABS.PERFORMANCE];
 
 const AssetTypeInfoPanelFilesView = () => {
+	const {actions}: IAssetTypeInfoPanelContext = useContext(
+		AssetTypeInfoPanelContext
+	);
+
 	const [active, setActive] = useState(0);
 
-	const dropdownTabsItems = [TABS.VERSIONS, TABS.COMMENTS];
+	const href = actions?.versions?.href;
 
-	const tabs = [TABS.DETAILS, TABS.CATEGORIZATION, TABS.PERFORMANCE];
+	const MAIN_TABS = href
+		? DEFAULT_MAIN_TABS
+		: [...DEFAULT_MAIN_TABS, TABS.COMMENTS];
 
-	const allTabs = [...tabs, ...dropdownTabsItems];
+	const DROPDOWN_TABS = href ? DEFAULT_DROPDOWN_TABS : [];
+
+	const ALL_TABS = [...MAIN_TABS, ...DROPDOWN_TABS];
 
 	return (
 		<>
 			<Tabs active={active} justified={false} onActiveChange={setActive}>
-				{tabs.map((tab) => (
+				{MAIN_TABS.map((tab) => (
 					<Tabs.Item
 						innerProps={{
 							'aria-controls': `tabpanel-${tab.id}`,
@@ -54,47 +45,55 @@ const AssetTypeInfoPanelFilesView = () => {
 					</Tabs.Item>
 				))}
 
-				<div onClick={(event) => event.stopPropagation()}>
-					<DropDownWithState
-						trigger={
-							<Tabs.Item
-								active={active >= tabs.length}
-								innerProps={{
-									'aria-controls': 'tabpanel-4',
-								}}
-							>
-								{Liferay.Language.get('more')}
-
-								<span className="inline-item inline-item-after">
-									<Icon symbol="caret-bottom" />
-								</span>
-							</Tabs.Item>
-						}
-					>
-						{dropdownTabsItems.map((tab) => {
-							const tabIndex = allTabs.findIndex(
-								(item) => item.id === tab.id
-							);
-
-							return (
-								<DropDown.Item
-									active={active === tabIndex}
-									key={tab.id}
-									onClick={() => setActive(tabIndex)}
-									role="tab"
+				{!!DROPDOWN_TABS.length && (
+					<div onClick={(event) => event.stopPropagation()}>
+						<DropDown
+							alignmentPosition={Align.BottomLeft}
+							closeOnClick={true}
+							hasRightSymbols
+							trigger={
+								<Tabs.Item
+									active={active >= MAIN_TABS.length}
+									innerProps={{
+										'aria-controls': `tabpanel-${
+											active >= MAIN_TABS.length
+												? ALL_TABS[active]?.id
+												: DROPDOWN_TABS[0]?.id
+										}`,
+									}}
 								>
-									{tab.name}
-								</DropDown.Item>
-							);
-						})}
-					</DropDownWithState>
-				</div>
+									{Liferay.Language.get('more')}
+
+									<span className="inline-item inline-item-after">
+										<Icon symbol="caret-bottom" />
+									</span>
+								</Tabs.Item>
+							}
+						>
+							{DROPDOWN_TABS.map((tab) => {
+								const tabIndex = ALL_TABS.findIndex(
+									(item) => item.id === tab.id
+								);
+
+								return (
+									<DropDown.Item
+										active={active === tabIndex}
+										key={tab.id}
+										onClick={() => setActive(tabIndex)}
+									>
+										{tab.name}
+									</DropDown.Item>
+								);
+							})}
+						</DropDown>
+					</div>
+				)}
 			</Tabs>
 
 			<Tabs.Content active={active} fade>
-				{allTabs.map((tab) => (
+				{ALL_TABS.map((tab, index) => (
 					<Tabs.TabPane className="p-4" key={tab.id}>
-						<tab.component />
+						{active === index ? <tab.component /> : null}
 					</Tabs.TabPane>
 				))}
 			</Tabs.Content>

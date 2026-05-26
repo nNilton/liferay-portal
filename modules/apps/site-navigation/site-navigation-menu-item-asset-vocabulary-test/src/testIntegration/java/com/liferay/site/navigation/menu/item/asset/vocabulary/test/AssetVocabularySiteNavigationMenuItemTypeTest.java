@@ -11,6 +11,12 @@ import com.liferay.asset.kernel.model.AssetCategory;
 import com.liferay.asset.kernel.model.AssetVocabulary;
 import com.liferay.asset.kernel.service.AssetCategoryLocalService;
 import com.liferay.asset.kernel.service.AssetVocabularyLocalService;
+import com.liferay.exportimport.kernel.configuration.ExportImportConfigurationSettingsMapFactoryUtil;
+import com.liferay.exportimport.kernel.configuration.constants.ExportImportConfigurationConstants;
+import com.liferay.exportimport.kernel.lar.PortletDataHandlerKeys;
+import com.liferay.exportimport.kernel.model.ExportImportConfiguration;
+import com.liferay.exportimport.kernel.service.ExportImportConfigurationLocalService;
+import com.liferay.exportimport.kernel.service.ExportImportLocalService;
 import com.liferay.info.item.ERCInfoItemIdentifier;
 import com.liferay.info.item.InfoItemReference;
 import com.liferay.layout.page.template.test.util.DisplayPageTemplateTestUtil;
@@ -27,6 +33,7 @@ import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.test.portlet.MockLiferayPortletRenderResponse;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -35,6 +42,8 @@ import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.JavaConstants;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
@@ -45,6 +54,7 @@ import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
+import com.liferay.site.navigation.admin.constants.SiteNavigationAdminPortletKeys;
 import com.liferay.site.navigation.constants.SiteNavigationConstants;
 import com.liferay.site.navigation.menu.item.layout.constants.SiteNavigationMenuItemTypeConstants;
 import com.liferay.site.navigation.model.SiteNavigationMenu;
@@ -53,6 +63,8 @@ import com.liferay.site.navigation.service.SiteNavigationMenuItemLocalService;
 import com.liferay.site.navigation.service.SiteNavigationMenuLocalService;
 import com.liferay.site.navigation.type.SiteNavigationMenuItemType;
 import com.liferay.site.navigation.type.SiteNavigationMenuItemTypeRegistry;
+
+import java.io.File;
 
 import java.util.List;
 import java.util.Locale;
@@ -67,6 +79,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 /**
  * @author Lourdes Fernández Besada
@@ -160,6 +173,118 @@ public class AssetVocabularySiteNavigationMenuItemTypeTest {
 					group.getGroupId());
 
 		Assert.assertEquals(assetVocabulary1, assetVocabulary2);
+	}
+
+	@Test
+	public void testGetAssetVocabularySiteNavigationMenuItemFromExportImport()
+		throws Exception {
+
+		Locale locale = _portal.getSiteDefaultLocale(_group.getGroupId());
+
+		String name = RandomTestUtil.randomString();
+
+		SiteNavigationMenuItem siteNavigationMenuItem =
+			_addSiteNavigationMenuItem(
+				_assetVocabulary, locale,
+				JSONUtil.put(
+					LocaleUtil.toLanguageId(locale), name
+				).toString(),
+				false);
+
+		SiteNavigationMenu siteNavigationMenu =
+			_siteNavigationMenuLocalService.fetchSiteNavigationMenu(
+				siteNavigationMenuItem.getSiteNavigationMenuId());
+
+		File larFile = _exportImportLocalService.exportLayoutsAsFile(
+			_exportImportConfigurationLocalService.
+				addDraftExportImportConfiguration(
+					TestPropsValues.getUserId(),
+					ExportImportConfigurationConstants.TYPE_EXPORT_LAYOUT,
+					ExportImportConfigurationSettingsMapFactoryUtil.
+						buildExportLayoutSettingsMap(
+							TestPropsValues.getUser(), _group.getGroupId(),
+							false, new long[0],
+							HashMapBuilder.put(
+								PortletDataHandlerKeys.PORTLET_DATA,
+								new String[] {Boolean.TRUE.toString()}
+							).put(
+								PortletDataHandlerKeys.PORTLET_DATA + "_" +
+									SiteNavigationAdminPortletKeys.
+										SITE_NAVIGATION_ADMIN,
+								new String[] {Boolean.TRUE.toString()}
+							).build())));
+
+		_siteNavigationMenuLocalService.deleteSiteNavigationMenu(
+			siteNavigationMenu);
+
+		_assetVocabularyLocalService.deleteAssetVocabulary(_assetVocabulary);
+
+		ExportImportConfiguration exportImportConfiguration =
+			_exportImportConfigurationLocalService.
+				addDraftExportImportConfiguration(
+					TestPropsValues.getUserId(),
+					ExportImportConfigurationConstants.TYPE_IMPORT_LAYOUT,
+					ExportImportConfigurationSettingsMapFactoryUtil.
+						buildImportLayoutSettingsMap(
+							TestPropsValues.getUser(), _group.getGroupId(),
+							false, new long[0],
+							HashMapBuilder.put(
+								PortletDataHandlerKeys.PORTLET_DATA,
+								new String[] {Boolean.TRUE.toString()}
+							).put(
+								PortletDataHandlerKeys.PORTLET_DATA + "_" +
+									SiteNavigationAdminPortletKeys.
+										SITE_NAVIGATION_ADMIN,
+								new String[] {Boolean.TRUE.toString()}
+							).build()));
+
+		_exportImportLocalService.importLayouts(
+			exportImportConfiguration, larFile);
+
+		siteNavigationMenu =
+			_siteNavigationMenuLocalService.
+				fetchSiteNavigationMenuByExternalReferenceCode(
+					siteNavigationMenu.getExternalReferenceCode(),
+					_group.getGroupId());
+
+		List<SiteNavigationMenuItem> siteNavigationMenuItems =
+			_siteNavigationMenuItemLocalService.getSiteNavigationMenuItems(
+				siteNavigationMenu.getSiteNavigationMenuId());
+
+		siteNavigationMenuItem = siteNavigationMenuItems.get(0);
+
+		UnicodeProperties typeSettingsUnicodeProperties =
+			UnicodePropertiesBuilder.fastLoad(
+				siteNavigationMenuItem.getTypeSettings()
+			).build();
+
+		Assert.assertNotNull(
+			typeSettingsUnicodeProperties.get("localizedNames"));
+
+		String updatedName = RandomTestUtil.randomString();
+
+		typeSettingsUnicodeProperties.setProperty(
+			"localizedNames",
+			JSONUtil.put(
+				LocaleUtil.toLanguageId(locale), updatedName
+			).toString());
+
+		siteNavigationMenuItem =
+			_siteNavigationMenuItemLocalService.updateSiteNavigationMenuItem(
+				TestPropsValues.getUserId(),
+				siteNavigationMenuItem.getSiteNavigationMenuItemId(),
+				typeSettingsUnicodeProperties.toString(),
+				ServiceContextTestUtil.getServiceContext(
+					_group.getGroupId(), TestPropsValues.getUserId()));
+
+		SiteNavigationMenuItemType siteNavigationMenuItemType =
+			_siteNavigationMenuItemTypeRegistry.getSiteNavigationMenuItemType(
+				SiteNavigationMenuItemTypeConstants.ASSET_VOCABULARY);
+
+		Assert.assertEquals(
+			updatedName,
+			siteNavigationMenuItemType.getTitle(
+				siteNavigationMenuItem, locale));
 	}
 
 	@Test
@@ -288,7 +413,7 @@ public class AssetVocabularySiteNavigationMenuItemTypeTest {
 
 		DisplayPageTemplateTestUtil.addDisplayPageTemplate(
 			_group.getGroupId(),
-			_portal.getClassNameId(AssetCategory.class.getName()), 0, true,
+			_portal.getClassNameId(AssetCategory.class.getName()), null, true,
 			WorkflowConstants.STATUS_APPROVED);
 
 		AssetCategory assetCategory = _addAssetCategory(0);
@@ -688,7 +813,7 @@ public class AssetVocabularySiteNavigationMenuItemTypeTest {
 
 		DisplayPageTemplateTestUtil.addDisplayPageTemplate(
 			_group.getGroupId(),
-			_portal.getClassNameId(AssetCategory.class.getName()), 0, true,
+			_portal.getClassNameId(AssetCategory.class.getName()), null, true,
 			WorkflowConstants.STATUS_APPROVED);
 
 		MockHttpServletRequest mockHttpServletRequest =
@@ -743,6 +868,63 @@ public class AssetVocabularySiteNavigationMenuItemTypeTest {
 
 		Assert.assertFalse(
 			siteNavigationMenuItemType.isBrowsable(siteNavigationMenuItem));
+	}
+
+	@Test
+	public void testRenderEditPage() throws Exception {
+		SiteNavigationMenuItemType siteNavigationMenuItemType =
+			_siteNavigationMenuItemTypeRegistry.getSiteNavigationMenuItemType(
+				SiteNavigationMenuItemTypeConstants.ASSET_VOCABULARY);
+
+		MockHttpServletRequest mockHttpServletRequest =
+			new MockHttpServletRequest();
+
+		mockHttpServletRequest.setAttribute(
+			JavaConstants.JAKARTA_PORTLET_RESPONSE,
+			new MockLiferayPortletRenderResponse());
+		mockHttpServletRequest.setAttribute(
+			WebKeys.THEME_DISPLAY, _getThemeDisplay());
+
+		Group group = GroupTestUtil.addGroup();
+
+		AssetVocabulary assetVocabulary =
+			_assetVocabularyLocalService.addVocabulary(
+				TestPropsValues.getUserId(), group.getGroupId(),
+				RandomTestUtil.randomString(),
+				ServiceContextTestUtil.getServiceContext(
+					group.getGroupId(), TestPropsValues.getUserId()));
+
+		SiteNavigationMenu siteNavigationMenu =
+			_siteNavigationMenuLocalService.addSiteNavigationMenu(
+				null, TestPropsValues.getUserId(), _group.getGroupId(),
+				RandomTestUtil.randomString(),
+				SiteNavigationConstants.TYPE_DEFAULT, true, _serviceContext);
+
+		SiteNavigationMenuItem siteNavigationMenuItem =
+			_siteNavigationMenuItemLocalService.addSiteNavigationMenuItem(
+				null, TestPropsValues.getUserId(), _group.getGroupId(),
+				siteNavigationMenu.getSiteNavigationMenuId(), 0,
+				SiteNavigationMenuItemTypeConstants.ASSET_VOCABULARY,
+				UnicodePropertiesBuilder.create(
+					true
+				).put(
+					"externalReferenceCode",
+					assetVocabulary.getExternalReferenceCode()
+				).put(
+					"scopeExternalReferenceCode",
+					group.getExternalReferenceCode()
+				).put(
+					"title", assetVocabulary.getTitle()
+				).put(
+					"type", "asset-vocabulary"
+				).buildString(),
+				_serviceContext);
+
+		_groupLocalService.deleteGroup(group);
+
+		siteNavigationMenuItemType.renderEditPage(
+			mockHttpServletRequest, new MockHttpServletResponse(),
+			siteNavigationMenuItem);
 	}
 
 	private AssetCategory _addAssetCategory(long parentAssetCategoryId)
@@ -984,6 +1166,7 @@ public class AssetVocabularySiteNavigationMenuItemTypeTest {
 	private AssetDisplayPageFriendlyURLProvider
 		_assetDisplayPageFriendlyURLProvider;
 
+	@DeleteAfterTestRun
 	private AssetVocabulary _assetVocabulary;
 
 	@Inject
@@ -991,6 +1174,13 @@ public class AssetVocabularySiteNavigationMenuItemTypeTest {
 
 	@Inject
 	private CompanyLocalService _companyLocalService;
+
+	@Inject
+	private ExportImportConfigurationLocalService
+		_exportImportConfigurationLocalService;
+
+	@Inject
+	private ExportImportLocalService _exportImportLocalService;
 
 	@DeleteAfterTestRun
 	private Group _group;

@@ -5,25 +5,28 @@
 
 import {expect, mergeTests} from '@playwright/test';
 
-import {applicationsMenuPageTest} from '../../../fixtures/applicationsMenuPageTest';
+import {globalMenuPagesTest} from '../../../fixtures/globalMenuPagesTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {serverAdministrationPageTest} from '../../../fixtures/serverAdministrationPageTest';
 
+const SERVLET_CONTEXT_NAMES = [
+	'com.liferay.amazon.rankings.web',
+	'com.liferay.chat.service',
+	'com.liferay.document.library.file.rank.service',
+];
+
 export const test = mergeTests(
 	loginTest(),
-	applicationsMenuPageTest,
+	globalMenuPagesTest,
 	serverAdministrationPageTest
 );
 
-test('execute all system cleanup actions', async ({
-	applicationsMenuPage,
-	page,
-}) => {
-	test.setTimeout(90000);
+test('execute all system cleanup actions', async ({globalMenuPage, page}) => {
+	test.setTimeout(150000);
 
 	// Go to Server Admin Page
 
-	await applicationsMenuPage.goToServerAdministration();
+	await globalMenuPage.goToControlPanel('Server Administration');
 
 	// Execute System Cleanup Actions
 
@@ -31,15 +34,15 @@ test('execute all system cleanup actions', async ({
 });
 
 test('execute all module cleanup actions', async ({
-	applicationsMenuPage,
+	globalMenuPage,
 	page,
 	serverAdministrationPage,
 }) => {
-	test.setTimeout(90000);
+	test.setTimeout(180000);
 
 	// Go to Server Admin Page
 
-	await applicationsMenuPage.goToServerAdministration();
+	await globalMenuPage.goToControlPanel('Server Administration');
 
 	// Add releases for Module Cleanup Actions
 
@@ -109,7 +112,7 @@ test('execute all module cleanup actions', async ({
 			resetDataCleanupRegistratorScript
 		);
 
-		await applicationsMenuPage.goToServerAdministration();
+		await globalMenuPage.goToControlPanel('Server Administration');
 
 		// Execute Module Cleanup Actions
 
@@ -162,33 +165,42 @@ async function executeCleanupActions(page, panelName: string) {
 
 	const executeButtons = cleanupPanel.getByRole('button', {name: 'Execute'});
 
-	// Execute buttons sequentially and check for success message
+	// Execute all data cleanup actions for System Cleanup Section
 
-	for (const button of await executeButtons.all()) {
-		await button.click();
+	const successMessage = page.locator('.alert-success', {
+		hasText: 'Your request completed successfully.',
+	});
 
-		const successMessage = page.locator('.alert-success', {
-			hasText: 'Your request completed successfully.',
-		});
+	if (panelName === 'System Cleanup Actions') {
+		for (const button of await executeButtons.all()) {
+			await button.click();
 
-		await expect(successMessage).toBeVisible();
+			await expect(successMessage).toBeVisible({timeout: 120000});
+		}
 	}
 
+	// Execute Clean Up All Module Data data cleanup action for Module Section
+
 	if (panelName === 'Module Cleanup Actions') {
+		const cleanupAllModuleDataRow = cleanupPanel
+			.locator('.list-group-item, tr, .row', {
+				hasText: 'Clean Up All Module Data',
+			})
+			.first();
+
+		const executeButton = cleanupAllModuleDataRow.getByRole('button', {
+			name: 'Execute',
+		});
+
+		await executeButton.click();
+
+		await expect(successMessage).toBeVisible({timeout: 120000});
+
 		const disabledButtons = cleanupPanel.getByRole('button', {
+			disabled: true,
 			name: 'Execute',
 		});
 
 		await expect(disabledButtons).toHaveCount(SERVLET_CONTEXT_NAMES.length);
-
-		for (const disabledButton of await disabledButtons.all()) {
-			await expect(disabledButton).toBeDisabled();
-		}
 	}
 }
-
-const SERVLET_CONTEXT_NAMES = [
-	'com.liferay.amazon.rankings.web',
-	'com.liferay.chat.service',
-	'com.liferay.document.library.file.rank.service',
-];

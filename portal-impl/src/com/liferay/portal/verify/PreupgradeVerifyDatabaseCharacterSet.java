@@ -6,13 +6,11 @@
 package com.liferay.portal.verify;
 
 import com.liferay.petra.string.StringBundler;
-import com.liferay.portal.db.DBResourceUtil;
 import com.liferay.portal.kernel.dao.db.DB;
-import com.liferay.portal.kernel.dao.db.DBInspector;
 import com.liferay.portal.kernel.dao.db.DBManagerUtil;
 import com.liferay.portal.kernel.dao.db.DBType;
+import com.liferay.portal.kernel.db.DBResourceUtil;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.instance.PortalInstancePool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
@@ -44,13 +42,8 @@ public class PreupgradeVerifyDatabaseCharacterSet
 			return;
 		}
 
-		Set<String> tableNames =
-			DBResourceUtil.getServiceComponentModuleTableNames(connection);
-
-		tableNames.addAll(
-			DBResourceUtil.getServiceComponentPortalTableNames(connection));
-		tableNames.addAll(DBResourceUtil.getModuleTableNames(connection));
-		tableNames.addAll(DBResourceUtil.getPortalTableNames(connection));
+		Set<String> tableNames = DBResourceUtil.getLiferayTableNames(
+			connection);
 
 		CompanyLocalServiceUtil.forEachCompanyId(
 			companyId -> {
@@ -61,11 +54,10 @@ public class PreupgradeVerifyDatabaseCharacterSet
 				}
 				catch (PortalException portalException) {
 					_log.error(
-						"Failed to get table names for company " + companyId,
+						"Unable to get table names for company " + companyId,
 						portalException);
 				}
-			},
-			PortalInstancePool.getCompanyIds());
+			});
 
 		String sql = StringBundler.concat(
 			"select distinct character_set_name, collation_name, table_name, ",
@@ -83,16 +75,12 @@ public class PreupgradeVerifyDatabaseCharacterSet
 		try (PreparedStatement preparedStatement = connection.prepareStatement(
 				sql)) {
 
-			DBInspector dbInspector = new DBInspector(connection);
-
 			ResultSet resultSet = preparedStatement.executeQuery();
 
 			while (resultSet.next()) {
 				String tableName = resultSet.getString("table_name");
 
-				if (!tableNames.contains(
-						dbInspector.normalizeName(tableName))) {
-
+				if (!tableNames.contains(tableName)) {
 					continue;
 				}
 

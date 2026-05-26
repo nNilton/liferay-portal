@@ -45,6 +45,9 @@ public interface ExportImportHelper {
 			long companyId, boolean excludeDataAlwaysStaged)
 		throws Exception;
 
+	public Portlet getDataSiteLevelPortlet(
+		String className, long companyId, boolean excludeDataAlwaysStaged);
+
 	public List<Portlet> getDataSiteLevelPortlets(long companyId)
 		throws Exception;
 
@@ -56,6 +59,10 @@ public interface ExportImportHelper {
 		long companyId, boolean excludeDataAlwaysStaged, long groupId);
 
 	public String getExportableRootPortletId(long companyId, String portletId)
+		throws Exception;
+
+	public String getExportableRootPortletId(
+			long companyId, String sourcePortletId, String targetPortletId)
 		throws Exception;
 
 	public Map<String, Boolean> getExportPortletControlsMap(
@@ -70,6 +77,12 @@ public interface ExportImportHelper {
 
 	public Map<String, Boolean> getImportPortletControlsMap(
 			long companyId, String portletId,
+			Map<String, String[]> parameterMap, Element portletDataElement,
+			ManifestSummary manifestSummary)
+		throws Exception;
+
+	public Map<String, Boolean> getImportPortletControlsMap(
+			long companyId, String sourcePortletId, String targetPortletId,
 			Map<String, String[]> parameterMap, Element portletDataElement,
 			ManifestSummary manifestSummary)
 		throws Exception;
@@ -125,6 +138,11 @@ public interface ExportImportHelper {
 	public long getModelDeletionCount(
 			PortletDataContext portletDataContext,
 			StagedModelType stagedModelType)
+		throws PortalException;
+
+	public long getModelDeletionCount(
+			PortletDataContext portletDataContext,
+			StagedModelType stagedModelType, String type)
 		throws PortalException;
 
 	public String getPortletExportFileName(Portlet portlet);

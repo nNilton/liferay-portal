@@ -710,6 +710,62 @@ public class PortalUpgradeProcessRegistryImpl
 			UpgradeProcessFactory.runSQL(
 				"delete from Release_ where servletContextName = " +
 					"'com.liferay.data.cleanup'"));
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 0, 0),
+			UpgradeProcessFactory.addColumns(
+				"Layout", "portletLPTEERC VARCHAR(75) null",
+				"portletLPTESERC VARCHAR(75) null"),
+			UpgradeProcessFactory.alterColumnName(
+				"Layout", "layoutPrototypeLinkEnabled",
+				"portletLPTELE BOOLEAN"));
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 0, 1),
+			UpgradeModulesFactory.create(
+				new String[] {"com.liferay.oauth2.provider.shortcut"}, null));
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 1, 0), new DummyUpgradeProcess());
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 1, 1),
+			UpgradeModulesFactory.create(
+				new String[] {"com.liferay.frontend.data.set.impl"}, null));
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 2, 0),
+			new LayoutSetPrototypeReadyForPropagationUpgradeProcess());
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 2, 1),
+			UpgradeModulesFactory.create(
+				new String[] {"com.liferay.staging.impl"}, null));
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 2, 2),
+			UpgradeModulesFactory.create(
+				new String[] {"com.liferay.portal.search.elasticsearch8.impl"},
+				null));
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 2, 3), new DummyUpgradeProcess());
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 3, 0),
+			UpgradeProcessFactory.addColumns("UserGroup", "status INTEGER"),
+			UpgradeProcessFactory.runSQL("update UserGroup set status = 0"));
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 3, 1), new UpgradeAssetEntryPublishDate());
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 4, 0),
+			new CountryExternalReferenceCodeUpgradeProcess());
+
+		upgradeVersionTreeMap.put(
+			new Version(38, 4, 1),
+			new RegionExternalReferenceCodeUpgradeProcess());
 	}
 
 }

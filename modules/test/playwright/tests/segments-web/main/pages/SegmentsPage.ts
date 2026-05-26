@@ -10,6 +10,7 @@ import fillAndClickOutside from '../../../../utils/fillAndClickOutside';
 export class SegmentsPage {
 	readonly page: Page;
 
+	readonly actionMenu: Locator;
 	readonly closeButton: Locator;
 	readonly criterionLabel: Locator;
 	readonly deleteButton: Locator;
@@ -25,6 +26,7 @@ export class SegmentsPage {
 	constructor(page: Page) {
 		this.page = page;
 
+		this.actionMenu = page.locator('.dropdown-menu.show');
 		this.closeButton = page
 			.locator('.modal-header')
 			.getByLabel('Close', {exact: true});
@@ -55,22 +57,45 @@ export class SegmentsPage {
 		return this.page.locator('tr', {has: this.page.getByText(segmentName)});
 	}
 
-	async addSegmentField(
-		criterion: string,
-		property: string,
-		segmentName: string
-	) {
+	async addCriterion(criterion: string, property: string) {
 		const dropzone = this.page.locator(`.drop-zone-root`);
 		const target =
 			(await dropzone.count()) === 0
 				? this.page.locator('.empty-drop-zone')
 				: dropzone.last();
 
-		await this.page.getByRole('button', {name: property}).click();
+		const button = this.page.getByRole('button', {
+			exact: true,
+			name: property,
+		});
 
-		await this.page.getByLabel(`Drag ${criterion}`).press('Enter');
+		const isShow = await button.evaluate((element) =>
+			element.classList.contains('show')
+		);
+
+		if (!isShow) {
+			await this.page
+				.getByRole('button', {exact: true, name: property})
+				.click();
+		}
+
+		const panel = this.page
+			.locator('div.panel')
+			.filter({has: this.page.getByRole('button', {name: property})});
+
+		await panel
+			.getByLabel(`Drag ${criterion}`, {exact: true})
+			.press('Enter');
 
 		await target.press('Enter');
+	}
+
+	async addSegmentField(
+		criterion: string,
+		property: string,
+		segmentName: string
+	) {
+		await this.addCriterion(criterion, property);
 
 		await fillAndClickOutside(
 			this.page,
@@ -192,7 +217,10 @@ export class SegmentsPage {
 		await showMoreOptionsButton.waitFor({state: 'visible'});
 		await showMoreOptionsButton.click();
 
+		await this.actionMenu.waitFor({state: 'visible'});
+
 		await this.editButton.waitFor({state: 'visible'});
+
 		await this.editButton.click();
 	}
 

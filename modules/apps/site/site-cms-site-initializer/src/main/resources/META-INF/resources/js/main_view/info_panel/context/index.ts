@@ -6,33 +6,29 @@
 import React from 'react';
 
 import {
+	IAssetObjectEntry,
 	ISearchAssetObjectEntry,
-	ISearchAssetTypeInformation,
 } from '../../../common/types/AssetType';
+import {IBreadcrumbProps} from '../../props_transformer/AssetsFDSPropsTransformer';
 
-export interface IAssetTypeInfoPanelContext
-	extends ISearchAssetTypeInformation {
+export interface IAssetTypeInfoPanelContext {
+	actions: ISearchAssetObjectEntry['actions'];
+	asset: IAssetObjectEntry;
 	assetLibrary?: {
 		externalReferenceCode: string;
 		groupId: number;
 		name: string;
 	};
-	cmsGroupId?: string | null;
-	commentsProps?: any;
-	objectEntries?: ISearchAssetObjectEntry[];
+	breadcrumbProps: IBreadcrumbProps;
+	cmsGroupId: number | string;
+	commentsProps: any;
+	dataSetId?: string;
+	selectedAssets: ISearchAssetObjectEntry[];
+	type: string;
 }
 
-const BASE_CONTEXT: IAssetTypeInfoPanelContext = {
-	cmsGroupId: null,
-	externalReferenceCode: null,
-	icon: null,
-	id: null,
-	objectEntries: [],
-	title: null,
-	title_i18n: {},
-	type: null,
-};
-
-export const AssetTypeInfoPanelContext = React.createContext(BASE_CONTEXT);
+export const AssetTypeInfoPanelContext = React.createContext(
+	{} as IAssetTypeInfoPanelContext
+);
 
 AssetTypeInfoPanelContext.displayName = 'AssetTypeInfoPanelContext';

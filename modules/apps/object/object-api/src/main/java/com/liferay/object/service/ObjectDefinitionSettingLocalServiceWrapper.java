@@ -127,6 +127,16 @@ public class ObjectDefinitionSettingLocalServiceWrapper
 			deleteObjectDefinitionSetting(objectDefinitionSetting);
 	}
 
+	@Override
+	public void deleteObjectDefinitionSettingByObjectDefinitionId(
+			long objectDefinitionId)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		_objectDefinitionSettingLocalService.
+			deleteObjectDefinitionSettingByObjectDefinitionId(
+				objectDefinitionId);
+	}
+
 	/**
 	 * @throws PortalException
 	 */
@@ -257,6 +267,15 @@ public class ObjectDefinitionSettingLocalServiceWrapper
 
 		return _objectDefinitionSettingLocalService.
 			fetchObjectDefinitionSetting(objectDefinitionId, name);
+	}
+
+	@Override
+	public com.liferay.object.model.ObjectDefinitionSetting
+		fetchObjectDefinitionSetting(
+			long companyId, String name, String value) {
+
+		return _objectDefinitionSettingLocalService.
+			fetchObjectDefinitionSetting(companyId, name, value);
 	}
 
 	/**
@@ -454,3 +473,4 @@ public class ObjectDefinitionSettingLocalServiceWrapper
 		_objectDefinitionSettingLocalService;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:813241959

@@ -828,22 +828,22 @@ public class RoleLocalServiceImpl extends RoleLocalServiceBaseImpl {
 	@Override
 	public List<Role> getGroupRolesAndTeamRoles(
 		long companyId, String name, List<String> excludedNames, String title,
-		String description, int[] types, long excludedTeamRoleId,
-		long teamGroupId, int start, int end) {
+		String description, int[] types, String subtype,
+		long excludedTeamRoleId, long teamGroupId, int start, int end) {
 
 		return roleFinder.findByGroupRoleAndTeamRole(
-			companyId, name, excludedNames, title, description, types,
+			companyId, name, excludedNames, title, description, types, subtype,
 			excludedTeamRoleId, teamGroupId, start, end);
 	}
 
 	@Override
 	public int getGroupRolesAndTeamRolesCount(
 		long companyId, String name, List<String> excludedNames, String title,
-		String description, int[] types, long excludedTeamRoleId,
-		long teamGroupId) {
+		String description, int[] types, String subtype,
+		long excludedTeamRoleId, long teamGroupId) {
 
 		return roleFinder.countByGroupRoleAndTeamRole(
-			companyId, name, excludedNames, title, description, types,
+			companyId, name, excludedNames, title, description, types, subtype,
 			excludedTeamRoleId, teamGroupId);
 	}
 
@@ -861,7 +861,8 @@ public class RoleLocalServiceImpl extends RoleLocalServiceBaseImpl {
 				externalReferenceCode, userId, className, classPK,
 				(fetchRole(companyId, name) != null) ? externalReferenceCode :
 					name,
-				null, null, type, StringPool.BLANK, new ServiceContext()));
+				null, null, type, StringPool.BLANK, new ServiceContext()),
+			"role");
 	}
 
 	/**
@@ -1999,11 +2000,11 @@ public class RoleLocalServiceImpl extends RoleLocalServiceBaseImpl {
 		role.setTitleMap(titleMap);
 		role.setDescriptionMap(descriptionMap);
 		role.setSubtype(subtype);
-
-		if (role.getStatus() == WorkflowConstants.STATUS_EMPTY) {
-			role.setStatus(WorkflowConstants.STATUS_APPROVED);
-		}
-
+		role.setStatus(
+			EmptyModelManagerUtil.solveEmptyModel(
+				externalReferenceCode, role.getModelClassName(),
+				role.getCompanyId(), 0, role.getStatus(),
+				() -> WorkflowConstants.STATUS_APPROVED));
 		role.setExpandoBridgeAttributes(serviceContext);
 
 		return rolePersistence.update(role);
@@ -2043,7 +2044,8 @@ public class RoleLocalServiceImpl extends RoleLocalServiceBaseImpl {
 
 			try {
 				role = roleLocalService.addRole(
-					null, user.getUserId(), null, 0, name, null,
+					RoleConstants.toSystemRoleExternalReferenceCode(name),
+					user.getUserId(), null, 0, name, null,
 					LocalizationUtil.getLocalizationMap(description), type,
 					null, null);
 			}

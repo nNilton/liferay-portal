@@ -8,10 +8,14 @@ import {expect, mergeTests} from '@playwright/test';
 import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
 import {instanceSettingsPagesTest} from '../../../fixtures/instanceSettingsPagesTest';
+import {isolatedSiteTest} from '../../../fixtures/isolatedSiteTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {pageEditorPagesTest} from '../../../fixtures/pageEditorPagesTest';
+import {productMenuPageTest} from '../../../fixtures/productMenuPageTest';
 import {virtualInstancesPagesTest} from '../../../fixtures/virtualInstancesPagesTest';
+import {liferayConfig} from '../../../liferay.config';
 import getRandomString from '../../../utils/getRandomString';
+import {openProductMenu} from '../../../utils/productMenu';
 import {pageViewModePagesTest} from './../../../fixtures/pageViewModePagesTest';
 import {siteSettingsPagesTest} from './../../../fixtures/siteSettingsPagesTest';
 import {systemSettingsPageTest} from './../../../fixtures/systemSettingsPageTest';
@@ -23,8 +27,10 @@ const test = mergeTests(
 	dataApiHelpersTest,
 	instanceSettingsPagesTest,
 	loginTest(),
+	isolatedSiteTest,
 	pageEditorPagesTest,
 	pageViewModePagesTest,
+	productMenuPageTest,
 	sitesAdminPagesTest,
 	siteSettingsPagesTest,
 	systemSettingsPageTest,
@@ -95,94 +101,90 @@ test('Site is still created even if modal window is closed', async ({
 test('Inactivate and reactivate site', async ({
 	apiHelpers,
 	page,
+	site,
 	sitesAdminPage,
 	systemSettingsPage,
 	widgetPagePage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
-		name: getRandomString(),
+
+	// Activate 'Show Inactive Request Message' configuration in system settings
+
+	await systemSettingsPage.goToSystemSetting(
+		'Infrastructure',
+		'Inactive Request Handler'
+	);
+
+	const showInactiveRequestCheckbox = page.getByLabel(
+		'Show Inactive Request Message'
+	);
+
+	if ((await showInactiveRequestCheckbox.isChecked()) === false) {
+		await showInactiveRequestCheckbox.check();
+		await page.getByRole('button', {name: 'Save'}).click();
+		await waitForAlert(page);
+	}
+
+	// Create Layout
+
+	const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
+		groupId: site.id,
+		options: {type: 'portlet'},
+		title: getRandomString(),
 	});
 
-	try {
+	// Deactivate Site
 
-		// Activate 'Show Inactive Request Message' configuration in system settings
+	await sitesAdminPage.goto();
 
-		await systemSettingsPage.goToSystemSetting(
-			'Infrastructure',
-			'Inactive Request Handler'
-		);
+	await page
+		.getByRole('row', {name: site.name})
+		.getByLabel('Show Actions')
+		.click();
 
-		const showInactiveRequestCheckbox = page.getByLabel(
-			'Show Inactive Request Message'
-		);
+	page.once('dialog', async (dialog) => {
+		await dialog.accept();
+	});
 
-		if ((await showInactiveRequestCheckbox.isChecked()) === false) {
-			await showInactiveRequestCheckbox.check();
-			await page.getByRole('button', {name: 'Save'}).click();
-		}
+	await page.getByRole('menuitem', {name: 'Deactivate'}).click();
 
-		// Create Layout
+	await waitForAlert(page);
 
-		const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
-			groupId: site.id,
-			title: getRandomString(),
-		});
+	await page.waitForLoadState();
 
-		// Deactivate Site
+	// Verify that the message alerting that the Site is deactivated appears
 
-		await sitesAdminPage.goto();
+	await widgetPagePage.goto(layout, site.friendlyUrlPath);
 
-		await page
-			.getByRole('row', {name: site.name})
-			.getByLabel('Show Actions')
-			.click();
+	await expect(
+		page.getByText(
+			'This site is inactive. Please contact the administrator.',
+			{exact: true}
+		)
+	).toBeVisible();
 
-		page.once('dialog', async (dialog) => {
-			await dialog.accept();
-		});
+	// Activate Site
 
-		await page.getByRole('menuitem', {name: 'Deactivate'}).click();
+	await sitesAdminPage.goto();
 
-		await waitForAlert(page);
+	await page
+		.getByRole('row', {name: site.name})
+		.getByLabel('Show Actions')
+		.click();
 
-		// Verify that the message alerting that the Site is deactivated appears
+	await page.getByRole('menuitem', {name: 'Activate'}).click();
 
-		await widgetPagePage.goto(layout, site.friendlyUrlPath);
+	await waitForAlert(page);
 
-		await expect(
-			page.getByText(
-				'This site is inactive. Please contact the administrator.',
-				{exact: true}
-			)
-		).toBeVisible();
+	// Verify that the message alerting that the Site is deactivated does not appears
 
-		// Activate Site
+	await widgetPagePage.goto(layout, site.friendlyUrlPath);
 
-		await sitesAdminPage.goto();
-
-		await page
-			.getByRole('row', {name: site.name})
-			.getByLabel('Show Actions')
-			.click();
-
-		await page.getByRole('menuitem', {name: 'Activate'}).click();
-
-		await waitForAlert(page);
-
-		// Verify that the message alerting that the Site is deactivated does not appears
-
-		await widgetPagePage.goto(layout, site.friendlyUrlPath);
-
-		await expect(
-			page.getByText(
-				'This site is inactive. Please contact the administrator.',
-				{exact: true}
-			)
-		).not.toBeVisible();
-	}
-	finally {
-		await apiHelpers.headlessSite.deleteSite(site.id);
-	}
+	await expect(
+		page.getByText(
+			'This site is inactive. Please contact the administrator.',
+			{exact: true}
+		)
+	).not.toBeVisible();
 });
 
 test('Could edit site name', async ({
@@ -191,34 +193,29 @@ test('Could edit site name', async ({
 	siteSettingsPage,
 	sitesAdminPage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
 
-	try {
-		await siteSettingsPage.goToSiteSetting(
-			'Site Configuration',
-			'Details',
-			site.friendlyUrlPath
-		);
+	await siteSettingsPage.goToSiteSetting(
+		'Site Configuration',
+		'Details',
+		site.friendlyUrlPath
+	);
 
-		await page.waitForTimeout(300);
+	await page.waitForTimeout(300);
 
-		const newSiteName = getRandomString();
+	const newSiteName = getRandomString();
 
-		await page.getByPlaceholder('Name').fill(newSiteName);
+	await page.getByPlaceholder('Name').fill(newSiteName);
 
-		await page.getByRole('button', {name: 'Save'}).click();
+	await page.getByRole('button', {name: 'Save'}).click();
 
-		await waitForAlert(page);
+	await waitForAlert(page);
 
-		await sitesAdminPage.goto();
+	await sitesAdminPage.goto();
 
-		await expect(page.getByRole('link', {name: newSiteName})).toBeVisible();
-	}
-	finally {
-		await apiHelpers.headlessSite.deleteSite(site.id);
-	}
+	await expect(page.getByRole('link', {name: newSiteName})).toBeVisible();
 });
 
 test('Could edit friendly URL and access by it', async ({
@@ -227,52 +224,46 @@ test('Could edit friendly URL and access by it', async ({
 	siteSettingsPage,
 	widgetPagePage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
 
-	try {
+	// Create public Layout
 
-		// Create public Layout
+	const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
+		groupId: site.id,
+		title: getRandomString(),
+	});
 
-		const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
-			groupId: site.id,
-			title: getRandomString(),
-		});
+	// Update site's friendly URL
 
-		// Update site's friendly URL
+	await siteSettingsPage.goToSiteSetting(
+		'Site Configuration',
+		'Site URL',
+		site.friendlyUrlPath
+	);
 
-		await siteSettingsPage.goToSiteSetting(
-			'Site Configuration',
-			'Site URL',
-			site.friendlyUrlPath
-		);
+	await page.waitForTimeout(300);
 
-		await page.waitForTimeout(300);
+	const newSiteFriendlyURL = '/' + getRandomString();
 
-		const newSiteFriendlyURL = '/' + getRandomString();
+	await page.getByLabel('Friendly URL').fill(newSiteFriendlyURL);
 
-		await page.getByLabel('Friendly URL').fill(newSiteFriendlyURL);
+	await page.getByRole('button', {name: 'Save'}).click();
 
-		await page.getByRole('button', {name: 'Save'}).click();
+	await waitForAlert(page);
 
-		await waitForAlert(page);
+	// Assert that the redirection to the site's public page works using the new site's friendly URL
 
-		// Assert that the redirection to the site's public page works using the new site's friendly URL
+	await widgetPagePage.goto(layout, newSiteFriendlyURL);
 
-		await widgetPagePage.goto(layout, newSiteFriendlyURL);
+	await expect(
+		page.getByRole('link', {name: 'Go to ' + site.name})
+	).toBeVisible();
 
-		await expect(
-			page.getByRole('link', {name: 'Go to ' + site.name})
-		).toBeVisible();
-
-		await expect(
-			page.getByRole('menuitem', {name: layout.nameCurrentValue})
-		).toBeVisible();
-	}
-	finally {
-		await apiHelpers.headlessSite.deleteSite(site.id);
-	}
+	await expect(
+		page.getByRole('menuitem', {name: layout.nameCurrentValue})
+	).toBeVisible();
 });
 
 test('Could not add invalid friendly URL and can access by former friendly URL', async ({
@@ -280,63 +271,55 @@ test('Could not add invalid friendly URL and can access by former friendly URL',
 	page,
 	siteSettingsPage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
 
-	try {
+	// Create Layout
 
-		// Create Layout
+	await apiHelpers.jsonWebServicesLayout.addLayout({
+		groupId: site.id,
+		title: getRandomString(),
+	});
 
-		await apiHelpers.jsonWebServicesLayout.addLayout({
-			groupId: site.id,
-			title: getRandomString(),
-		});
+	// Try to add a invalid friendly URL to the site
 
-		// Try to add a invalid friendly URL to the site
+	await siteSettingsPage.goToSiteSetting(
+		'Site Configuration',
+		'Site URL',
+		site.friendlyUrlPath
+	);
 
-		await siteSettingsPage.goToSiteSetting(
-			'Site Configuration',
-			'Site URL',
-			site.friendlyUrlPath
-		);
+	await page.waitForTimeout(300);
 
-		await page.waitForTimeout(300);
+	const oldSiteFriendlyURL = site.friendlyUrlPath;
 
-		const oldSiteFriendlyURL = site.friendlyUrlPath;
+	const newSiteFriendlyURL =
+		'/' + getRandomString() + '/' + getRandomString();
 
-		const newSiteFriendlyURL =
-			'/' + getRandomString() + '/' + getRandomString();
+	await page.getByLabel('Friendly URL').fill(newSiteFriendlyURL);
 
-		await page.getByLabel('Friendly URL').fill(newSiteFriendlyURL);
+	await page.getByRole('button', {name: 'Save'}).click();
 
-		await page.getByRole('button', {name: 'Save'}).click();
+	// Expect that it fails
 
-		// Expect that it fails
+	await expect(page.getByText('Close Error: The friendly URL')).toBeVisible();
 
-		await expect(
-			page.getByText('Close Error: The friendly URL')
-		).toBeVisible();
+	await waitForAlert(page, 'Error:Your request failed to complete.', {
+		type: 'danger',
+	});
 
-		await waitForAlert(page, 'Error:Your request failed to complete.', {
-			type: 'danger',
-		});
+	// Expect that the friendly URL field has the old value of the site's friendly URL
 
-		// Expect that the friendly URL field has the old value of the site's friendly URL
+	await siteSettingsPage.goToSiteSetting(
+		'Site Configuration',
+		'Site URL',
+		site.friendlyUrlPath
+	);
 
-		await siteSettingsPage.goToSiteSetting(
-			'Site Configuration',
-			'Site URL',
-			site.friendlyUrlPath
-		);
-
-		await expect(page.getByLabel('Friendly URL')).toHaveValue(
-			oldSiteFriendlyURL
-		);
-	}
-	finally {
-		await apiHelpers.headlessSite.deleteSite(site.id);
-	}
+	await expect(page.getByLabel('Friendly URL')).toHaveValue(
+		oldSiteFriendlyURL
+	);
 });
 
 test('Able to search and find site by site name', async ({
@@ -344,25 +327,21 @@ test('Able to search and find site by site name', async ({
 	page,
 	sitesAdminPage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
-	try {
-		await sitesAdminPage.goto();
 
-		await page.getByPlaceholder('Search for').fill(site.name);
+	await sitesAdminPage.goto();
 
-		await page.getByLabel('Search for', {exact: true}).click();
+	await page.getByPlaceholder('Search for').fill(site.name);
 
-		await page.getByText('1 Result Found for "' + site.name + '"').click();
+	await page.getByLabel('Search for', {exact: true}).click();
 
-		await expect(
-			page.getByRole('cell', {exact: true, name: site.name})
-		).toBeVisible();
-	}
-	finally {
-		await apiHelpers.headlessSite.deleteSite(site.id);
-	}
+	await page.getByText('1 Result Found for "' + site.name + '"').click();
+
+	await expect(
+		page.getByRole('cell', {exact: true, name: site.name})
+	).toBeVisible();
 });
 
 test('View public page via virtual host URL', async ({
@@ -370,49 +349,43 @@ test('View public page via virtual host URL', async ({
 	page,
 	siteSettingsPage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
 
-	try {
+	// Create Layout
 
-		// Create Layout
+	const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
+		groupId: site.id,
+		title: getRandomString(),
+	});
 
-		const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
-			groupId: site.id,
-			title: getRandomString(),
-		});
+	// Configure a Virtual Host for the site
 
-		// Configure a Virtual Host for the site
+	await siteSettingsPage.goToSiteSetting(
+		'Site Configuration',
+		'Site URL',
+		site.friendlyUrlPath
+	);
+	const VIRTUAL_HOST_NAME = 'www.able.com';
 
-		await siteSettingsPage.goToSiteSetting(
-			'Site Configuration',
-			'Site URL',
-			site.friendlyUrlPath
-		);
-		const VIRTUAL_HOST_NAME = 'www.able.com';
+	await page.getByPlaceholder('Virtual Host').fill(VIRTUAL_HOST_NAME);
 
-		await page.getByPlaceholder('Virtual Host').fill(VIRTUAL_HOST_NAME);
+	await page.getByRole('button', {name: 'Save'}).click();
 
-		await page.getByRole('button', {name: 'Save'}).click();
+	await waitForAlert(page);
 
-		await waitForAlert(page);
+	// Access the site's page using the Virtual Host
 
-		// Access the site's page using the Virtual Host
+	await page.goto(
+		`http://${VIRTUAL_HOST_NAME}:${liferayConfig.environment.port}/web${site.friendlyUrlPath}${layout.friendlyURL}`
+	);
 
-		await page.goto(
-			`http://${VIRTUAL_HOST_NAME}:8080/web${site.friendlyUrlPath}${layout.friendlyURL}`
-		);
-
-		await expect(
-			page.getByRole('menuitem', {
-				name: layout.nameCurrentValue,
-			})
-		).toBeVisible();
-	}
-	finally {
-		await apiHelpers.headlessSite.deleteSite(site.id);
-	}
+	await expect(
+		page.getByRole('menuitem', {
+			name: layout.nameCurrentValue,
+		})
+	).toBeVisible();
 });
 
 test('Can not choose its own site as parent site', async ({
@@ -421,33 +394,81 @@ test('Can not choose its own site as parent site', async ({
 	siteSettingsPage,
 	sitesAdminPage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
 
-	try {
-		await sitesAdminPage.goto();
+	await sitesAdminPage.goto();
 
-		await siteSettingsPage.goToSiteSetting(
-			'Site Configuration',
-			'Details',
-			site.friendlyUrlPath
-		);
+	await siteSettingsPage.goToSiteSetting(
+		'Site Configuration',
+		'Details',
+		site.friendlyUrlPath
+	);
 
-		await page.getByRole('button', {name: 'Change'}).click();
+	await page.getByRole('button', {name: 'Change'}).click();
 
-		const selectSiteModal = page.frameLocator(
-			'iframe[title="Select Site"]'
-		);
+	const selectSiteModal = page.frameLocator('iframe[title="Select Site"]');
 
-		await expect(
-			selectSiteModal.getByRole('link', {exact: true, name: site.name})
-		).not.toBeVisible();
-	}
-	finally {
-		await apiHelpers.headlessSite.deleteSite(site.id);
-	}
+	await expect(
+		selectSiteModal.getByRole('link', {exact: true, name: site.name})
+	).not.toBeVisible();
 });
+
+test(
+	'Sites that only have hidden layouts appear correctly in the Recent Sites list',
+	{
+		tag: '@LPD-76663',
+	},
+	async ({apiHelpers, page, site}) => {
+		const blankSite = await apiHelpers.headlessAdminSite.postSite({
+			name: 'blank' + getRandomString(),
+		});
+
+		await apiHelpers.jsonWebServicesLayout.addLayout({
+			groupId: site.id,
+			title: getRandomString(),
+		});
+
+		await page.goto(`/web${site.friendlyUrlPath}`);
+
+		await openProductMenu(page);
+
+		const switchSiteButton = page.getByRole('button', {
+			name: 'Go to Other Site',
+		});
+
+		await switchSiteButton.click();
+
+		const frame = page.frameLocator('iframe[title="Select Site"]');
+		const recentSitesTab = frame.getByRole('link', {
+			name: 'Recent',
+		});
+
+		await recentSitesTab.click();
+
+		await expect(frame.locator('.card-title').first()).toHaveText(
+			site.name
+		);
+
+		await frame
+			.getByRole('link', {
+				name: 'All Sites',
+			})
+			.click();
+
+		await frame.locator('.card-title', {hasText: blankSite.name}).click();
+
+		await openProductMenu(page);
+
+		await switchSiteButton.click();
+		await recentSitesTab.click();
+
+		await expect(frame.locator('.card-title').first()).toHaveText(
+			blankSite.name
+		);
+	}
+);
 
 test('Deleting friendly URL makes it not able to access page via old friendly URL', async ({
 	apiHelpers,
@@ -455,68 +476,62 @@ test('Deleting friendly URL makes it not able to access page via old friendly UR
 	siteSettingsPage,
 	widgetPagePage,
 }) => {
-	const site = await apiHelpers.headlessSite.createSite({
+	const site = await apiHelpers.headlessAdminSite.postSite({
 		name: getRandomString(),
 	});
 
 	const originalSiteFriendlyURL = site.friendlyUrlPath;
 
-	try {
+	// Create public Layout
 
-		// Create public Layout
+	const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
+		groupId: site.id,
+		title: getRandomString(),
+	});
 
-		const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
-			groupId: site.id,
-			title: getRandomString(),
-		});
+	// Create private Layout
 
-		// Create private Layout
+	const privateLayout = await apiHelpers.jsonWebServicesLayout.addLayout({
+		groupId: site.id,
+		privateLayout: 'true',
+		title: getRandomString(),
+	});
 
-		const privateLayout = await apiHelpers.jsonWebServicesLayout.addLayout({
-			groupId: site.id,
-			privateLayout: 'true',
-			title: getRandomString(),
-		});
+	await siteSettingsPage.goToSiteSetting(
+		'Site Configuration',
+		'Site URL',
+		site.friendlyUrlPath
+	);
 
-		await siteSettingsPage.goToSiteSetting(
-			'Site Configuration',
-			'Site URL',
-			site.friendlyUrlPath
-		);
+	// Fill the site's friendly URL with a empty value
 
-		// Fill the site's friendly URL with a empty value
+	await page.waitForTimeout(300);
 
-		await page.waitForTimeout(300);
+	await page.getByLabel('Friendly URL').fill('');
 
-		await page.getByLabel('Friendly URL').fill('');
+	await page.getByRole('button', {name: 'Save'}).click();
 
-		await page.getByRole('button', {name: 'Save'}).click();
+	await waitForAlert(page);
 
-		await waitForAlert(page);
+	// Assert that the empty value was not saved and the current value is now '/group-<groupId>'
 
-		// Assert that the empty value was not saved and the current value is now '/group-<groupId>'
+	await expect(page.getByLabel('Friendly URL')).toHaveValue(
+		'/group-' + site.id
+	);
 
-		await expect(page.getByLabel('Friendly URL')).toHaveValue(
-			'/group-' + site.id
-		);
+	// Assert that the public page is not accessible using the old site's friendly URL
 
-		// Assert that the public page is not accessible using the old site's friendly URL
+	await widgetPagePage.goto(layout, originalSiteFriendlyURL);
 
-		await widgetPagePage.goto(layout, originalSiteFriendlyURL);
+	await expect(
+		page.getByRole('menuitem', {name: layout.nameCurrentValue})
+	).not.toBeVisible();
 
-		await expect(
-			page.getByRole('menuitem', {name: layout.nameCurrentValue})
-		).not.toBeVisible();
+	// Assert that the private page is not accessible using the old site's friendly URL
 
-		// Assert that the private page is not accessible using the old site's friendly URL
+	await widgetPagePage.goto(privateLayout, originalSiteFriendlyURL);
 
-		await widgetPagePage.goto(privateLayout, originalSiteFriendlyURL);
-
-		await expect(
-			page.getByRole('menuitem', {name: privateLayout.nameCurrentValue})
-		).not.toBeVisible();
-	}
-	finally {
-		await apiHelpers.headlessSite.deleteSite(site.id);
-	}
+	await expect(
+		page.getByRole('menuitem', {name: privateLayout.nameCurrentValue})
+	).not.toBeVisible();
 });

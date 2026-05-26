@@ -98,10 +98,6 @@ public interface DefaultObjectEntryManager extends ObjectEntryManager {
 		throws Exception;
 
 	public ObjectEntry expireObjectEntry(
-			DTOConverterContext dtoConverterContext, long objectEntryId)
-		throws Exception;
-
-	public ObjectEntry expireObjectEntry(
 			DTOConverterContext dtoConverterContext,
 			String externalReferenceCode, ObjectDefinition objectDefinition,
 			String scopeKey)
@@ -116,6 +112,12 @@ public interface DefaultObjectEntryManager extends ObjectEntryManager {
 	public ObjectEntry fetchObjectEntry(
 			DTOConverterContext dtoConverterContext,
 			ObjectDefinition objectDefinition, long objectEntryId)
+		throws Exception;
+
+	public ObjectEntry fetchObjectEntry(
+			DTOConverterContext dtoConverterContext,
+			String externalReferenceCode, ObjectDefinition objectDefinition,
+			String scopeKey)
 		throws Exception;
 
 	public ObjectEntry fetchRelatedManyToOneObjectEntry(

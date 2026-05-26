@@ -42,6 +42,7 @@ import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.rule.FeatureFlag;
+import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -64,7 +65,11 @@ import org.junit.runner.RunWith;
 /**
  * @author Rubén Pulido
  */
-@FeatureFlag("LPD-35443")
+@FeatureFlags(
+	featureFlags = {
+		@FeatureFlag(value = "LPD-35443"), @FeatureFlag(value = "LPD-74328")
+	}
+)
 @RunWith(Arquillian.class)
 public class PageSpecificationResourceTest
 	extends BasePageSpecificationResourceTestCase {
@@ -94,7 +99,7 @@ public class PageSpecificationResourceTest
 			LayoutConstants.TYPE_PORTLET, serviceContext);
 
 		_assertProblemException(
-			"BAD_REQUEST",
+			"BAD_REQUEST", "The page status is not valid",
 			() -> pageSpecificationResource.deleteSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				layout.getExternalReferenceCode()));
@@ -127,13 +132,13 @@ public class PageSpecificationResourceTest
 			layoutPageTemplateEntry.getPlid());
 
 		_assertProblemException(
-			"NOT_FOUND",
+			"NOT_FOUND", null,
 			() -> pageSpecificationResource.deleteSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				layoutPageTemplateEntryLayout.getExternalReferenceCode()));
 
 		_assertProblemException(
-			"BAD_REQUEST",
+			"BAD_REQUEST", "The page status is not valid",
 			() -> pageSpecificationResource.deleteSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				layoutPageTemplateEntry.getExternalReferenceCode()));
@@ -395,8 +400,8 @@ public class PageSpecificationResourceTest
 
 			if (Objects.equals(additionalAssertFieldName, "settings")) {
 				SettingsTestUtil.assertSettings(
-					pageSpecification1.getSettings(),
-					pageSpecification2.getSettings());
+					SettingsTestUtil.getSettings(pageSpecification1),
+					SettingsTestUtil.getSettings(pageSpecification2));
 
 				continue;
 			}
@@ -624,7 +629,8 @@ public class PageSpecificationResourceTest
 	}
 
 	private void _assertProblemException(
-			String status, UnsafeRunnable<Exception> unsafeRunnable)
+			String expectedStatus, String expectedTitle,
+			UnsafeRunnable<Exception> unsafeRunnable)
 		throws Exception {
 
 		try {
@@ -634,8 +640,8 @@ public class PageSpecificationResourceTest
 		catch (Problem.ProblemException problemException) {
 			Problem problem = problemException.getProblem();
 
-			Assert.assertEquals(status, problem.getStatus());
-			Assert.assertNull(problem.getTitle());
+			Assert.assertEquals(expectedStatus, problem.getStatus());
+			Assert.assertEquals(expectedTitle, problem.getTitle());
 		}
 	}
 
@@ -784,24 +790,41 @@ public class PageSpecificationResourceTest
 		if (!typeUtility) {
 			SettingsTestUtil.modifySettings(
 				FavIcon.FavIconType.CLIENT_EXTENSION, serviceContext,
-				pageSpecification.getSettings());
+				SettingsTestUtil.getSettings(pageSpecification));
 
 			return;
 		}
 
-		pageSpecification.setSettings(
-			() -> new Settings() {
-				{
-					setMasterPageItemExternalReference(
-						() ->
-							SettingsTestUtil.getMasterPageItemExternalReference(
-								false, serviceContext));
-					setStyleBookItemExternalReference(
-						() ->
-							SettingsTestUtil.getStyleBookItemExternalReference(
-								serviceContext));
-				}
-			});
+		if (!(pageSpecification instanceof ContentPageSpecification) &&
+			!(pageSpecification instanceof WidgetPageSpecification)) {
+
+			return;
+		}
+
+		Settings settings = new Settings() {
+			{
+				setMasterPageItemExternalReference(
+					() -> SettingsTestUtil.getMasterPageItemExternalReference(
+						false, serviceContext));
+				setStyleBookItemExternalReference(
+					() -> SettingsTestUtil.getStyleBookItemExternalReference(
+						serviceContext));
+			}
+		};
+
+		if (pageSpecification instanceof ContentPageSpecification) {
+			ContentPageSpecification contentPageSpecification =
+				(ContentPageSpecification)pageSpecification;
+
+			contentPageSpecification.setSettings(() -> settings);
+
+			return;
+		}
+
+		WidgetPageSpecification widgetPageSpecification =
+			(WidgetPageSpecification)pageSpecification;
+
+		widgetPageSpecification.setSettings(() -> settings);
 	}
 
 	private void _testDeleteSitePageSpecification(
@@ -809,7 +832,7 @@ public class PageSpecificationResourceTest
 		throws Exception {
 
 		_assertProblemException(
-			"BAD_REQUEST",
+			"BAD_REQUEST", "The page status is not valid",
 			() -> pageSpecificationResource.deleteSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				layout.getExternalReferenceCode()));
@@ -821,13 +844,13 @@ public class PageSpecificationResourceTest
 		ContentLayoutTestUtil.publishLayout(draftLayout, layout);
 
 		_assertProblemException(
-			"BAD_REQUEST",
+			"BAD_REQUEST", "The page status is not valid",
 			() -> pageSpecificationResource.deleteSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				layout.getExternalReferenceCode()));
 
 		_assertProblemException(
-			"BAD_REQUEST",
+			"BAD_REQUEST", "The page status is not valid",
 			() -> pageSpecificationResource.deleteSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				draftLayout.getExternalReferenceCode()));
@@ -853,7 +876,7 @@ public class PageSpecificationResourceTest
 			pageSpecification.getExternalReferenceCode());
 
 		SettingsTestUtil.assertPageSpecificationSetting(
-			layout, pageSpecification.getSettings());
+			layout, SettingsTestUtil.getSettings(pageSpecification));
 
 		if (layout.isDraftLayout()) {
 			if (layout.isApproved()) {
@@ -980,6 +1003,7 @@ public class PageSpecificationResourceTest
 
 		_assertProblemException(
 			"BAD_REQUEST",
+			"The page specification must be widget and be in approved status",
 			() -> pageSpecificationResource.patchSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				layout.getExternalReferenceCode(), widgetPageSpecification));
@@ -1029,21 +1053,6 @@ public class PageSpecificationResourceTest
 				}
 			});
 
-		_assertProblemException(
-			"BAD_REQUEST",
-			() -> pageSpecificationResource.patchSitePageSpecification(
-				testGroup.getExternalReferenceCode(),
-				draftLayout.getExternalReferenceCode(),
-				new ContentPageSpecification() {
-					{
-						setPageExperiences(
-							() -> ArrayUtil.append(
-								contentPageSpecification.getPageExperiences(),
-								new PageExperience()));
-						setType(() -> Type.CONTENT_PAGE_SPECIFICATION);
-					}
-				}));
-
 		_modifySettings(
 			contentPageSpecification, serviceContext, layout.isTypeUtility());
 
@@ -1056,6 +1065,7 @@ public class PageSpecificationResourceTest
 
 		_assertProblemException(
 			"BAD_REQUEST",
+			"The page specification must be in draft status for content pages",
 			() -> pageSpecificationResource.patchSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				draftLayout.getExternalReferenceCode(),
@@ -1103,11 +1113,13 @@ public class PageSpecificationResourceTest
 
 		_assertProblemException(
 			"BAD_REQUEST",
+			"The page specification must be in draft status for content pages",
 			() -> pageSpecificationResource.putSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				draftLayout.getExternalReferenceCode(), pageSpecification));
 		_assertProblemException(
 			"BAD_REQUEST",
+			"The page specification must be in draft status for content pages",
 			() -> pageSpecificationResource.putSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				layout.getExternalReferenceCode(), pageSpecification));
@@ -1116,6 +1128,7 @@ public class PageSpecificationResourceTest
 
 		_assertProblemException(
 			"BAD_REQUEST",
+			"The page specification must be in draft status for content pages",
 			() -> pageSpecificationResource.putSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				layout.getExternalReferenceCode(), pageSpecification));
@@ -1128,6 +1141,7 @@ public class PageSpecificationResourceTest
 
 		_assertProblemException(
 			"BAD_REQUEST",
+			"The page specification must be in draft status for content pages",
 			() -> pageSpecificationResource.putSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				draftLayout.getExternalReferenceCode(), pageSpecification));

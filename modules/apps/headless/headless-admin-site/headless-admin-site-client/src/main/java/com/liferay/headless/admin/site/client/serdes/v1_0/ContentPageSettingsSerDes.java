@@ -70,6 +70,43 @@ public class ContentPageSettingsSerDes {
 			sb.append("]");
 		}
 
+		if (contentPageSettings.getDefaultAssetPublisherPortletId() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"defaultAssetPublisherPortletId\": ");
+
+			sb.append("\"");
+
+			sb.append(
+				_escape(
+					contentPageSettings.getDefaultAssetPublisherPortletId()));
+
+			sb.append("\"");
+		}
+
+		if (contentPageSettings.getOpenGraphSettings() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"openGraphSettings\": ");
+
+			sb.append(
+				String.valueOf(contentPageSettings.getOpenGraphSettings()));
+		}
+
+		if (contentPageSettings.getSeoSettings() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"seoSettings\": ");
+
+			sb.append(String.valueOf(contentPageSettings.getSeoSettings()));
+		}
+
 		if (contentPageSettings.getHiddenFromNavigation() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
@@ -91,17 +128,6 @@ public class ContentPageSettingsSerDes {
 				String.valueOf(contentPageSettings.getNavigationSettings()));
 		}
 
-		if (contentPageSettings.getOpenGraphSettings() != null) {
-			if (sb.length() > 1) {
-				sb.append(", ");
-			}
-
-			sb.append("\"openGraphSettings\": ");
-
-			sb.append(
-				String.valueOf(contentPageSettings.getOpenGraphSettings()));
-		}
-
 		if (contentPageSettings.getPriority() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
@@ -110,16 +136,6 @@ public class ContentPageSettingsSerDes {
 			sb.append("\"priority\": ");
 
 			sb.append(contentPageSettings.getPriority());
-		}
-
-		if (contentPageSettings.getSeoSettings() != null) {
-			if (sb.length() > 1) {
-				sb.append(", ");
-			}
-
-			sb.append("\"seoSettings\": ");
-
-			sb.append(String.valueOf(contentPageSettings.getSeoSettings()));
 		}
 
 		if (contentPageSettings.getType() != null) {
@@ -164,6 +180,34 @@ public class ContentPageSettingsSerDes {
 				String.valueOf(contentPageSettings.getCustomMetaTags()));
 		}
 
+		if (contentPageSettings.getDefaultAssetPublisherPortletId() == null) {
+			map.put("defaultAssetPublisherPortletId", null);
+		}
+		else {
+			map.put(
+				"defaultAssetPublisherPortletId",
+				String.valueOf(
+					contentPageSettings.getDefaultAssetPublisherPortletId()));
+		}
+
+		if (contentPageSettings.getOpenGraphSettings() == null) {
+			map.put("openGraphSettings", null);
+		}
+		else {
+			map.put(
+				"openGraphSettings",
+				String.valueOf(contentPageSettings.getOpenGraphSettings()));
+		}
+
+		if (contentPageSettings.getSeoSettings() == null) {
+			map.put("seoSettings", null);
+		}
+		else {
+			map.put(
+				"seoSettings",
+				String.valueOf(contentPageSettings.getSeoSettings()));
+		}
+
 		if (contentPageSettings.getHiddenFromNavigation() == null) {
 			map.put("hiddenFromNavigation", null);
 		}
@@ -182,30 +226,12 @@ public class ContentPageSettingsSerDes {
 				String.valueOf(contentPageSettings.getNavigationSettings()));
 		}
 
-		if (contentPageSettings.getOpenGraphSettings() == null) {
-			map.put("openGraphSettings", null);
-		}
-		else {
-			map.put(
-				"openGraphSettings",
-				String.valueOf(contentPageSettings.getOpenGraphSettings()));
-		}
-
 		if (contentPageSettings.getPriority() == null) {
 			map.put("priority", null);
 		}
 		else {
 			map.put(
 				"priority", String.valueOf(contentPageSettings.getPriority()));
-		}
-
-		if (contentPageSettings.getSeoSettings() == null) {
-			map.put("seoSettings", null);
-		}
-		else {
-			map.put(
-				"seoSettings",
-				String.valueOf(contentPageSettings.getSeoSettings()));
 		}
 
 		if (contentPageSettings.getType() == null) {
@@ -237,6 +263,18 @@ public class ContentPageSettingsSerDes {
 				return false;
 			}
 			else if (Objects.equals(
+						jsonParserFieldName,
+						"defaultAssetPublisherPortletId")) {
+
+				return false;
+			}
+			else if (Objects.equals(jsonParserFieldName, "openGraphSettings")) {
+				return false;
+			}
+			else if (Objects.equals(jsonParserFieldName, "seoSettings")) {
+				return false;
+			}
+			else if (Objects.equals(
 						jsonParserFieldName, "hiddenFromNavigation")) {
 
 				return false;
@@ -246,13 +284,7 @@ public class ContentPageSettingsSerDes {
 
 				return false;
 			}
-			else if (Objects.equals(jsonParserFieldName, "openGraphSettings")) {
-				return false;
-			}
 			else if (Objects.equals(jsonParserFieldName, "priority")) {
-				return false;
-			}
-			else if (Objects.equals(jsonParserFieldName, "seoSettings")) {
 				return false;
 			}
 			else if (Objects.equals(jsonParserFieldName, "type")) {
@@ -284,6 +316,28 @@ public class ContentPageSettingsSerDes {
 				}
 			}
 			else if (Objects.equals(
+						jsonParserFieldName,
+						"defaultAssetPublisherPortletId")) {
+
+				if (jsonParserFieldValue != null) {
+					contentPageSettings.setDefaultAssetPublisherPortletId(
+						(String)jsonParserFieldValue);
+				}
+			}
+			else if (Objects.equals(jsonParserFieldName, "openGraphSettings")) {
+				if (jsonParserFieldValue != null) {
+					contentPageSettings.setOpenGraphSettings(
+						OpenGraphSettingsSerDes.toDTO(
+							(String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(jsonParserFieldName, "seoSettings")) {
+				if (jsonParserFieldValue != null) {
+					contentPageSettings.setSeoSettings(
+						SEOSettingsSerDes.toDTO((String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(
 						jsonParserFieldName, "hiddenFromNavigation")) {
 
 				if (jsonParserFieldValue != null) {
@@ -300,23 +354,10 @@ public class ContentPageSettingsSerDes {
 							(String)jsonParserFieldValue));
 				}
 			}
-			else if (Objects.equals(jsonParserFieldName, "openGraphSettings")) {
-				if (jsonParserFieldValue != null) {
-					contentPageSettings.setOpenGraphSettings(
-						OpenGraphSettingsSerDes.toDTO(
-							(String)jsonParserFieldValue));
-				}
-			}
 			else if (Objects.equals(jsonParserFieldName, "priority")) {
 				if (jsonParserFieldValue != null) {
 					contentPageSettings.setPriority(
 						Integer.valueOf((String)jsonParserFieldValue));
-				}
-			}
-			else if (Objects.equals(jsonParserFieldName, "seoSettings")) {
-				if (jsonParserFieldValue != null) {
-					contentPageSettings.setSeoSettings(
-						SEOSettingsSerDes.toDTO((String)jsonParserFieldValue));
 				}
 			}
 			else if (Objects.equals(jsonParserFieldName, "type")) {
@@ -407,3 +448,4 @@ public class ContentPageSettingsSerDes {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-281108124

@@ -232,12 +232,30 @@ public class DLURLHelperImpl implements DLURLHelper {
 				appendVersion);
 		}
 
-		if ((themeDisplay != null) && themeDisplay.isAddSessionIdToURL()) {
-			return _portal.getURLWithSessionId(
+		if (themeDisplay == null) {
+			return previewURL;
+		}
+
+		if (themeDisplay.isAddSessionIdToURL()) {
+			previewURL = _portal.getURLWithSessionId(
 				previewURL, themeDisplay.getSessionId());
 		}
 
+		if (Validator.isNotNull(themeDisplay.getDoAsUserId())) {
+			previewURL = _portal.addPreservedParameters(
+				themeDisplay, previewURL);
+		}
+
 		return previewURL;
+	}
+
+	@Override
+	public String getPreviewURL(
+		String fileEntryFriendlyURL, String groupFriendlyURL) {
+
+		return _getFriendlyURL(
+			fileEntryFriendlyURL, groupFriendlyURL,
+			_getPreviewURLPrefix(null, false), StringPool.BLANK);
 	}
 
 	@Override
@@ -437,11 +455,6 @@ public class DLURLHelperImpl implements DLURLHelper {
 			return null;
 		}
 
-		StringBundler sb = new StringBundler(6);
-
-		sb.append(previewURLPrefix);
-		sb.append(FriendlyURLResolverConstants.URL_SEPARATOR_Y_FILE_ENTRY);
-
 		Group group = _groupLocalService.fetchGroup(fileEntry.getGroupId());
 
 		if (group == null) {
@@ -449,10 +462,22 @@ public class DLURLHelperImpl implements DLURLHelper {
 				friendlyURLEntry.getGroupId());
 		}
 
-		sb.append(group.getFriendlyURL());
+		return _getFriendlyURL(
+			friendlyURLEntry.getUrlTitle(), group.getFriendlyURL(),
+			previewURLPrefix, queryString);
+	}
 
+	private String _getFriendlyURL(
+		String fileEntryFriendlyURL, String groupFriendlyURL,
+		String previewURLPrefix, String queryString) {
+
+		StringBundler sb = new StringBundler(6);
+
+		sb.append(previewURLPrefix);
+		sb.append(FriendlyURLResolverConstants.URL_SEPARATOR_Y_FILE_ENTRY);
+		sb.append(groupFriendlyURL);
 		sb.append(StringPool.SLASH);
-		sb.append(friendlyURLEntry.getUrlTitle());
+		sb.append(fileEntryFriendlyURL);
 
 		if (Validator.isNotNull(queryString)) {
 			sb.append(queryString.replaceFirst("&", "?"));

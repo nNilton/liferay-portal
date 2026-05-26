@@ -7,7 +7,9 @@ package com.liferay.site.internal.configuration.manager;
 
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.module.configuration.ConfigurationException;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
@@ -70,7 +72,7 @@ public class SitemapConfigurationManagerImpl
 
 		SitemapGroupConfiguration sitemapGroupConfiguration =
 			_configurationProvider.getGroupConfiguration(
-				SitemapGroupConfiguration.class, groupId);
+				SitemapGroupConfiguration.class, companyId, groupId);
 
 		return sitemapGroupConfiguration.includeCategories();
 	}
@@ -96,7 +98,7 @@ public class SitemapConfigurationManagerImpl
 
 		SitemapGroupConfiguration sitemapGroupConfiguration =
 			_configurationProvider.getGroupConfiguration(
-				SitemapGroupConfiguration.class, groupId);
+				SitemapGroupConfiguration.class, companyId, groupId);
 
 		return sitemapGroupConfiguration.includePages();
 	}
@@ -122,7 +124,7 @@ public class SitemapConfigurationManagerImpl
 
 		SitemapGroupConfiguration sitemapGroupConfiguration =
 			_configurationProvider.getGroupConfiguration(
-				SitemapGroupConfiguration.class, groupId);
+				SitemapGroupConfiguration.class, companyId, groupId);
 
 		return sitemapGroupConfiguration.includeWebContent();
 	}
@@ -146,7 +148,7 @@ public class SitemapConfigurationManagerImpl
 			long companyId, long[] companySitemapGroupIds,
 			long[] companySitemapObjectDefinitionIds, boolean includeCategories,
 			boolean includePages, boolean includeWebContent,
-			boolean xmlSitemapIndexEnabled)
+			boolean xmlSitemapIndexEnabled, String xmlSitemapIndexMode)
 		throws ConfigurationException {
 
 		_configurationProvider.saveCompanyConfiguration(
@@ -164,6 +166,8 @@ public class SitemapConfigurationManagerImpl
 				"includeWebContent", includeWebContent
 			).put(
 				"xmlSitemapIndexEnabled", xmlSitemapIndexEnabled
+			).put(
+				"xmlSitemapIndexMode", xmlSitemapIndexMode
 			).build());
 	}
 
@@ -173,8 +177,10 @@ public class SitemapConfigurationManagerImpl
 			boolean includeWebContent)
 		throws ConfigurationException {
 
+		Group group = _groupLocalService.fetchGroup(groupId);
+
 		_configurationProvider.saveGroupConfiguration(
-			SitemapGroupConfiguration.class, groupId,
+			SitemapGroupConfiguration.class, group.getCompanyId(), groupId,
 			HashMapDictionaryBuilder.<String, Object>put(
 				"includeCategories", includeCategories
 			).put(
@@ -195,7 +201,21 @@ public class SitemapConfigurationManagerImpl
 		return sitemapCompanyConfiguration.xmlSitemapIndexEnabled();
 	}
 
+	@Override
+	public String xmlSitemapIndexMode(long companyId)
+		throws ConfigurationException {
+
+		SitemapCompanyConfiguration sitemapCompanyConfiguration =
+			_configurationProvider.getCompanyConfiguration(
+				SitemapCompanyConfiguration.class, companyId);
+
+		return sitemapCompanyConfiguration.xmlSitemapIndexMode();
+	}
+
 	@Reference
 	private ConfigurationProvider _configurationProvider;
+
+	@Reference
+	private GroupLocalService _groupLocalService;
 
 }

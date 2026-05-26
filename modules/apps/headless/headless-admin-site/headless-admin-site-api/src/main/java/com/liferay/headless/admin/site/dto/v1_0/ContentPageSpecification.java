@@ -151,6 +151,48 @@ public class ContentPageSpecification
 	@JsonIgnore
 	private Supplier<PageExperience[]> _pageExperiencesSupplier;
 
+	@io.swagger.v3.oas.annotations.media.Schema
+	@Valid
+	public Settings getSettings() {
+		if (_settingsSupplier != null) {
+			settings = _settingsSupplier.get();
+
+			_settingsSupplier = null;
+		}
+
+		return settings;
+	}
+
+	public void setSettings(Settings settings) {
+		this.settings = settings;
+
+		_settingsSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setSettings(
+		UnsafeSupplier<Settings, Exception> settingsUnsafeSupplier) {
+
+		_settingsSupplier = () -> {
+			try {
+				return settingsUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected Settings settings;
+
+	@JsonIgnore
+	private Supplier<Settings> _settingsSupplier;
+
 	@Override
 	public boolean equals(Object object) {
 		if (this == object) {
@@ -220,6 +262,18 @@ public class ContentPageSpecification
 			sb.append("]");
 		}
 
+		Settings settings = getSettings();
+
+		if (settings != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"settings\": ");
+
+			sb.append(String.valueOf(settings));
+		}
+
 		com.liferay.portal.vulcan.custom.field.CustomField[] customFields =
 			getCustomFields();
 
@@ -257,18 +311,6 @@ public class ContentPageSpecification
 			sb.append(_escape(externalReferenceCode));
 
 			sb.append("\"");
-		}
-
-		Settings settings = getSettings();
-
-		if (settings != null) {
-			if (sb.length() > 1) {
-				sb.append(", ");
-			}
-
-			sb.append("\"settings\": ");
-
-			sb.append(String.valueOf(settings));
 		}
 
 		String siteTemplatePageSpecificationExternalReferenceCode =
@@ -419,3 +461,4 @@ public class ContentPageSpecification
 	private Map<String, Serializable> _extendedProperties;
 
 }
+// LIFERAY-REST-BUILDER-HASH:-724315329

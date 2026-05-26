@@ -6,13 +6,10 @@
 package com.liferay.portal.search.opensearch2.internal.search.engine.adapter.document;
 
 import com.liferay.portal.kernel.search.BooleanQuery;
-import com.liferay.portal.kernel.search.generic.BooleanQueryImpl;
-import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.search.engine.adapter.document.DeleteByQueryDocumentRequest;
 import com.liferay.portal.search.opensearch2.internal.BaseOpenSearchTestCase;
 import com.liferay.portal.search.opensearch2.internal.OpenSearchTestRule;
-import com.liferay.portal.search.opensearch2.internal.query.OpenSearchQueryTranslatorFixture;
 import com.liferay.portal.search.opensearch2.internal.util.JsonpUtil;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
@@ -47,7 +44,7 @@ public class DeleteByQueryDocumentRequestExecutorTest
 	}
 
 	protected void doTestDocumentRequestTranslation(boolean refresh) {
-		BooleanQuery booleanQuery = new BooleanQueryImpl();
+		BooleanQuery booleanQuery = new BooleanQuery();
 
 		booleanQuery.addExactTerm(_FIELD_NAME, true);
 
@@ -57,32 +54,13 @@ public class DeleteByQueryDocumentRequestExecutorTest
 
 		deleteByQueryDocumentRequest.setRefresh(refresh);
 
-		com.liferay.portal.search.opensearch2.internal.legacy.query.
-			OpenSearchQueryTranslatorFixture
-				legacyOpenSearchQueryTranslatorFixture =
-					new com.liferay.portal.search.opensearch2.internal.legacy.
-						query.OpenSearchQueryTranslatorFixture();
-
-		OpenSearchQueryTranslatorFixture openSearchQueryTranslatorFixture =
-			new OpenSearchQueryTranslatorFixture();
-
-		DeleteByQueryDocumentRequestExecutorImpl
-			deleteByQueryDocumentRequestExecutorImpl =
-				new DeleteByQueryDocumentRequestExecutorImpl();
-
-		ReflectionTestUtil.setFieldValue(
-			deleteByQueryDocumentRequestExecutorImpl, "_legacyQueryTranslator",
-			legacyOpenSearchQueryTranslatorFixture.
-				getOpenSearchQueryTranslator());
-		ReflectionTestUtil.setFieldValue(
-			deleteByQueryDocumentRequestExecutorImpl,
-			"_openSearchConnectionManager", openSearchConnectionManager);
-		ReflectionTestUtil.setFieldValue(
-			deleteByQueryDocumentRequestExecutorImpl, "_queryTranslator",
-			openSearchQueryTranslatorFixture.getOpenSearchQueryTranslator());
+		DeleteByQueryDocumentRequestExecutor
+			deleteByQueryDocumentRequestExecutor =
+				new DeleteByQueryDocumentRequestExecutor(
+					openSearchConnectionManager);
 
 		DeleteByQueryRequest deleteByQueryRequest =
-			deleteByQueryDocumentRequestExecutorImpl.createDeleteByQueryRequest(
+			deleteByQueryDocumentRequestExecutor.createDeleteByQueryRequest(
 				deleteByQueryDocumentRequest);
 
 		Assert.assertArrayEquals(

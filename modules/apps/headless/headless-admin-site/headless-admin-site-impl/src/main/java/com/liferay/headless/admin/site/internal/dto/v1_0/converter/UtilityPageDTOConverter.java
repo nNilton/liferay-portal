@@ -8,7 +8,7 @@ package com.liferay.headless.admin.site.internal.dto.v1_0.converter;
 import com.liferay.headless.admin.site.dto.v1_0.UtilityPage;
 import com.liferay.headless.admin.site.dto.v1_0.UtilityPageSEOSettings;
 import com.liferay.headless.admin.site.dto.v1_0.UtilityPageSettings;
-import com.liferay.headless.admin.site.internal.dto.v1_0.util.ThumbnailUtil;
+import com.liferay.headless.admin.site.dto.v1_0.util.ThumbnailURLReferenceUtil;
 import com.liferay.headless.admin.user.dto.v1_0.Creator;
 import com.liferay.layout.utility.page.kernel.constants.LayoutUtilityPageEntryConstants;
 import com.liferay.layout.utility.page.model.LayoutUtilityPageEntry;
@@ -19,6 +19,7 @@ import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterContext;
+import com.liferay.portal.vulcan.fields.NestedFieldsSupplier;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 
 import java.util.Map;
@@ -79,10 +80,14 @@ public class UtilityPageDTOConverter
 				setMarkedAsDefault(
 					layoutUtilityPageEntry::isDefaultLayoutUtilityPageEntry);
 				setName(layoutUtilityPageEntry::getName);
-				setThumbnail(
-					() ->
-						ThumbnailUtil.getPortletFileEntryItemExternalReference(
-							layoutUtilityPageEntry.getPreviewFileEntryId()));
+				setThumbnailURLReference(
+					() -> NestedFieldsSupplier.supply(
+						"thumbnailURLReference",
+						fieldName ->
+							ThumbnailURLReferenceUtil.
+								getFileEntryThumbnailURLReference(
+									layoutUtilityPageEntry.
+										getPreviewFileEntryId())));
 				setType(() -> _getType(layoutUtilityPageEntry.getType()));
 				setUtilityPageSettings(
 					() -> new UtilityPageSettings() {
@@ -132,6 +137,9 @@ public class UtilityPageDTOConverter
 		).put(
 			LayoutUtilityPageEntryConstants.TYPE_SC_NOT_FOUND,
 			UtilityPage.Type.ERROR_CODE404
+		).put(
+			LayoutUtilityPageEntryConstants.TYPE_SC_SERVICE_UNAVAILABLE,
+			UtilityPage.Type.ERROR_CODE503
 		).put(
 			LayoutUtilityPageEntryConstants.TYPE_STATUS, UtilityPage.Type.ERROR
 		).put(

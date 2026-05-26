@@ -6,6 +6,7 @@ import {isJapaneseLang} from 'shared/util/lang';
 const {pathThemeRoot} = FaroConstants;
 
 export enum Size {
+	ExtraSmall = 'extra-small',
 	Small = 'small',
 	Medium = 'medium',
 	Large = 'large'
@@ -31,6 +32,9 @@ type Text = {
 };
 
 type Data = {
+	options?: {
+		rect?: boolean;
+	};
 	text: Text;
 	x: number;
 	y: number;
@@ -82,6 +86,10 @@ export class JSPDFExtension {
 				lineHeight: number;
 				size: number;
 			};
+			['extra-small']: {
+				lineHeight: number;
+				size: number;
+			};
 		};
 		name: string;
 		paddingX: number;
@@ -97,12 +105,22 @@ export class JSPDFExtension {
 		spacingBetweenTexts: number;
 	};
 
-	data: any[];
+	data: any[] = [];
 	doc: JSPDF;
-	textList: Text[];
+	textList: {text: Text; options?: {rect?: boolean}}[];
 	floatTextList: FloatText[];
 
-	constructor({containers, date = new Date(), fontFamily, name}) {
+	constructor({
+		containers,
+		date = new Date(),
+		fontFamily,
+		name
+	}: {
+		containers: JSPDFExtensionContainer[];
+		date?: Date;
+		fontFamily: string;
+		name: string;
+	}) {
 		this.doc = new JSPDF();
 
 		this.config = {
@@ -113,6 +131,7 @@ export class JSPDFExtension {
 			date,
 			fontFamily,
 			fontSize: {
+				['extra-small']: {lineHeight: 1.5, size: 5},
 				large: {lineHeight: 4.5, size: 18},
 				medium: {lineHeight: 3.5, size: 14},
 				small: {lineHeight: 2.5, size: 8}
@@ -144,7 +163,13 @@ export class JSPDFExtension {
 	addText(text: Text) {
 		if (!text.value) return;
 
-		this.textList.push(text);
+		this.textList.push({text});
+	}
+
+	addTextWithRect(text: Text) {
+		if (!text.value) return;
+
+		this.textList.push({options: {rect: true}, text});
 	}
 
 	addFloatText(text: FloatText) {
@@ -155,6 +180,8 @@ export class JSPDFExtension {
 
 	truncateText(text: string) {
 		if (text) return `${text.substring(0, text.length - 3)}...`;
+
+		return '';
 	}
 
 	getName() {
@@ -164,7 +191,7 @@ export class JSPDFExtension {
 			.toLowerCase()}-${formatDate(this.config.date)}.pdf`;
 	}
 
-	getPosX(posX) {
+	getPosX(posX: PosX) {
 		if (posX === 'right') {
 			return this.config.pageWidth - this.config.paddingX;
 		}
@@ -187,7 +214,7 @@ export class JSPDFExtension {
 		this.doc.setFontSize(this.config.fontSize[text.size].size);
 		this.doc.setTextColor(text.color);
 
-		this.setExtraFont(text.value);
+		this.setExtraFont(text.value || '');
 	}
 
 	getData() {
@@ -197,7 +224,7 @@ export class JSPDFExtension {
 		let prevLineHeight = 0;
 		let posY = 0;
 
-		this.textList.forEach((text, index) => {
+		this.textList.forEach(({options, text}, index) => {
 			this.setFont(text);
 
 			let textValue = text.value;
@@ -208,7 +235,7 @@ export class JSPDFExtension {
 				prevLineHeight +
 				this.config.spacingBetweenTexts * index;
 			const lines = this.doc.splitTextToSize(
-				text.value,
+				text.value ?? '',
 				this.config.pageWidth - this.config.paddingX * 2
 			);
 
@@ -219,8 +246,9 @@ export class JSPDFExtension {
 			if (lines.length > 1 && !text.truncateText) {
 				let linePosY = 0;
 
-				lines.forEach(line => {
+				lines.forEach((line: string) => {
 					data.push({
+						options,
 						text: {
 							...text,
 							value: line
@@ -241,6 +269,7 @@ export class JSPDFExtension {
 					lines.length * this.config.spacingBetweenBreakLines;
 			} else {
 				data.push({
+					options,
 					text: {
 						...text,
 						value: textValue
@@ -257,9 +286,9 @@ export class JSPDFExtension {
 		return data;
 	}
 
-	renderContainers(headerHeight) {
+	renderContainers(headerHeight: number) {
 		let containerY = headerHeight + 2;
-		let previousLayout = null;
+		let previousLayout: number | null = null;
 		let previousContainerY = containerY;
 		let previousContainerX = this.config.container.padding;
 
@@ -364,7 +393,7 @@ export class JSPDFExtension {
 			this.setFont(text);
 
 			this.doc.textWithLink(
-				text.value,
+				text.value!,
 				this.getPosX(text.posX),
 				text.posY + this.config.fontSize[text.size].lineHeight,
 				{
@@ -377,10 +406,34 @@ export class JSPDFExtension {
 		/**
 		 * Render Texts
 		 */
-		data.forEach(({text, x, y}) => {
+		data.forEach(({options, text, x, y}) => {
 			this.setFont(text);
 
-			this.doc.textWithLink(text.value, x, y, {
+			if (options?.rect) {
+				const padding = 0.8;
+				const textDimensions = this.doc.getTextDimensions(text.value!);
+
+				this.doc.setDrawColor(text.color);
+				this.doc.setFillColor(255, 255, 255);
+
+				this.doc.roundedRect(
+					x,
+					y - textDimensions.h + 0.25,
+					textDimensions.w + padding * 2,
+					textDimensions.h + padding * 2,
+					0.4,
+					0.4,
+					'FD'
+				);
+
+				this.doc.textWithLink(text.value!, x + padding, y + padding, {
+					url: text.url
+				});
+
+				return;
+			}
+
+			this.doc.textWithLink(text.value!, x, y, {
 				url: text.url
 			});
 		});

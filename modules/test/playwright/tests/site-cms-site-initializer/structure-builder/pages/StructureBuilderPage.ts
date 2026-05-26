@@ -8,6 +8,7 @@ import {Locator, Page, expect} from '@playwright/test';
 import {DataApiHelpers} from '../../../../helpers/ApiHelpers';
 import {clickAndExpectToBeHidden} from '../../../../utils/clickAndExpectToBeHidden';
 import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVisible';
+import dragAndDropElement from '../../../../utils/dragAndDropElement';
 import {getRandomInt} from '../../../../utils/getRandomInt';
 import getRandomString from '../../../../utils/getRandomString';
 import {PORTLET_URLS} from '../../../../utils/portletUrls';
@@ -18,8 +19,7 @@ export const FIELD_TYPES = [
 	'Long Text',
 	'Rich Text',
 	'Decimal',
-	'Single Select',
-	'Multiselect',
+	'Select from List',
 	'Numeric',
 	'Date',
 	'Date and Time',
@@ -92,16 +92,25 @@ export class StructureBuilderPage {
 		}).toPass();
 	}
 
+	getTreeItem({
+		field,
+		parent = this.page,
+	}: {
+		field: Field;
+		parent?: Locator | Page;
+	}) {
+		return parent
+			.locator('.treeview-link', {hasText: field.label})
+			.nth(field.nth || 0);
+	}
+
 	async addField(type: FieldType, parent?: Field) {
 		let trigger: Locator;
 
 		if (parent) {
 			await this.selectFields([parent]);
 
-			const treeItem = this.page
-				.locator('.treeview-item')
-				.getByLabel(parent.label, {exact: true})
-				.nth(parent.nth || 0);
+			const treeItem = this.getTreeItem({field: parent});
 
 			trigger = treeItem.getByTitle('Add Field');
 		}
@@ -173,22 +182,72 @@ export class StructureBuilderPage {
 		});
 	}
 
+	async addRelatedContent(name: string, relatedContent: string) {
+		const hasFields = !(await this.page
+			.getByText('No Fields Yet')
+			.isVisible());
+
+		let trigger: Locator;
+
+		if (hasFields) {
+			trigger = this.page.getByLabel('Add Field');
+		}
+		else {
+			trigger = this.page.getByText('Add Field');
+		}
+
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: this.page.getByRole('menuitem', {
+				name: 'Select Related Content',
+			}),
+			trigger,
+		});
+
+		await this.page
+			.getByRole('textbox', {exact: true, name: 'Label Mandatory'})
+			.fill(name);
+
+		await expect(async () => {
+			await this.page
+				.getByRole('combobox', {exact: true, name: 'Related Content'})
+				.click();
+
+			await expect(
+				this.page.getByRole('option', {
+					exact: true,
+					name: relatedContent,
+				})
+			).toBeVisible();
+
+			await this.page
+				.getByRole('option', {exact: true, name: relatedContent})
+				.click();
+		}).toPass();
+	}
+
 	async changeFieldSettings({
 		erc,
 		label,
 		localizable,
 		mandatory,
+		maximumFileSize,
+		multiselection,
 		name,
 		picklist,
 		requestFile,
+		showFilesInLibrary,
 	}: {
 		erc?: string;
 		label?: string;
 		localizable?: boolean;
 		mandatory?: boolean;
+		maximumFileSize?: number;
+		multiselection?: boolean;
 		name?: string;
 		picklist?: string;
 		requestFile?: 'computer' | 'document-library';
+		showFilesInLibrary?: boolean;
 	}) {
 		if (erc !== undefined) {
 			const ercInput = this.page.getByLabel('ERC');
@@ -240,6 +299,17 @@ export class StructureBuilderPage {
 			await mandatoryToggle.click();
 		}
 
+		const multiselectionToggle = this.page.getByRole('checkbox', {
+			name: 'Multiselection',
+		});
+
+		if (
+			multiselection !== undefined &&
+			!(await multiselectionToggle.isChecked())
+		) {
+			await multiselectionToggle.click();
+		}
+
 		if (requestFile !== undefined) {
 			await clickAndExpectToBeVisible({
 				autoClick: true,
@@ -247,10 +317,30 @@ export class StructureBuilderPage {
 					name:
 						requestFile === 'computer'
 							? 'Computer'
-							: 'Documents and Media',
+							: 'Item Selector',
 				}),
 				trigger: this.page.getByLabel('Request Files'),
 			});
+		}
+
+		if (maximumFileSize !== undefined) {
+			const maxFileSizeInput = this.page.getByLabel('Maximum File Size');
+
+			await maxFileSizeInput.fill(String(maximumFileSize));
+			await maxFileSizeInput.blur();
+		}
+
+		if (showFilesInLibrary !== undefined) {
+			const showFilesInLibraryToggle = this.page.getByRole('checkbox', {
+				name: 'Show Files in CMS Library',
+			});
+
+			if (
+				(await showFilesInLibraryToggle.isChecked()) !==
+				showFilesInLibrary
+			) {
+				await showFilesInLibraryToggle.click();
+			}
 		}
 	}
 
@@ -280,6 +370,19 @@ export class StructureBuilderPage {
 		}
 	}
 
+	async checkIsParent({child, parent}) {
+		const parentContainer = this.page.locator('.treeview-item', {
+			has: this.getTreeItem({field: parent}),
+		});
+
+		await expect(
+			this.getTreeItem({
+				field: child,
+				parent: parentContainer,
+			})
+		).toBeVisible();
+	}
+
 	async clickFieldAction(field: Field, action: string) {
 		await this.selectFields([field]);
 
@@ -288,7 +391,9 @@ export class StructureBuilderPage {
 			target: this.page.getByRole('menuitem', {
 				name: action,
 			}),
-			trigger: this.page.getByRole('button', {name: 'Field Options'}),
+			trigger: this.page
+				.getByRole('treeitem', {name: field.label})
+				.getByRole('button', {name: 'Field Options'}),
 		});
 	}
 
@@ -337,6 +442,7 @@ export class StructureBuilderPage {
 		name = `StructureName${getRandomInt()}`,
 		page,
 		publish = true,
+		spaces,
 	}: {
 		autoDelete?: boolean;
 		erc?: string;
@@ -344,10 +450,13 @@ export class StructureBuilderPage {
 		name?: string;
 		page: StructureBuilderPage;
 		publish?: boolean;
+		spaces?: string[];
 	}) {
 		await page.goToCreateStructure();
 
-		await page.enableForAllSpaces();
+		if (spaces) {
+			await this.selectSpaces(spaces);
+		}
 
 		await page.changeStructureSettings({
 			erc,
@@ -380,18 +489,17 @@ export class StructureBuilderPage {
 		}).toPass();
 	}
 
-	async deleteFields(fields: Field[]) {
+	async deleteFields(
+		fields: Field[],
+		{confirm}: {confirm?: boolean} = {confirm: true}
+	) {
 
 		// Deleting one field
 
 		if (fields.length === 1) {
 			const [field] = fields;
 
-			const treeItems = this.page.getByRole('treeitem', {
-				name: field.label,
-			});
-
-			const treeItem = treeItems.nth(field.nth || 0);
+			const treeItem = this.getTreeItem({field});
 
 			await treeItem.waitFor({state: 'visible'});
 
@@ -414,6 +522,48 @@ export class StructureBuilderPage {
 				target: this.page.getByRole('menuitem', {name: 'Delete'}),
 				trigger: this.page.getByLabel('Selection Options'),
 			});
+		}
+
+		// Wait some time in case deletion modal is shown
+
+		await this.page.waitForTimeout(2500);
+
+		const modal = this.page.locator('.modal-content', {
+			hasText: 'Delete Fields',
+		});
+
+		if ((await modal.isVisible()) && confirm) {
+			await clickAndExpectToBeHidden({
+				target: modal,
+				trigger: modal.getByText('Delete', {exact: true}),
+			});
+		}
+	}
+
+	async dragItem({
+		item,
+		target,
+		verify = true,
+	}: {
+		item: Field;
+		target: Field;
+		verify?: boolean;
+	}) {
+		const dragItem = this.getTreeItem({
+			field: item,
+		});
+
+		const targetItem = this.getTreeItem({
+			field: target,
+		});
+
+		await dragAndDropElement({
+			dragTarget: dragItem,
+			dropTarget: targetItem,
+		});
+
+		if (verify) {
+			await this.checkIsParent({child: item, parent: target});
 		}
 	}
 
@@ -441,10 +591,7 @@ export class StructureBuilderPage {
 	}
 
 	async expandField(field: Field) {
-		const treeItem = this.page
-			.locator('.treeview-item')
-			.getByLabel(field.label, {exact: true})
-			.nth(field.nth || 0);
+		const treeItem = this.getTreeItem({field});
 
 		await expect(async () => {
 			await treeItem.locator('.component-expander').click({timeout: 500});
@@ -460,6 +607,10 @@ export class StructureBuilderPage {
 	}
 
 	async publishStructure() {
+		const url = new URL(this.page.url());
+
+		const objectDefinitionId = url.searchParams.get('objectDefinitionId');
+
 		const publish = async () => {
 			await this.publishButton.click();
 
@@ -467,6 +618,12 @@ export class StructureBuilderPage {
 				timeout: 10000,
 			});
 		};
+
+		if (objectDefinitionId) {
+			await publish();
+
+			return Number(objectDefinitionId);
+		}
 
 		const [response] = await Promise.all([
 			this.page.waitForResponse(
@@ -478,7 +635,9 @@ export class StructureBuilderPage {
 			await publish(),
 		]);
 
-		return await response.json();
+		const {id} = await response.json();
+
+		return id;
 	}
 
 	async saveStructure(
@@ -495,7 +654,7 @@ export class StructureBuilderPage {
 				(response) =>
 					response.url().includes('object-definitions') &&
 					response.status() === 200,
-				{timeout: 5000}
+				{timeout: 10000}
 			),
 			await save(),
 		]);
@@ -516,11 +675,7 @@ export class StructureBuilderPage {
 
 	async selectFields(fields: Field[]) {
 		for (const [i, field] of fields.entries()) {
-			const treeItem = this.page
-				.getByRole('treeitem', {
-					name: field.label,
-				})
-				.nth(field.nth || 0);
+			const treeItem = this.getTreeItem({field});
 
 			await expect(async () => {
 				await treeItem.click({
@@ -563,7 +718,7 @@ export class StructureBuilderPage {
 	}
 
 	async selectStructure() {
-		const treeItem = this.page.getByRole('treeitem').first();
+		const treeItem = this.page.locator('.treeview-link').first();
 
 		await expect(async () => {
 			await treeItem.click({
@@ -625,11 +780,18 @@ export class StructureBuilderPage {
 		await this.page.waitForTimeout(4000);
 
 		const gotItButton = this.page.getByText('Got It');
+		const tryItButton = this.page.getByText('Try It');
 
-		if (await gotItButton.isVisible()) {
+		const button = (await gotItButton.isVisible())
+			? gotItButton
+			: (await tryItButton.isVisible())
+				? tryItButton
+				: null;
+
+		if (button) {
 			await clickAndExpectToBeHidden({
-				target: gotItButton,
-				trigger: gotItButton,
+				target: button,
+				trigger: button,
 			});
 		}
 	}

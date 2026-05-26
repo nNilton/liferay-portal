@@ -5,19 +5,26 @@
 
 package com.liferay.ai.hub.rest.internal.resource.v1_0;
 
+import com.liferay.account.model.AccountEntryUserRel;
+import com.liferay.account.service.AccountEntryUserRelLocalService;
+import com.liferay.ai.hub.agent.AgentContext;
+import com.liferay.ai.hub.agent.SupervisorAgent;
 import com.liferay.ai.hub.rest.dto.v1_0.Message;
-import com.liferay.ai.hub.rest.internal.resource.v1_0.util.GroupUtil;
-import com.liferay.ai.hub.rest.internal.resource.v1_0.util.WorkflowContextUtil;
+import com.liferay.ai.hub.rest.internal.util.OAuth2ApplicationIdResolverUtil;
 import com.liferay.ai.hub.rest.resource.v1_0.MessageResource;
+import com.liferay.ai.hub.util.AccountEntryUtil;
+import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectEntry;
+import com.liferay.object.service.ObjectDefinitionLocalService;
+import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
-import com.liferay.portal.kernel.service.GroupService;
-import com.liferay.portal.kernel.workflow.WorkflowInstanceManager;
-import com.liferay.portal.workflow.constants.WorkflowDefinitionConstants;
-
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.sse.Sse;
-
-import java.io.Serializable;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.access.control.AccessControlUtil;
+import com.liferay.portal.kernel.service.ServiceContextFactory;
+import com.liferay.portal.kernel.util.MapUtil;
+import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
+import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 
 import java.util.Map;
 
@@ -45,35 +52,97 @@ public class MessageResourceImpl extends BaseMessageResourceImpl {
 			throw new UnsupportedOperationException();
 		}
 
-		Map<String, Serializable> workflowContext =
-			WorkflowContextUtil.toWorkflowContext(
-				message.getContext(), contextHttpServletRequest, _sse,
-				externalReferenceCode);
+		User user = _initContextUser(
+			message.getChatbotExternalReferenceCode(),
+			contextCompany.getCompanyId(), contextUser);
 
-		workflowContext.put("assistantKey", "chat");
-		workflowContext.put("memoryId", externalReferenceCode);
-		workflowContext.put("outBoundEventName", "Chat Message Sent");
-		workflowContext.put("userMessage", message.getText());
-
-		_workflowInstanceManager.startWorkflowInstance(
-			contextCompany.getCompanyId(),
-			GroupUtil.getGroupId(
-				contextCompany.getCompanyId(), _groupService,
-				message.getScope()),
-			contextUser.getUserId(),
-			WorkflowDefinitionConstants.NAME_CHAT_MESSAGE_PIPELINE, 1, null,
-			workflowContext);
+		_supervisorAgent.invoke(
+			AgentContext.builder(
+			).chatbotExternalReferenceCode(
+				message.getChatbotExternalReferenceCode()
+			).companyId(
+				contextCompany.getCompanyId()
+			).dtoConverterContext(
+				new DefaultDTOConverterContext(
+					contextAcceptLanguage.isAcceptAllLanguages(), null,
+					_dtoConverterRegistry, contextHttpServletRequest, null,
+					contextAcceptLanguage.getPreferredLocale(), contextUriInfo,
+					user)
+			).groupId(
+				AccountEntryUtil.getUserAccountEntryGroupId(user.getUserId())
+			).input(
+				Map.of("message", message.getText())
+			).instructionDefinitionScope(
+				message.getInstructionDefinitionScopeAsString()
+			).oAuth2ApplicationId(
+				OAuth2ApplicationIdResolverUtil.resolve(
+					contextHttpServletRequest)
+			).serviceContext(
+				ServiceContextFactory.getInstance(contextHttpServletRequest)
+			).sseEventSinkKey(
+				externalReferenceCode
+			).userId(
+				user.getUserId()
+			).userToken(
+				contextHttpServletRequest.getHeader(
+					"Liferay-AI-Hub-Cell-On-Behalf-Of")
+			).build());
 
 		return message;
 	}
 
-	@Reference
-	private GroupService _groupService;
+	private User _initContextUser(
+			String chatbotExternalReferenceCode, long companyId, User user)
+		throws Exception {
 
-	@Context
-	private Sse _sse;
+		if (!user.isGuestUser() ||
+			Validator.isNull(chatbotExternalReferenceCode)) {
+
+			return user;
+		}
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.
+				getObjectDefinitionByExternalReferenceCode(
+					"L_AI_HUB_CHATBOT", companyId);
+
+		ObjectEntry objectEntry = _objectEntryLocalService.getObjectEntry(
+			chatbotExternalReferenceCode, 0L,
+			objectDefinition.getObjectDefinitionId());
+
+		for (AccountEntryUserRel accountEntryUserRel :
+				_accountEntryUserRelLocalService.
+					getAccountEntryUserRelsByAccountEntryId(
+						MapUtil.getLong(
+							objectEntry.getValues(),
+							"r_accountToAIHubChatbots_accountEntryId"))) {
+
+			User accountEntryUserRelUser = accountEntryUserRel.getUser();
+
+			if (accountEntryUserRelUser.isServiceAccountUser()) {
+				AccessControlUtil.initContextUser(
+					accountEntryUserRelUser.getUserId());
+
+				return accountEntryUserRelUser;
+			}
+		}
+
+		throw new UnsupportedOperationException();
+	}
 
 	@Reference
-	private WorkflowInstanceManager _workflowInstanceManager;
+	private AccountEntryUserRelLocalService _accountEntryUserRelLocalService;
+
+	@Reference
+	private DTOConverterRegistry _dtoConverterRegistry;
+
+	@Reference
+	private ObjectDefinitionLocalService _objectDefinitionLocalService;
+
+	@Reference
+	private ObjectEntryLocalService _objectEntryLocalService;
+
+	@Reference
+	private SupervisorAgent _supervisorAgent;
 
 }

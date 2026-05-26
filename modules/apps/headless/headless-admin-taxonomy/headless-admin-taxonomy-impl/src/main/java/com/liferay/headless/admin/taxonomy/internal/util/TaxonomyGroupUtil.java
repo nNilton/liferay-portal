@@ -8,11 +8,15 @@ package com.liferay.headless.admin.taxonomy.internal.util;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalServiceUtil;
 import com.liferay.headless.admin.taxonomy.dto.v1_0.AssetLibrary;
-import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
+import com.liferay.portal.kernel.util.ArrayUtil;
+import com.liferay.portal.kernel.util.Validator;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Adolfo Pérez
@@ -20,10 +24,32 @@ import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
 public class TaxonomyGroupUtil {
 
 	public static long[] getAssetLibraryGroupIds(
-		AssetLibrary[] assetLibraries) {
+			AssetLibrary[] assetLibraries, long companyId)
+		throws PortalException {
 
-		return TransformUtil.transformToLongArray(
-			assetLibraries, TaxonomyGroupUtil::_getGroupId);
+		if (ArrayUtil.isEmpty(assetLibraries)) {
+			return _GROUP_IDS_ALL;
+		}
+
+		List<Long> groupIds = new ArrayList<>();
+
+		for (AssetLibrary assetLibrary : assetLibraries) {
+			if (assetLibrary == null) {
+				continue;
+			}
+
+			Group group = _fetchGroup(assetLibrary, companyId);
+
+			if (group != null) {
+				groupIds.add(group.getGroupId());
+			}
+		}
+
+		if (groupIds.isEmpty()) {
+			return _GROUP_IDS_ALL;
+		}
+
+		return ArrayUtil.toLongArray(groupIds);
 	}
 
 	public static long getCMSGroupId(long companyId) throws PortalException {
@@ -33,25 +59,50 @@ public class TaxonomyGroupUtil {
 		return group.getGroupId();
 	}
 
-	private static long _getGroupId(AssetLibrary assetLibrary)
-		throws Exception {
+	private static Group _fetchGroup(AssetLibrary assetLibrary, long companyId)
+		throws PortalException {
 
-		long classPK = assetLibrary.getId();
+		if (Validator.isNotNull(assetLibrary.getExternalReferenceCode())) {
+			Group group =
+				GroupLocalServiceUtil.fetchGroupByExternalReferenceCode(
+					assetLibrary.getExternalReferenceCode(), companyId);
 
-		if (classPK == GroupConstants.ANY_PARENT_GROUP_ID) {
-			return classPK;
+			if (group != null) {
+				return group;
+			}
 		}
 
-		Group group = GroupLocalServiceUtil.fetchGroup(classPK);
+		if (Validator.isNotNull(assetLibrary.getScopeKey())) {
+			Group group = GroupLocalServiceUtil.fetchGroup(
+				companyId, assetLibrary.getScopeKey());
+
+			if (group != null) {
+				return group;
+			}
+		}
+
+		if ((assetLibrary.getId() == null) ||
+			(assetLibrary.getId() == GroupConstants.ANY_PARENT_GROUP_ID)) {
+
+			return null;
+		}
+
+		Group group = GroupLocalServiceUtil.fetchGroup(assetLibrary.getId());
 
 		if (group != null) {
-			return group.getGroupId();
+			return group;
 		}
 
-		DepotEntry depotEntry = DepotEntryLocalServiceUtil.getDepotEntry(
-			classPK);
+		DepotEntry depotEntry = DepotEntryLocalServiceUtil.fetchDepotEntry(
+			assetLibrary.getId());
 
-		return depotEntry.getGroupId();
+		if (depotEntry != null) {
+			return depotEntry.getGroup();
+		}
+
+		return null;
 	}
+
+	private static final long[] _GROUP_IDS_ALL = {-1L};
 
 }

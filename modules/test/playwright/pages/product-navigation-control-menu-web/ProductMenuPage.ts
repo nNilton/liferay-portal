@@ -1,11 +1,13 @@
 /**
- * SPDX-FileCopyrightText: (c) 2000 Liferay, Inc. https://liferay.com
+ * SPDX-FileCopyrightText: (c) 2026 Liferay, Inc. https://liferay.com
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
 import {Locator, Page} from '@playwright/test';
 
+import {clickAndExpectToBeVisible} from '../../utils/clickAndExpectToBeVisible';
 import {PORTLET_URLS} from '../../utils/portletUrls';
+import {openProductMenu} from '../../utils/productMenu';
 
 export class ProductMenuPage {
 	readonly backButton: Locator;
@@ -24,6 +26,7 @@ export class ProductMenuPage {
 	readonly pagesButton: Locator;
 	readonly peopleButton: Locator;
 	readonly productMenuHeader: Locator;
+	readonly productMenuWrapper: Locator;
 	readonly publishingButton: Locator;
 	readonly siteBuilderButton: Locator;
 	readonly siteSettingsButton: Locator;
@@ -71,6 +74,9 @@ export class ProductMenuPage {
 		);
 		this.publishingButton = page.getByRole('menuitem', {
 			name: 'Publishing',
+		});
+		this.productMenuWrapper = page.getByRole('navigation', {
+			name: 'Product Menu',
 		});
 		this.siteBuilderButton = page.getByRole('menuitem', {
 			name: 'Site Builder',
@@ -128,40 +134,23 @@ export class ProductMenuPage {
 	}
 
 	async goToPages() {
-		await this.openProductMenuIfClosed();
+		await openProductMenu(this.page);
 
-		const pagesLink = await this.page
-			.locator('#productMenuSidebar')
-			.getByRole('menuitem', {
-				exact: true,
-				includeHidden: true,
-				name: 'Pages',
-			})
-			.evaluate((element) => element.getAttribute('href'));
+		await clickAndExpectToBeVisible({
+			target: this.page
+				.locator('.product-menu')
+				.getByText('Pages', {exact: true}),
+			trigger: this.page
+				.locator('.product-menu')
+				.getByText('Site Builder', {exact: true}),
+		});
 
-		const waitForPagesReady = async () => {
-			await this.page.waitForSelector('form[id*="GroupPagesPortlet"]', {
-				state: 'visible',
-				timeout: 2000,
-			});
-		};
-
-		for (let attempt = 1; attempt <= 3; attempt++) {
-			await this.page.goto(pagesLink, {
-				waitUntil: 'domcontentloaded',
-			});
-
-			try {
-				await waitForPagesReady();
-
-				return;
-			}
-			catch (error) {
-				if (attempt === 3) {
-					throw error;
-				}
-			}
-		}
+		await clickAndExpectToBeVisible({
+			target: this.page.getByLabel('Control Menu').getByText('Pages'),
+			trigger: this.page
+				.locator('.product-menu')
+				.getByText('Pages', {exact: true}),
+		});
 	}
 
 	async goToPublishingExport() {
@@ -180,6 +169,8 @@ export class ProductMenuPage {
 	}
 
 	async goToSegments() {
+		await this.openProductMenuIfClosed();
+
 		await this.peopleButton.click();
 		await this.segmentsButton.click();
 	}
@@ -200,10 +191,53 @@ export class ProductMenuPage {
 		await this.webContentButton.click();
 	}
 
+	async goToPortlet({
+		category,
+		panel,
+		portlet,
+	}: {
+		category: string;
+		panel: string;
+		portlet: string;
+	}) {
+		await this.page.reload();
+
+		await this.openProductMenuIfClosed();
+
+		const categoryTrigger = this.productMenuWrapper
+			.getByLabel(panel)
+			.getByRole('menuitem', {name: category});
+
+		await clickAndExpectToBeVisible({
+			target: categoryTrigger,
+			trigger: this.productMenuWrapper.getByRole('button', {
+				name: panel,
+			}),
+		});
+
+		const portletTrigger = this.productMenuWrapper
+			.getByLabel(panel)
+			.getByLabel(category)
+			.getByRole('menuitem', {name: portlet});
+
+		await clickAndExpectToBeVisible({
+			target: portletTrigger,
+			trigger: categoryTrigger,
+		});
+
+		await clickAndExpectToBeVisible({
+			target: this.page.getByRole('heading', {
+				exact: true,
+				name: portlet,
+			}),
+			trigger: portletTrigger,
+		});
+	}
+
 	async openProductMenuIfClosed() {
-		if (!(await this.contentAndDataButton.isVisible())) {
-			await this.openProductMenuButton.click();
-			await this.contentAndDataButton.isVisible();
-		}
+		await clickAndExpectToBeVisible({
+			target: this.productMenuWrapper,
+			trigger: this.openProductMenuButton,
+		});
 	}
 }

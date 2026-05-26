@@ -8,7 +8,7 @@ package com.liferay.jenkins.results.parser.testray;
 import com.liferay.jenkins.results.parser.Build;
 import com.liferay.jenkins.results.parser.JenkinsResultsParserUtil;
 import com.liferay.jenkins.results.parser.TopLevelBuildReport;
-import com.liferay.jenkins.results.parser.test.clazz.ServiceBuilderAntTargetTestClass;
+import com.liferay.jenkins.results.parser.test.clazz.BaseAntTargetTestClass;
 import com.liferay.jenkins.results.parser.test.clazz.TestClass;
 import com.liferay.jenkins.results.parser.test.clazz.TestClassMethod;
 import com.liferay.jenkins.results.parser.test.clazz.group.AxisTestClassGroup;
@@ -23,10 +23,10 @@ import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -71,7 +71,7 @@ public class TestrayFactory {
 					topLevelBuildReport);
 			}
 			else if (axisTestClassGroup instanceof ModulesAxisTestClassGroup) {
-				if (testClass instanceof ServiceBuilderAntTargetTestClass) {
+				if (testClass instanceof BaseAntTargetTestClass) {
 					return new AntTargetBatchBuildTestrayCaseResult(
 						axisTestClassGroup, testClass, testrayBuild,
 						topLevelBuildReport);
@@ -299,7 +299,15 @@ public class TestrayFactory {
 		TestrayBuild testrayBuild, String batchName,
 		List<File> propertiesFiles) {
 
-		return new TestrayRun(testrayBuild, batchName, propertiesFiles);
+		return new TestrayRun(testrayBuild, batchName, null, propertiesFiles);
+	}
+
+	public static TestrayRun newTestrayRun(
+		TestrayBuild testrayBuild, String batchName, String testSuiteName,
+		List<File> propertiesFiles) {
+
+		return new TestrayRun(
+			testrayBuild, batchName, testSuiteName, propertiesFiles);
 	}
 
 	public static TestrayRunComparison newTestrayRunComparison(
@@ -364,17 +372,17 @@ public class TestrayFactory {
 	}
 
 	private static final Map<Build, TestrayAttachmentRecorder>
-		_testrayAttachmentRecorders = new HashMap<>();
+		_testrayAttachmentRecorders = new ConcurrentHashMap<>();
 	private static final Map<String, TestrayAttachmentUploader>
-		_testrayAttachmentUploaders = new HashMap<>();
+		_testrayAttachmentUploaders = new ConcurrentHashMap<>();
 	private static final Map<String, TestrayRoutine> _testrayRoutines =
-		new HashMap<>();
+		new ConcurrentHashMap<>();
 	private static final Map<String, TestrayServer> _testrayServers =
-		new HashMap<>();
+		new ConcurrentHashMap<>();
 	private static final Pattern _testrayURLPattern = Pattern.compile(
 		"https://(testray\\.liferay\\.com|webserver-testray2" +
 			"(-prd\\d*|-uat\\d*)?.lfr.cloud)");
 	private static final Map<Long, TopLevelStandaloneBuildTestrayCaseResult>
-		_topLevelBuildTestrayCaseResults = new HashMap<>();
+		_topLevelBuildTestrayCaseResults = new ConcurrentHashMap<>();
 
 }

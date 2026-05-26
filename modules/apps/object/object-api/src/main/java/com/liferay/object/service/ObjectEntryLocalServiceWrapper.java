@@ -353,6 +353,14 @@ public class ObjectEntryLocalServiceWrapper
 
 	@Override
 	public com.liferay.object.model.ObjectEntry fetchObjectEntry(
+		long groupId, long objectDefinitionId) {
+
+		return _objectEntryLocalService.fetchObjectEntry(
+			groupId, objectDefinitionId);
+	}
+
+	@Override
+	public com.liferay.object.model.ObjectEntry fetchObjectEntry(
 		long groupId,
 		com.liferay.object.model.ObjectDefinition objectDefinition,
 		String urlTitle) {
@@ -789,6 +797,16 @@ public class ObjectEntryLocalServiceWrapper
 
 	@Override
 	public int getValuesListCount(
+			long companyId, Long[] groupIds, Long[] objectDefinitionIds,
+			com.liferay.petra.sql.dsl.expression.Predicate predicate)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _objectEntryLocalService.getValuesListCount(
+			companyId, groupIds, objectDefinitionIds, predicate);
+	}
+
+	@Override
+	public int getValuesListCount(
 			Long[] groupIds, long companyId, long userId,
 			long objectDefinitionId,
 			com.liferay.petra.sql.dsl.expression.Predicate predicate,
@@ -1024,3 +1042,4 @@ public class ObjectEntryLocalServiceWrapper
 	private ObjectEntryLocalService _objectEntryLocalService;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:428269909

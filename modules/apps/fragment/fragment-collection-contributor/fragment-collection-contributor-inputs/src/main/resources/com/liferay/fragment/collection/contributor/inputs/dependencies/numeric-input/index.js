@@ -1,3 +1,6 @@
+const error = document.getElementById(
+	`${fragmentElementId}-numeric-input-error`
+);
 const numericInput = fragmentElement.querySelector(
 	`#${fragmentElementId}-numeric-input`
 );
@@ -37,12 +40,17 @@ else {
 	numericInput.addEventListener('keydown', handleOnKeydown);
 	numericInput.addEventListener('keyup', handleOnKeyUp);
 
-	const defaultLanguageId = themeDisplay.getDefaultLanguageId();
+	const defaultLanguageId = input.attributes.defaultLanguageId;
 
 	import('@liferay/fragment-impl/api').then(
-		({registerLocalizedInput, registerUnlocalizedInput}) => {
+		({focusInput, registerLocalizedInput, registerUnlocalizedInput}) => {
+			if (error) {
+				focusInput(numericInput);
+			}
+
 			if (input.localizable) {
 				const {onChange} = registerLocalizedInput({
+					availableLanguageIds: input.attributes.availableLanguageIds,
 					defaultLanguageId,
 					initialValues: input.valueI18n,
 					inputElement: numericInput,

@@ -6,7 +6,6 @@
 import ClayButton from '@clayui/button';
 import ClayDropDown from '@clayui/drop-down';
 import ClayForm from '@clayui/form';
-import {TItem} from '@clayui/form/lib/SelectBox';
 import ClayIcon from '@clayui/icon';
 import classNames from 'classnames';
 import {fetch} from 'frontend-js-web';
@@ -23,12 +22,12 @@ import {
 	ALLOWED_ENDPOINTS_PARAMETERS,
 	FUZZY_OPTIONS,
 } from '../../../../../utils/constants';
-import getFields, {
-	ISchemas,
-	getValidFields,
-} from '../../../../../utils/getFields';
+import getFields, {getValidFields} from '../../../../../utils/getFields';
+import getOpenApiData from '../../../../../utils/getOpenApiData';
 import openDefaultFailureToast from '../../../../../utils/openDefaultFailureToast';
-import {IField, ISelectionFilter} from '../../../../../utils/types';
+import {IField, ISchemas, ISelectionFilter} from '../../../../../utils/types';
+
+import type {TItem} from '@clayui/form/src/SelectBox';
 
 interface IApiRestApplicationModalContentProps {
 	filter?: ISelectionFilter;
@@ -367,14 +366,20 @@ function ApiRestApplication({
 					});
 
 					if (selectedRESTApplication && item) {
-						getFields({
+						getOpenApiData({
 							restApplication: selectedRESTApplication,
 							restSchema: item,
-						}).then((fields: IField[]) => {
+						}).then((oApiData) => {
+							if (!oApiData) {
+								return;
+							}
+
+							const fields: IField[] = getFields(oApiData);
+
 							if (fields) {
 								setFields(
 									fields.filter(
-										(field) =>
+										(field: IField) =>
 											field.type !== 'array' &&
 											field.type !== 'object'
 									)

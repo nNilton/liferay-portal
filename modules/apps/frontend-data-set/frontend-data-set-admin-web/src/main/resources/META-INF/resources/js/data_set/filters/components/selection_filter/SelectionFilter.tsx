@@ -8,7 +8,6 @@ import ClayForm, {
 	ClayRadioGroup,
 	ClaySelectWithOption,
 } from '@clayui/form';
-import {TItem} from '@clayui/form/lib/SelectBox';
 import ClayIcon from '@clayui/icon';
 import ClayLayout from '@clayui/layout';
 import classNames from 'classnames';
@@ -27,6 +26,8 @@ import Configuration from '../Configuration';
 import Footer from '../Footer';
 import ApiRestApplication from './source_type/ApiRestApplication';
 import ObjectPicklist from './source_type/ObjectPicklist';
+
+import type {TItem} from '@clayui/form/src/SelectBox';
 
 function Header() {
 	return <>{Liferay.Language.get('new-selection-filter')}</>;
@@ -86,7 +87,13 @@ function Body({
 		JSON.parse(filter?.preselectedValues || '[]')
 	);
 	const [selectedField, setSelectedField] = useState<IField | undefined>(
-		filter ? {label: filter.fieldName, name: filter.fieldName} : undefined
+		filter
+			? {
+					entityFieldType: filter.entityFieldType,
+					label: filter.fieldName,
+					name: filter.fieldName,
+				}
+			: undefined
 	);
 	const [source, setSource] = useState<string | undefined>(filter?.source);
 	const [sourceType, setSourceType] = useState(filter?.sourceType);
@@ -214,6 +221,7 @@ function Body({
 
 		if (success) {
 			let formData: any = {
+				entityFieldType: selectedField?.entityFieldType,
 				fieldName: selectedField?.name,
 				include: includeMode === 'include',
 				label_i18n: i18nFilterLabels,

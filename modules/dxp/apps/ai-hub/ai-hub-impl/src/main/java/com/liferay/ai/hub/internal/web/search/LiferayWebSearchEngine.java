@@ -5,17 +5,20 @@
 
 package com.liferay.ai.hub.internal.web.search;
 
+import com.liferay.oauth2.provider.model.OAuth2Application;
+import com.liferay.oauth2.provider.service.OAuth2ApplicationLocalServiceUtil;
+import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.HttpComponentsUtil;
 import com.liferay.portal.kernel.util.HttpUtil;
-import com.liferay.portal.kernel.util.PropsValues;
+import com.liferay.portal.kernel.util.InetAddressUtil;
+import com.liferay.portal.kernel.util.PortalRunMode;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.search.rest.dto.v1_0.SearchResult;
 
@@ -26,10 +29,9 @@ import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
 
 import java.net.URI;
-import java.net.URLEncoder;
+import java.net.URL;
 
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -38,51 +40,62 @@ import java.util.Map;
  */
 public class LiferayWebSearchEngine implements WebSearchEngine {
 
-	public LiferayWebSearchEngine(String blueprintExternalReferenceCode) {
+	public LiferayWebSearchEngine(
+		String blueprintExternalReferenceCode, long companyId,
+		long oAuth2ApplicationId, String userToken) {
+
 		_blueprintExternalReferenceCode = blueprintExternalReferenceCode;
+		_companyId = companyId;
+		_oAuth2ApplicationId = oAuth2ApplicationId;
+		_userToken = userToken;
 	}
 
 	@Override
 	public WebSearchResults search(WebSearchRequest webSearchRequest) {
-		try {
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(_companyId)) {
+
 			return _search(webSearchRequest);
 		}
 		catch (Exception exception) {
-			_log.error(exception);
-
 			return ReflectionUtil.throwException(exception);
 		}
-	}
-
-	private String _getAuthorization() throws Exception {
-
-		// TODO replace basic auth with token based authentication
-
-		Base64.Encoder encoder = Base64.getEncoder();
-
-		String userNameAndPassword =
-			"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD;
-
-		return "Basic " +
-			new String(
-				encoder.encode(userNameAndPassword.getBytes("UTF-8")), "UTF-8");
 	}
 
 	private WebSearchResults _search(WebSearchRequest webSearchRequest)
 		throws Exception {
 
-		List<WebSearchOrganicResult> webSearchOrganicResults =
-			new ArrayList<>();
+		if (_oAuth2ApplicationId == 0L) {
+			throw new IllegalArgumentException(
+				"OAuth 2 application ID is required");
+		}
 
 		Http.Options options = new Http.Options();
 
-		options.addHeader(HttpHeaders.AUTHORIZATION, _getAuthorization());
 		options.addHeader(
 			HttpHeaders.CONTENT_TYPE, ContentTypes.APPLICATION_JSON);
+		options.addHeader("Liferay-AI-Hub-Cell-On-Behalf-Of", _userToken);
 
-		// TODO replace http://localhost:8080 with origin's base URL
+		OAuth2Application oAuth2Application =
+			OAuth2ApplicationLocalServiceUtil.getOAuth2Application(
+				_oAuth2ApplicationId);
 
-		String location = "http://localhost:8080/o/search/v1.0/search";
+		String homePageURL = oAuth2Application.getHomePageURL();
+
+		URL urlObject = new URL(homePageURL);
+
+		if (!PortalRunMode.isTestMode() &&
+			InetAddressUtil.isLocalInetAddress(
+				InetAddressUtil.getInetAddressByName(urlObject.getHost()))) {
+
+			throw new SecurityException(
+				"Local links are not allowed: " + urlObject);
+		}
+
+		List<WebSearchOrganicResult> webSearchOrganicResults =
+			new ArrayList<>();
+
+		String location = homePageURL + "/o/search/v1.0/search";
 
 		if (!Validator.isBlank(_blueprintExternalReferenceCode)) {
 			location = HttpComponentsUtil.addParameter(
@@ -110,18 +123,23 @@ public class LiferayWebSearchEngine implements WebSearchEngine {
 			SearchResult searchResult = SearchResult.toDTO(
 				itemJSONObject.toString());
 
-			String url = "";
+			float score = searchResult.getScore();
+
+			if (score < 5) {
+				continue;
+			}
+
+			String itemURL = homePageURL;
 
 			if (searchResult.getItemURL() != null) {
-				url = searchResult.getItemURL();
+				itemURL = searchResult.getItemURL();
 			}
 
 			webSearchOrganicResults.add(
 				WebSearchOrganicResult.from(
-					searchResult.getTitle(),
-					URI.create(URLEncoder.encode(url, "UTF-8")), null,
+					searchResult.getTitle(), URI.create(itemURL), null,
 					searchResult.getDescription(),
-					Map.of("score", String.valueOf(searchResult.getScore()))));
+					Map.of("score", String.valueOf(score))));
 		}
 
 		return WebSearchResults.from(
@@ -129,9 +147,9 @@ public class LiferayWebSearchEngine implements WebSearchEngine {
 			webSearchOrganicResults);
 	}
 
-	private static final Log _log = LogFactoryUtil.getLog(
-		LiferayWebSearchEngine.class);
-
 	private final String _blueprintExternalReferenceCode;
+	private final long _companyId;
+	private final long _oAuth2ApplicationId;
+	private final String _userToken;
 
 }

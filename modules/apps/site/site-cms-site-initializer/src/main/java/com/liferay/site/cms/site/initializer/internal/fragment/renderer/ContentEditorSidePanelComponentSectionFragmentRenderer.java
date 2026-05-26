@@ -37,6 +37,7 @@ import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.site.cms.site.initializer.internal.util.CommentUtil;
+import com.liferay.site.cms.site.initializer.internal.util.InfoItemUtil;
 import com.liferay.subscription.service.SubscriptionLocalService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -115,6 +116,8 @@ public class ContentEditorSidePanelComponentSectionFragmentRenderer
 
 		ObjectEntry objectEntry = (ObjectEntry)displayObject;
 
+		long classNameId = _classNameLocalService.getClassNameId(
+			objectEntry.getModelClassName());
 		ObjectDefinition objectDefinition =
 			_objectDefinitionLocalService.fetchObjectDefinition(
 				objectEntry.getObjectDefinitionId());
@@ -136,9 +139,7 @@ public class ContentEditorSidePanelComponentSectionFragmentRenderer
 					return StringBundler.concat(
 						themeDisplay.getPortalURL(), themeDisplay.getPathMain(),
 						GroupConstants.CMS_FRIENDLY_URL,
-						"/add_content_item_comment?classNameId=",
-						_classNameLocalService.getClassNameId(
-							objectEntry.getModelClassName()),
+						"/add_content_item_comment?classNameId=", classNameId,
 						"&classPK=", objectEntry.getObjectEntryId());
 				}
 
@@ -146,6 +147,8 @@ public class ContentEditorSidePanelComponentSectionFragmentRenderer
 			}
 		).put(
 			"assetLibraryId", objectEntry.getGroupId()
+		).put(
+			"assetType", classNameId
 		).put(
 			"cmsGroupId", themeDisplay.getScopeGroupId()
 		).put(
@@ -169,7 +172,8 @@ public class ContentEditorSidePanelComponentSectionFragmentRenderer
 				for (Comment rootComment : rootComments) {
 					JSONObject commentJSONObject =
 						CommentUtil.getCommentJSONObject(
-							rootComment, httpServletRequest);
+							rootComment, _discussionPermission,
+							httpServletRequest);
 
 					List<Comment> childComments =
 						_commentManager.getChildComments(
@@ -183,7 +187,8 @@ public class ContentEditorSidePanelComponentSectionFragmentRenderer
 					for (Comment childComment : childComments) {
 						childCommentsJSONArray.put(
 							CommentUtil.getCommentJSONObject(
-								childComment, httpServletRequest));
+								childComment, _discussionPermission,
+								httpServletRequest));
 					}
 
 					commentJSONObject.put("children", childCommentsJSONArray);
@@ -209,9 +214,7 @@ public class ContentEditorSidePanelComponentSectionFragmentRenderer
 			StringBundler.concat(
 				themeDisplay.getPortalURL(), themeDisplay.getPathMain(),
 				GroupConstants.CMS_FRIENDLY_URL,
-				"/edit_content_item_comment?classNameId=",
-				_classNameLocalService.getClassNameId(
-					objectEntry.getModelClassName()),
+				"/edit_content_item_comment?classNameId=", classNameId,
 				"&classPK=", objectEntry.getObjectEntryId())
 		).put(
 			"editorConfig",
@@ -231,6 +234,14 @@ public class ContentEditorSidePanelComponentSectionFragmentRenderer
 		).put(
 			"expirationDate",
 			() -> {
+				String restoredExpirationDate =
+					InfoItemUtil.getRestoredInfoFieldValue(
+						httpServletRequest, "ObjectEntry_expirationDate");
+
+				if (restoredExpirationDate != null) {
+					return restoredExpirationDate;
+				}
+
 				Date expirationDate = objectEntry.getExpirationDate();
 
 				if (expirationDate == null) {
@@ -239,7 +250,7 @@ public class ContentEditorSidePanelComponentSectionFragmentRenderer
 
 				return DateUtil.getDate(
 					expirationDate, "yyyy-MM-dd'T'HH:mm",
-					themeDisplay.getLocale());
+					themeDisplay.getLocale(), themeDisplay.getTimeZone());
 			}
 		).put(
 			"hasUpdatePermission",
@@ -262,6 +273,14 @@ public class ContentEditorSidePanelComponentSectionFragmentRenderer
 		).put(
 			"reviewDate",
 			() -> {
+				String restoredReviewDate =
+					InfoItemUtil.getRestoredInfoFieldValue(
+						httpServletRequest, "ObjectEntry_reviewDate");
+
+				if (restoredReviewDate != null) {
+					return restoredReviewDate;
+				}
+
 				Date reviewDate = objectEntry.getReviewDate();
 
 				if (reviewDate == null) {
@@ -269,16 +288,15 @@ public class ContentEditorSidePanelComponentSectionFragmentRenderer
 				}
 
 				return DateUtil.getDate(
-					reviewDate, "yyyy-MM-dd'T'HH:mm", themeDisplay.getLocale());
+					reviewDate, "yyyy-MM-dd'T'HH:mm", themeDisplay.getLocale(),
+					themeDisplay.getTimeZone());
 			}
 		).put(
 			"subscribeURL",
 			StringBundler.concat(
 				themeDisplay.getPortalURL(), themeDisplay.getPathMain(),
 				GroupConstants.CMS_FRIENDLY_URL,
-				"/subscribe_content_item?classNameId=",
-				_classNameLocalService.getClassNameId(
-					objectEntry.getModelClassName()),
+				"/subscribe_content_item?classNameId=", classNameId,
 				"&classPK=", objectEntry.getObjectEntryId(),
 				"&objectDefinitionId=", objectEntry.getObjectDefinitionId())
 		).put(

@@ -49,6 +49,49 @@ public class AssetLibrary implements Serializable {
 	}
 
 	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "The asset library's external reference code."
+	)
+	public String getExternalReferenceCode() {
+		if (_externalReferenceCodeSupplier != null) {
+			externalReferenceCode = _externalReferenceCodeSupplier.get();
+
+			_externalReferenceCodeSupplier = null;
+		}
+
+		return externalReferenceCode;
+	}
+
+	public void setExternalReferenceCode(String externalReferenceCode) {
+		this.externalReferenceCode = externalReferenceCode;
+
+		_externalReferenceCodeSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setExternalReferenceCode(
+		UnsafeSupplier<String, Exception> externalReferenceCodeUnsafeSupplier) {
+
+		_externalReferenceCodeSupplier = () -> {
+			try {
+				return externalReferenceCodeUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(description = "The asset library's external reference code.")
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String externalReferenceCode;
+
+	@JsonIgnore
+	private Supplier<String> _externalReferenceCodeSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "The asset library's site ID."
 	)
 	public Long getId() {
@@ -175,6 +218,49 @@ public class AssetLibrary implements Serializable {
 	@JsonIgnore
 	private Supplier<Map<String, String>> _name_i18nSupplier;
 
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "The asset library's scope key."
+	)
+	public String getScopeKey() {
+		if (_scopeKeySupplier != null) {
+			scopeKey = _scopeKeySupplier.get();
+
+			_scopeKeySupplier = null;
+		}
+
+		return scopeKey;
+	}
+
+	public void setScopeKey(String scopeKey) {
+		this.scopeKey = scopeKey;
+
+		_scopeKeySupplier = null;
+	}
+
+	@JsonIgnore
+	public void setScopeKey(
+		UnsafeSupplier<String, Exception> scopeKeyUnsafeSupplier) {
+
+		_scopeKeySupplier = () -> {
+			try {
+				return scopeKeyUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(description = "The asset library's scope key.")
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String scopeKey;
+
+	@JsonIgnore
+	private Supplier<String> _scopeKeySupplier;
+
 	@Override
 	public boolean equals(Object object) {
 		if (this == object) {
@@ -201,6 +287,22 @@ public class AssetLibrary implements Serializable {
 		StringBundler sb = new StringBundler();
 
 		sb.append("{");
+
+		String externalReferenceCode = getExternalReferenceCode();
+
+		if (externalReferenceCode != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"externalReferenceCode\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(externalReferenceCode));
+
+			sb.append("\"");
+		}
 
 		Long id = getId();
 
@@ -240,6 +342,22 @@ public class AssetLibrary implements Serializable {
 			sb.append("\"name_i18n\": ");
 
 			sb.append(_toJSON(name_i18n));
+		}
+
+		String scopeKey = getScopeKey();
+
+		if (scopeKey != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"scopeKey\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(scopeKey));
+
+			sb.append("\"");
 		}
 
 		sb.append("}");
@@ -343,3 +461,4 @@ public class AssetLibrary implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
+// LIFERAY-REST-BUILDER-HASH:169254037

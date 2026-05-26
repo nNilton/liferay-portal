@@ -21,15 +21,10 @@ import com.liferay.frontend.data.set.provider.search.FDSPagination;
 import com.liferay.frontend.data.set.taglib.internal.jaxrs.context.provider.PaginationContextProvider;
 import com.liferay.frontend.data.set.taglib.internal.jaxrs.context.provider.SortContextProvider;
 import com.liferay.frontend.data.set.taglib.internal.jaxrs.context.provider.ThemeDisplayContextProvider;
-import com.liferay.frontend.data.set.taglib.internal.servlet.ServletContextUtil;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.DropdownItem;
-import com.liferay.portal.kernel.json.JSONFactory;
-import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.portlet.PortalPreferences;
-import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
@@ -37,9 +32,7 @@ import com.liferay.portal.kernel.theme.ThemeDisplay;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -135,55 +128,6 @@ public class FDSApplication extends Application {
 		return singletons;
 	}
 
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Path("/data-set/{id}/save-active-view-settings")
-	@POST
-	public Response saveActiveFDSViewSettings(
-		@PathParam("id") String id,
-		@Context HttpServletRequest httpServletRequest,
-		@Context HttpServletResponse httpServletResponse,
-		@Context ThemeDisplay themeDisplay, @Context UriInfo uriInfo,
-		String activeViewSettingsJSON) {
-
-		try {
-			PortalPreferences portalPreferences =
-				PortletPreferencesFactoryUtil.getPortalPreferences(
-					httpServletRequest);
-
-			String currentActiveViewSettingsJSON = portalPreferences.getValue(
-				ServletContextUtil.getFDSSettingsNamespace(
-					httpServletRequest, id),
-				"activeViewSettingsJSON", "{}");
-
-			JSONObject currentActiveViewSettingsJSONObject =
-				_jsonFactory.createJSONObject(currentActiveViewSettingsJSON);
-
-			JSONObject activeViewSettingsJSONObject =
-				_jsonFactory.createJSONObject(activeViewSettingsJSON);
-
-			for (String key : activeViewSettingsJSONObject.keySet()) {
-				currentActiveViewSettingsJSONObject.put(
-					key, activeViewSettingsJSONObject.get(key));
-			}
-
-			portalPreferences.setValue(
-				ServletContextUtil.getFDSSettingsNamespace(
-					httpServletRequest, id),
-				"activeViewSettingsJSON",
-				currentActiveViewSettingsJSONObject.toString());
-
-			return Response.ok(
-			).build();
-		}
-		catch (Exception exception) {
-			_log.error(exception);
-		}
-
-		return Response.status(
-			Response.Status.NOT_FOUND
-		).build();
-	}
-
 	private List<FDSDataRow> _getFDSTableRows(
 			List<Object> items, String tableName,
 			HttpServletRequest httpServletRequest, long groupId)
@@ -232,9 +176,6 @@ public class FDSApplication extends Application {
 
 	@Reference
 	private FDSKeywordsFactoryRegistry _fdsKeywordsFactoryRegistry;
-
-	@Reference
-	private JSONFactory _jsonFactory;
 
 	@Reference
 	private Language _language;

@@ -8,12 +8,16 @@ package com.liferay.fragment.model.impl.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.kernel.service.DLAppService;
+import com.liferay.fragment.constants.FragmentConstants;
 import com.liferay.fragment.constants.FragmentExportImportConstants;
 import com.liferay.fragment.constants.FragmentPortletKeys;
 import com.liferay.fragment.model.FragmentCollection;
+import com.liferay.fragment.model.FragmentComposition;
 import com.liferay.fragment.model.FragmentEntry;
 import com.liferay.fragment.service.FragmentCollectionLocalService;
+import com.liferay.fragment.service.FragmentCompositionLocalService;
 import com.liferay.fragment.service.FragmentEntryLocalService;
+import com.liferay.fragment.test.util.FragmentCompositionTestUtil;
 import com.liferay.fragment.test.util.FragmentEntryTestUtil;
 import com.liferay.fragment.test.util.FragmentTestUtil;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
@@ -103,35 +107,124 @@ public class FragmentCollectionImplTest {
 	}
 
 	@Test
+	@TestInfo("LPD-82487")
+	public void testIsExportable() throws Exception {
+		Assert.assertTrue(_fragmentCollection.isExportable());
+
+		FragmentCollection fragmentCollection =
+			FragmentTestUtil.addFragmentCollection(_group.getGroupId());
+
+		Assert.assertFalse(fragmentCollection.isExportable());
+
+		FragmentComposition marketplaceFragmentComposition =
+			FragmentCompositionTestUtil.addFragmentComposition(
+				fragmentCollection.getFragmentCollectionId(),
+				RandomTestUtil.randomString());
+
+		marketplaceFragmentComposition.setMarketplace(true);
+
+		_fragmentCompositionLocalService.updateFragmentComposition(
+			marketplaceFragmentComposition);
+
+		Assert.assertFalse(fragmentCollection.isExportable());
+
+		FragmentEntry reactFragmentEntry =
+			FragmentEntryTestUtil.addFragmentEntryByType(
+				fragmentCollection.getFragmentCollectionId(),
+				FragmentConstants.TYPE_REACT);
+
+		Assert.assertTrue(reactFragmentEntry.isTypeReact());
+
+		Assert.assertFalse(fragmentCollection.isExportable());
+
+		FragmentEntry marketplaceFragmentEntry =
+			FragmentEntryTestUtil.addFragmentEntry(
+				fragmentCollection.getFragmentCollectionId());
+
+		marketplaceFragmentEntry.setMarketplace(true);
+
+		_fragmentEntryLocalService.updateFragmentEntry(
+			marketplaceFragmentEntry);
+
+		Assert.assertFalse(fragmentCollection.isExportable());
+
+		FragmentComposition exportableFragmentComposition =
+			FragmentCompositionTestUtil.addFragmentComposition(
+				fragmentCollection.getFragmentCollectionId(),
+				RandomTestUtil.randomString());
+
+		Assert.assertFalse(exportableFragmentComposition.isMarketplace());
+
+		Assert.assertTrue(fragmentCollection.isExportable());
+	}
+
+	@Test
+	@TestInfo("LPD-83557")
+	public void testIsExportableWithMarketplaceFragmentCollection()
+		throws Exception {
+
+		FragmentCollection fragmentCollection =
+			FragmentTestUtil.addFragmentCollection(_group.getGroupId());
+
+		FragmentEntryTestUtil.addFragmentEntry(
+			fragmentCollection.getFragmentCollectionId());
+
+		fragmentCollection.setMarketplace(true);
+
+		fragmentCollection =
+			_fragmentCollectionLocalService.updateFragmentCollection(
+				fragmentCollection);
+
+		Assert.assertFalse(fragmentCollection.isExportable());
+	}
+
+	@Test
+	@TestInfo("LPD-83557")
+	public void testIsExportableWithResourceFoldersOnly() throws Exception {
+		FragmentCollection fragmentCollection =
+			FragmentTestUtil.addFragmentCollection(_group.getGroupId());
+
+		PortletFileRepositoryUtil.addPortletFolder(
+			_group.getGroupId(), TestPropsValues.getUserId(),
+			FragmentPortletKeys.FRAGMENT,
+			fragmentCollection.getResourcesFolderId(),
+			RandomTestUtil.randomString(),
+			ServiceContextTestUtil.getServiceContext(_group.getGroupId()));
+
+		Assert.assertFalse(fragmentCollection.isExportable());
+	}
+
+	@Test
 	@TestInfo("LPD-33704")
 	public void testPopulateZipWriter() throws Exception {
 		ZipWriter zipWriter = _zipWriterFactory.getZipWriter();
 
 		_fragmentCollection.populateZipWriter(zipWriter, "test");
 
-		ZipReader zipReader = _zipReaderFactory.getZipReader(
-			zipWriter.getFile());
+		try (ZipReader zipReader = _zipReaderFactory.getZipReader(
+				zipWriter.getFile())) {
 
-		List<String> entries = zipReader.getEntries();
+			List<String> entries = zipReader.getEntries();
 
-		for (String entry : entries) {
-			if (StringUtil.endsWith(
-					entry,
-					FragmentExportImportConstants.FILE_NAME_COLLECTION)) {
+			for (String entry : entries) {
+				if (StringUtil.endsWith(
+						entry,
+						FragmentExportImportConstants.FILE_NAME_COLLECTION)) {
 
-				JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
-					zipReader.getEntryAsString(entry));
+					JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
+						zipReader.getEntryAsString(entry));
 
-				Assert.assertNotNull(jsonObject);
-				Assert.assertEquals(
-					jsonObject.getString("name"),
-					_fragmentCollection.getName());
-				Assert.assertEquals(
-					jsonObject.getString("description"),
-					_fragmentCollection.getDescription());
-			}
-			else if (StringUtil.contains(entry, "/resources")) {
-				Assert.assertTrue(entry.contains("/resources/liferay.png"));
+					Assert.assertNotNull(jsonObject);
+					Assert.assertEquals(
+						jsonObject.getString("name"),
+						_fragmentCollection.getName());
+					Assert.assertEquals(
+						jsonObject.getString("description"),
+						_fragmentCollection.getDescription());
+				}
+				else if (StringUtil.contains(entry, "/resources")) {
+					Assert.assertTrue(entry.contains("/resources/liferay.png"));
+				}
 			}
 		}
 
@@ -161,31 +254,37 @@ public class FragmentCollectionImplTest {
 		marketplaceFragmentEntry.populateZipWriter(
 			zipWriter, RandomTestUtil.randomString());
 
-		ZipReader zipReader = _zipReaderFactory.getZipReader(
-			zipWriter.getFile());
+		try (ZipReader zipReader = _zipReaderFactory.getZipReader(
+				zipWriter.getFile())) {
 
-		List<String> entries = zipReader.getEntries();
+			List<String> entries = zipReader.getEntries();
 
-		Assert.assertTrue(entries.isEmpty());
+			Assert.assertTrue(entries.isEmpty());
+		}
 
 		_fragmentCollection.populateZipWriter(
 			zipWriter, RandomTestUtil.randomString());
 
-		zipReader = _zipReaderFactory.getZipReader(zipWriter.getFile());
+		try (ZipReader zipReader = _zipReaderFactory.getZipReader(
+				zipWriter.getFile())) {
 
-		for (String entry : zipReader.getEntries()) {
-			Assert.assertFalse(
-				entry.contains(marketplaceFragmentEntry.getName()));
+			for (String entry : zipReader.getEntries()) {
+				Assert.assertFalse(
+					entry.contains(marketplaceFragmentEntry.getName()));
+			}
 		}
 	}
 
 	@Inject
-	private static DLAppService _dlAppService;
+	private DLAppService _dlAppService;
 
 	private FragmentCollection _fragmentCollection;
 
 	@Inject
 	private FragmentCollectionLocalService _fragmentCollectionLocalService;
+
+	@Inject
+	private FragmentCompositionLocalService _fragmentCompositionLocalService;
 
 	@Inject
 	private FragmentEntryLocalService _fragmentEntryLocalService;

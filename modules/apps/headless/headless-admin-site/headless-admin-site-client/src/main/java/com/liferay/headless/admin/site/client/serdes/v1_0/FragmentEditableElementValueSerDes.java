@@ -7,9 +7,11 @@ package com.liferay.headless.admin.site.client.serdes.v1_0;
 
 import com.liferay.headless.admin.site.client.dto.v1_0.ActionFragmentEditableElementValue;
 import com.liferay.headless.admin.site.client.dto.v1_0.BackgroundImageFragmentEditableElementValue;
+import com.liferay.headless.admin.site.client.dto.v1_0.DateFragmentEditableElementValue;
 import com.liferay.headless.admin.site.client.dto.v1_0.FragmentEditableElementValue;
 import com.liferay.headless.admin.site.client.dto.v1_0.HTMLFragmentEditableElementValue;
 import com.liferay.headless.admin.site.client.dto.v1_0.ImageFragmentEditableElementValue;
+import com.liferay.headless.admin.site.client.dto.v1_0.LinkFragmentEditableElementValue;
 import com.liferay.headless.admin.site.client.dto.v1_0.TextFragmentEditableElementValue;
 import com.liferay.headless.admin.site.client.json.BaseJSONParser;
 
@@ -69,6 +71,12 @@ public class FragmentEditableElementValueSerDes {
 						fragmentEditableElementValue);
 			}
 
+			if (typeString.equals("Date")) {
+				return DateFragmentEditableElementValueSerDes.toJSON(
+					(DateFragmentEditableElementValue)
+						fragmentEditableElementValue);
+			}
+
 			if (typeString.equals("HTML")) {
 				return HTMLFragmentEditableElementValueSerDes.toJSON(
 					(HTMLFragmentEditableElementValue)
@@ -78,6 +86,12 @@ public class FragmentEditableElementValueSerDes {
 			if (typeString.equals("Image")) {
 				return ImageFragmentEditableElementValueSerDes.toJSON(
 					(ImageFragmentEditableElementValue)
+						fragmentEditableElementValue);
+			}
+
+			if (typeString.equals("Link")) {
+				return LinkFragmentEditableElementValueSerDes.toJSON(
+					(LinkFragmentEditableElementValue)
 						fragmentEditableElementValue);
 			}
 
@@ -168,12 +182,20 @@ public class FragmentEditableElementValueSerDes {
 						json);
 				}
 
+				if (typeString.equals("Date")) {
+					return DateFragmentEditableElementValue.toDTO(json);
+				}
+
 				if (typeString.equals("HTML")) {
 					return HTMLFragmentEditableElementValue.toDTO(json);
 				}
 
 				if (typeString.equals("Image")) {
 					return ImageFragmentEditableElementValue.toDTO(json);
+				}
+
+				if (typeString.equals("Link")) {
+					return LinkFragmentEditableElementValue.toDTO(json);
 				}
 
 				if (typeString.equals("RichText")) {
@@ -285,3 +307,4 @@ public class FragmentEditableElementValueSerDes {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-50954796

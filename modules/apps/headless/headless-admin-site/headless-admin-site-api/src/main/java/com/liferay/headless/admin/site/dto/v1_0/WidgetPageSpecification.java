@@ -53,6 +53,48 @@ public class WidgetPageSpecification
 			WidgetPageSpecification.class, json);
 	}
 
+	@io.swagger.v3.oas.annotations.media.Schema
+	@Valid
+	public Settings getSettings() {
+		if (_settingsSupplier != null) {
+			settings = _settingsSupplier.get();
+
+			_settingsSupplier = null;
+		}
+
+		return settings;
+	}
+
+	public void setSettings(Settings settings) {
+		this.settings = settings;
+
+		_settingsSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setSettings(
+		UnsafeSupplier<Settings, Exception> settingsUnsafeSupplier) {
+
+		_settingsSupplier = () -> {
+			try {
+				return settingsUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected Settings settings;
+
+	@JsonIgnore
+	private Supplier<Settings> _settingsSupplier;
+
 	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "The sections of a widget page."
 	)
@@ -126,6 +168,18 @@ public class WidgetPageSpecification
 
 		sb.append("{");
 
+		Settings settings = getSettings();
+
+		if (settings != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"settings\": ");
+
+			sb.append(String.valueOf(settings));
+		}
+
 		WidgetPageSection[] widgetPageSections = getWidgetPageSections();
 
 		if (widgetPageSections != null) {
@@ -185,18 +239,6 @@ public class WidgetPageSpecification
 			sb.append(_escape(externalReferenceCode));
 
 			sb.append("\"");
-		}
-
-		Settings settings = getSettings();
-
-		if (settings != null) {
-			if (sb.length() > 1) {
-				sb.append(", ");
-			}
-
-			sb.append("\"settings\": ");
-
-			sb.append(String.valueOf(settings));
 		}
 
 		String siteTemplatePageSpecificationExternalReferenceCode =
@@ -347,3 +389,4 @@ public class WidgetPageSpecification
 	private Map<String, Serializable> _extendedProperties;
 
 }
+// LIFERAY-REST-BUILDER-HASH:-1006386884

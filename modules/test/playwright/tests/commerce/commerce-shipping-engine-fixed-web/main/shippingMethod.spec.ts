@@ -5,7 +5,6 @@
 
 import {expect, mergeTests} from '@playwright/test';
 
-import {applicationsMenuPageTest} from '../../../../fixtures/applicationsMenuPageTest';
 import {commercePagesTest} from '../../../../fixtures/commercePagesTest';
 import {dataApiHelpersTest} from '../../../../fixtures/dataApiHelpersTest';
 import {isolatedSiteTest} from '../../../../fixtures/isolatedSiteTest';
@@ -16,7 +15,6 @@ import getRandomString from '../../../../utils/getRandomString';
 import {waitForAlert} from '../../../../utils/waitForAlert';
 
 export const test = mergeTests(
-	applicationsMenuPageTest,
 	commercePagesTest,
 	dataApiHelpersTest,
 	isolatedSiteTest,
@@ -451,6 +449,46 @@ test(
 					'Shipping Methods'
 				)
 			).getByRole('cell', {name: 'Shipping takes 3–5 days'})
+		).toBeVisible();
+	}
+);
+
+test(
+	'Verify Variable Rate Shipping Option Settings is viewed from Shipping Option',
+	{tag: ['@LPD-71919']},
+	async ({
+		apiHelpers,
+		commerceAdminChannelDetailsPage,
+		commerceAdminChannelsPage,
+		site,
+	}) => {
+		const channel =
+			await apiHelpers.headlessCommerceAdminChannel.postChannel({
+				siteGroupId: site.id,
+			});
+
+		await commerceAdminChannelsPage.changeCommerceChannelSiteType(
+			channel.name,
+			'B2B'
+		);
+
+		await commerceAdminChannelDetailsPage.activateChannelConfiguration(
+			'Variable Rate',
+			'Shipping Methods'
+		);
+		await commerceAdminChannelDetailsPage.addVariableRateShippingOption(
+			'variable rate'
+		);
+		await commerceAdminChannelDetailsPage.addVariableRateShippingOptionSetting(
+			'variable rate',
+			'10'
+		);
+
+		await expect(
+			await commerceAdminChannelDetailsPage.shippingOptionsSettingsTableLink(
+				'variable rate',
+				'Shipping Methods'
+			)
 		).toBeVisible();
 	}
 );

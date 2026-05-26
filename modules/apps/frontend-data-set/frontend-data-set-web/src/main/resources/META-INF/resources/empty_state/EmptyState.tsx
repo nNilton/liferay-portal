@@ -5,17 +5,17 @@
 
 import ClayButton from '@clayui/button';
 import ClayEmptyState from '@clayui/empty-state';
-import React from 'react';
+import React, {useContext} from 'react';
 
+import FrontendDataSetContext from '../FrontendDataSetContext';
 import CreationMenu from '../management_bar/controls/CreationMenu';
 import {IFrontendDataSetProps} from '../utils/types';
 
 interface IEmptyStateProps {
 	creationMenu?: IFrontendDataSetProps['creationMenu'];
 	emptyStateConfiguration?: IFrontendDataSetProps['emptyState'];
-	filters: any[];
+	hideManagementBarInEmptyState?: boolean;
 	onClearFilters: () => void;
-	searchParam: string;
 }
 
 const DEFAULT_SEARCH_STATE_IMAGE = '/states/search_state.svg';
@@ -28,12 +28,15 @@ const getImgSrc = (image: string) =>
 const EmptyState = ({
 	creationMenu,
 	emptyStateConfiguration,
-	filters,
+	hideManagementBarInEmptyState = false,
 	onClearFilters,
-	searchParam,
 }: IEmptyStateProps) => {
-	const hasActiveFilters = filters.some((filter: any) => filter.active);
-	const hasSearch = !!searchParam;
+	const {globalFDSState} = useContext(FrontendDataSetContext);
+
+	const hasActiveFilters = globalFDSState.filters.some(
+		(filter: any) => filter.active
+	);
+	const hasSearch = !!globalFDSState.search.query;
 
 	if (hasActiveFilters && hasSearch) {
 		const config = emptyStateConfiguration?.filtered?.searchAndFilters;
@@ -128,7 +131,15 @@ const EmptyState = ({
 				Liferay.Language.get('no-results-found')
 			}
 		>
-			{creationMenu && <CreationMenu {...creationMenu} inEmptyState />}
+			{creationMenu && (
+				<CreationMenu
+					{...creationMenu}
+					hideManagementBarInEmptyState={
+						hideManagementBarInEmptyState
+					}
+					inEmptyState={true}
+				/>
+			)}
 		</ClayEmptyState>
 	);
 };

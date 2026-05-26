@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,7 +38,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -323,15 +324,6 @@ public abstract class BaseBuild implements Build {
 
 		sb.append("/");
 		sb.append(getJobName());
-
-		if (this instanceof AxisBuild) {
-			sb.append("/");
-
-			AxisBuild axisBuild = (AxisBuild)this;
-
-			sb.append(axisBuild.getAxisNumber());
-		}
-
 		sb.append("/");
 		sb.append(getBuildNumber());
 
@@ -449,6 +441,35 @@ public abstract class BaseBuild implements Build {
 
 		if (isFailing()) {
 			buildReportJSONObject.put("failureMessage", getFailureMessage());
+
+			JSONArray failureReportsJSONArray = new JSONArray();
+
+			for (FailureMessageGenerator failureMessageGenerator :
+					getFailureMessageGenerators()) {
+
+				if ((failureMessageGenerator instanceof
+						GenericFailureMessageGenerator) &&
+					!failureReportsJSONArray.isEmpty()) {
+
+					continue;
+				}
+
+				String failureMessage = failureMessageGenerator.getMessage(
+					this);
+
+				if (!JenkinsResultsParserUtil.isNullOrEmpty(failureMessage)) {
+					JSONObject failureReportJSONObject = new JSONObject();
+
+					failureReportJSONObject.put("message", failureMessage);
+
+					failureReportsJSONArray.put(failureReportJSONObject);
+				}
+			}
+
+			if (!failureReportsJSONArray.isEmpty()) {
+				buildReportJSONObject.put(
+					"failureReports", failureReportsJSONArray);
+			}
 		}
 
 		buildReportJSONObject.put(
@@ -594,7 +615,7 @@ public abstract class BaseBuild implements Build {
 			return 0;
 		}
 
-		long duration = buildJSONObject.getLong("duration");
+		long duration = buildJSONObject.optLong("duration");
 
 		if (duration == 0) {
 			long timestamp = buildJSONObject.getLong("timestamp");
@@ -736,6 +757,11 @@ public abstract class BaseBuild implements Build {
 		_gitHubMessageElement = messageElement;
 
 		return _gitHubMessageElement;
+	}
+
+	@Override
+	public Element getGitHubMessageUpstreamJobFailureElement() {
+		return upstreamJobFailureMessageElement;
 	}
 
 	@Override
@@ -956,7 +982,7 @@ public abstract class BaseBuild implements Build {
 		}
 
 		String jobURL = JenkinsResultsParserUtil.combine(
-			"https://", jenkinsMaster.getName(), ".liferay.com/job/", _jobName);
+			jenkinsMaster.getRemoteURL(), "job/", _jobName);
 
 		try {
 			return JenkinsResultsParserUtil.encode(jobURL);
@@ -1705,6 +1731,11 @@ public abstract class BaseBuild implements Build {
 	}
 
 	@Override
+	public void setParameterValue(String name, String value) {
+		_parameters.put(name, value);
+	}
+
+	@Override
 	public void setResult(String result) {
 		_result = result;
 	}
@@ -1724,7 +1755,22 @@ public abstract class BaseBuild implements Build {
 		_statusDurations.put(
 			_previousStatus, _statusModifiedTime - previousStatusModifiedTime);
 
-		if (different && isParentBuildRoot()) {
+		String buildURL = getBuildURL();
+
+		if (!JenkinsResultsParserUtil.isURL(buildURL)) {
+			return;
+		}
+
+		BuildDatabase buildDatabase = getBuildDatabase();
+
+		Properties properties = buildDatabase.getProperties(
+			CACHED_BUILD_URLS_PROPERTIES_KEY);
+
+		Set<String> cachedBuildURLs = properties.stringPropertyNames();
+
+		if (!cachedBuildURLs.contains(buildURL) && different &&
+			isParentBuildRoot()) {
+
 			System.out.println(getBuildMessage());
 		}
 	}
@@ -1809,12 +1855,6 @@ public abstract class BaseBuild implements Build {
 		}
 
 		private String _getAxisName(Build build) {
-			if (build instanceof AxisBuild) {
-				AxisBuild axisBuild = (AxisBuild)build;
-
-				return axisBuild.getAxisNumber();
-			}
-
 			if (build instanceof DownstreamBuild) {
 				DownstreamBuild downstreamBuild = (DownstreamBuild)build;
 
@@ -2201,8 +2241,6 @@ public abstract class BaseBuild implements Build {
 			JenkinsResultsParserUtil.combine(
 				"(", Pattern.quote(Build.DEPENDENCIES_URL_TOKEN), "|",
 				Pattern.quote(JenkinsResultsParserUtil.urlDependenciesFile),
-				"|",
-				Pattern.quote(JenkinsResultsParserUtil.urlDependenciesHttp),
 				")/*(?<archiveName>.*)/(?<master>[^/]+)/+(?<jobName>[^/]+)",
 				".*/(?<buildNumber>\\d+)/?"));
 	}
@@ -3141,6 +3179,7 @@ public abstract class BaseBuild implements Build {
 	protected String gitRepositoryName;
 	protected Long invokedTime;
 	protected Long startTime;
+	protected Element upstreamJobFailureMessageElement;
 
 	private void _archive(String content, boolean required, String urlSuffix) {
 		boolean readyToArchive = true;
@@ -3338,8 +3377,7 @@ public abstract class BaseBuild implements Build {
 		else {
 			Dom4JUtil.getNewElement(
 				"td", buildInfoElement,
-				JenkinsResultsParserUtil.toDurationString(
-					stopWatchRecord.getDuration()));
+				JenkinsResultsParserUtil.toDurationString(duration));
 		}
 
 		Dom4JUtil.getNewElement("td", buildInfoElement, "&nbsp;");
@@ -3380,6 +3418,18 @@ public abstract class BaseBuild implements Build {
 		}
 
 		return jenkinsReportTableRowElements;
+	}
+
+	private String _getSuiteClassName(JSONObject suiteJSONObject) {
+		JSONArray casesJSONArray = suiteJSONObject.optJSONArray("cases");
+
+		if ((casesJSONArray == null) || casesJSONArray.isEmpty()) {
+			return suiteJSONObject.getString("name");
+		}
+
+		JSONObject caseJSONObject = casesJSONArray.getJSONObject(0);
+
+		return caseJSONObject.getString("className");
 	}
 
 	private synchronized void _initTestClassResults() {
@@ -3432,17 +3482,56 @@ public abstract class BaseBuild implements Build {
 			}
 		}
 
+		Map<String, JSONObject> mergedSuiteJSONObjects = new LinkedHashMap<>();
+
 		for (JSONArray suitesJSONArray : suitesJSONArrays) {
 			for (int i = 0; i < suitesJSONArray.length(); i++) {
 				JSONObject suiteJSONObject = suitesJSONArray.getJSONObject(i);
 
-				TestClassResult testClassResult =
-					TestClassResultFactory.newTestClassResult(
-						this, suiteJSONObject);
+				String suiteClassName = _getSuiteClassName(suiteJSONObject);
 
-				_testClassResults.put(
-					testClassResult.getClassName(), testClassResult);
+				JSONObject mergedSuiteJSONObject = mergedSuiteJSONObjects.get(
+					suiteClassName);
+
+				if (mergedSuiteJSONObject == null) {
+					mergedSuiteJSONObject = new JSONObject();
+
+					mergedSuiteJSONObject.put(
+						"cases", new JSONArray()
+					).put(
+						"duration", 0
+					).put(
+						"name", suiteJSONObject.opt("name")
+					);
+
+					mergedSuiteJSONObjects.put(
+						suiteClassName, mergedSuiteJSONObject);
+				}
+
+				JSONArray casesJSONArray = suiteJSONObject.optJSONArray(
+					"cases");
+
+				if (casesJSONArray != null) {
+					JSONArray mergedCasesJSONArray =
+						mergedSuiteJSONObject.getJSONArray("cases");
+
+					mergedCasesJSONArray.putAll(casesJSONArray);
+				}
+
+				mergedSuiteJSONObject.put(
+					"duration",
+					mergedSuiteJSONObject.optDouble("duration", 0) +
+						suiteJSONObject.optDouble("duration", 0));
 			}
+		}
+
+		for (JSONObject suiteJSONObject : mergedSuiteJSONObjects.values()) {
+			TestClassResult testClassResult =
+				TestClassResultFactory.newTestClassResult(
+					this, suiteJSONObject);
+
+			_testClassResults.put(
+				testClassResult.getClassName(), testClassResult);
 		}
 	}
 
@@ -3566,7 +3655,8 @@ public abstract class BaseBuild implements Build {
 		JenkinsCohort jenkinsCohort = JenkinsCohort.getInstance(
 			invocationURLMatcher.group("cohortName"));
 
-		loadParametersFromQueryString(invocationURL);
+		loadParametersFromQueryString(
+			invocationURLMatcher.group("queryString"));
 
 		String masterId = invocationURLMatcher.group("masterId");
 

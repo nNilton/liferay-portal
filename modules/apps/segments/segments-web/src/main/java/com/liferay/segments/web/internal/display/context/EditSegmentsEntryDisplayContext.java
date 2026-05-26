@@ -6,6 +6,7 @@
 package com.liferay.segments.web.internal.display.context;
 
 import com.liferay.item.selector.ItemSelector;
+import com.liferay.learn.LearnMessageUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.bean.BeanParamUtil;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -388,6 +389,16 @@ public class EditSegmentsEntryDisplayContext {
 		).put(
 			"isSegmentationEnabled",
 			_isSegmentationEnabled(_themeDisplay.getCompanyId())
+		).put(
+			"learnResources",
+			HashMapBuilder.put(
+				"frontend-js-components-web",
+				LearnMessageUtil.getReactDataJSONObject(
+					"frontend-js-components-web")
+			).put(
+				"segments-web",
+				LearnMessageUtil.getReactDataJSONObject("segments-web")
+			).build()
 		).put(
 			"locale", _locale.toString()
 		).put(

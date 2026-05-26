@@ -40,6 +40,7 @@ function SegmentEdit({
 	hasUpdatePermission,
 	initialMembersCount,
 	isSegmentationEnabled,
+	learnResources,
 	locale,
 	portletNamespace,
 	previewMembersURL,
@@ -290,6 +291,7 @@ function SegmentEdit({
 					data.isSegmentationDisabledAlertDismissed
 				}
 				isSegmentationEnabled={isSegmentationEnabled}
+				learnResources={learnResources}
 				membersCount={data.membersCount}
 				membersCountLoading={data.membersCountLoading}
 				onAlertClose={handleAlertClose}

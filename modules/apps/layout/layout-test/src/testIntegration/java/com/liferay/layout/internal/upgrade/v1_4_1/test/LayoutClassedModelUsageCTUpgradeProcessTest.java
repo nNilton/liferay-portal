@@ -53,6 +53,7 @@ import com.liferay.segments.service.SegmentsExperienceLocalService;
 
 import java.sql.Connection;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Assert;
@@ -105,13 +106,20 @@ public class LayoutClassedModelUsageCTUpgradeProcessTest
 
 		_deleteLayoutClassedModelUsage(_journalArticle.getResourcePrimKey());
 
-		_updateFragmentEntryLinkInNewCTCollection(
-			fragmentEntryLink, _journalArticle);
+		List<CTCollection> ctCollections = new ArrayList<>();
 
-		_updateFragmentEntryLinkInNewCTCollection(
-			fragmentEntryLink, _journalArticle);
+		ctCollections.add(
+			_updateFragmentEntryLinkInNewCTCollection(
+				fragmentEntryLink, _journalArticle));
+		ctCollections.add(
+			_updateFragmentEntryLinkInNewCTCollection(
+				fragmentEntryLink, _journalArticle));
 
 		runUpgrade();
+
+		for (CTCollection ctCollection : ctCollections) {
+			_ctCollectionLocalService.deleteCTCollection(ctCollection);
+		}
 	}
 
 	@Test
@@ -333,7 +341,7 @@ public class LayoutClassedModelUsageCTUpgradeProcessTest
 		}
 	}
 
-	private void _updateFragmentEntryLinkInNewCTCollection(
+	private CTCollection _updateFragmentEntryLinkInNewCTCollection(
 			FragmentEntryLink fragmentEntryLink, JournalArticle journalArticle)
 		throws Exception {
 
@@ -349,16 +357,13 @@ public class LayoutClassedModelUsageCTUpgradeProcessTest
 				fragmentEntryLink);
 			_deleteLayoutClassedModelUsage(journalArticle.getResourcePrimKey());
 		}
+
+		return ctCollection;
 	}
 
 	private static final String _CLASS_NAME =
 		"com.liferay.layout.internal.upgrade.v1_4_1." +
 			"LayoutClassedModelUsageUpgradeProcess";
-
-	@Inject(
-		filter = "(&(component.name=com.liferay.layout.internal.upgrade.registry.LayoutServiceUpgradeStepRegistrator))"
-	)
-	private static UpgradeStepRegistrator _upgradeStepRegistrator;
 
 	@Inject
 	private ClassNameLocalService _classNameLocalService;
@@ -393,5 +398,10 @@ public class LayoutClassedModelUsageCTUpgradeProcessTest
 
 	@Inject
 	private SegmentsExperienceLocalService _segmentsExperienceLocalService;
+
+	@Inject(
+		filter = "(&(component.name=com.liferay.layout.internal.upgrade.registry.LayoutServiceUpgradeStepRegistrator))"
+	)
+	private UpgradeStepRegistrator _upgradeStepRegistrator;
 
 }

@@ -5,6 +5,7 @@
 
 package com.liferay.headless.delivery.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.headless.delivery.dto.v1_0.DefaultValue;
 import com.liferay.headless.delivery.dto.v1_0.DocumentMetadataSet;
 import com.liferay.headless.delivery.resource.v1_0.DocumentMetadataSetResource;
@@ -1047,9 +1048,53 @@ public abstract class BaseDocumentMetadataSetResourceImpl
 
 		UnsafeFunction<DocumentMetadataSet, DocumentMetadataSet, Exception>
 			documentMetadataSetUnsafeFunction = documentMetadataSet -> {
-				deleteDocumentMetadataSet(documentMetadataSet.getId());
+				if (documentMetadataSet.getId() != null) {
+					try {
+						deleteDocumentMetadataSet(documentMetadataSet.getId());
 
-				return documentMetadataSet;
+						return documentMetadataSet;
+					}
+					catch (Exception exception) {
+						if (documentMetadataSet.getExternalReferenceCode() !=
+								null) {
+
+							if (parameters.containsKey("assetLibraryId")) {
+								deleteAssetLibraryDocumentMetadataSetByExternalReferenceCode(
+									(Long)parameters.get("assetLibraryId"),
+									documentMetadataSet.
+										getExternalReferenceCode());
+
+								return documentMetadataSet;
+							}
+
+							if (parameters.containsKey("siteId")) {
+								deleteSiteDocumentMetadataSetByExternalReferenceCode(
+									(Long)parameters.get("siteId"),
+									documentMetadataSet.
+										getExternalReferenceCode());
+
+								return documentMetadataSet;
+							}
+						}
+					}
+				}
+				else if (parameters.containsKey("assetLibraryId")) {
+					deleteAssetLibraryDocumentMetadataSetByExternalReferenceCode(
+						(Long)parameters.get("assetLibraryId"),
+						documentMetadataSet.getExternalReferenceCode());
+
+					return documentMetadataSet;
+				}
+				else if (parameters.containsKey("siteId")) {
+					deleteSiteDocumentMetadataSetByExternalReferenceCode(
+						(Long)parameters.get("siteId"),
+						documentMetadataSet.getExternalReferenceCode());
+
+					return documentMetadataSet;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
 			};
 
 		if (contextBatchUnsafeBiConsumer != null) {
@@ -1132,6 +1177,15 @@ public abstract class BaseDocumentMetadataSetResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -1716,3 +1770,4 @@ public abstract class BaseDocumentMetadataSetResourceImpl
 		LogFactoryUtil.getLog(BaseDocumentMetadataSetResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:-2011635696

@@ -21,10 +21,11 @@ import {compose} from 'shared/hoc';
 import {connect, ConnectedProps} from 'react-redux';
 import {individualsListColumns} from 'shared/util/table-columns';
 import {isNil} from 'lodash';
+import {ProfileTypes} from 'segment/segment-editor/dynamic/utils/constants';
 import {Routes, toRoute} from 'shared/util/router';
 import {Sizes} from 'shared/util/constants';
 import {useCurrentUser} from 'shared/hooks/useCurrentUser';
-import {useDataSource} from 'shared/hooks/useDataSource';
+import {useDataSources} from 'shared/context/dataSources';
 import {useParams} from 'react-router-dom';
 import {useQueryPagination} from 'shared/hooks/useQueryPagination';
 import {User} from 'shared/util/records';
@@ -57,7 +58,7 @@ const KnownIndividuals: React.FC<IKnownIndividualsProps> = () => {
 		}
 	});
 
-	const dataSourceStates = useDataSource();
+	const dataSourceStates = useDataSources();
 
 	const currentUser = useCurrentUser();
 
@@ -71,7 +72,7 @@ const KnownIndividuals: React.FC<IKnownIndividualsProps> = () => {
 				button
 				className='button-root'
 				displayType='primary'
-				href={toRoute(Routes.SETTINGS_ADD_DATA_SOURCE, {
+				href={toRoute(Routes.SETTINGS_DATA_SOURCE_LIST, {
 					groupId
 				})}
 			>
@@ -100,7 +101,7 @@ const KnownIndividuals: React.FC<IKnownIndividualsProps> = () => {
 					primary
 					title={Liferay.Language.get('no-data-sources-connected')}
 				>
-					{authorized && createDataSourceButton}
+					{authorized ? createDataSourceButton : undefined}
 				</NoResultsDisplay>
 			);
 		} else {
@@ -133,7 +134,7 @@ const KnownIndividuals: React.FC<IKnownIndividualsProps> = () => {
 									className='button-root'
 									displayType='primary'
 									href={toRoute(
-										Routes.SETTINGS_ADD_DATA_SOURCE,
+										Routes.SETTINGS_DATA_SOURCE_LIST,
 										{
 											groupId
 										}
@@ -168,6 +169,7 @@ const KnownIndividuals: React.FC<IKnownIndividualsProps> = () => {
 			groupId,
 			orderIOMap,
 			page,
+			profileTypes: [ProfileTypes.KNOWN],
 			query
 		}
 	});
@@ -203,7 +205,7 @@ const KnownIndividuals: React.FC<IKnownIndividualsProps> = () => {
 									className='button-root'
 									displayType='primary'
 									href={toRoute(
-										Routes.SETTINGS_ADD_DATA_SOURCE,
+										Routes.SETTINGS_DATA_SOURCE_LIST,
 										{
 											groupId
 										}

@@ -56,7 +56,7 @@ public class FreeMarkerFragmentEntryProcessor
 
 	@Override
 	public JSONObject getDefaultEditableValuesJSONObject(
-		String html, JSONObject configurationJSONObject) {
+		JSONObject configurationJSONObject, String html) {
 
 		return _fragmentEntryConfigurationParser.
 			getConfigurationDefaultValuesJSONObject(configurationJSONObject);
@@ -64,8 +64,22 @@ public class FreeMarkerFragmentEntryProcessor
 
 	@Override
 	public String processFragmentEntryLinkHTML(
-			FragmentEntryLink fragmentEntryLink, String html,
-			FragmentEntryProcessorContext fragmentEntryProcessorContext)
+			FragmentEntryLink fragmentEntryLink,
+			FragmentEntryProcessorContext fragmentEntryProcessorContext,
+			String html)
+		throws PortalException {
+
+		return processFragmentEntryLinkHTML(
+			fragmentEntryLink.getEditableValuesJSONObject(), fragmentEntryLink,
+			fragmentEntryProcessorContext, html);
+	}
+
+	@Override
+	public String processFragmentEntryLinkHTML(
+			JSONObject editableValuesJSONObject,
+			FragmentEntryLink fragmentEntryLink,
+			FragmentEntryProcessorContext fragmentEntryProcessorContext,
+			String html)
 		throws PortalException {
 
 		if (Validator.isNull(html)) {
@@ -116,7 +130,7 @@ public class FreeMarkerFragmentEntryProcessor
 		JSONObject configurationValuesJSONObject =
 			_fragmentEntryConfigurationParser.getConfigurationJSONObject(
 				fragmentEntryLink.getConfigurationJSONObject(),
-				fragmentEntryLink.getEditableValuesJSONObject(),
+				editableValuesJSONObject,
 				fragmentEntryProcessorContext.getLocale());
 
 		template.putAll(
@@ -141,9 +155,7 @@ public class FreeMarkerFragmentEntryProcessor
 				_fragmentEntryConfigurationParser.getContextObjects(
 					configurationValuesJSONObject,
 					fragmentEntryLink.getConfigurationJSONObject(),
-					_getInfoItem(
-						fragmentEntryProcessorContext.
-							getContextInfoItemReference()),
+					_getInfoItem(fragmentEntryProcessorContext),
 					fragmentEntryProcessorContext.getSegmentsEntryIds())
 			).build());
 
@@ -182,7 +194,12 @@ public class FreeMarkerFragmentEntryProcessor
 		return unsyncStringWriter.toString();
 	}
 
-	private Object _getInfoItem(InfoItemReference infoItemReference) {
+	private Object _getInfoItem(
+		FragmentEntryProcessorContext fragmentEntryProcessorContext) {
+
+		InfoItemReference infoItemReference =
+			fragmentEntryProcessorContext.getContextInfoItemReference();
+
 		if (infoItemReference == null) {
 			return null;
 		}
@@ -196,7 +213,9 @@ public class FreeMarkerFragmentEntryProcessor
 				infoItemIdentifier.getInfoItemServiceFilter());
 
 		try {
-			return infoItemObjectProvider.getInfoItem(infoItemIdentifier);
+			return infoItemObjectProvider.getInfoItem(
+				fragmentEntryProcessorContext.getScopeGroupId(),
+				infoItemIdentifier);
 		}
 		catch (NoSuchInfoItemException noSuchInfoItemException) {
 			if (_log.isDebugEnabled()) {

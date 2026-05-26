@@ -26,6 +26,27 @@ public class WidgetPageSpecification
 		return WidgetPageSpecificationSerDes.toDTO(json);
 	}
 
+	public Settings getSettings() {
+		return settings;
+	}
+
+	public void setSettings(Settings settings) {
+		this.settings = settings;
+	}
+
+	public void setSettings(
+		UnsafeSupplier<Settings, Exception> settingsUnsafeSupplier) {
+
+		try {
+			settings = settingsUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected Settings settings;
+
 	public WidgetPageSection[] getWidgetPageSections() {
 		return widgetPageSections;
 	}
@@ -81,3 +102,4 @@ public class WidgetPageSpecification
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-309374395

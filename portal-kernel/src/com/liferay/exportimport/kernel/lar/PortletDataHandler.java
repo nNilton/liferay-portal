@@ -5,10 +5,15 @@
 
 package com.liferay.exportimport.kernel.lar;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.model.Portlet;
+import com.liferay.portal.kernel.util.JavaConstants;
 
 import jakarta.portlet.PortletPreferences;
+
+import java.util.Locale;
 
 /**
  * A <code>PortletDataHandler</code> is a special class capable of exporting and
@@ -89,6 +94,10 @@ public interface PortletDataHandler {
 
 	public StagedModelType[] getDeletionSystemEventStagedModelTypes();
 
+	public default String getDescription(Locale locale) {
+		return null;
+	}
+
 	public PortletDataHandlerControl[]
 			getExportConfigurationPortletDataHandlerControls(
 				long companyId, long groupId, Portlet portlet,
@@ -114,17 +123,6 @@ public interface PortletDataHandler {
 			getExportMetadataPortletDataHandlerControls()
 		throws PortletDataException;
 
-	/**
-	 * Returns the number of entities defined for this data handler that are
-	 * available for export according to the provided manifest summary, or
-	 * <code>-1</code> if no entities are included in the manifest summary.
-	 *
-	 * @param  manifestSummary the manifest summary listing the number of
-	 *         exportable entities
-	 * @return the number of entities that are available for export according to
-	 *         the manifest summary, or <code>-1</code> if no entities are
-	 *         included in the manifest summary
-	 */
 	public long getExportModelCount(ManifestSummary manifestSummary);
 
 	/**
@@ -169,12 +167,6 @@ public interface PortletDataHandler {
 	 */
 	public PortletDataHandlerControl[] getImportPortletDataHandlerControls()
 		throws PortletDataException;
-
-	public default String getName() {
-		Class<? extends PortletDataHandler> clazz = getClass();
-
-		return clazz.getName();
-	}
 
 	public default String getNamespace() {
 		return StringPool.BLANK;
@@ -238,20 +230,29 @@ public interface PortletDataHandler {
 	 */
 	public String getSchemaVersion();
 
+	public default String getSectionKey() {
+		return null;
+	}
+
 	public String getServiceName();
 
-	/**
-	 * Returns an array of the controls defined for this data handler. These
-	 * controls enable the developer to create fine grained controls over
-	 * staging publication behavior. The controls are rendered in the publish
-	 * UI.
-	 *
-	 * @return an array of the controls defined for this data handler
-	 */
 	public default PortletDataHandlerControl[]
 		getStagingPortletDataHandlerControls() {
 
 		return new PortletDataHandlerControl[0];
+	}
+
+	public default String getTag(Locale locale) {
+		return null;
+	}
+
+	public default String getTitle(Locale locale) {
+		return LanguageUtil.get(
+			locale,
+			StringBundler.concat(
+				JavaConstants.JAKARTA_PORTLET_TITLE, StringPool.PERIOD,
+				getPortletId()),
+			null);
 	}
 
 	/**
@@ -302,6 +303,10 @@ public interface PortletDataHandler {
 		return true;
 	}
 
+	public default boolean isHidden() {
+		return false;
+	}
+
 	/**
 	 * Returns whether the data exported by this handler should be included by
 	 * default when publishing to live. This should only be <code>true</code>
@@ -314,10 +319,6 @@ public interface PortletDataHandler {
 	 *         otherwise
 	 */
 	public boolean isPublishToLiveByDefault();
-
-	public default boolean isHidden() {
-		return false;
-	}
 
 	/**
 	 * Returns <code>true</code> if the data handler stops operations and rolls

@@ -14,6 +14,8 @@ const InfoBoxModalNotes = ({
 	handleDelete,
 	handleSubmit,
 	handleToggle,
+	hasManageOrderNotesPermission,
+	hasManageOrderRestrictedNotesPermission,
 	id,
 	isRestricted,
 	isValid,
@@ -49,6 +51,12 @@ const InfoBoxModalNotes = ({
 									handleDelete={handleDelete}
 									handleSubmit={handleSubmit}
 									handleToggle={handleToggle}
+									hasManageOrderNotesPermission={
+										hasManageOrderNotesPermission
+									}
+									hasManageOrderRestrictedNotesPermission={
+										hasManageOrderRestrictedNotesPermission
+									}
 									isRestricted={isRestricted}
 									notes={notes}
 									setInputValue={setInputValue}
@@ -67,12 +75,14 @@ const InfoBoxModalNotes = ({
 										{Liferay.Language.get('cancel')}
 									</ClayButton>
 
-									<ClayButton
-										disabled={!isValid}
-										type="submit"
-									>
-										{Liferay.Language.get('submit')}
-									</ClayButton>
+									{hasManageOrderNotesPermission && (
+										<ClayButton
+											disabled={!isValid}
+											type="submit"
+										>
+											{Liferay.Language.get('submit')}
+										</ClayButton>
+									)}
 								</ClayButton.Group>
 							}
 						/>

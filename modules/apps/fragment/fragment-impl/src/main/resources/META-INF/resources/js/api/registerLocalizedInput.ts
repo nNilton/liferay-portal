@@ -11,6 +11,7 @@ import {
 import {getTranslationInput} from './getTranslationInput';
 
 type Args = {
+	availableLanguageIds?: string[];
 	changeTextDirection: boolean;
 	customLocaleChangeHandler: boolean;
 	defaultLanguageId: Liferay.Language.Locale;
@@ -19,6 +20,7 @@ type Args = {
 	inputElement?: HTMLInputElement;
 	inputName: string;
 	localizationInputsContainer: HTMLElement;
+	localizedTextContainer: HTMLElement;
 	namespace: string;
 	onAutoTranslate?: ({
 		languageId,
@@ -39,6 +41,7 @@ type Args = {
 };
 
 export function registerLocalizedInput({
+	availableLanguageIds,
 	changeTextDirection = true,
 	customLocaleChangeHandler = false,
 	defaultLanguageId,
@@ -47,6 +50,7 @@ export function registerLocalizedInput({
 	inputElement,
 	inputName,
 	localizationInputsContainer,
+	localizedTextContainer,
 	namespace,
 	onAutoTranslate,
 	onLocaleChange,
@@ -128,12 +132,15 @@ export function registerLocalizedInput({
 	const form = inputElement?.closest('.lfr-layout-structure-item-form');
 
 	let currentLanguageId =
-		getSelectedLanguageId(form?.id) || defaultLanguageId;
+		getSelectedLanguageId(form?.id) ||
+		(availableLanguageIds?.includes(Liferay.ThemeDisplay.getLanguageId())
+			? Liferay.ThemeDisplay.getLanguageId()
+			: defaultLanguageId);
 
 	if (changeTextDirection) {
 		inputElement?.setAttribute(
 			'dir',
-			Liferay.Language.direction[defaultLanguageId]!
+			Liferay.Language.direction[currentLanguageId]!
 		);
 	}
 
@@ -216,6 +223,10 @@ export function registerLocalizedInput({
 			formId?: string;
 			languageId: Liferay.Language.Locale;
 		}) => {
+			localizedTextContainer?.classList.toggle(
+				'd-none',
+				languageId === defaultLanguageId
+			);
 
 			// Return if event is sent from a different form
 
@@ -407,6 +418,30 @@ export function registerLocalizedInput({
 	Liferay.fire(EVENT_INPUT_REGISTERED);
 
 	return {
+		onBlur: (value = null) => {
+			if (
+				localizedTextContainer &&
+				currentLanguageId === defaultLanguageId
+			) {
+				const hasValue = Boolean(value);
+
+				localizedTextContainer.innerText =
+					value ||
+					Liferay.Language.get(
+						'there-is-no-default-value-to-localize'
+					);
+
+				localizedTextContainer.classList.toggle('text-info', !hasValue);
+				localizedTextContainer.classList.toggle(
+					'text-italic',
+					hasValue
+				);
+				localizedTextContainer.classList.toggle(
+					'text-secondary',
+					hasValue
+				);
+			}
+		},
 		onChange: (value = null) => {
 			if (value !== null) {
 				setTranslationInputsValue(currentLanguageId, value);
@@ -434,7 +469,7 @@ function setInputValue({
 		input.checked = value === 'true';
 	}
 	else if (value !== null) {
-		input.value = Liferay.Util.unescapeHTML(String(value));
+		input.value = String(value);
 	}
 	else {
 		input.removeAttribute('value');

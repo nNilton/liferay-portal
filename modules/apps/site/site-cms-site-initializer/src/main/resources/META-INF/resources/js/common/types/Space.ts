@@ -16,9 +16,11 @@ export type LogoColor =
 	| 'outline-9';
 
 export type Space = {
+	assetLibraryKey: string;
 	creatorUserId: string;
 	description: string;
 	externalReferenceCode: string;
+	friendlyURL: string;
 	id: number;
 	name: string;
 	settings?: SpaceSettings;

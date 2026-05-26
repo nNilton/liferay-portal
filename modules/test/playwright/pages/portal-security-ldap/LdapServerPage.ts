@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {Locator, Page} from '@playwright/test';
+import {Locator, Page, expect} from '@playwright/test';
 
 import {TLdapServer} from '../../helpers/LdapConfigurationHelper';
 import {waitForAlert} from '../../utils/waitForAlert';
@@ -59,7 +59,7 @@ export class LdapServerPage {
 		this.baseProviderUrl = page.getByLabel('Base Provider URL The LDAP');
 		this.cancelButton = page.getByRole('button', {name: 'Cancel'});
 		this.clockSkew = page.getByLabel('Clock Skew The system time');
-		this.closeButton = page.getByLabel('Close');
+		this.closeButton = page.getByLabel('Close', {exact: true});
 		this.credentials = page.getByLabel('Credentials');
 		this.customContactMapping = page.getByLabel('Custom Contact Mapping');
 		this.customUserMapping = page.getByLabel('Custom User Mapping');
@@ -209,8 +209,17 @@ export class LdapServerPage {
 		if (ldapServer.clockSkew) {
 			await this.clockSkew.fill(ldapServer.clockSkew.toString());
 		}
+
+		await expect(this.credentials).toHaveAttribute('type', 'password');
+		await expect(this.credentials).toHaveAttribute(
+			'value',
+			'TEMP_OBFUSCATION_VALUE'
+		);
+
 		if (ldapServer.credentials) {
 			await this.credentials.fill(ldapServer.credentials);
+
+			await expect(this.credentials).toHaveValue(ldapServer.credentials);
 		}
 		if (ldapServer.customContactMapping) {
 			await this.customContactMapping.fill(

@@ -12,7 +12,6 @@ import com.liferay.cookies.configuration.consent.CookiesConsentConfiguration;
 import com.liferay.layout.utility.page.kernel.provider.LayoutUtilityPageEntryLayoutProvider;
 import com.liferay.portal.kernel.cookies.ConsentCookieType;
 import com.liferay.portal.kernel.cookies.constants.CookiesConstants;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.log.Log;
@@ -91,17 +90,20 @@ public class BaseCookiesBannerDisplayContext {
 		return _requiredConsentCookieTypes;
 	}
 
-	public boolean isConsentRenewalPeriodEnabled() {
+	public boolean isIncludeDeclineAllButton() {
+		return cookiesBannerConfiguration.includeDeclineAllButton();
+	}
+
+	public boolean isStoreConsent() {
 		ThemeDisplay themeDisplay =
 			(ThemeDisplay)httpServletRequest.getAttribute(
 				WebKeys.THEME_DISPLAY);
 
-		return FeatureFlagManagerUtil.isEnabled(
-			themeDisplay.getCompanyId(), "LPD-65277");
-	}
+		if (themeDisplay.isSignedIn()) {
+			return cookiesPreferenceHandlingConfiguration.storeConsent();
+		}
 
-	public boolean isIncludeDeclineAllButton() {
-		return cookiesBannerConfiguration.includeDeclineAllButton();
+		return false;
 	}
 
 	protected JSONArray getConsentCookieTypeNamesJSONArray(
@@ -119,6 +121,20 @@ public class BaseCookiesBannerDisplayContext {
 
 	protected int getConsentRenewalPeriod() {
 		return cookiesPreferenceHandlingConfiguration.consentRenewalPeriod();
+	}
+
+	protected String getConsentRenewalPeriodTimeUnit() {
+		return cookiesPreferenceHandlingConfiguration.
+			consentRenewalPeriodTimeUnit();
+	}
+
+	protected int getDissentRenewalPeriod() {
+		return cookiesPreferenceHandlingConfiguration.dissentRenewalPeriod();
+	}
+
+	protected String getDissentRenewalPeriodTimeUnit() {
+		return cookiesPreferenceHandlingConfiguration.
+			dissentRenewalPeriodTimeUnit();
 	}
 
 	protected long getModifiedDate() {

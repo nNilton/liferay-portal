@@ -240,10 +240,11 @@ public class DBPartitionUtil {
 					"select configurationId from ", getPartitionName(companyId),
 					".Configuration_ where dictionary like ",
 					"'%org.apache.felix.configadmin.revision%'"));
+
 			ResultSet resultSet = preparedStatement.executeQuery()) {
 
 			while (resultSet.next()) {
-				pids.add(resultSet.getString(1));
+				pids.add(resultSet.getString("configurationId"));
 			}
 		}
 
@@ -265,13 +266,15 @@ public class DBPartitionUtil {
 				StringBundler.concat(
 					"select configurationId, dictionary from ",
 					getPartitionName(companyId), ".Configuration_"));
+
 			ResultSet resultSet = preparedStatement.executeQuery()) {
 
 			Map<String, String> configurations = new HashMap<>();
 
 			while (resultSet.next()) {
 				configurations.put(
-					resultSet.getString(1), resultSet.getString(2));
+					resultSet.getString("configurationId"),
+					resultSet.getString("dictionary"));
 			}
 
 			return configurations;
@@ -379,12 +382,15 @@ public class DBPartitionUtil {
 		if (PropsValues.DATABASE_PARTITION_ENABLED) {
 			try (PreparedStatement preparedStatement =
 					connection.prepareStatement(
-						"select companyId from Company where webId = '" +
-							PropsValues.COMPANY_DEFAULT_WEB_ID + "'");
-				ResultSet resultSet = preparedStatement.executeQuery()) {
+						"select companyId from Company where webId = ?")) {
 
-				if (resultSet.next()) {
-					_defaultCompanyId = resultSet.getLong(1);
+				preparedStatement.setString(
+					1, PropsValues.COMPANY_DEFAULT_WEB_ID);
+
+				try (ResultSet resultSet = preparedStatement.executeQuery()) {
+					if (resultSet.next()) {
+						_defaultCompanyId = resultSet.getLong("companyId");
+					}
 				}
 			}
 		}

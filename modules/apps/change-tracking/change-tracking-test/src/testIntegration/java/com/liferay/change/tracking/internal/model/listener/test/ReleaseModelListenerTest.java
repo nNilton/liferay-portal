@@ -8,6 +8,7 @@ package com.liferay.change.tracking.internal.model.listener.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.change.tracking.configuration.CTSettingsConfiguration;
 import com.liferay.change.tracking.constants.CTConstants;
+import com.liferay.change.tracking.internal.test.util.CTCollectionTestUtil;
 import com.liferay.change.tracking.model.CTCollection;
 import com.liferay.change.tracking.model.CTPreferences;
 import com.liferay.change.tracking.service.CTCollectionLocalService;
@@ -193,6 +194,17 @@ public class ReleaseModelListenerTest {
 		Assert.assertEquals(
 			WorkflowConstants.STATUS_DRAFT, _ctCollection.getStatus());
 
+		CTCollection incompleteCTCollection =
+			CTCollectionTestUtil.createCTCollectionWithIncompleteStatus(
+				TestPropsValues.getUser());
+
+		Assert.assertTrue(
+			_ctSchemaVersionLocalService.isLatestCTSchemaVersion(
+				incompleteCTCollection.getSchemaVersionId()));
+		Assert.assertEquals(
+			WorkflowConstants.STATUS_INCOMPLETE,
+			incompleteCTCollection.getStatus());
+
 		Group group = GroupTestUtil.addGroup();
 
 		JournalFolder productionJournalFolder = _journalFolderFixture.addFolder(
@@ -201,6 +213,18 @@ public class ReleaseModelListenerTest {
 		try (SafeCloseable safeCloseable =
 				CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
 					_ctCollection.getCtCollectionId())) {
+
+			_journalFolderFixture.addFolder(
+				group.getGroupId(), productionJournalFolder.getFolderId(),
+				RandomTestUtil.randomString());
+
+			DDMStructureTestUtil.addStructure(
+				TestPropsValues.getGroupId(), JournalArticle.class.getName());
+		}
+
+		try (SafeCloseable safeCloseable =
+				CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
+					incompleteCTCollection.getCtCollectionId())) {
 
 			_journalFolderFixture.addFolder(
 				group.getGroupId(), productionJournalFolder.getFolderId(),
@@ -232,6 +256,13 @@ public class ReleaseModelListenerTest {
 			Assert.assertFalse(
 				_ctSchemaVersionLocalService.isLatestCTSchemaVersion(
 					_ctCollection.getSchemaVersionId()));
+
+			incompleteCTCollection = _ctCollectionLocalService.getCTCollection(
+				incompleteCTCollection.getCtCollectionId());
+
+			Assert.assertFalse(
+				_ctSchemaVersionLocalService.isLatestCTSchemaVersion(
+					incompleteCTCollection.getSchemaVersionId()));
 
 			CTPreferences ctPreferences =
 				_ctPreferencesLocalService.getCTPreferences(
@@ -273,6 +304,10 @@ public class ReleaseModelListenerTest {
 
 			Assert.assertEquals(
 				WorkflowConstants.STATUS_EXPIRED, _ctCollection.getStatus());
+
+			Assert.assertEquals(
+				WorkflowConstants.STATUS_EXPIRED,
+				incompleteCTCollection.getStatus());
 		}
 	}
 
@@ -334,36 +369,36 @@ public class ReleaseModelListenerTest {
 	}
 
 	@Inject
-	private static CTCollectionLocalService _ctCollectionLocalService;
-
-	@Inject
-	private static CTPreferencesLocalService _ctPreferencesLocalService;
-
-	@Inject
-	private static CTProcessLocalService _ctProcessLocalService;
-
-	@Inject
-	private static CTSchemaVersionLocalService _ctSchemaVersionLocalService;
-
-	@Inject
-	private static DLFolderLocalService _dlFolderLocalService;
-
-	@Inject
 	private static JournalFolderLocalService _journalFolderLocalService;
-
-	@Inject
-	private static ReleaseLocalService _releaseLocalService;
 
 	@DeleteAfterTestRun
 	private CTCollection _ctCollection;
 
+	@Inject
+	private CTCollectionLocalService _ctCollectionLocalService;
+
 	@DeleteAfterTestRun
 	private CTPreferences _ctPreferences;
+
+	@Inject
+	private CTPreferencesLocalService _ctPreferencesLocalService;
+
+	@Inject
+	private CTProcessLocalService _ctProcessLocalService;
+
+	@Inject
+	private CTSchemaVersionLocalService _ctSchemaVersionLocalService;
+
+	@Inject
+	private DLFolderLocalService _dlFolderLocalService;
 
 	private final JournalFolderFixture _journalFolderFixture =
 		new JournalFolderFixture(_journalFolderLocalService);
 
 	@DeleteAfterTestRun
 	private Release _release;
+
+	@Inject
+	private ReleaseLocalService _releaseLocalService;
 
 }

@@ -13,7 +13,7 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
  * @author Christian Moura
  */
 @ExtendedObjectClassDefinition(
-	category = "privacy", featureFlagKey = "LPD-65286",
+	category = "privacy", featureFlagKey = "LPD-65299",
 	scope = ExtendedObjectClassDefinition.Scope.GROUP
 )
 @Meta.OCD(

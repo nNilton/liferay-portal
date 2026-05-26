@@ -6,7 +6,6 @@
 import {Locator, Page, expect, mergeTests} from '@playwright/test';
 
 import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
-import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {instanceSettingsPagesTest} from '../../../fixtures/instanceSettingsPagesTest';
 import {ldapConfigurationPagesTest} from '../../../fixtures/ldapConfigurationPagesTest';
 import {loginTest} from '../../../fixtures/loginTest';
@@ -21,7 +20,7 @@ import {InstanceSettingsPage} from '../../../pages/configuration-admin-web/Insta
 import {SystemSettingsPage} from '../../../pages/configuration-admin-web/SystemSettingsPage';
 import {LdapConfigurationPage} from '../../../pages/portal-security-ldap/LdapConfigurationPage';
 import {LdapServerPage} from '../../../pages/portal-security-ldap/LdapServerPage';
-import {ApplicationsMenuPage} from '../../../pages/product-navigation-applications-menu/ApplicationsMenuPage';
+import {GlobalMenuPage} from '../../../pages/product-navigation-applications-menu/GlobalMenuPage';
 import {ServerAdministrationPage} from '../../../pages/server-admin-web/ServerAdministrationPage';
 import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisible';
 import getRandomString from '../../../utils/getRandomString';
@@ -35,10 +34,7 @@ export const test = mergeTests(
 	ldapConfigurationPagesTest,
 	systemSettingsPageTest,
 	usersAndOrganizationsPagesTest,
-	userGroupsPageTest,
-	featureFlagsTest({
-		'LPD-45613': {enabled: true, system: true},
-	})
+	userGroupsPageTest
 );
 
 const LDAP_GROUP_1 = 'ldapgroup1';
@@ -234,6 +230,58 @@ test.beforeEach(async ({browser}) => {
 		await ldapConfigurationPage.updateLDAPConfiguration(ldapConfiguration);
 	});
 });
+
+test(
+	'Ensure Connection field uses Virtual Instance scope while others use System Scope',
+	{tag: '@LDP-73121'},
+	async ({page, systemSettingsPage}) => {
+		await systemSettingsPage.goToSystemSetting(
+			'LDAP',
+			'Connection',
+			'Virtual Instance Scope'
+		);
+
+		await expect(
+			await page.getByText('Connection').count()
+		).toBeGreaterThan(1);
+
+		await systemSettingsPage.goToSystemSetting(
+			'LDAP',
+			'Export',
+			'System Scope'
+		);
+
+		await expect(await page.getByText('Export').count()).toBeGreaterThan(1);
+
+		await systemSettingsPage.goToSystemSetting(
+			'LDAP',
+			'General',
+			'System Scope'
+		);
+
+		await expect(await page.getByText('General').count()).toBeGreaterThan(
+			1
+		);
+
+		await systemSettingsPage.goToSystemSetting(
+			'LDAP',
+			'Import',
+			'System Scope'
+		);
+
+		await expect(await page.getByText('Import').count()).toBeGreaterThan(1);
+
+		await systemSettingsPage.goToSystemSetting(
+			'LDAP',
+			'Servers',
+			'System Scope'
+		);
+
+		await expect(await page.getByText('Servers').count()).toBeGreaterThan(
+			1
+		);
+	}
+);
 
 test('LPD-47223 AC1 TC1: Verify LDAP import via authentication imports user attributes and user groups, but only for the user being authenticated', async ({
 	browser,
@@ -1036,9 +1084,9 @@ async function invokeLdapImport(page: Page, ldapServer?: TLdapServer) {
 	}
 
 	await test.step('Manually trigger bulk import', async () => {
-		const applicationsMenuPage = new ApplicationsMenuPage(page);
+		const globalMenuPage = new GlobalMenuPage(page);
 
-		await applicationsMenuPage.goToServerAdministration();
+		await globalMenuPage.goToControlPanel('Server Administration');
 
 		const script = `
 			import com.liferay.portal.kernel.module.util.SystemBundleUtil;

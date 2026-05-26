@@ -5,6 +5,7 @@
 
 package com.liferay.headless.delivery.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.headless.delivery.dto.v1_0.DefaultValue;
 import com.liferay.headless.delivery.dto.v1_0.Document;
 import com.liferay.headless.delivery.dto.v1_0.Rating;
@@ -2293,9 +2294,49 @@ public abstract class BaseDocumentResourceImpl
 
 		UnsafeFunction<Document, Document, Exception> documentUnsafeFunction =
 			document -> {
-				deleteDocument(document.getId());
+				if (document.getId() != null) {
+					try {
+						deleteDocument(document.getId());
 
-				return document;
+						return document;
+					}
+					catch (Exception exception) {
+						if (document.getExternalReferenceCode() != null) {
+							if (parameters.containsKey("assetLibraryId")) {
+								deleteAssetLibraryDocumentByExternalReferenceCode(
+									(Long)parameters.get("assetLibraryId"),
+									document.getExternalReferenceCode());
+
+								return document;
+							}
+
+							if (parameters.containsKey("siteId")) {
+								deleteSiteDocumentByExternalReferenceCode(
+									(Long)parameters.get("siteId"),
+									document.getExternalReferenceCode());
+
+								return document;
+							}
+						}
+					}
+				}
+				else if (parameters.containsKey("assetLibraryId")) {
+					deleteAssetLibraryDocumentByExternalReferenceCode(
+						(Long)parameters.get("assetLibraryId"),
+						document.getExternalReferenceCode());
+
+					return document;
+				}
+				else if (parameters.containsKey("siteId")) {
+					deleteSiteDocumentByExternalReferenceCode(
+						(Long)parameters.get("siteId"),
+						document.getExternalReferenceCode());
+
+					return document;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
 			};
 
 		if (contextBatchUnsafeBiConsumer != null) {
@@ -2386,6 +2427,15 @@ public abstract class BaseDocumentResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -3261,3 +3311,4 @@ public abstract class BaseDocumentResourceImpl
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:2123637205

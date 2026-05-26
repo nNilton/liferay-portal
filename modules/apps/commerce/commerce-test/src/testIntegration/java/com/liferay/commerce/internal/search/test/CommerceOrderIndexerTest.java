@@ -130,9 +130,10 @@ public class CommerceOrderIndexerTest {
 	public void tearDown() throws Exception {
 		_configurationProvider.deleteGroupConfiguration(
 			CommerceAccountGroupServiceConfiguration.class,
-			_commerceChannel.getGroupId());
+			_commerceChannel.getCompanyId(), _commerceChannel.getGroupId());
 		_configurationProvider.deleteGroupConfiguration(
-			CommerceOrderConfiguration.class, _commerceChannel.getGroupId());
+			CommerceOrderConfiguration.class, _commerceChannel.getCompanyId(),
+			_commerceChannel.getGroupId());
 	}
 
 	@Test
@@ -415,9 +416,6 @@ public class CommerceOrderIndexerTest {
 		modifiableSettings.store();
 	}
 
-	@Inject
-	private static IndexerRegistry _indexerRegistry;
-
 	private AccountEntry _accountEntry;
 
 	@Inject
@@ -451,6 +449,10 @@ public class CommerceOrderIndexerTest {
 
 	private Group _group;
 	private Indexer<CommerceOrder> _indexer;
+
+	@Inject
+	private IndexerRegistry _indexerRegistry;
+
 	private Role _orderManagerRole;
 
 	@Inject

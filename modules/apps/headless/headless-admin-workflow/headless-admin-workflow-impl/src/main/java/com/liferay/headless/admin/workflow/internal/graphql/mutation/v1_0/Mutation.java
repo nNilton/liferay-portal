@@ -233,6 +233,7 @@ public class Mutation {
 	@GraphQLField
 	public Response createWorkflowDefinitionsPageExportBatch(
 			@GraphQLName("active") Boolean active,
+			@GraphQLName("scope") String scope,
 			@GraphQLName("sort") String sortsString,
 			@GraphQLName("callbackURL") String callbackURL,
 			@GraphQLName("contentType") String contentType,
@@ -245,7 +246,7 @@ public class Mutation {
 			workflowDefinitionResource ->
 				workflowDefinitionResource.
 					postWorkflowDefinitionsPageExportBatch(
-						active,
+						active, scope,
 						_sortsBiFunction.apply(
 							workflowDefinitionResource, sortsString),
 						callbackURL, contentType, fieldNames));
@@ -395,6 +396,20 @@ public class Mutation {
 			workflowInstanceResource ->
 				workflowInstanceResource.deleteWorkflowInstanceBatch(
 					callbackURL, object));
+	}
+
+	@GraphQLField
+	public WorkflowInstance patchWorkflowInstance(
+			@GraphQLName("workflowInstanceId") Long workflowInstanceId,
+			@GraphQLName("workflowInstance") WorkflowInstance workflowInstance)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_workflowInstanceResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			workflowInstanceResource ->
+				workflowInstanceResource.patchWorkflowInstance(
+					workflowInstanceId, workflowInstance));
 	}
 
 	@GraphQLField
@@ -887,3 +902,4 @@ public class Mutation {
 		_vulcanBatchEngineImportTaskResource;
 
 }
+// LIFERAY-REST-BUILDER-HASH:1839914688

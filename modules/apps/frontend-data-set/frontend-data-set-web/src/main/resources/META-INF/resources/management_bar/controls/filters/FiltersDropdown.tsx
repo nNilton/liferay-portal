@@ -8,6 +8,8 @@ import ClayDropDown from '@clayui/drop-down';
 import ClayIcon from '@clayui/icon';
 import React, {useContext, useMemo, useState} from 'react';
 
+import FrontendDataSetContext from '../../../FrontendDataSetContext';
+import {IClientExtensionFilterState} from '../../../utils/types';
 import ViewsContext, {
 	IViewsContext,
 	TViewsContextDispatch,
@@ -15,7 +17,9 @@ import ViewsContext, {
 import Filter, {IFilter} from './Filter';
 
 const FiltersDropdown = () => {
-	const [{filters, filtersGroups}]: [IViewsContext, TViewsContextDispatch] =
+	const {globalFDSState} = useContext(FrontendDataSetContext);
+
+	const [{groupedFilters}]: [IViewsContext, TViewsContextDispatch] =
 		useContext(ViewsContext);
 
 	const [active, setActive] = useState(false);
@@ -23,25 +27,41 @@ const FiltersDropdown = () => {
 
 	const validFilters = useMemo(
 		() =>
-			filters.filter((filter) => !filter.clientExtensionResolutionError),
-		[filters]
+			globalFDSState.filters.filter((filter) => {
+				if (filter.type !== 'clientExtension') {
+					return true;
+				}
+
+				const clientExtensionFilter =
+					filter as IClientExtensionFilterState;
+
+				return !clientExtensionFilter.clientExtensionResolutionError;
+			}),
+		[globalFDSState.filters]
 	);
 
-	const groupedFilters = useMemo(() => {
-		return filtersGroups?.map((group) => ({
-			children: group.filters
-				.map((filterId: string) =>
-					validFilters.find((f) => f.id === filterId)
-				)
-				.filter(Boolean),
-			label: group.label,
-		}));
-	}, [filtersGroups, validFilters]);
+	const renderableGroupedFilters = useMemo(() => {
+		return groupedFilters
+			?.map((group) => {
+				const children = group.filters
+					.map((filterId: string) =>
+						validFilters.find((filter) => filter.id === filterId)
+					)
+					.filter(Boolean);
 
-	const filtersList =
-		Liferay.FeatureFlags['LPD-68829'] && filtersGroups
-			? groupedFilters
-			: validFilters;
+				if (children.length && !!children.length) {
+					return {
+						children,
+						label: group.label,
+					};
+				}
+			})
+			.filter(Boolean);
+	}, [groupedFilters, validFilters]);
+
+	const filtersList = groupedFilters
+		? renderableGroupedFilters
+		: validFilters;
 
 	return (
 		<ClayDropDown
@@ -103,7 +123,7 @@ const FiltersDropdown = () => {
 
 					{filtersList?.length ? (
 						<ClayDropDown.ItemList items={filtersList}>
-							{Liferay.FeatureFlags['LPD-68829'] && filtersGroups
+							{groupedFilters
 								? (group: any) => (
 										<ClayDropDown.Group
 											header={group.label}

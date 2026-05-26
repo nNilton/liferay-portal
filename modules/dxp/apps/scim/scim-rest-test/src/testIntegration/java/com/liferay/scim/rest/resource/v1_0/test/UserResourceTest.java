@@ -29,6 +29,7 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
+import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.StringUtil;
@@ -112,7 +113,7 @@ public class UserResourceTest extends BaseUserResourceTestCase {
 			204, userResource.deleteV2UserHttpResponse(user.getId()));
 
 		assertHttpResponseStatusCode(
-			200, userResource.getV2UserByIdHttpResponse(user.getId()));
+			404, userResource.getV2UserByIdHttpResponse(user.getId()));
 
 		com.liferay.portal.kernel.model.User portalUser =
 			_userLocalService.getUserByExternalReferenceCode(
@@ -253,6 +254,13 @@ public class UserResourceTest extends BaseUserResourceTestCase {
 				RandomTestUtil.randomString() + "eq \"" +
 					RandomTestUtil.randomString() + "\""));
 
+		assertHttpResponseStatusCode(
+			204,
+			userResource.deleteV2UserHttpResponse(
+				String.valueOf(user2.getId())));
+
+		_assertListResponse(userResource.getV2Users(5, 0, null), 1, 1, user1);
+
 		ConfigurationTestUtil.deleteConfiguration(_pid);
 
 		assertHttpResponseStatusCode(
@@ -386,6 +394,31 @@ public class UserResourceTest extends BaseUserResourceTestCase {
 
 		Assert.assertTrue(portalUser4.isActive());
 
+		assertHttpResponseStatusCode(
+			204,
+			userResource.deleteV2UserHttpResponse(
+				String.valueOf(portalUser4.getUserId())));
+
+		assertHttpResponseStatusCode(
+			404,
+			userResource.getV2UserByIdHttpResponse(
+				String.valueOf(portalUser4.getUserId())));
+
+		postUser4.setActive(true);
+
+		assertHttpResponseStatusCode(
+			201, userResource.postV2UserHttpResponse(postUser4));
+
+		assertHttpResponseStatusCode(
+			200,
+			userResource.getV2UserByIdHttpResponse(
+				String.valueOf(portalUser4.getUserId())));
+
+		portalUser4 = _userLocalService.getUserByExternalReferenceCode(
+			postUser4.getExternalId(), TestPropsValues.getCompanyId());
+
+		Assert.assertTrue(portalUser4.isActive());
+
 		ConfigurationTestUtil.deleteConfiguration(_pid);
 
 		assertHttpResponseStatusCode(
@@ -431,6 +464,14 @@ public class UserResourceTest extends BaseUserResourceTestCase {
 
 		assertHttpResponseStatusCode(
 			409, userResource.putV2UserHttpResponse(user2.getId(), user2));
+
+		User user3 = testDeleteV2User_addUser();
+
+		assertHttpResponseStatusCode(
+			204, userResource.deleteV2UserHttpResponse(user3.getId()));
+
+		assertHttpResponseStatusCode(
+			404, userResource.putV2UserHttpResponse(user3.getId(), user2));
 
 		ConfigurationTestUtil.deleteConfiguration(_pid);
 
@@ -605,6 +646,17 @@ public class UserResourceTest extends BaseUserResourceTestCase {
 
 		User user = testDeleteV2User_addUser();
 
+		com.liferay.portal.kernel.model.User portalUser =
+			_userLocalService.getUserByExternalReferenceCode(
+				user.getExternalId(), TestPropsValues.getCompanyId());
+
+		portalUser = _userLocalService.updatePortrait(
+			portalUser.getUserId(),
+			FileUtil.getBytes(
+				UserResourceTest.class, "dependencies/liferay.png"));
+
+		long portraitId = portalUser.getPortraitId();
+
 		PatchOp patchOp = new PatchOp();
 
 		patchOp.setOperations(
@@ -626,10 +678,17 @@ public class UserResourceTest extends BaseUserResourceTestCase {
 
 		assertHttpResponseStatusCode(200, httpResponse);
 
-		User patchUser = User.toDTO(httpResponse.getContent());
+		HttpInvoker.HttpResponse httpResponse1 =
+			userResource.getV2UserByIdHttpResponse(user.getId());
+
+		User patchUser = User.toDTO(httpResponse1.getContent());
 
 		assertValid(patchUser);
 		unsafeConsumer.accept(patchUser);
+
+		portalUser = _userLocalService.getUser(portalUser.getUserId());
+
+		Assert.assertEquals(portraitId, portalUser.getPortraitId());
 	}
 
 	private static final String _PREFIX = StringUtil.toLowerCase(

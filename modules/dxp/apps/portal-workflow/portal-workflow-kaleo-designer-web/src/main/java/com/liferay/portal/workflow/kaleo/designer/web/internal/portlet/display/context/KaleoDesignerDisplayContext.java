@@ -13,9 +13,11 @@ import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.UserConstants;
 import com.liferay.portal.kernel.model.WorkflowDefinitionLink;
+import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
 import com.liferay.portal.kernel.portlet.LiferayPortletURL;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
@@ -25,22 +27,27 @@ import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
 import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermission;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.LocalizationUtil;
 import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.ParamUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.RequiredWorkflowDefinitionException;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.security.script.management.configuration.helper.ScriptManagementConfigurationHelper;
+import com.liferay.portal.workflow.constants.WorkflowDefinitionConstants;
 import com.liferay.portal.workflow.constants.WorkflowWebKeys;
 import com.liferay.portal.workflow.exception.IncompleteWorkflowInstancesException;
 import com.liferay.portal.workflow.kaleo.designer.web.constants.KaleoDesignerPortletKeys;
 import com.liferay.portal.workflow.kaleo.designer.web.internal.constants.KaleoDesignerActionKeys;
+import com.liferay.portal.workflow.kaleo.designer.web.internal.constants.KaleoDesignerWebKeys;
 import com.liferay.portal.workflow.kaleo.designer.web.internal.permission.KaleoDefinitionVersionPermission;
 import com.liferay.portal.workflow.kaleo.designer.web.internal.permission.KaleoDesignerPermission;
 import com.liferay.portal.workflow.kaleo.designer.web.internal.portlet.display.context.helper.KaleoDesignerRequestHelper;
@@ -55,6 +62,7 @@ import com.liferay.portal.workflow.kaleo.util.comparator.KaleoDefinitionVersionT
 import jakarta.portlet.PortletException;
 import jakarta.portlet.PortletRequest;
 import jakarta.portlet.PortletURL;
+import jakarta.portlet.RenderParameters;
 import jakarta.portlet.RenderRequest;
 
 import java.text.SimpleDateFormat;
@@ -70,14 +78,15 @@ public class KaleoDesignerDisplayContext {
 
 	public KaleoDesignerDisplayContext(
 		ActionExecutorManager actionExecutorManager,
-		RenderRequest renderRequest,
+		GroupLocalService groupLocalService,
 		KaleoDefinitionVersionLocalService kaleoDefinitionVersionLocalService,
 		PortletResourcePermission portletResourcePermission,
-		ResourceBundleLoader resourceBundleLoader,
+		RenderRequest renderRequest, ResourceBundleLoader resourceBundleLoader,
 		ScriptManagementConfigurationHelper scriptManagementConfigurationHelper,
 		UserLocalService userLocalService) {
 
 		_actionExecutorManager = actionExecutorManager;
+		_groupLocalService = groupLocalService;
 		_kaleoDefinitionVersionLocalService =
 			kaleoDefinitionVersionLocalService;
 		_portletResourcePermission = portletResourcePermission;
@@ -93,10 +102,56 @@ public class KaleoDesignerDisplayContext {
 	}
 
 	public boolean canPublishWorkflowDefinition() {
-		return _portletResourcePermission.contains(
-			PermissionThreadLocal.getPermissionChecker(),
-			_themeDisplay.getCompanyGroupId(),
-			KaleoDesignerActionKeys.ADD_NEW_WORKFLOW);
+		if (_containsAddNewWorkflowPermission(
+				_themeDisplay.getCompanyGroupId())) {
+
+			return true;
+		}
+
+		LiferayPortletRequest liferayPortletRequest =
+			_kaleoDesignerRequestHelper.getLiferayPortletRequest();
+
+		KaleoDefinitionVersion kaleoDefinitionVersion =
+			(KaleoDefinitionVersion)liferayPortletRequest.getAttribute(
+				KaleoDesignerWebKeys.KALEO_DRAFT_DEFINITION);
+
+		if (kaleoDefinitionVersion != null) {
+			return _containsAddNewWorkflowPermission(
+				kaleoDefinitionVersion.getGroupId());
+		}
+
+		String groupExternalReferenceCode = getGroupExternalReferenceCode(
+			(RenderRequest)
+				_kaleoDesignerRequestHelper.getLiferayPortletRequest());
+
+		if (Validator.isNull(groupExternalReferenceCode)) {
+			return false;
+		}
+
+		Group group = _groupLocalService.fetchGroupByExternalReferenceCode(
+			groupExternalReferenceCode, _themeDisplay.getCompanyId());
+
+		if (group == null) {
+			return false;
+		}
+
+		return _containsAddNewWorkflowPermission(group.getGroupId());
+	}
+
+	public String getBackURL(RenderRequest renderRequest) {
+		String redirect = ParamUtil.getString(renderRequest, "redirect");
+
+		if (Validator.isNotNull(redirect)) {
+			return redirect;
+		}
+
+		return PortletURLBuilder.create(
+			PortalUtil.getControlPanelPortletURL(
+				renderRequest, KaleoDesignerPortletKeys.CONTROL_PANEL_WORKFLOW,
+				PortletRequest.RENDER_PHASE)
+		).setMVCPath(
+			"/view.jsp"
+		).buildString();
 	}
 
 	public String getDuplicateTitle(KaleoDefinition kaleoDefinition) {
@@ -118,6 +173,12 @@ public class KaleoDesignerDisplayContext {
 	public JSONArray getFunctionActionExecutorsJSONArray() throws Exception {
 		return JSONUtil.putAll(
 			_actionExecutorManager.getFunctionActionExecutorKeys());
+	}
+
+	public String getGroupExternalReferenceCode(RenderRequest renderRequest) {
+		RenderParameters renderParameters = renderRequest.getRenderParameters();
+
+		return renderParameters.getValue("groupExternalReferenceCode");
 	}
 
 	public KaleoDefinition getKaleoDefinition(
@@ -417,6 +478,12 @@ public class KaleoDesignerDisplayContext {
 		return "publish";
 	}
 
+	public String getScope(RenderRequest renderRequest) {
+		RenderParameters renderParameters = renderRequest.getRenderParameters();
+
+		return renderParameters.getValue("scope");
+	}
+
 	public String getScriptManagementConfigurationPortletURL()
 		throws PortalException {
 
@@ -619,6 +686,27 @@ public class KaleoDesignerDisplayContext {
 			KaleoDesignerActionKeys.ADD_NEW_WORKFLOW);
 	}
 
+	public boolean isReadOnly() {
+		if (!canPublishWorkflowDefinition()) {
+			return true;
+		}
+
+		LiferayPortletRequest liferayPortletRequest =
+			_kaleoDesignerRequestHelper.getLiferayPortletRequest();
+
+		KaleoDefinitionVersion kaleoDefinitionVersion =
+			(KaleoDefinitionVersion)liferayPortletRequest.getAttribute(
+				KaleoDesignerWebKeys.KALEO_DRAFT_DEFINITION);
+
+		if (kaleoDefinitionVersion == null) {
+			return false;
+		}
+
+		return ArrayUtil.contains(
+			WorkflowDefinitionConstants.SYSTEM_WORKFLOW_DEFINITION_NAMES,
+			kaleoDefinitionVersion.getName());
+	}
+
 	public boolean isSaveKaleoDefinitionVersionButtonVisible(
 		KaleoDefinitionVersion kaleoDefinitionVersion) {
 
@@ -662,6 +750,12 @@ public class KaleoDesignerDisplayContext {
 				portletURL.toString(),
 				LanguageUtil.get(_getResourceBundle(), messageKey)
 			});
+	}
+
+	private boolean _containsAddNewWorkflowPermission(long groupId) {
+		return _portletResourcePermission.contains(
+			PermissionThreadLocal.getPermissionChecker(), groupId,
+			KaleoDesignerActionKeys.ADD_NEW_WORKFLOW);
 	}
 
 	private String _getConfigureAssignementLink() {
@@ -722,6 +816,7 @@ public class KaleoDesignerDisplayContext {
 		KaleoDesignerDisplayContext.class);
 
 	private final ActionExecutorManager _actionExecutorManager;
+	private final GroupLocalService _groupLocalService;
 	private final KaleoDefinitionVersionLocalService
 		_kaleoDefinitionVersionLocalService;
 	private KaleoDesignerRequestHelper _kaleoDesignerRequestHelper;

@@ -27,6 +27,7 @@ import com.liferay.petra.io.unsync.UnsyncByteArrayOutputStream;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
+import com.liferay.portal.kernel.backgroundtask.BackgroundTaskStatusMessageSender;
 import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.dao.jdbc.OutputBlob;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -34,11 +35,16 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.module.configuration.ConfigurationException;
+import com.liferay.portal.kernel.search.BooleanClauseOccur;
+import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Sort;
+import com.liferay.portal.kernel.search.filter.BooleanFilter;
 import com.liferay.portal.kernel.search.filter.Filter;
+import com.liferay.portal.kernel.search.filter.RangeTermFilter;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.spring.orm.LastSessionRecorderHelperUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MapUtil;
@@ -58,6 +64,8 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+
+import java.lang.reflect.Method;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -200,6 +208,28 @@ public class BatchEngineExportTaskExecutorImpl
 		_exportTaskPostActions.close();
 	}
 
+	private void _clearSessionPersistenceContext() {
+		LastSessionRecorderHelperUtil.syncLastSessionState();
+	}
+
+	private Filter _createCursorFilter(
+		long lastEntryClassPK, Filter originalFilter) {
+
+		BooleanFilter booleanFilter = new BooleanFilter();
+
+		if (originalFilter != null) {
+			booleanFilter.add(originalFilter, BooleanClauseOccur.MUST);
+		}
+
+		booleanFilter.add(
+			new RangeTermFilter(
+				Field.ENTRY_CLASS_PK, false, false,
+				String.valueOf(lastEntryClassPK), null),
+			BooleanClauseOccur.MUST);
+
+		return booleanFilter;
+	}
+
 	private InputStream _exportItems(
 			BatchEngineExportTask batchEngineExportTask, Settings settings)
 		throws Exception {
@@ -266,12 +296,16 @@ public class BatchEngineExportTaskExecutorImpl
 			Sort[] sorts = _getSorts(
 				batchEngineTaskItemDelegate, parameters, user);
 
+			boolean cursorPaginationActive = _isCursorPaginationEnabled(sorts);
+
 			Page<?> page = batchEngineTaskItemDelegate.read(
 				filter, Pagination.of(1, exportBatchSize), sorts,
 				filteredParameters, (String)parameters.get("search"));
 
 			batchEngineExportTask.setTotalItemsCount(
 				Math.toIntExact(page.getTotalCount()));
+
+			int lastReportedItemsCount = 0;
 
 			Collection<?> items = page.getItems();
 
@@ -282,17 +316,11 @@ public class BatchEngineExportTaskExecutorImpl
 				for (ExportTaskPostAction exportTaskPostAction :
 						_exportTaskPostActions) {
 
-					items.forEach(
-						item -> {
-							try {
-								exportTaskPostAction.run(
-									finalBatchEngineExportTask,
-									batchEngineTaskItemDelegate, item);
-							}
-							catch (Exception exception) {
-								throw new RuntimeException(exception);
-							}
-						});
+					for (Object item : items) {
+						exportTaskPostAction.run(
+							finalBatchEngineExportTask,
+							batchEngineTaskItemDelegate, item);
+					}
 				}
 
 				batchEngineExportTaskItemWriter.write(items);
@@ -301,11 +329,27 @@ public class BatchEngineExportTaskExecutorImpl
 					batchEngineExportTask.getProcessedItemsCount() +
 						items.size());
 
+				int currentItemsProcessedCount =
+					batchEngineExportTask.getProcessedItemsCount();
+
+				int itemsSinceLastReport =
+					currentItemsProcessedCount - lastReportedItemsCount;
+
+				if (itemsSinceLastReport >= exportBatchSize) {
+					BatchEngineTaskExecutorUtil.sendBatchProgressMessage(
+						_backgroundTaskStatusMessageSender,
+						currentItemsProcessedCount);
+
+					lastReportedItemsCount = currentItemsProcessedCount;
+				}
+
 				if (settings.isPersist()) {
 					batchEngineExportTask =
 						_batchEngineExportTaskLocalService.
 							updateBatchEngineExportTask(batchEngineExportTask);
 				}
+
+				_clearSessionPersistenceContext();
 
 				if (Thread.interrupted()) {
 					throw new InterruptedException();
@@ -318,13 +362,38 @@ public class BatchEngineExportTaskExecutorImpl
 					break;
 				}
 
+				Long lastItemId = null;
+
+				if (cursorPaginationActive) {
+					lastItemId = _getLastItemId(items);
+
+					if (lastItemId == null) {
+						cursorPaginationActive = false;
+					}
+				}
+
+				Filter readFilter = filter;
+				Pagination pagination = Pagination.of(
+					(int)page.getPage() + 1, exportBatchSize);
+
+				if (cursorPaginationActive) {
+					readFilter = _createCursorFilter(lastItemId, filter);
+					pagination = Pagination.of(1, exportBatchSize);
+				}
+
 				page = batchEngineTaskItemDelegate.read(
-					filter,
-					Pagination.of((int)page.getPage() + 1, exportBatchSize),
-					sorts, filteredParameters,
+					readFilter, pagination, sorts, filteredParameters,
 					(String)parameters.get("search"));
 
 				items = page.getItems();
+			}
+
+			if (batchEngineExportTask.getProcessedItemsCount() >
+					lastReportedItemsCount) {
+
+				BatchEngineTaskExecutorUtil.sendBatchProgressMessage(
+					_backgroundTaskStatusMessageSender,
+					batchEngineExportTask.getProcessedItemsCount());
 			}
 		}
 		finally {
@@ -457,6 +526,47 @@ public class BatchEngineExportTaskExecutorImpl
 		return filteredParameters;
 	}
 
+	private Long _getItemId(Object item) {
+		Class<?> clazz = item.getClass();
+
+		try {
+			Method method = clazz.getMethod("getId");
+
+			Object id = method.invoke(item);
+
+			if (id instanceof Long) {
+				return (Long)id;
+			}
+
+			if (id instanceof Number) {
+				Number number = (Number)id;
+
+				return number.longValue();
+			}
+		}
+		catch (Exception exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug("Unable to extract ID from " + clazz, exception);
+			}
+		}
+
+		return null;
+	}
+
+	private Long _getLastItemId(Collection<?> items) {
+		if (items.isEmpty()) {
+			return null;
+		}
+
+		Object lastItem = null;
+
+		for (Object item : items) {
+			lastItem = item;
+		}
+
+		return _getItemId(lastItem);
+	}
+
 	private Map<String, Serializable> _getParameters(
 		BatchEngineExportTask batchEngineExportTask) {
 
@@ -530,6 +640,14 @@ public class BatchEngineExportTaskExecutorImpl
 		return zipOutputStream;
 	}
 
+	private boolean _isCursorPaginationEnabled(Sort[] sorts) {
+		if (sorts == null) {
+			return true;
+		}
+
+		return false;
+	}
+
 	private Map<String, List<String>> _toMultivaluedMap(
 		Map<String, Serializable> parameterMap) {
 
@@ -566,6 +684,10 @@ public class BatchEngineExportTaskExecutorImpl
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		BatchEngineExportTaskExecutorImpl.class);
+
+	@Reference
+	private BackgroundTaskStatusMessageSender
+		_backgroundTaskStatusMessageSender;
 
 	@Reference
 	private BatchEngineExportTaskLocalService

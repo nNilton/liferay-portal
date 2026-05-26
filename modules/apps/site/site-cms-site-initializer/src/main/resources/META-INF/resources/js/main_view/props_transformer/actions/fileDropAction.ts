@@ -5,6 +5,7 @@
 
 import {navigate} from 'frontend-js-web';
 
+import {AssetLibrary} from '../../../common/types/AssetLibrary';
 import multipleFilesUploadAction, {
 	MultipleFileUploaderData,
 } from './multipleFilesUploadAction';
@@ -12,6 +13,8 @@ import multipleFilesUploadAction, {
 export default function fileDropAction(
 	additionalProps: MultipleFileUploaderData & {
 		baseFolderViewURL: string;
+		candidateAssetLibraries: AssetLibrary[];
+		loadData?: () => void;
 		redirect: string;
 	},
 	droppedFiles: any,
@@ -22,16 +25,18 @@ export default function fileDropAction(
 	}
 
 	const {
-		assetLibraries,
 		baseAssetLibraryViewURL,
 		baseFolderViewURL,
+		candidateAssetLibraries,
+		keywords,
+		loadData,
 		parentObjectEntryFolderExternalReferenceCode,
 		redirect,
 	} = additionalProps;
 
 	multipleFilesUploadAction(
 		{
-			assetLibraries,
+			assetLibraries: candidateAssetLibraries,
 			baseAssetLibraryViewURL,
 			filesToUpload: droppedFiles.map((file: any) => ({
 				errorMessage: '',
@@ -40,16 +45,22 @@ export default function fileDropAction(
 				name: file.name,
 				size: file.size,
 			})),
+			keywords,
 			parentObjectEntryFolderExternalReferenceCode: dropTarget
 				? dropTarget.embedded?.externalReferenceCode
 				: parentObjectEntryFolderExternalReferenceCode,
 		},
 		() => {
-			navigate(
-				dropTarget
-					? baseFolderViewURL + dropTarget.embedded?.id
-					: redirect
-			);
+			if (loadData) {
+				loadData();
+			}
+			else {
+				navigate(
+					dropTarget
+						? baseFolderViewURL + dropTarget.embedded?.id
+						: redirect
+				);
+			}
 		}
 	);
 }

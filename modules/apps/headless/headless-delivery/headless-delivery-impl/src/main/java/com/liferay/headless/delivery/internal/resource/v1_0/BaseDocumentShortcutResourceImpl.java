@@ -5,6 +5,7 @@
 
 package com.liferay.headless.delivery.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.headless.delivery.dto.v1_0.DefaultValue;
 import com.liferay.headless.delivery.dto.v1_0.DocumentShortcut;
 import com.liferay.headless.delivery.resource.v1_0.DocumentShortcutResource;
@@ -1025,9 +1026,37 @@ public abstract class BaseDocumentShortcutResourceImpl
 
 		UnsafeFunction<DocumentShortcut, DocumentShortcut, Exception>
 			documentShortcutUnsafeFunction = documentShortcut -> {
-				deleteDocumentShortcut(documentShortcut.getId());
+				if (documentShortcut.getId() != null) {
+					try {
+						deleteDocumentShortcut(documentShortcut.getId());
 
-				return documentShortcut;
+						return documentShortcut;
+					}
+					catch (Exception exception) {
+						if (documentShortcut.getExternalReferenceCode() !=
+								null) {
+
+							if (parameters.containsKey("siteId")) {
+								deleteSiteDocumentShortcutByExternalReferenceCode(
+									(Long)parameters.get("siteId"),
+									documentShortcut.
+										getExternalReferenceCode());
+
+								return documentShortcut;
+							}
+						}
+					}
+				}
+				else if (parameters.containsKey("siteId")) {
+					deleteSiteDocumentShortcutByExternalReferenceCode(
+						(Long)parameters.get("siteId"),
+						documentShortcut.getExternalReferenceCode());
+
+					return documentShortcut;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
 			};
 
 		if (contextBatchUnsafeBiConsumer != null) {
@@ -1108,6 +1137,15 @@ public abstract class BaseDocumentShortcutResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -1731,3 +1769,4 @@ public abstract class BaseDocumentShortcutResourceImpl
 		LogFactoryUtil.getLog(BaseDocumentShortcutResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:-1619314510

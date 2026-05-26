@@ -5,6 +5,7 @@
 
 package com.liferay.site.cms.site.initializer.internal.frontend.data.set.filter;
 
+import com.liferay.frontend.data.set.constants.FDSEntityFieldTypes;
 import com.liferay.frontend.data.set.filter.BaseSelectionFDSFilter;
 import com.liferay.frontend.data.set.filter.FDSFilter;
 import com.liferay.site.cms.site.initializer.internal.constants.CMSSiteInitializerFDSNames;
@@ -16,6 +17,7 @@ import org.osgi.service.component.annotations.Component;
  */
 @Component(
 	property = {
+		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.ALL_RELATED_ASSETS_SECTION,
 		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.ALL_SECTION,
 		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.CATEGORIZATION_SECTION,
 		"frontend.data.set.name=" + CMSSiteInitializerFDSNames.CONTENTS_SECTION,
@@ -30,7 +32,12 @@ public class SpaceSelectionFDSFilter extends BaseSelectionFDSFilter {
 	@Override
 	public String getAPIURL() {
 		return "/o/headless-asset-library/v1.0/asset-libraries?filter=type " +
-			"eq 'space'";
+			"eq 'Space'";
+	}
+
+	@Override
+	public String getEntityFieldType() {
+		return FDSEntityFieldTypes.INTEGER;
 	}
 
 	@Override

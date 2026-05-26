@@ -37,6 +37,7 @@ import {
 	Condition as ConditionType,
 	Rule,
 } from '../../../types/Rule';
+import useMappingFieldItems from '../utils/useMappingFieldItems';
 
 const MAX_RULES = 20;
 
@@ -149,6 +150,8 @@ function RuleItem({
 	rule: Rule;
 	rules: Rule[];
 }) {
+	const mappingFieldItems = useMappingFieldItems();
+
 	const highlightItems = useHighlightItems();
 	const {isTarget: isNavigationTarget, setElement} = useKeyboardNavigation({
 		type: LIST_ITEM_TYPES.listItem,
@@ -226,6 +229,7 @@ function RuleItem({
 		...rule,
 		conditions: rule.conditions || [],
 		items,
+		mappingFieldItems,
 	});
 	const actions = useActionValues({...rule, items});
 
@@ -303,6 +307,21 @@ function RuleItem({
 		>
 			<ClayList.ItemField expand>
 				<div className="align-items-center d-flex">
+					<ClayButtonWithIcon
+						aria-label={sub(Liferay.Language.get('move-x'), name)}
+						borderless
+						className="ml-n2 text-secondary"
+						onClick={(event) => {
+							event.stopPropagation();
+						}}
+						onKeyDown={handleKeyboardDragAndDrop}
+						ref={dragHandlerRef}
+						size="sm"
+						symbol="drag"
+						tabIndex={tabIndex}
+						title={sub(Liferay.Language.get('move-x'), name)}
+					/>
+
 					{editing ? (
 						<input
 							onBlur={() => {
@@ -349,27 +368,6 @@ function RuleItem({
 							className="flex-grow-1 font-weight-semi-bold"
 							onDoubleClick={() => setEditing(true)}
 						>
-							<ClayButtonWithIcon
-								aria-label={sub(
-									Liferay.Language.get('move-x'),
-									name
-								)}
-								borderless
-								className="ml-n2 mt-n1 text-secondary"
-								onClick={(event) => {
-									event.stopPropagation();
-								}}
-								onKeyDown={handleKeyboardDragAndDrop}
-								ref={dragHandlerRef}
-								size="sm"
-								symbol="drag"
-								tabIndex={tabIndex}
-								title={sub(
-									Liferay.Language.get('move-x'),
-									name
-								)}
-							/>
-
 							<span aria-hidden="true">
 								{name}
 
@@ -496,9 +494,11 @@ function Condition({
 
 			{condition.condition}
 
-			<ClayLabel className="m-0" displayType="secondary">
-				{condition.value}
-			</ClayLabel>
+			{condition.value ? (
+				<ClayLabel className="m-0" displayType="secondary">
+					{condition.value}
+				</ClayLabel>
+			) : null}
 		</>
 	);
 }

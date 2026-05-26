@@ -35,13 +35,6 @@ public interface MailSettingSystemConfiguration {
 	public String batchSize();
 
 	@Meta.AD(
-		deflt = "noreply@liferay.com|test@liferay.com|noreply@domain.invalid|test@domain.invalid",
-		description = "send-blacklist-description", name = "send-blacklist",
-		required = false
-	)
-	public String[] sendBlacklist();
-
-	@Meta.AD(
 		deflt = "", description = "jndi-name-description", name = "jndi-name",
 		required = false
 	)
@@ -54,10 +47,31 @@ public interface MailSettingSystemConfiguration {
 	public String popServerSubdomain();
 
 	@Meta.AD(
+		deflt = "noreply@liferay.com|test@liferay.com|noreply@domain.invalid|test@domain.invalid",
+		description = "send-blacklist-description", name = "send-blacklist",
+		required = false
+	)
+	public String[] sendBlacklist();
+
+	@Meta.AD(
 		deflt = "false",
 		description = "throws-exception-on-failure-description",
 		name = "throws-exception-on-failure", required = false
 	)
 	public boolean throwsExceptionOnFailure();
+
+	@Meta.AD(
+		deflt = "2",
+		description = "mail-engine-workers-core-size-key-description",
+		name = "mail-engine-workers-core-size", required = false
+	)
+	public int workersCoreSize();
+
+	@Meta.AD(
+		deflt = "3",
+		description = "mail-engine-workers-max-size-key-description",
+		name = "mail-engine-workers-max-size", required = false
+	)
+	public int workersMaxSize();
 
 }

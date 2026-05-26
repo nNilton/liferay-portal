@@ -5,6 +5,7 @@
 
 package com.liferay.headless.delivery.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.headless.delivery.dto.v1_0.DefaultValue;
 import com.liferay.headless.delivery.dto.v1_0.StructuredContentFolder;
 import com.liferay.headless.delivery.resource.v1_0.StructuredContentFolderResource;
@@ -2125,10 +2126,59 @@ public abstract class BaseStructuredContentFolderResourceImpl
 			<StructuredContentFolder, StructuredContentFolder, Exception>
 				structuredContentFolderUnsafeFunction =
 					structuredContentFolder -> {
-						deleteStructuredContentFolder(
-							structuredContentFolder.getId());
+						if (structuredContentFolder.getId() != null) {
+							try {
+								deleteStructuredContentFolder(
+									structuredContentFolder.getId());
 
-						return structuredContentFolder;
+								return structuredContentFolder;
+							}
+							catch (Exception exception) {
+								if (structuredContentFolder.
+										getExternalReferenceCode() != null) {
+
+									if (parameters.containsKey(
+											"assetLibraryId")) {
+
+										deleteAssetLibraryStructuredContentFolderByExternalReferenceCode(
+											(Long)parameters.get(
+												"assetLibraryId"),
+											structuredContentFolder.
+												getExternalReferenceCode());
+
+										return structuredContentFolder;
+									}
+
+									if (parameters.containsKey("siteId")) {
+										deleteSiteStructuredContentFolderByExternalReferenceCode(
+											(Long)parameters.get("siteId"),
+											structuredContentFolder.
+												getExternalReferenceCode());
+
+										return structuredContentFolder;
+									}
+								}
+							}
+						}
+						else if (parameters.containsKey("assetLibraryId")) {
+							deleteAssetLibraryStructuredContentFolderByExternalReferenceCode(
+								(Long)parameters.get("assetLibraryId"),
+								structuredContentFolder.
+									getExternalReferenceCode());
+
+							return structuredContentFolder;
+						}
+						else if (parameters.containsKey("siteId")) {
+							deleteSiteStructuredContentFolderByExternalReferenceCode(
+								(Long)parameters.get("siteId"),
+								structuredContentFolder.
+									getExternalReferenceCode());
+
+							return structuredContentFolder;
+						}
+
+						throw new UnsupportedOperationException(
+							"Unable to delete by external reference code or ID");
 					};
 
 		if (contextBatchUnsafeBiConsumer != null) {
@@ -2218,6 +2268,15 @@ public abstract class BaseStructuredContentFolderResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -3026,3 +3085,4 @@ public abstract class BaseStructuredContentFolderResourceImpl
 		LogFactoryUtil.getLog(BaseStructuredContentFolderResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:-1622636959

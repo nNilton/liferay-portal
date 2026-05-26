@@ -270,7 +270,7 @@ public class SegmentsEntryLocalServiceTest {
 
 		_segmentsExperienceLocalService.addSegmentsExperience(
 			null, TestPropsValues.getUserId(), _group.getGroupId(),
-			segmentsEntry.getSegmentsEntryId(), 0,
+			segmentsEntry.getExternalReferenceCode(), null, 0,
 			RandomTestUtil.randomLocaleStringMap(), RandomTestUtil.randomInt(),
 			false, new UnicodeProperties(true),
 			ServiceContextTestUtil.getServiceContext(_group.getGroupId()));

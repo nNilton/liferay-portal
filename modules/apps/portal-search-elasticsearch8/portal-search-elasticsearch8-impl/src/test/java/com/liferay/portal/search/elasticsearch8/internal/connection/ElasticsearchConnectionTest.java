@@ -5,19 +5,18 @@
 
 package com.liferay.portal.search.elasticsearch8.internal.connection;
 
+import co.elastic.clients.transport.rest_client.RestClientTransport;
+
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.apache.http.HttpHost;
 
 import org.elasticsearch.client.Node;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestHighLevelClient;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -34,26 +33,18 @@ public class ElasticsearchConnectionTest {
 	public static final LiferayUnitTestRule liferayUnitTestRule =
 		LiferayUnitTestRule.INSTANCE;
 
-	@Before
-	public void setUp() {
-		_elasticsearchConnection = new ElasticsearchConnection();
-	}
-
 	@Test
 	public void testConnectAndClose() {
-		_elasticsearchConnection.setNetworkHostAddresses(
-			new String[] {"http://localhost:9200"});
-
 		Runnable postCloseRunnable = Mockito.mock(Runnable.class);
+		Runnable preConnectRunnable = Mockito.mock(Runnable.class);
 
-		_elasticsearchConnection.setPostCloseRunnable(postCloseRunnable);
-
-		Consumer<ElasticsearchConnection>
-			preConnectElasticsearchConnectionConsumer = Mockito.mock(
-				Consumer.class);
-
-		_elasticsearchConnection.setPreConnectElasticsearchConnectionConsumer(
-			preConnectElasticsearchConnectionConsumer);
+		_elasticsearchConnection = new ElasticsearchConnection.Builder(
+			() -> new String[] {"http://localhost:9200"}
+		).postCloseRunnable(
+			postCloseRunnable
+		).preConnectRunnable(
+			preConnectRunnable
+		).build();
 
 		Assert.assertFalse(_elasticsearchConnection.isConnected());
 
@@ -62,10 +53,8 @@ public class ElasticsearchConnectionTest {
 		Assert.assertTrue(_elasticsearchConnection.isConnected());
 
 		Mockito.verify(
-			preConnectElasticsearchConnectionConsumer
-		).accept(
-			Mockito.any()
-		);
+			preConnectRunnable
+		).run();
 
 		_assertNetworkHostAddress("localhost", 9200);
 
@@ -77,8 +66,9 @@ public class ElasticsearchConnectionTest {
 			postCloseRunnable
 		).run();
 
-		_elasticsearchConnection.setNetworkHostAddresses(
-			new String[] {"http://127.0.0.1:9999"});
+		_elasticsearchConnection = new ElasticsearchConnection.Builder(
+			() -> new String[] {"http://127.0.0.1:9999"}
+		).build();
 
 		_elasticsearchConnection.connect();
 
@@ -88,10 +78,10 @@ public class ElasticsearchConnectionTest {
 	}
 
 	private void _assertNetworkHostAddress(String hostString, int port) {
-		RestHighLevelClient restHighLevelClient =
-			_elasticsearchConnection.getRestHighLevelClient();
+		RestClientTransport restClientTransport =
+			_elasticsearchConnection.getRestClientTransport();
 
-		RestClient restClient = restHighLevelClient.getLowLevelClient();
+		RestClient restClient = restClientTransport.restClient();
 
 		List<Node> nodes = restClient.getNodes();
 

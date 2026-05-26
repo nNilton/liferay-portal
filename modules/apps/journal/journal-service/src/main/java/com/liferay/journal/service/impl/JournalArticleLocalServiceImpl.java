@@ -4448,14 +4448,13 @@ public class JournalArticleLocalServiceImpl
 				updateJournalArticle(article);
 
 				if (!reindex) {
-					return;
+					return null;
 				}
 
 				indexableActionableDynamicQuery.setCompanyId(
 					article.getCompanyId());
 
-				indexableActionableDynamicQuery.addDocuments(
-					indexer.getDocument(article));
+				return indexer.getDocument(article);
 			});
 
 		indexableActionableDynamicQuery.performActions();
@@ -4715,19 +4714,6 @@ public class JournalArticleLocalServiceImpl
 
 		if (displayDate == null) {
 			displayDate = article.getDisplayDate();
-
-			if ((displayDate != null) && displayDate.before(new Date())) {
-				displayDate = article.getDisplayDate();
-			}
-			else {
-				Calendar calendar = CalendarFactoryUtil.getCalendar(
-					user.getTimeZone());
-
-				calendar.set(Calendar.SECOND, 0);
-				calendar.set(Calendar.MILLISECOND, 0);
-
-				displayDate = calendar.getTime();
-			}
 		}
 
 		Date expirationDate = null;
@@ -6088,8 +6074,7 @@ public class JournalArticleLocalServiceImpl
 					updatePreviousApprovedArticle(article);
 
 					if (indexer != null) {
-						indexableActionableDynamicQuery.addDocuments(
-							indexer.getDocument(article));
+						return indexer.getDocument(article);
 					}
 				}
 				catch (PortalException portalException) {
@@ -6099,9 +6084,9 @@ public class JournalArticleLocalServiceImpl
 							portalException);
 					}
 				}
+
+				return null;
 			});
-		indexableActionableDynamicQuery.setTransactionConfig(
-			DefaultActionableDynamicQuery.REQUIRES_NEW_TRANSACTION_CONFIG);
 
 		indexableActionableDynamicQuery.performActions();
 	}
@@ -7525,7 +7510,11 @@ public class JournalArticleLocalServiceImpl
 
 		targetArticle.setModifiedDate(modifiedDate);
 
-		targetArticle.setExternalReferenceCode(targetArticleId);
+		if (!newArticle) {
+			targetArticle.setExternalReferenceCode(
+				sourceArticle.getExternalReferenceCode());
+		}
+
 		targetArticle.setFolderId(sourceArticle.getFolderId());
 		targetArticle.setTreePath(sourceArticle.getTreePath());
 		targetArticle.setArticleId(targetArticleId);
@@ -8600,6 +8589,8 @@ public class JournalArticleLocalServiceImpl
 			ddmStructureId);
 
 		DDMForm ddmForm = ddmStructure.getDDMForm();
+
+		ddmForm.setAllowInvalidAvailableLocalesForProperty(true);
 
 		Map<String, DDMFormField> ddmFormFieldsMap =
 			ddmForm.getDDMFormFieldsMap(true);

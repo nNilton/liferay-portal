@@ -44,7 +44,7 @@ public class ConsentManagementPlatformTopHeadDynamicInclude
 				WebKeys.THEME_DISPLAY);
 
 		if (!FeatureFlagManagerUtil.isEnabled(
-				themeDisplay.getCompanyId(), "LPD-65286")) {
+				themeDisplay.getCompanyId(), "LPD-65299")) {
 
 			return;
 		}
@@ -56,6 +56,7 @@ public class ConsentManagementPlatformTopHeadDynamicInclude
 			consentManagementPlatformConfiguration =
 				ConfigurationProviderUtil.getGroupConfiguration(
 					ConsentManagementPlatformConfiguration.class,
+					themeDisplay.getCompanyId(),
 					themeDisplay.getScopeGroupId());
 		}
 		catch (ConfigurationException configurationException) {
@@ -77,7 +78,8 @@ public class ConsentManagementPlatformTopHeadDynamicInclude
 
 	@Override
 	public void register(DynamicIncludeRegistry dynamicIncludeRegistry) {
-		dynamicIncludeRegistry.register("/html/common/themes/top_head.jsp#pre");
+		dynamicIncludeRegistry.register(
+			"/html/common/themes/top_head.jsp#consent_management_platform");
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(

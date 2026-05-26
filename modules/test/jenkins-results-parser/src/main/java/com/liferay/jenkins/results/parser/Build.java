@@ -92,6 +92,8 @@ public interface Build {
 
 	public Element getGitHubMessageElement();
 
+	public Element getGitHubMessageUpstreamJobFailureElement();
+
 	public Map<String, String> getInjectedEnvironmentVariablesMap()
 		throws IOException;
 
@@ -214,6 +216,8 @@ public interface Build {
 	public void setJenkinsCohort(JenkinsCohort jenkinsCohort);
 
 	public void setJenkinsMaster(JenkinsMaster jenkinsMaster);
+
+	public void setParameterValue(String name, String value);
 
 	public void setResult(String result);
 

@@ -306,10 +306,10 @@ public class SegmentsExperimentLocalServiceUtil {
 	}
 
 	public static List<SegmentsExperiment> getSegmentsEntrySegmentsExperiments(
-		long segmentsEntryId) {
+		String segmentsEntryERC, long segmentsEntryGroupId) {
 
 		return getService().getSegmentsEntrySegmentsExperiments(
-			segmentsEntryId);
+			segmentsEntryERC, segmentsEntryGroupId);
 	}
 
 	/**
@@ -470,3 +470,4 @@ public class SegmentsExperimentLocalServiceUtil {
 			SegmentsExperimentLocalService.class);
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:1968084595

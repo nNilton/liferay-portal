@@ -17,6 +17,7 @@ import com.liferay.petra.function.UnsafeFunction;
 	import com.liferay.portal.vulcan.util.TransformUtil;
 </#if>
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.NoSuchModelException;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -172,11 +173,11 @@ public abstract class Base${schemaName}ResourceImpl
 			<#else>
 				<#assign putByExternalReferenceCodeBatchJavaMethodSignature = javaMethodSignature />
 			</#if>
-		<#elseif stringUtil.equals(javaMethodSignature.methodName, "deleteAssetLibrary" + schemaName)>
+		<#elseif stringUtil.equals(javaMethodSignature.methodName, "deleteAssetLibrary" + schemaName) || stringUtil.equals(javaMethodSignature.methodName, "deleteAssetLibrary" + schemaName + "ByExternalReferenceCode")>
 			<#assign deleteAssetLibraryBatchJavaMethodSignature = javaMethodSignature />
 		<#elseif stringUtil.equals(javaMethodSignature.methodName, "delete" + schemaName) && !freeMarkerTool.isExternalReferenceCodeMethod("delete", javaMethodSignature)>
 			<#assign deleteByIdBatchJavaMethodSignature = javaMethodSignature />
-		<#elseif stringUtil.equals(javaMethodSignature.methodName, "deleteSite" + schemaName)>
+		<#elseif stringUtil.equals(javaMethodSignature.methodName, "deleteSite" + schemaName) || stringUtil.equals(javaMethodSignature.methodName, "deleteSite" + schemaName + "ByExternalReferenceCode")>
 			<#assign deleteSiteBatchJavaMethodSignature = javaMethodSignature />
 		<#elseif stringUtil.equals(javaMethodSignature.methodName, "get" + schemaName)>
 			<#assign getByIdJavaMethodSignature = javaMethodSignature />
@@ -1056,8 +1057,11 @@ public abstract class Base${schemaName}ResourceImpl
 											}
 										}
 									<#else>
+
 										<#if useDeleteAssetLibrary>
-											if (parameters.containsKey("assetLibraryExternalReferenceCode")) {
+											<#assign assetLibraryParameter = freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteAssetLibraryBatchJavaMethodSignature)?then("assetLibraryExternalReferenceCode", "assetLibraryId") />
+
+											if (parameters.containsKey("${assetLibraryParameter}")) {
 												${deleteAssetLibraryBatchJavaMethodSignature.methodName}(
 													<@getDeleteBatchJavaMethodParameters javaMethodParameters = deleteAssetLibraryBatchJavaMethodSignature.javaMethodParameters />
 												);
@@ -1067,7 +1071,9 @@ public abstract class Base${schemaName}ResourceImpl
 										</#if>
 
 										<#if useDeleteSite>
-											if (parameters.containsKey("siteExternalReferenceCode")) {
+											<#assign siteParameter = freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteSiteBatchJavaMethodSignature)?then("siteExternalReferenceCode", "siteId") />
+
+											if (parameters.containsKey("${siteParameter}")) {
 												${deleteSiteBatchJavaMethodSignature.methodName}(
 													<@getDeleteBatchJavaMethodParameters javaMethodParameters = deleteSiteBatchJavaMethodSignature.javaMethodParameters />
 												);
@@ -1077,15 +1083,18 @@ public abstract class Base${schemaName}ResourceImpl
 										</#if>
 
 										}
+									}
 									</#if>
-								}
+							}
 						</#if>
 					</#if>
 
 					<#if useDeleteAssetLibrary>
+						<#assign assetLibraryParameter = freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteAssetLibraryBatchJavaMethodSignature)?then("assetLibraryExternalReferenceCode", "assetLibraryId") />
+
 						<#if useDeleteById>else</#if>
 
-						if (parameters.containsKey("assetLibraryExternalReferenceCode")) {
+						if (parameters.containsKey("${assetLibraryParameter}")) {
 							${deleteAssetLibraryBatchJavaMethodSignature.methodName}(
 								<@getDeleteBatchJavaMethodParameters javaMethodParameters = deleteAssetLibraryBatchJavaMethodSignature.javaMethodParameters />
 							);
@@ -1107,7 +1116,9 @@ public abstract class Base${schemaName}ResourceImpl
 					<#if useDeleteSite>
 						<#if useDeleteAssetLibrary || useDeleteByExternalReferenceCode || useDeleteById>else</#if>
 
-						if (parameters.containsKey("siteExternalReferenceCode")) {
+						<#assign siteParameter = freeMarkerTool.isExternalReferenceCodeExclusiveMethod("delete", deleteSiteBatchJavaMethodSignature)?then("siteExternalReferenceCode", "siteId") />
+
+						if (parameters.containsKey("${siteParameter}")) {
 							${deleteSiteBatchJavaMethodSignature.methodName}(
 								<@getDeleteBatchJavaMethodParameters javaMethodParameters = deleteSiteBatchJavaMethodSignature.javaMethodParameters />
 							);
@@ -1222,6 +1233,17 @@ public abstract class Base${schemaName}ResourceImpl
 				public Locale getPreferredLocale() {
 					return LocaleUtil.fromLanguageId(languageId);
 				}
+
+				<#if freeMarkerTool.isVersionCompatible(configYAML, 15)>
+					@Override
+					public boolean isAcceptAllLanguages() {
+						if (ExportImportThreadLocal.isExportInProcess()) {
+							return true;
+						}
+
+						return AcceptLanguage.super.isAcceptAllLanguages();
+					}
+				</#if>
 
 			};
 		}

@@ -5,7 +5,9 @@
 
 package com.liferay.object.rest.internal.resource.v1_0;
 
+import com.liferay.exportimport.constants.ExportImportConstants;
 import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
+import com.liferay.object.constants.ObjectDefinitionConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
 import com.liferay.object.exception.ObjectEntryValidationException;
 import com.liferay.object.model.ObjectDefinition;
@@ -13,6 +15,7 @@ import com.liferay.object.model.ObjectField;
 import com.liferay.object.model.ObjectRelationship;
 import com.liferay.object.model.ObjectRelationshipModel;
 import com.liferay.object.rest.dto.v1_0.ObjectEntry;
+import com.liferay.object.rest.dto.v1_0.TranslationResponse;
 import com.liferay.object.rest.dto.v1_0.ValidationError;
 import com.liferay.object.rest.dto.v1_0.ValidationRequest;
 import com.liferay.object.rest.dto.v1_0.ValidationResponse;
@@ -25,10 +28,9 @@ import com.liferay.object.scope.ObjectScopeProvider;
 import com.liferay.object.scope.ObjectScopeProviderRegistry;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
+import com.liferay.object.service.ObjectEntryService;
 import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
-import com.liferay.object.service.ObjectRelationshipService;
-import com.liferay.object.system.SystemObjectDefinitionManagerRegistry;
 import com.liferay.object.tree.Edge;
 import com.liferay.object.tree.Node;
 import com.liferay.object.tree.ObjectDefinitionTreeFactory;
@@ -36,44 +38,69 @@ import com.liferay.object.tree.Tree;
 import com.liferay.petra.function.UnsafeFunction;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.events.ServicePreAction;
+import com.liferay.portal.events.ThemeServicePreAction;
 import com.liferay.portal.kernel.exception.NoSuchModelException;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
+import com.liferay.portal.kernel.service.ServiceContextFactory;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.servlet.DummyHttpServletResponse;
+import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
+import com.liferay.portal.kernel.util.MimeTypesUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.odata.entity.EntityModel;
 import com.liferay.portal.vulcan.aggregation.Aggregation;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 import com.liferay.portal.vulcan.fields.NestedFieldsContext;
+import com.liferay.portal.vulcan.multipart.BinaryFile;
+import com.liferay.portal.vulcan.multipart.MultipartBody;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.portal.vulcan.resource.NestedFieldsContextResource;
+import com.liferay.portal.vulcan.util.GroupUtil;
 import com.liferay.portal.vulcan.util.NestedFieldsContextUtil;
+import com.liferay.translation.manager.Translation;
 import com.liferay.translation.manager.TranslationManager;
 
+import jakarta.servlet.http.HttpServletResponse;
+
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotSupportedException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.StreamingOutput;
 
 import java.io.File;
 import java.io.Serializable;
 
+import java.nio.file.Files;
+
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -92,12 +119,10 @@ public class ObjectEntryResourceImpl
 		ObjectDefinitionLocalService objectDefinitionLocalService,
 		ObjectEntryLocalService objectEntryLocalService,
 		ObjectEntryManagerRegistry objectEntryManagerRegistry,
+		ObjectEntryService objectEntryService,
 		ObjectFieldLocalService objectFieldLocalService,
 		ObjectRelationshipLocalService objectRelationshipLocalService,
-		ObjectRelationshipService objectRelationshipService,
 		ObjectScopeProviderRegistry objectScopeProviderRegistry,
-		SystemObjectDefinitionManagerRegistry
-			systemObjectDefinitionManagerRegistry,
 		TranslationManager translationManager,
 		UserLocalService userLocalService) {
 
@@ -108,12 +133,10 @@ public class ObjectEntryResourceImpl
 		_objectDefinitionLocalService = objectDefinitionLocalService;
 		_objectEntryLocalService = objectEntryLocalService;
 		_objectEntryManagerRegistry = objectEntryManagerRegistry;
+		_objectEntryService = objectEntryService;
 		_objectFieldLocalService = objectFieldLocalService;
 		_objectRelationshipLocalService = objectRelationshipLocalService;
-		_objectRelationshipService = objectRelationshipService;
 		_objectScopeProviderRegistry = objectScopeProviderRegistry;
-		_systemObjectDefinitionManagerRegistry =
-			systemObjectDefinitionManagerRegistry;
 		_translationManager = translationManager;
 		_userLocalService = userLocalService;
 	}
@@ -129,10 +152,11 @@ public class ObjectEntryResourceImpl
 				_objectDefinition.getScope());
 
 		if (objectScopeProvider.isGroupAware()) {
-			_create(objectEntries, parameters);
+			_create(
+				objectEntries, parameters, GroupUtil.getScopeKey(parameters));
 		}
 		else {
-			super.create(objectEntries, parameters);
+			_create(objectEntries, parameters, null);
 		}
 	}
 
@@ -219,8 +243,8 @@ public class ObjectEntryResourceImpl
 				_objectDefinition.getScope());
 
 		if (objectScopeProvider.isGroupAware()) {
-			UnsafeFunction<ObjectEntry, ObjectEntry, Exception>
-				objectEntryUnsafeFunction = objectEntry -> {
+			UnsafeFunction<ObjectEntry, ObjectEntry, Exception> unsafeFunction =
+				objectEntry -> {
 					if (objectEntry.getId() != null) {
 						try {
 							deleteObjectEntry(objectEntry.getId());
@@ -236,7 +260,7 @@ public class ObjectEntryResourceImpl
 									null) {
 
 								deleteScopeScopeKeyByExternalReferenceCode(
-									_getScopeKey(parameters),
+									GroupUtil.getScopeKey(parameters),
 									objectEntry.getExternalReferenceCode());
 
 								return objectEntry;
@@ -245,7 +269,7 @@ public class ObjectEntryResourceImpl
 					}
 					else if (objectEntry.getExternalReferenceCode() != null) {
 						deleteScopeScopeKeyByExternalReferenceCode(
-							_getScopeKey(parameters),
+							GroupUtil.getScopeKey(parameters),
 							objectEntry.getExternalReferenceCode());
 
 						return objectEntry;
@@ -255,19 +279,7 @@ public class ObjectEntryResourceImpl
 						"Unable to delete by external reference code or ID");
 				};
 
-			if (contextBatchUnsafeBiConsumer != null) {
-				contextBatchUnsafeBiConsumer.accept(
-					objectEntries, objectEntryUnsafeFunction);
-			}
-			else if (contextBatchUnsafeConsumer != null) {
-				contextBatchUnsafeConsumer.accept(
-					objectEntries, objectEntryUnsafeFunction::apply);
-			}
-			else {
-				for (ObjectEntry objectEntry : objectEntries) {
-					objectEntryUnsafeFunction.apply(objectEntry);
-				}
-			}
+			_applyUnsafeFunction(objectEntries, unsafeFunction);
 		}
 		else {
 			super.delete(objectEntries, parameters);
@@ -464,8 +476,65 @@ public class ObjectEntryResourceImpl
 		return new ExportImportDescriptor() {
 
 			@Override
+			public String getDescription(Locale locale) {
+				if (!_objectDefinition.isRootNode()) {
+					return null;
+				}
+
+				try {
+					List<String> childLabels = new ArrayList<>();
+
+					ObjectDefinitionTreeFactory objectDefinitionTreeFactory =
+						new ObjectDefinitionTreeFactory(
+							_objectDefinitionLocalService,
+							_objectRelationshipLocalService);
+
+					Tree tree = objectDefinitionTreeFactory.create(
+						_objectDefinition.getObjectDefinitionId());
+
+					Iterator<Node> iterator = tree.iterator();
+
+					while (iterator.hasNext()) {
+						Node node = iterator.next();
+
+						if (node.isRoot()) {
+							continue;
+						}
+
+						childLabels.add(
+							LanguageUtil.get(
+								locale,
+								_getLabelLanguageKey(
+									_objectDefinitionLocalService.
+										getObjectDefinition(
+											node.getPrimaryKey()))));
+					}
+
+					return StringUtil.merge(
+						childLabels, StringPool.COMMA_AND_SPACE);
+				}
+				catch (Exception exception) {
+					if (_log.isDebugEnabled()) {
+						_log.debug(exception);
+					}
+
+					return null;
+				}
+			}
+
+			@Override
+			public String getKey() {
+				return _objectDefinition.getExternalReferenceCode();
+			}
+
+			@Override
 			public String getLabelLanguageKey() {
 				return _getLabelLanguageKey(_objectDefinition);
+			}
+
+			@Override
+			public Class<?> getModelClass() {
+				return null;
 			}
 
 			@Override
@@ -490,8 +559,19 @@ public class ObjectEntryResourceImpl
 			}
 
 			@Override
-			public String getResourceClassName() {
-				return _objectDefinition.getClassName();
+			public Map<String, String[]> getReferences() {
+				Map<String, String[]> references = new HashMap<>();
+
+				for (ObjectField objectField :
+						_objectFieldLocalService.getObjectFieldsByBusinessType(
+							_objectDefinition.getObjectDefinitionId(),
+							ObjectFieldConstants.BUSINESS_TYPE_RICH_TEXT)) {
+
+					references.put(
+						objectField.getName(), new String[] {"DLReferences"});
+				}
+
+				return references;
 			}
 
 			@Override
@@ -512,60 +592,35 @@ public class ObjectEntryResourceImpl
 			}
 
 			@Override
-			public List<String> getSubtitleLanguageKeys() {
+			public String getSectionKey() {
+				return ExportImportConstants.SECTION_KEY_OBJECTS;
+			}
+
+			@Override
+			public String getTag(Locale locale) {
 				if (!_objectDefinition.isRootNode()) {
 					return null;
 				}
 
-				try {
-					List<String> subtitleLanguageKeys = new ArrayList<>();
-
-					ObjectDefinitionTreeFactory objectDefinitionTreeFactory =
-						new ObjectDefinitionTreeFactory(
-							_objectDefinitionLocalService,
-							_objectRelationshipLocalService);
-
-					Tree tree = objectDefinitionTreeFactory.create(
-						_objectDefinition.getObjectDefinitionId());
-
-					Iterator<Node> iterator = tree.iterator();
-
-					while (iterator.hasNext()) {
-						Node node = iterator.next();
-
-						if (node.isRoot()) {
-							continue;
-						}
-
-						subtitleLanguageKeys.add(
-							_getLabelLanguageKey(
-								_objectDefinitionLocalService.
-									getObjectDefinition(node.getPrimaryKey())));
-					}
-
-					return subtitleLanguageKeys;
-				}
-				catch (Exception exception) {
-					if (_log.isDebugEnabled()) {
-						_log.debug(exception);
-					}
-
-					return null;
-				}
+				return LanguageUtil.get(locale, "root-object");
 			}
 
 			@Override
-			public String getTagLanguageKey() {
-				if (!_objectDefinition.isRootNode()) {
-					return null;
+			public boolean isHidden() {
+				if (FeatureFlagManagerUtil.isEnabled(
+						_objectDefinition.getCompanyId(), "LPD-69877") &&
+					!_objectDefinition.isAllowStandaloneObjectEntry() &&
+					_objectDefinition.isRootDescendantNode()) {
+
+					return true;
 				}
 
-				return "root-object";
-			}
-
-			@Override
-			public boolean isStagingSupported() {
 				return false;
+			}
+
+			@Override
+			public boolean isMissingPortletSupported() {
+				return true;
 			}
 
 		};
@@ -627,7 +682,7 @@ public class ObjectEntryResourceImpl
 			StringUtil.split(targetLanguageIds, CharPool.COMMA));
 
 		return Response.ok(
-			xliffZipFile
+			_getStreamingOutput(xliffZipFile)
 		).header(
 			"content-disposition",
 			"attachment; filename=\"" + xliffZipFile.getName() + "\""
@@ -649,7 +704,7 @@ public class ObjectEntryResourceImpl
 			targetLanguageId);
 
 		return Response.ok(
-			xliffFile
+			_getStreamingOutput(xliffFile)
 		).header(
 			"content-disposition",
 			"attachment; filename=\"" + xliffFile.getName() + "\""
@@ -883,6 +938,22 @@ public class ObjectEntryResourceImpl
 	}
 
 	@Override
+	public ObjectEntry postByExternalReferenceCodeExpire(
+			String externalReferenceCode)
+		throws Exception {
+
+		DefaultObjectEntryManager defaultObjectEntryManager =
+			DefaultObjectEntryManagerProvider.provide(
+				_objectEntryManagerRegistry.getObjectEntryManager(
+					_objectDefinition.getCompanyId(),
+					_objectDefinition.getStorageType()));
+
+		return defaultObjectEntryManager.expireObjectEntry(
+			_getDTOConverterContext(null), externalReferenceCode,
+			_objectDefinition, StringPool.BLANK);
+	}
+
+	@Override
 	public void postByExternalReferenceCodeSubscribe(
 			String externalReferenceCode)
 		throws Exception {
@@ -1018,17 +1089,37 @@ public class ObjectEntryResourceImpl
 	}
 
 	@Override
-	public ObjectEntry postObjectEntryExpire(Long objectEntryId)
+	public TranslationResponse postObjectEntryTranslation(
+			Long objectEntryId, MultipartBody multipartBody)
 		throws Exception {
 
-		DefaultObjectEntryManager defaultObjectEntryManager =
-			DefaultObjectEntryManagerProvider.provide(
-				_objectEntryManagerRegistry.getObjectEntryManager(
-					_objectDefinition.getCompanyId(),
-					_objectDefinition.getStorageType()));
+		_checkFeatureFlag();
 
-		return defaultObjectEntryManager.expireObjectEntry(
-			_getDTOConverterContext(objectEntryId), objectEntryId);
+		BinaryFile binaryFile = multipartBody.getBinaryFile("file");
+
+		if (binaryFile == null) {
+			throw new BadRequestException("No file found in body");
+		}
+
+		com.liferay.object.model.ObjectEntry serviceBuilderObjectEntry =
+			_objectEntryService.getObjectEntry(objectEntryId);
+
+		List<Map<String, String>> failureMessages = new LinkedList<>();
+		List<String> successMessages = new ArrayList<>();
+
+		_initThemeDisplay(serviceBuilderObjectEntry);
+
+		_translationManager.processXLIFFTranslation(
+			serviceBuilderObjectEntry.getGroupId(),
+			_objectDefinition.getClassName(), objectEntryId,
+			new Translation(
+				() -> MimeTypesUtil.getContentType(binaryFile.getFileName()),
+				binaryFile.getFileName(), binaryFile::getInputStream),
+			successMessages, failureMessages,
+			contextAcceptLanguage.getPreferredLocale(),
+			ServiceContextFactory.getInstance(contextHttpServletRequest));
+
+		return _toTranslationResponse(failureMessages, successMessages);
 	}
 
 	@Override
@@ -1117,6 +1208,21 @@ public class ObjectEntryResourceImpl
 
 		defaultObjectEntryManager.subscribeObjectEntry(
 			externalReferenceCode, _objectDefinition, scopeKey);
+	}
+
+	@Override
+	public TranslationResponse
+			postScopeScopeKeyByExternalReferenceCodeTranslation(
+				String scopeKey, String externalReferenceCode,
+				MultipartBody multipartBody)
+		throws Exception {
+
+		_checkFeatureFlag();
+
+		ObjectEntry objectEntry = getScopeScopeKeyByExternalReferenceCode(
+			scopeKey, externalReferenceCode);
+
+		return postObjectEntryTranslation(objectEntry.getId(), multipartBody);
 	}
 
 	@Override
@@ -1347,8 +1453,8 @@ public class ObjectEntryResourceImpl
 
 		if (objectScopeProvider.isGroupAware()) {
 			return getScopeScopeKeyPage(
-				_getScopeKey(parameters), search, null, filter, pagination,
-				sorts);
+				GroupUtil.getScopeKey(parameters), search, null, filter,
+				pagination, sorts);
 		}
 
 		return getObjectEntriesPage(search, null, filter, pagination, sorts);
@@ -1356,6 +1462,76 @@ public class ObjectEntryResourceImpl
 
 	public void setObjectDefinition(ObjectDefinition objectDefinition) {
 		_objectDefinition = objectDefinition;
+	}
+
+	@Override
+	public void update(
+			Collection<ObjectEntry> objectEntries,
+			Map<String, Serializable> parameters)
+		throws Exception {
+
+		UnsafeFunction<ObjectEntry, ObjectEntry, Exception> unsafeFunction =
+			null;
+
+		ObjectScopeProvider objectScopeProvider =
+			_objectScopeProviderRegistry.getObjectScopeProvider(
+				_objectDefinition.getScope());
+
+		String scopeKey =
+			objectScopeProvider.isGroupAware() ?
+				GroupUtil.getScopeKey(parameters) : null;
+
+		String updateStrategy = (String)parameters.getOrDefault(
+			"updateStrategy", "UPDATE");
+
+		if (StringUtil.equalsIgnoreCase(updateStrategy, "PARTIAL_UPDATE")) {
+			unsafeFunction = objectEntry -> {
+				if ((objectEntry.getId() != null) &&
+					StringUtil.equals(
+						_objectDefinition.getStorageType(),
+						ObjectDefinitionConstants.STORAGE_TYPE_DEFAULT)) {
+
+					return patchObjectEntry(objectEntry.getId(), objectEntry);
+				}
+
+				if (scopeKey != null) {
+					return patchScopeScopeKeyByExternalReferenceCode(
+						scopeKey, objectEntry.getExternalReferenceCode(),
+						objectEntry);
+				}
+
+				return patchByExternalReferenceCode(
+					objectEntry.getExternalReferenceCode(), objectEntry);
+			};
+		}
+		else if (StringUtil.equalsIgnoreCase(updateStrategy, "UPDATE")) {
+			unsafeFunction = objectEntry -> {
+				if ((objectEntry.getId() != null) &&
+					StringUtil.equals(
+						_objectDefinition.getStorageType(),
+						ObjectDefinitionConstants.STORAGE_TYPE_DEFAULT)) {
+
+					return putObjectEntry(objectEntry.getId(), objectEntry);
+				}
+
+				if (scopeKey != null) {
+					return putScopeScopeKeyByExternalReferenceCode(
+						scopeKey, objectEntry.getExternalReferenceCode(),
+						objectEntry);
+				}
+
+				return putByExternalReferenceCode(
+					objectEntry.getExternalReferenceCode(), objectEntry);
+			};
+		}
+
+		if (unsafeFunction == null) {
+			throw new NotSupportedException(
+				"Update strategy \"" + updateStrategy +
+					"\" is not supported for object entry");
+		}
+
+		_applyUnsafeFunction(objectEntries, unsafeFunction);
 	}
 
 	@Override
@@ -1377,10 +1553,10 @@ public class ObjectEntryResourceImpl
 
 	@Override
 	protected Long getPermissionCheckerGroupId(Object id) throws Exception {
-		com.liferay.object.model.ObjectEntry objectEntry =
+		com.liferay.object.model.ObjectEntry serviceBuilderObjectEntry =
 			_objectEntryLocalService.getObjectEntry(GetterUtil.getLong(id));
 
-		return objectEntry.getGroupId();
+		return serviceBuilderObjectEntry.getGroupId();
 	}
 
 	@Override
@@ -1399,6 +1575,25 @@ public class ObjectEntryResourceImpl
 		}
 	}
 
+	private void _applyUnsafeFunction(
+			Collection<ObjectEntry> objectEntries,
+			UnsafeFunction<ObjectEntry, ObjectEntry, Exception> unsafeFunction)
+		throws Exception {
+
+		if (contextBatchUnsafeBiConsumer != null) {
+			contextBatchUnsafeBiConsumer.accept(objectEntries, unsafeFunction);
+		}
+		else if (contextBatchUnsafeConsumer != null) {
+			contextBatchUnsafeConsumer.accept(
+				objectEntries, unsafeFunction::apply);
+		}
+		else {
+			for (ObjectEntry objectEntry : objectEntries) {
+				unsafeFunction.apply(objectEntry);
+			}
+		}
+	}
+
 	private void _checkFeatureFlag() {
 		if (!FeatureFlagManagerUtil.isEnabled(
 				_objectDefinition.getCompanyId(), "LPD-17564")) {
@@ -1409,18 +1604,23 @@ public class ObjectEntryResourceImpl
 
 	private void _create(
 			Collection<ObjectEntry> objectEntries,
-			Map<String, Serializable> parameters)
+			Map<String, Serializable> parameters, String scopeKey)
 		throws Exception {
 
-		String createStrategy = (String)parameters.getOrDefault(
-			"createStrategy", "INSERT");
-		String scopeKey = _getScopeKey(parameters);
 		UnsafeFunction<ObjectEntry, ObjectEntry, Exception> unsafeFunction =
 			null;
 
+		String createStrategy = (String)parameters.getOrDefault(
+			"createStrategy", "INSERT");
+
 		if (StringUtil.equalsIgnoreCase(createStrategy, "INSERT")) {
-			unsafeFunction = objectEntry -> postScopeScopeKey(
-				scopeKey, objectEntry);
+			if (scopeKey != null) {
+				unsafeFunction = objectEntry -> postScopeScopeKey(
+					scopeKey, objectEntry);
+			}
+			else {
+				unsafeFunction = objectEntry -> postObjectEntry(objectEntry);
+			}
 		}
 		else if (StringUtil.equalsIgnoreCase(createStrategy, "UPSERT")) {
 			String updateStrategy = (String)parameters.getOrDefault(
@@ -1429,37 +1629,87 @@ public class ObjectEntryResourceImpl
 			if (StringUtil.equalsIgnoreCase(updateStrategy, "PARTIAL_UPDATE")) {
 				unsafeFunction = objectEntry -> {
 					try {
-						ObjectEntry getObjectEntry =
-							getScopeScopeKeyByExternalReferenceCode(
-								scopeKey,
-								objectEntry.getExternalReferenceCode());
+						ObjectEntry getObjectEntry = null;
 
-						return patchObjectEntry(
-							getObjectEntry.getId(), objectEntry);
+						if (scopeKey != null) {
+							getObjectEntry =
+								getScopeScopeKeyByExternalReferenceCode(
+									scopeKey,
+									objectEntry.getExternalReferenceCode());
+						}
+						else {
+							getObjectEntry = getByExternalReferenceCode(
+								objectEntry.getExternalReferenceCode());
+						}
+
+						if (getObjectEntry.getId() != null) {
+							return patchObjectEntry(
+								getObjectEntry.getId(), objectEntry);
+						}
+
+						if (scopeKey != null) {
+							return patchScopeScopeKeyByExternalReferenceCode(
+								scopeKey,
+								objectEntry.getExternalReferenceCode(),
+								objectEntry);
+						}
+
+						return patchByExternalReferenceCode(
+							objectEntry.getExternalReferenceCode(),
+							objectEntry);
 					}
 					catch (NoSuchModelException noSuchModelException) {
 						if (_log.isDebugEnabled()) {
 							_log.debug(noSuchModelException);
 						}
 
-						return postScopeScopeKey(scopeKey, objectEntry);
+						if (scopeKey != null) {
+							return postScopeScopeKey(scopeKey, objectEntry);
+						}
+
+						return postObjectEntry(objectEntry);
 					}
 				};
 			}
 			else if (StringUtil.equalsIgnoreCase(updateStrategy, "UPDATE")) {
-				unsafeFunction =
-					objectEntry -> putScopeScopeKeyByExternalReferenceCode(
-						scopeKey, objectEntry.getExternalReferenceCode(),
-						objectEntry);
+				if (scopeKey != null) {
+					unsafeFunction =
+						objectEntry -> putScopeScopeKeyByExternalReferenceCode(
+							scopeKey, objectEntry.getExternalReferenceCode(),
+							objectEntry);
+				}
+				else {
+					unsafeFunction = objectEntry -> putByExternalReferenceCode(
+						objectEntry.getExternalReferenceCode(), objectEntry);
+				}
 			}
 		}
 
 		if (unsafeFunction == null) {
 			throw new NotSupportedException(
-				"Create strategy \"" + createStrategy + "\" is not supported");
+				"Create strategy \"" + createStrategy +
+					"\" is not supported for object entry");
 		}
 
-		contextBatchUnsafeBiConsumer.accept(objectEntries, unsafeFunction);
+		_applyUnsafeFunction(objectEntries, unsafeFunction);
+	}
+
+	private void _deleteTempFile(File file) {
+		if (file == null) {
+			return;
+		}
+
+		if (file.exists()) {
+			file.delete();
+		}
+
+		File parentFile = file.getParentFile();
+
+		if ((parentFile != null) && parentFile.exists() &&
+			ArrayUtil.isEmpty(parentFile.list())) {
+
+			parentFile.delete();
+		}
 	}
 
 	private DefaultDTOConverterContext _getDTOConverterContext(
@@ -1537,20 +1787,15 @@ public class ObjectEntryResourceImpl
 			objectDefinition.getResourceName());
 	}
 
-	private String _getScopeKey(Map<String, Serializable> parameters) {
-		if (parameters.containsKey("scopeKey")) {
-			return String.valueOf(parameters.get("scopeKey"));
-		}
-
-		if (parameters.containsKey("siteExternalReferenceCode")) {
-			return String.valueOf(parameters.get("siteExternalReferenceCode"));
-		}
-
-		if (parameters.containsKey("siteId")) {
-			return String.valueOf(parameters.get("siteId"));
-		}
-
-		return null;
+	private StreamingOutput _getStreamingOutput(File file) {
+		return streamingOutput -> {
+			try {
+				Files.copy(file.toPath(), streamingOutput);
+			}
+			finally {
+				_deleteTempFile(file);
+			}
+		};
 	}
 
 	private String _getXLIFFMimeType(String accept) {
@@ -1565,6 +1810,64 @@ public class ObjectEntryResourceImpl
 		}
 
 		return null;
+	}
+
+	private void _initThemeDisplay(
+			com.liferay.object.model.ObjectEntry serviceBuilderObjectEntry)
+		throws Exception {
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)contextHttpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
+		if (themeDisplay != null) {
+			return;
+		}
+
+		ServicePreAction servicePreAction = new ServicePreAction();
+
+		HttpServletResponse httpServletResponse =
+			new DummyHttpServletResponse();
+
+		servicePreAction.servicePre(
+			contextHttpServletRequest, httpServletResponse, false);
+
+		ThemeServicePreAction themeServicePreAction =
+			new ThemeServicePreAction();
+
+		themeServicePreAction.run(
+			contextHttpServletRequest, httpServletResponse);
+
+		themeDisplay = (ThemeDisplay)contextHttpServletRequest.getAttribute(
+			WebKeys.THEME_DISPLAY);
+
+		themeDisplay.setCompany(contextCompany);
+		themeDisplay.setScopeGroupId(serviceBuilderObjectEntry.getGroupId());
+		themeDisplay.setUser(contextUser);
+	}
+
+	private TranslationResponse _toTranslationResponse(
+		List<Map<String, String>> failureMessages,
+		List<String> successMessages) {
+
+		TranslationResponse translationResponse = new TranslationResponse();
+
+		translationResponse.setFailureMessagesJSON(
+			() -> transformToArray(
+				failureMessages,
+				failureMessage -> {
+					JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
+						failureMessage);
+
+					return jsonObject.toString();
+				},
+				String.class));
+		translationResponse.setSuccessMessages(
+			() -> transformToArray(
+				successMessages, successMessage -> successMessage,
+				String.class));
+
+		return translationResponse;
 	}
 
 	private ValidationResponse _validateObjectEntry(
@@ -1628,13 +1931,11 @@ public class ObjectEntryResourceImpl
 	private final Map<Long, ObjectDefinition> _objectDefinitions;
 	private final ObjectEntryLocalService _objectEntryLocalService;
 	private final ObjectEntryManagerRegistry _objectEntryManagerRegistry;
+	private final ObjectEntryService _objectEntryService;
 	private final ObjectFieldLocalService _objectFieldLocalService;
 	private final ObjectRelationshipLocalService
 		_objectRelationshipLocalService;
-	private final ObjectRelationshipService _objectRelationshipService;
 	private final ObjectScopeProviderRegistry _objectScopeProviderRegistry;
-	private final SystemObjectDefinitionManagerRegistry
-		_systemObjectDefinitionManagerRegistry;
 	private final TranslationManager _translationManager;
 	private final UserLocalService _userLocalService;
 

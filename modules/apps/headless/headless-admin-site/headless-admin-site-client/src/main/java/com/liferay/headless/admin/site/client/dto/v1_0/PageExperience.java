@@ -109,27 +109,6 @@ public class PageExperience implements Cloneable, Serializable {
 
 	protected PageElement[] pageElements;
 
-	public PageRule[] getPageRules() {
-		return pageRules;
-	}
-
-	public void setPageRules(PageRule[] pageRules) {
-		this.pageRules = pageRules;
-	}
-
-	public void setPageRules(
-		UnsafeSupplier<PageRule[], Exception> pageRulesUnsafeSupplier) {
-
-		try {
-			pageRules = pageRulesUnsafeSupplier.get();
-		}
-		catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	protected PageRule[] pageRules;
-
 	public String getPageSpecificationExternalReferenceCode() {
 		return pageSpecificationExternalReferenceCode;
 	}
@@ -177,30 +156,49 @@ public class PageExperience implements Cloneable, Serializable {
 
 	protected Integer priority;
 
-	public String getSegmentExternalReferenceCode() {
-		return segmentExternalReferenceCode;
+	public ItemExternalReference getSegmentItemExternalReference() {
+		return segmentItemExternalReference;
 	}
 
-	public void setSegmentExternalReferenceCode(
-		String segmentExternalReferenceCode) {
+	public void setSegmentItemExternalReference(
+		ItemExternalReference segmentItemExternalReference) {
 
-		this.segmentExternalReferenceCode = segmentExternalReferenceCode;
+		this.segmentItemExternalReference = segmentItemExternalReference;
 	}
 
-	public void setSegmentExternalReferenceCode(
-		UnsafeSupplier<String, Exception>
-			segmentExternalReferenceCodeUnsafeSupplier) {
+	public void setSegmentItemExternalReference(
+		UnsafeSupplier<ItemExternalReference, Exception>
+			segmentItemExternalReferenceUnsafeSupplier) {
 
 		try {
-			segmentExternalReferenceCode =
-				segmentExternalReferenceCodeUnsafeSupplier.get();
+			segmentItemExternalReference =
+				segmentItemExternalReferenceUnsafeSupplier.get();
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	protected String segmentExternalReferenceCode;
+	protected ItemExternalReference segmentItemExternalReference;
+
+	public String getUuid() {
+		return uuid;
+	}
+
+	public void setUuid(String uuid) {
+		this.uuid = uuid;
+	}
+
+	public void setUuid(UnsafeSupplier<String, Exception> uuidUnsafeSupplier) {
+		try {
+			uuid = uuidUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected String uuid;
 
 	@Override
 	public PageExperience clone() throws CloneNotSupportedException {
@@ -234,3 +232,4 @@ public class PageExperience implements Cloneable, Serializable {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:-675926797

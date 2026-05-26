@@ -8,6 +8,7 @@ package com.liferay.object.internal.deployer;
 import com.liferay.account.service.AccountEntryLocalService;
 import com.liferay.account.service.AccountEntryOrganizationRelLocalService;
 import com.liferay.asset.kernel.service.AssetEntryLocalService;
+import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
 import com.liferay.frontend.taglib.servlet.taglib.ScreenNavigationCategory;
 import com.liferay.frontend.taglib.servlet.taglib.ScreenNavigationEntry;
 import com.liferay.notification.handler.NotificationHandler;
@@ -17,6 +18,7 @@ import com.liferay.object.constants.ObjectDefinitionSettingConstants;
 import com.liferay.object.definition.security.permission.resource.util.ObjectDefinitionResourcePermissionUtil;
 import com.liferay.object.definition.tree.util.ObjectDefinitionTreeUtil;
 import com.liferay.object.deployer.ObjectDefinitionDeployer;
+import com.liferay.object.field.business.type.ObjectFieldBusinessTypeRegistry;
 import com.liferay.object.internal.layout.tab.screen.navigation.category.ObjectLayoutTabScreenNavigationCategory;
 import com.liferay.object.internal.notification.handler.ObjectDefinitionNotificationHandler;
 import com.liferay.object.internal.notification.term.contributor.ObjectDefinitionNotificationTermEvaluator;
@@ -91,7 +93,6 @@ import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.workflow.WorkflowHandler;
-import com.liferay.portal.search.batch.DynamicQueryBatchIndexingActionableFactory;
 import com.liferay.portal.search.localization.SearchLocalizationHelper;
 import com.liferay.portal.search.ml.embedding.text.TextEmbeddingDocumentContributor;
 import com.liferay.portal.search.spi.model.index.contributor.ModelDocumentContributor;
@@ -131,8 +132,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			accountEntryOrganizationRelLocalService,
 		AssetEntryLocalService assetEntryLocalService,
 		BundleContext bundleContext,
-		DynamicQueryBatchIndexingActionableFactory
-			dynamicQueryBatchIndexingActionableFactory,
+		DLFileEntryLocalService dlFileEntryLocalService,
 		GroupLocalService groupLocalService,
 		KaleoDefinitionLocalService kaleoDefinitionLocalService,
 		ListTypeLocalService listTypeLocalService,
@@ -142,6 +142,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		ObjectEntryFolderLocalService objectEntryFolderLocalService,
 		ObjectEntryLocalService objectEntryLocalService,
 		ObjectEntryService objectEntryService,
+		ObjectFieldBusinessTypeRegistry objectFieldBusinessTypeRegistry,
 		ObjectFieldLocalService objectFieldLocalService,
 		ObjectFolderLocalService objectFolderLocalService,
 		ObjectLayoutLocalService objectLayoutLocalService,
@@ -167,8 +168,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			accountEntryOrganizationRelLocalService;
 		_assetEntryLocalService = assetEntryLocalService;
 		_bundleContext = bundleContext;
-		_dynamicQueryBatchIndexingActionableFactory =
-			dynamicQueryBatchIndexingActionableFactory;
+		_dlFileEntryLocalService = dlFileEntryLocalService;
 		_groupLocalService = groupLocalService;
 		_kaleoDefinitionLocalService = kaleoDefinitionLocalService;
 		_listTypeLocalService = listTypeLocalService;
@@ -179,6 +179,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		_objectEntryFolderLocalService = objectEntryFolderLocalService;
 		_objectEntryLocalService = objectEntryLocalService;
 		_objectEntryService = objectEntryService;
+		_objectFieldBusinessTypeRegistry = objectFieldBusinessTypeRegistry;
 		_objectFieldLocalService = objectFieldLocalService;
 		_objectFolderLocalService = objectFolderLocalService;
 		_objectLayoutLocalService = objectLayoutLocalService;
@@ -300,9 +301,9 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			ObjectEntryModelIndexerWriterContributor
 				objectEntryModelIndexerWriterContributor =
 					new ObjectEntryModelIndexerWriterContributor(
-						_dynamicQueryBatchIndexingActionableFactory,
 						objectDefinition, _objectDefinitionLocalService,
-						_objectEntryLocalService);
+						_objectEntryLocalService, _objectFieldLocalService,
+						_objectFolderLocalService);
 			ObjectEntryModelSummaryContributor
 				objectEntryModelSummaryContributor =
 					new ObjectEntryModelSummaryContributor();
@@ -324,11 +325,9 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 					ModelDocumentContributor.class,
 					new ObjectEntryModelDocumentContributor(
 						_accountEntryOrganizationRelLocalService,
-						objectDefinition.getClassName(),
-						_objectDefinitionLocalService,
+						_dlFileEntryLocalService,
 						_objectEntryFolderLocalService,
-						_objectEntryLocalService, _objectFieldLocalService,
-						_objectFolderLocalService,
+						_objectFieldBusinessTypeRegistry,
 						_textEmbeddingDocumentContributor),
 					HashMapDictionaryBuilder.<String, Object>put(
 						"indexer.class.name", objectDefinition.getClassName()
@@ -642,8 +641,7 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		_accountEntryOrganizationRelLocalService;
 	private final AssetEntryLocalService _assetEntryLocalService;
 	private final BundleContext _bundleContext;
-	private final DynamicQueryBatchIndexingActionableFactory
-		_dynamicQueryBatchIndexingActionableFactory;
+	private final DLFileEntryLocalService _dlFileEntryLocalService;
 	private final GroupLocalService _groupLocalService;
 	private final KaleoDefinitionLocalService _kaleoDefinitionLocalService;
 	private final ListTypeLocalService _listTypeLocalService;
@@ -655,6 +653,8 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 	private final ObjectEntryFolderLocalService _objectEntryFolderLocalService;
 	private final ObjectEntryLocalService _objectEntryLocalService;
 	private final ObjectEntryService _objectEntryService;
+	private final ObjectFieldBusinessTypeRegistry
+		_objectFieldBusinessTypeRegistry;
 	private final ObjectFieldLocalService _objectFieldLocalService;
 	private final ObjectFolderLocalService _objectFolderLocalService;
 	private final ObjectLayoutLocalService _objectLayoutLocalService;

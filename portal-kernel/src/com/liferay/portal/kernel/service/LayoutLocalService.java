@@ -372,6 +372,13 @@ public interface LayoutLocalService
 			String friendlyURL, ServiceContext serviceContext)
 		throws PortalException;
 
+	public Layout convertEmptyLayout(
+			long userId, long plid, Map<Locale, String> nameMap, String type,
+			long classNameId, long classPK,
+			String masterLayoutPageTemplateEntryERC,
+			ServiceContext serviceContext)
+		throws Exception;
+
 	public Layout copyLayout(
 			long userId, long groupId, boolean privateLayout,
 			Map<Locale, String> nameMap, boolean hidden, boolean system,
@@ -1042,13 +1049,6 @@ public interface LayoutLocalService
 			int start, int end, OrderByComparator<Layout> orderByComparator)
 		throws PortalException;
 
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public List<Layout> getLayoutsByLayoutPrototypeUuid(
-		String layoutPrototypeUuid);
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public int getLayoutsByLayoutPrototypeUuidCount(String layoutPrototypeUuid);
-
 	/**
 	 * Returns all the layouts matching the UUID and company.
 	 *
@@ -1166,7 +1166,7 @@ public interface LayoutLocalService
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public Layout getOrAddEmptyLayout(
 			String externalReferenceCode, long userId, long groupId,
-			ServiceContext serviceContext)
+			boolean privateLayout, ServiceContext serviceContext)
 		throws Exception;
 
 	/**
@@ -1252,6 +1252,10 @@ public interface LayoutLocalService
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public boolean hasLayouts(
 		long groupId, boolean privateLayout, long parentLayoutId);
+
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public boolean hasLayouts(
+		long groupId, String portletLayoutPageTemplateEntryERC);
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public boolean hasLayouts(User user, boolean privateLayout)
@@ -1341,6 +1345,9 @@ public interface LayoutLocalService
 		throws PortalException;
 
 	public Layout updateIconImage(long plid, byte[] bytes)
+		throws PortalException;
+
+	public Layout updateIconImageId(long plid, long iconImageId)
 		throws PortalException;
 
 	/**
@@ -1708,3 +1715,4 @@ public interface LayoutLocalService
 		throws E;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-997549099

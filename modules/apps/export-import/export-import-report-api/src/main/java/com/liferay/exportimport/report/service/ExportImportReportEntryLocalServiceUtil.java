@@ -39,23 +39,23 @@ public class ExportImportReportEntryLocalServiceUtil {
 	public static ExportImportReportEntry addEmptyExportImportReportEntry(
 		long groupId, long companyId, String classExternalReferenceCode,
 		long classNameId, long exportImportConfigurationId,
-		String modelNameLanguageKey, int origin) {
+		String modelNameLanguageKey) {
 
 		return getService().addEmptyExportImportReportEntry(
 			groupId, companyId, classExternalReferenceCode, classNameId,
-			exportImportConfigurationId, modelNameLanguageKey, origin);
+			exportImportConfigurationId, modelNameLanguageKey);
 	}
 
 	public static ExportImportReportEntry addErrorExportImportReportEntry(
 		long groupId, long companyId, String classExternalReferenceCode,
 		long classNameId, long classPK, long exportImportConfigurationId,
 		String errorMessage, String errorStacktrace,
-		String modelNameLanguageKey, int origin) {
+		String modelNameLanguageKey) {
 
 		return getService().addErrorExportImportReportEntry(
 			groupId, companyId, classExternalReferenceCode, classNameId,
 			classPK, exportImportConfigurationId, errorMessage, errorStacktrace,
-			modelNameLanguageKey, origin);
+			modelNameLanguageKey);
 	}
 
 	/**
@@ -274,6 +274,13 @@ public class ExportImportReportEntryLocalServiceUtil {
 		return getService().getExportImportReportEntriesCount();
 	}
 
+	public static int getExportImportReportEntriesCount(
+		long companyId, long exportImportConfigurationId) {
+
+		return getService().getExportImportReportEntriesCount(
+			companyId, exportImportConfigurationId);
+	}
+
 	/**
 	 * Returns the export import report entry with the primary key.
 	 *
@@ -296,6 +303,28 @@ public class ExportImportReportEntryLocalServiceUtil {
 		return getService().getIndexableActionableDynamicQuery();
 	}
 
+	public static ExportImportReportEntry getOrAddEmptyExportImportReportEntry(
+		long groupId, long companyId, String classExternalReferenceCode,
+		long classNameId, long exportImportConfigurationId,
+		String modelNameLanguageKey) {
+
+		return getService().getOrAddEmptyExportImportReportEntry(
+			groupId, companyId, classExternalReferenceCode, classNameId,
+			exportImportConfigurationId, modelNameLanguageKey);
+	}
+
+	public static ExportImportReportEntry getOrAddErrorExportImportReportEntry(
+		long groupId, long companyId, String classExternalReferenceCode,
+		long classNameId, long classPK, long exportImportConfigurationId,
+		String errorMessage, String errorStacktrace,
+		String modelNameLanguageKey) {
+
+		return getService().getOrAddErrorExportImportReportEntry(
+			groupId, companyId, classExternalReferenceCode, classNameId,
+			classPK, exportImportConfigurationId, errorMessage, errorStacktrace,
+			modelNameLanguageKey);
+	}
+
 	/**
 	 * Returns the OSGi service identifier.
 	 *
@@ -312,6 +341,15 @@ public class ExportImportReportEntryLocalServiceUtil {
 		throws PortalException {
 
 		return getService().getPersistedModel(primaryKeyObj);
+	}
+
+	public static void resolveEmptyExportImportReportEntries(
+			long groupId, long companyId, String classExternalReferenceCode,
+			long classNameId)
+		throws PortalException {
+
+		getService().resolveEmptyExportImportReportEntries(
+			groupId, companyId, classExternalReferenceCode, classNameId);
 	}
 
 	/**
@@ -341,3 +379,4 @@ public class ExportImportReportEntryLocalServiceUtil {
 			ExportImportReportEntryLocalService.class);
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-1063489840

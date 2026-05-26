@@ -7,12 +7,17 @@ import ClayBreadcrumb from '@clayui/breadcrumb';
 import {ClayButtonWithIcon} from '@clayui/button';
 import ClayDropDown, {ClayDropDownWithItems} from '@clayui/drop-down';
 import ClaySticker from '@clayui/sticker';
-import {openToast} from 'frontend-js-components-web';
+import {FeatureIndicator, openToast} from 'frontend-js-components-web';
 import {navigate} from 'frontend-js-web';
 import React, {ComponentProps} from 'react';
 
+import {manageMembersAction} from '../../index';
 import DefaultPermissionModalContent from '../../main_view/default_permission/DefaultPermissionModalContent';
 import {DefaultPermissionModalContentProps} from '../../main_view/default_permission/DefaultPermissionTypes';
+import manageConnectedSitesAction, {
+	ManageConnectedSitesData,
+} from '../../main_view/props_transformer/actions/manageConnectedSitesAction';
+import {ManageMembersData} from '../../main_view/props_transformer/actions/manageMembersAction';
 import ApiHelper from '../services/ApiHelper';
 import {LogoColor} from '../types/Space';
 import {openCMSModal} from '../utils/openCMSModal';
@@ -24,10 +29,20 @@ export interface ActionDropdownItemProps {
 	confirmationTitle?: string;
 	defaultPermissionAdditionalProps?: DefaultPermissionModalContentProps;
 	href?: string;
+	manageConnectedSitesData?: ManageConnectedSitesData;
+	manageMembersData?: ManageMembersData;
 	redirect?: string;
 	size?: 'full-screen' | 'lg' | 'md' | 'sm';
 	successMessage?: string;
-	target?: 'asyncDelete' | 'defaultPermissionsModal' | 'link' | 'modal';
+	target?:
+		| 'asyncDelete'
+		| 'asyncPost'
+		| 'asyncPut'
+		| 'defaultPermissionsModal'
+		| 'link'
+		| 'manageConnectedSitesModal'
+		| 'manageMembersModal'
+		| 'modal';
 }
 
 interface Props extends Pick<React.ComponentProps<typeof ClaySticker>, 'size'> {
@@ -35,6 +50,7 @@ interface Props extends Pick<React.ComponentProps<typeof ClaySticker>, 'size'> {
 		ActionDropdownItemProps;
 	breadcrumbItems: BreadcrumbItem[];
 	displayType?: LogoColor;
+	freeTier?: boolean;
 	hideSpace?: boolean;
 }
 
@@ -51,23 +67,17 @@ function ActionDropdownItem({
 	defaultPermissionAdditionalProps,
 	href = '',
 	label,
+	manageConnectedSitesData,
+	manageMembersData,
 	redirect,
 	size = 'full-screen',
 	successMessage,
 	target = 'link',
+	title,
 	...props
-}: {label: string} & ActionDropdownItemProps) {
+}: {label: string; title?: string} & ActionDropdownItemProps) {
 	const handleTargetAction = async () => {
-		if (target === 'modal') {
-			openCMSModal({
-				size,
-				title: label,
-				url: href,
-			});
-		}
-		else if (target === 'asyncDelete') {
-			const {error} = await ApiHelper.delete(href);
-
+		function handleAsyncTargetAction(error: string | null) {
 			if (!error) {
 				openToast({
 					message:
@@ -86,6 +96,28 @@ function ActionDropdownItem({
 				displayErrorToast(error);
 			}
 		}
+
+		const loadData = () => {
+			if (redirect) {
+				navigate(redirect);
+			}
+		};
+
+		if (target === 'asyncDelete') {
+			const {error} = await ApiHelper.delete(href);
+
+			handleAsyncTargetAction(error);
+		}
+		else if (target === 'asyncPost') {
+			const {error} = await ApiHelper.post(href);
+
+			handleAsyncTargetAction(error);
+		}
+		else if (target === 'asyncPut') {
+			const {error} = await ApiHelper.put(href);
+
+			handleAsyncTargetAction(error);
+		}
 		else if (
 			target === 'defaultPermissionsModal' &&
 			defaultPermissionAdditionalProps
@@ -97,6 +129,27 @@ function ActionDropdownItem({
 						closeModal,
 					}),
 				size: 'full-screen',
+			});
+		}
+		else if (
+			target === 'manageConnectedSitesModal' &&
+			manageConnectedSitesData
+		) {
+			manageConnectedSitesAction(manageConnectedSitesData, loadData);
+		}
+		else if (target === 'manageMembersModal' && manageMembersData) {
+			manageMembersAction(manageMembersData, loadData);
+		}
+		else if (target === 'modal') {
+			openCMSModal({
+				onClose: () => {
+					if (redirect) {
+						navigate(redirect);
+					}
+				},
+				size,
+				title: title || label,
+				url: href,
 			});
 		}
 		else {
@@ -149,13 +202,14 @@ export default function Breadcrumb({
 	actionItems,
 	breadcrumbItems,
 	displayType,
+	freeTier,
 	hideSpace,
 	size,
 }: Props) {
 	const isTitle = breadcrumbItems.length === 1;
 
 	return (
-		<div
+		<section
 			aria-label={Liferay.Language.get('breadcrumb')}
 			className="autofit-row autofit-row-center cms-breadcrumb px-4"
 		>
@@ -172,9 +226,15 @@ export default function Breadcrumb({
 
 			<div className="autofit-col">
 				{isTitle ? (
-					<h2 className="font-weight-semi-bold mb-0 text-7 text-dark">
-						{breadcrumbItems[0]?.label}
-					</h2>
+					<div className="c-gap-2 d-flex">
+						<h2 className="font-weight-semi-bold mb-0 text-7 text-dark">
+							{breadcrumbItems[0]?.label}
+						</h2>
+
+						{freeTier && (
+							<FeatureIndicator interactive type="enterprise" />
+						)}
+					</div>
 				) : (
 					<ClayBreadcrumb className="p-0" items={breadcrumbItems} />
 				)}
@@ -209,6 +269,6 @@ export default function Breadcrumb({
 					</ClayDropDown>
 				</div>
 			)}
-		</div>
+		</section>
 	);
 }

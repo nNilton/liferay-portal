@@ -23,7 +23,13 @@
 		).put(
 			"fieldValueType", fieldValueType
 		).put(
-			"hasPermission", hasPermission
+			"hasManageOrderNotesPermission", hasManageOrderNotesPermission
+		).put(
+			"hasManageOrderRestrictedNotesPermission", hasManageOrderRestrictedNotesPermission
+		).put(
+			"hasUpdatePermission", hasUpdatePermission
+		).put(
+			"hasViewPermission", hasViewPermission
 		).put(
 			"isOpen", open
 		).put(

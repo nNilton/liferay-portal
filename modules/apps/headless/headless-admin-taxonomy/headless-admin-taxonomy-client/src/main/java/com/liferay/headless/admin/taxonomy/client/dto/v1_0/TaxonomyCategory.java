@@ -352,6 +352,25 @@ public class TaxonomyCategory implements Cloneable, Serializable {
 
 	protected ParentTaxonomyVocabulary parentTaxonomyVocabulary;
 
+	public String getPath() {
+		return path;
+	}
+
+	public void setPath(String path) {
+		this.path = path;
+	}
+
+	public void setPath(UnsafeSupplier<String, Exception> pathUnsafeSupplier) {
+		try {
+			path = pathUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected String path;
+
 	public com.liferay.headless.admin.taxonomy.client.permission.Permission[]
 		getPermissions() {
 
@@ -496,6 +515,25 @@ public class TaxonomyCategory implements Cloneable, Serializable {
 
 	protected Long taxonomyVocabularyId;
 
+	public String getUuid() {
+		return uuid;
+	}
+
+	public void setUuid(String uuid) {
+		this.uuid = uuid;
+	}
+
+	public void setUuid(UnsafeSupplier<String, Exception> uuidUnsafeSupplier) {
+		try {
+			uuid = uuidUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected String uuid;
+
 	public ViewableBy getViewableBy() {
 		return viewableBy;
 	}
@@ -590,3 +628,4 @@ public class TaxonomyCategory implements Cloneable, Serializable {
 	}
 
 }
+// LIFERAY-REST-BUILDER-HASH:1325634907

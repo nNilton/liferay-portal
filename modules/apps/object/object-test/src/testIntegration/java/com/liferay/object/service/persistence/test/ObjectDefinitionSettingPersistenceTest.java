@@ -230,6 +230,15 @@ public class ObjectDefinitionSettingPersistenceTest {
 	}
 
 	@Test
+	public void testCountByC_N_V() throws Exception {
+		_persistence.countByC_N_V(RandomTestUtil.nextLong(), "", "");
+
+		_persistence.countByC_N_V(0L, "null", "null");
+
+		_persistence.countByC_N_V(0L, (String)null, (String)null);
+	}
+
+	@Test
 	public void testFindByPrimaryKeyExisting() throws Exception {
 		ObjectDefinitionSetting newObjectDefinitionSetting =
 			addObjectDefinitionSetting();
@@ -611,3 +620,4 @@ public class ObjectDefinitionSettingPersistenceTest {
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-571155320

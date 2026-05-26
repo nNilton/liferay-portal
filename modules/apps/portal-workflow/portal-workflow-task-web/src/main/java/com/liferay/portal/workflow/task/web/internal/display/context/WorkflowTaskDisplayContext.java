@@ -9,6 +9,7 @@ import com.liferay.asset.kernel.AssetRendererFactoryRegistryUtil;
 import com.liferay.asset.kernel.model.AssetEntry;
 import com.liferay.asset.kernel.model.AssetRenderer;
 import com.liferay.asset.kernel.model.AssetRendererFactory;
+import com.liferay.asset.kernel.service.AssetEntryLocalServiceUtil;
 import com.liferay.change.tracking.constants.CTConstants;
 import com.liferay.change.tracking.model.CTCollection;
 import com.liferay.change.tracking.service.CTCollectionLocalServiceUtil;
@@ -27,6 +28,8 @@ import com.liferay.portal.kernel.dao.search.ResultRow;
 import com.liferay.portal.kernel.dao.search.SearchContainer;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.LanguageUtil;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
@@ -49,6 +52,7 @@ import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PortletKeys;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
@@ -484,6 +488,21 @@ public class WorkflowTaskDisplayContext {
 		ThemeDisplay themeDisplay =
 			_workflowTaskRequestHelper.getThemeDisplay();
 
+		Group group = themeDisplay.getScopeGroup();
+
+		if (group.isCMS()) {
+			return StringBundler.concat(
+				themeDisplay.getPortalURL(), themeDisplay.getPathMain(),
+				GroupConstants.CMS_FRIENDLY_URL,
+				"/edit_content_item?objectEntryId=",
+				getWorkflowContextEntryClassPK(
+					getWorkflowHandler(workflowTask), workflowTask),
+				"&portletResource=", getPortletResource(), "&redirect=",
+				URLCodec.encodeURL(themeDisplay.getURLCurrent()),
+				"&refererPlid=", themeDisplay.getPlid(), "&workflowTaskId=",
+				workflowTask.getWorkflowTaskId());
+		}
+
 		return PortletURLBuilder.create(
 			_getEditPortletURL(workflowTask)
 		).setRedirect(
@@ -508,7 +527,8 @@ public class WorkflowTaskDisplayContext {
 
 		StringBundler sb = new StringBundler(7);
 
-		sb.append("javascript:Liferay.Util.openModal({id: '");
+		sb.append(
+			"javascript:Liferay.Util.openModal({iframeBodyCssClass: '', id: '");
 		sb.append(_liferayPortletResponse.getNamespace());
 		sb.append("viewDiffs', title: '");
 		sb.append(
@@ -609,6 +629,21 @@ public class WorkflowTaskDisplayContext {
 				addTableViewTypeItem();
 			}
 		};
+	}
+
+	public AssetEntry getWorkflowAssetEntry(
+			String className, long classPK, long fallbackClassPK)
+		throws PortalException {
+
+		AssetEntry assetEntry = AssetEntryLocalServiceUtil.fetchEntry(
+			className, classPK);
+
+		if (assetEntry == null) {
+			assetEntry = AssetEntryLocalServiceUtil.fetchEntry(
+				className, fallbackClassPK);
+		}
+
+		return assetEntry;
 	}
 
 	public long getWorkflowContextEntryClassPK(

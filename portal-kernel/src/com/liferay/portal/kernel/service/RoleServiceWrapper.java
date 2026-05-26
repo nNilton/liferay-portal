@@ -113,22 +113,22 @@ public class RoleServiceWrapper
 	@Override
 	public java.util.List<Role> getGroupRolesAndTeamRoles(
 		long companyId, String name, java.util.List<String> excludedNames,
-		String title, String description, int[] types, long excludedTeamRoleId,
-		long teamGroupId, int start, int end) {
+		String title, String description, int[] types, String subtype,
+		long excludedTeamRoleId, long teamGroupId, int start, int end) {
 
 		return _roleService.getGroupRolesAndTeamRoles(
-			companyId, name, excludedNames, title, description, types,
+			companyId, name, excludedNames, title, description, types, subtype,
 			excludedTeamRoleId, teamGroupId, start, end);
 	}
 
 	@Override
 	public int getGroupRolesAndTeamRolesCount(
 		long companyId, String name, java.util.List<String> excludedNames,
-		String title, String description, int[] types, long excludedTeamRoleId,
-		long teamGroupId) {
+		String title, String description, int[] types, String subtype,
+		long excludedTeamRoleId, long teamGroupId) {
 
 		return _roleService.getGroupRolesAndTeamRolesCount(
-			companyId, name, excludedNames, title, description, types,
+			companyId, name, excludedNames, title, description, types, subtype,
 			excludedTeamRoleId, teamGroupId);
 	}
 
@@ -201,9 +201,7 @@ public class RoleServiceWrapper
 	}
 
 	@Override
-	public java.util.List<Role> getRoles(long companyId, int[] types)
-		throws com.liferay.portal.kernel.exception.PortalException {
-
+	public java.util.List<Role> getRoles(long companyId, int[] types) {
 		return _roleService.getRoles(companyId, types);
 	}
 
@@ -399,3 +397,4 @@ public class RoleServiceWrapper
 	private RoleService _roleService;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-218149330

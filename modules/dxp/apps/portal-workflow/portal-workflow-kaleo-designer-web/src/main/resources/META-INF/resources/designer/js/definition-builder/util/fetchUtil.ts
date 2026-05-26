@@ -18,10 +18,26 @@ export const HEADERS = new Headers({
 });
 
 export async function publishDefinitionRequest(
-	requestBody: WorkflowDefinition
+	requestBody: WorkflowDefinition,
+	groupExternalReferenceCode?: string,
+	scope?: string
 ) {
+	const isFeatureFlagActive =
+		Liferay.FeatureFlags && Liferay.FeatureFlags['LPD-62272'];
+
+	let body:
+		| WorkflowDefinition
+		| (WorkflowDefinition & {
+				groupExternalReferenceCode: string;
+				scope: string;
+		  }) = requestBody;
+
+	if (scope === 'ai' && isFeatureFlagActive && groupExternalReferenceCode) {
+		body = {...requestBody, groupExternalReferenceCode, scope};
+	}
+
 	return await fetch(`${workflowBaseURL}/workflow-definitions/deploy`, {
-		body: JSON.stringify(requestBody),
+		body: JSON.stringify(body),
 		headers: HEADERS,
 		method: 'POST',
 	});
@@ -89,9 +105,27 @@ export function retrieveUsersBy(filterType: string, keywords: string[]) {
 	);
 }
 
-export async function saveDefinitionRequest(requestBody: WorkflowDefinition) {
+export async function saveDefinitionRequest(
+	requestBody: WorkflowDefinition,
+	groupExternalReferenceCode?: string,
+	scope?: string
+) {
+	const isFeatureFlagActive =
+		Liferay.FeatureFlags && Liferay.FeatureFlags['LPD-62272'];
+
+	let body:
+		| WorkflowDefinition
+		| (WorkflowDefinition & {
+				groupExternalReferenceCode: string;
+				scope: string;
+		  }) = requestBody;
+
+	if (scope === 'ai' && isFeatureFlagActive && groupExternalReferenceCode) {
+		body = {...requestBody, groupExternalReferenceCode, scope};
+	}
+
 	return await fetch(`${workflowBaseURL}/workflow-definitions/save`, {
-		body: JSON.stringify(requestBody),
+		body: JSON.stringify(body),
 		headers: HEADERS,
 		method: 'POST',
 	});

@@ -107,10 +107,10 @@ public class ServletDataImpl implements ServletData {
 						new ObjectValuePair<>(
 							KeywordResourceImpl.class, "patchKeywordBatch"));
 					put(
-						"mutation#createKeywordsCommonPage",
+						"mutation#createKeywordsCommonPageObject",
 						new ObjectValuePair<>(
 							KeywordResourceImpl.class,
-							"postKeywordsCommonPage"));
+							"postKeywordsCommonPageObject"));
 					put(
 						"mutation#updateKeywordBatch",
 						new ObjectValuePair<>(
@@ -130,10 +130,10 @@ public class ServletDataImpl implements ServletData {
 							TaxonomyCategoryResourceImpl.class,
 							"putTaxonomyCategoryBatch"));
 					put(
-						"mutation#createSiteTaxonomyVocabulariesCommonPage",
+						"mutation#createSiteTaxonomyVocabulariesCommonPageObject",
 						new ObjectValuePair<>(
 							TaxonomyVocabularyResourceImpl.class,
-							"postSiteTaxonomyVocabulariesCommonPage"));
+							"postSiteTaxonomyVocabulariesCommonPageObject"));
 
 					put(
 						"query#status",
@@ -167,3 +167,4 @@ public class ServletDataImpl implements ServletData {
 		_statusResourceComponentServiceObjects;
 
 }
+// LIFERAY-REST-BUILDER-HASH:689031697

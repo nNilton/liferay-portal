@@ -12,8 +12,10 @@ import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
+import com.liferay.portal.kernel.model.LayoutSetPrototype;
 import com.liferay.portal.kernel.model.UserGroup;
 import com.liferay.portal.kernel.service.GroupLocalService;
+import com.liferay.portal.kernel.service.LayoutSetPrototypeLocalService;
 import com.liferay.portal.kernel.service.UserGroupLocalService;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
@@ -133,6 +135,25 @@ public class GroupUtilTest {
 	}
 
 	@Test
+	public void testGetGroupIdWithLayoutSetPrototypeGroup() throws Exception {
+		LayoutSetPrototype layoutSetPrototype =
+			_layoutSetPrototypeLocalService.addLayoutSetPrototype(
+				TestPropsValues.getUserId(), TestPropsValues.getCompanyId(),
+				HashMapBuilder.put(
+					LocaleUtil.getDefault(), RandomTestUtil.randomString()
+				).build(),
+				null, true, true, ServiceContextTestUtil.getServiceContext());
+
+		Group group = layoutSetPrototype.getGroup();
+
+		Assert.assertEquals(
+			Long.valueOf(group.getGroupId()),
+			GroupUtil.getGroupId(
+				TestPropsValues.getCompanyId(),
+				String.valueOf(group.getGroupId()), _groupLocalService));
+	}
+
+	@Test
 	public void testGetSiteExternalReferenceCode() throws Exception {
 		Assert.assertNull(
 			GroupUtil.getSiteExternalReferenceCode(_depotEntry.getGroup()));
@@ -178,6 +199,9 @@ public class GroupUtilTest {
 
 	@Inject
 	private GroupLocalService _groupLocalService;
+
+	@Inject
+	private LayoutSetPrototypeLocalService _layoutSetPrototypeLocalService;
 
 	@Inject
 	private UserGroupLocalService _userGroupLocalService;

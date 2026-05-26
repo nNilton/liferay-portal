@@ -37,9 +37,6 @@ public interface PatcherConfiguration {
 	public String infoModifyTicketsListURL();
 
 	@Meta.AD(deflt = "", required = false)
-	public String jenkinsToken();
-
-	@Meta.AD(deflt = "", required = false)
 	public String jenkinsAdminUserName();
 
 	@Meta.AD(deflt = "", required = false)
@@ -52,10 +49,13 @@ public interface PatcherConfiguration {
 	public String jenkinsLoadBalancerBaseInvocationURL();
 
 	@Meta.AD(deflt = "", required = false)
-	public String jenkinsURL();
+	public boolean jenkinsLoadBalancerEnabled();
 
 	@Meta.AD(deflt = "", required = false)
-	public boolean jenkinsLoadBalancerEnabled();
+	public String jenkinsToken();
+
+	@Meta.AD(deflt = "", required = false)
+	public String jenkinsURL();
 
 	@Meta.AD(deflt = "", required = false)
 	public String jiraURL();
@@ -85,22 +85,19 @@ public interface PatcherConfiguration {
 	public String patcherLiferayPortalRepository();
 
 	@Meta.AD(deflt = "", required = false)
-	public String patcherPubsubCredentialFilePath();
-
-	@Meta.AD(deflt = "", required = false)
 	public String patcherPubsubProjectId();
 
 	@Meta.AD(deflt = "", required = false)
 	public String patcherPubsubSubscriptionId();
 
 	@Meta.AD(deflt = "", required = false)
+	public boolean patcherScanningEnabled();
+
+	@Meta.AD(deflt = "", required = false)
 	public String patcherSharedRequestAddFixPatcherType();
 
 	@Meta.AD(deflt = "", required = false)
 	public String patcherSharedRequestBuildPatchPatcherType();
-
-	@Meta.AD(deflt = "", required = false)
-	public boolean patcherScanningEnabled();
 
 	@Meta.AD(deflt = "", required = false)
 	public String patcherStatusBuildJenkinsPath();

@@ -1469,6 +1469,23 @@ public class GroupLocalServiceWrapper
 	}
 
 	@Override
+	public java.util.List<Group> getUserGroups(
+			com.liferay.portal.kernel.model.User user, boolean inherit)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _groupLocalService.getUserGroups(user, inherit);
+	}
+
+	@Override
+	public java.util.List<Group> getUserGroups(
+			com.liferay.portal.kernel.model.User user, boolean inherit,
+			int start, int end)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _groupLocalService.getUserGroups(user, inherit, start, end);
+	}
+
+	@Override
 	public int getUserGroupsCount(long userId) {
 		return _groupLocalService.getUserGroupsCount(userId);
 	}
@@ -1500,6 +1517,13 @@ public class GroupLocalServiceWrapper
 		java.util.List<com.liferay.portal.kernel.model.UserGroup> userGroups) {
 
 		return _groupLocalService.getUserGroupsRelatedGroups(userGroups);
+	}
+
+	@Override
+	public java.util.Map<Long, long[]> getUserInheritedSiteGroupIds(
+		long companyId) {
+
+		return _groupLocalService.getUserInheritedSiteGroupIds(companyId);
 	}
 
 	/**
@@ -1643,6 +1667,11 @@ public class GroupLocalServiceWrapper
 	@Override
 	public boolean isLiveGroupActive(Group group) {
 		return _groupLocalService.isLiveGroupActive(group);
+	}
+
+	@Override
+	public boolean isMaintenanceMode(Group group) {
+		return _groupLocalService.isMaintenanceMode(group);
 	}
 
 	/**
@@ -2868,3 +2897,4 @@ public class GroupLocalServiceWrapper
 	private GroupLocalService _groupLocalService;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:484951056

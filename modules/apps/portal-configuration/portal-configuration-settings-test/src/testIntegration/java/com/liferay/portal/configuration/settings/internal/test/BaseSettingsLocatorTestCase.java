@@ -145,6 +145,17 @@ public abstract class BaseSettingsLocatorTestCase {
 			HashMapDictionaryBuilder.<String, Object>put(
 				scope.getPropertyKey(), scopePK
 			).put(
+				ExtendedObjectClassDefinition.Scope.COMPANY.getPropertyKey(),
+				() -> {
+					if (scope.equals(
+							ExtendedObjectClassDefinition.Scope.GROUP)) {
+
+						return companyId;
+					}
+
+					return null;
+				}
+			).put(
 				key, value
 			).put(
 				propertyKey,
@@ -229,11 +240,6 @@ public abstract class BaseSettingsLocatorTestCase {
 	private static final Set<String> _configurationPids = new HashSet<>();
 	private static final Map<String, String> _factoryConfigurationPids =
 		new HashMap<>();
-
-	@Inject
-	private static PortletPreferencesLocalService
-		_portletPreferencesLocalService;
-
 	private static SafeCloseable _safeCloseable;
 
 	@Inject
@@ -245,5 +251,8 @@ public abstract class BaseSettingsLocatorTestCase {
 	@DeleteAfterTestRun
 	private final List<PortletPreferences> _portletPreferencesList =
 		new ArrayList<>();
+
+	@Inject
+	private PortletPreferencesLocalService _portletPreferencesLocalService;
 
 }

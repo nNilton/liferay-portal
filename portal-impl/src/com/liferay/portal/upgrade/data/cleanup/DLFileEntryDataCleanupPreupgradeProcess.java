@@ -36,27 +36,34 @@ public class DLFileEntryDataCleanupPreupgradeProcess
 
 	@Override
 	protected void doUpgrade() throws Exception {
+		DataCleanupPreupgradeProcess dlFileEntryDataCleanupPreupgradeProcess =
+			_getDLFileEntryDataCleanupPreupgradeProcess();
 		DataCleanupPreupgradeProcess
 			dlFileEntryEmptyNameDataCleanupPreupgradeProcess =
 				_getDLFileEntryEmptyNameDataCleanupPreupgradeProcess();
-
-		DataCleanupPreupgradeProcess dlFileEntryDataCleanupPreupgradeProcess =
-			_getDLFileEntryDataCleanupPreupgradeProcess();
+		DataCleanupPreupgradeProcess
+			dlFileEntryPointingDLFileVersionDataCleanupPreupgradeProcess =
+				_getDLFileEntryPointingDLFileVersionDataCleanupPreupgradeProcess();
 
 		Map<DataCleanupPreupgradeProcess, List<DataCleanupPreupgradeProcess>>
-			dataCleanupPreupgradeProcessMap =
+			dataCleanupPreupgradeProcessesMap =
 				LinkedHashMapBuilder.
 					<DataCleanupPreupgradeProcess,
 					 List<DataCleanupPreupgradeProcess>>put(
 						dlFileEntryDataCleanupPreupgradeProcess,
 						dependsOn(
-							dlFileEntryEmptyNameDataCleanupPreupgradeProcess)
+							dlFileEntryEmptyNameDataCleanupPreupgradeProcess,
+							dlFileEntryPointingDLFileVersionDataCleanupPreupgradeProcess)
 					).put(
 						dlFileEntryEmptyNameDataCleanupPreupgradeProcess,
 						dependsOn()
 					).put(
 						_getDLFileEntryMetadataDataCleanupPreupgradeProcess(),
 						dependsOn(dlFileEntryDataCleanupPreupgradeProcess)
+					).put(
+						dlFileEntryPointingDLFileVersionDataCleanupPreupgradeProcess,
+						dependsOn(
+							dlFileEntryEmptyNameDataCleanupPreupgradeProcess)
 					).put(
 						_getDLFileShortcutDataCleanupPreupgradeProcess(),
 						dependsOn(dlFileEntryDataCleanupPreupgradeProcess)
@@ -67,7 +74,7 @@ public class DLFileEntryDataCleanupPreupgradeProcess
 
 		List<DataCleanupPreupgradeProcess> dataCleanupPreupgradeProcesses =
 			getSortedDataCleanupPreupgradeProcesses(
-				dataCleanupPreupgradeProcessMap);
+				dataCleanupPreupgradeProcessesMap);
 
 		for (DataCleanupPreupgradeProcess dataCleanupPreupgradeProcess :
 				dataCleanupPreupgradeProcesses) {
@@ -157,10 +164,11 @@ public class DLFileEntryDataCleanupPreupgradeProcess
 					"ClassName_ where value in ('",
 					DLFileEntryMetadata.class.getName(), "', '",
 					RawMetadataProcessor.class.getName(), "'))"));
+
 			ResultSet resultSet = preparedStatement.executeQuery()) {
 
 			while (resultSet.next()) {
-				structureIds.add(resultSet.getString(1));
+				structureIds.add(resultSet.getString("structureId"));
 			}
 		}
 
@@ -176,6 +184,15 @@ public class DLFileEntryDataCleanupPreupgradeProcess
 					String.join(", ", structureIds), ")"),
 				"classPK", "DDMStorageLink", "DDMStorageId",
 				"DLFileEntryMetadata"));
+	}
+
+	private DataCleanupPreupgradeProcess
+		_getDLFileEntryPointingDLFileVersionDataCleanupPreupgradeProcess() {
+
+		return new DataCleanupPreupgradeProcess(
+			new TableOrphanReferencesDataCleanupPreupgradeProcess(
+				null, null, "fileEntryId", "DLFileEntry", "fileEntryId",
+				"DLFileVersion"));
 	}
 
 	private DataCleanupPreupgradeProcess

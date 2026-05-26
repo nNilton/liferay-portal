@@ -106,21 +106,21 @@ public class RoleServiceUtil {
 
 	public static List<Role> getGroupRolesAndTeamRoles(
 		long companyId, String name, List<String> excludedNames, String title,
-		String description, int[] types, long excludedTeamRoleId,
-		long teamGroupId, int start, int end) {
+		String description, int[] types, String subtype,
+		long excludedTeamRoleId, long teamGroupId, int start, int end) {
 
 		return getService().getGroupRolesAndTeamRoles(
-			companyId, name, excludedNames, title, description, types,
+			companyId, name, excludedNames, title, description, types, subtype,
 			excludedTeamRoleId, teamGroupId, start, end);
 	}
 
 	public static int getGroupRolesAndTeamRolesCount(
 		long companyId, String name, List<String> excludedNames, String title,
-		String description, int[] types, long excludedTeamRoleId,
-		long teamGroupId) {
+		String description, int[] types, String subtype,
+		long excludedTeamRoleId, long teamGroupId) {
 
 		return getService().getGroupRolesAndTeamRolesCount(
-			companyId, name, excludedNames, title, description, types,
+			companyId, name, excludedNames, title, description, types, subtype,
 			excludedTeamRoleId, teamGroupId);
 	}
 
@@ -184,9 +184,7 @@ public class RoleServiceUtil {
 		return getService().getRoles(type, subtype);
 	}
 
-	public static List<Role> getRoles(long companyId, int[] types)
-		throws PortalException {
-
+	public static List<Role> getRoles(long companyId, int[] types) {
 		return getService().getRoles(companyId, types);
 	}
 
@@ -363,3 +361,4 @@ public class RoleServiceUtil {
 	private static volatile RoleService _service;
 
 }
+// LIFERAY-SERVICE-BUILDER-HASH:-1509603337

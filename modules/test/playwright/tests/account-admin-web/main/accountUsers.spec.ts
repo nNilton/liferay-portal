@@ -7,13 +7,13 @@ import {Page, expect, mergeTests} from '@playwright/test';
 
 import {accountsPagesTest} from '../../../fixtures/accountsPagesTest';
 import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
-import {applicationsMenuPageTest} from '../../../fixtures/applicationsMenuPageTest';
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
 import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {serverAdministrationPageTest} from '../../../fixtures/serverAdministrationPageTest';
 import {usersAndOrganizationsPagesTest} from '../../../fixtures/usersAndOrganizationsPagesTest';
 import {virtualInstancesPagesTest} from '../../../fixtures/virtualInstancesPagesTest';
+import {liferayConfig} from '../../../liferay.config';
 import {AccountUserSelectorPage} from '../../../pages/account-admin-web/AccountUserSelectorPage';
 import {AccountUsersPage} from '../../../pages/account-admin-web/AccountUsersPage';
 import {AccountsPage} from '../../../pages/account-admin-web/AccountsPage';
@@ -27,11 +27,9 @@ import {waitForAlert} from '../../../utils/waitForAlert';
 export const test = mergeTests(
 	accountsPagesTest,
 	apiHelpersTest,
-	applicationsMenuPageTest,
 	dataApiHelpersTest,
 	featureFlagsTest({
 		'LPD-35443': {enabled: true},
-		'LPD-35914': {enabled: true},
 	}),
 	loginTest(),
 	serverAdministrationPageTest,
@@ -950,7 +948,9 @@ test(
 			await expect(async () => {
 				await accountsPage.accountsTable.newButton.click();
 
-				await expect(editAccountPage.accountNameInput).toBeVisible();
+				await expect(editAccountPage.accountNameInput).toBeVisible({
+					timeout: 1000,
+				});
 			}).toPass();
 
 			await editAccountPage.createAccount(apiHelpers, {
@@ -1637,7 +1637,7 @@ test(
 			);
 
 			newPage = await browser.newPage({
-				baseURL: `http://${DEFAULT_VIRTUAL_INSTANCE_NAME}:8080`,
+				baseURL: `http://${DEFAULT_VIRTUAL_INSTANCE_NAME}:${liferayConfig.environment.port}`,
 			});
 
 			accountUserSelectorPage = new AccountUserSelectorPage(newPage);

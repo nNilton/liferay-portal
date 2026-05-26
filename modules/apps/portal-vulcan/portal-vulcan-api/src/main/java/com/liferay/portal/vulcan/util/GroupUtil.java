@@ -11,6 +11,10 @@ import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.util.GetterUtil;
 
+import java.io.Serializable;
+
+import java.util.Map;
+
 /**
  * @author Javier Gamarra
  */
@@ -65,6 +69,22 @@ public class GroupUtil {
 		return null;
 	}
 
+	public static String getScopeKey(Map<String, Serializable> parameters) {
+		if (parameters.containsKey("scopeKey")) {
+			return String.valueOf(parameters.get("scopeKey"));
+		}
+
+		if (parameters.containsKey("siteExternalReferenceCode")) {
+			return String.valueOf(parameters.get("siteExternalReferenceCode"));
+		}
+
+		if (parameters.containsKey("siteId")) {
+			return String.valueOf(parameters.get("siteId"));
+		}
+
+		return null;
+	}
+
 	public static String getSiteExternalReferenceCode(Group group) {
 		if (group.isDepot()) {
 			return null;
@@ -84,7 +104,8 @@ public class GroupUtil {
 	private static boolean _checkGroup(Group group) {
 		if ((group != null) &&
 			(_isDepotOrSite(group) || _isDepotOrSite(group.getLiveGroup()) ||
-			 group.isCMS() || group.isUserGroup())) {
+			 group.isCMS() || group.isLayoutSetPrototype() ||
+			 group.isUserGroup())) {
 
 			return true;
 		}

@@ -10,11 +10,13 @@ import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.util.DLURLHelper;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -23,10 +25,13 @@ import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ContentTypes;
+import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
+import com.liferay.portal.util.PortalImpl;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -95,7 +100,9 @@ public class DLURLHelperTest {
 			StringPool.BLANK, true, true);
 
 		Assert.assertTrue(
-			downloadURL, downloadURL.startsWith("http://localhost:8080"));
+			downloadURL,
+			downloadURL.startsWith(
+				"http://localhost:" + PortalUtil.getPortalServerPort(false)));
 	}
 
 	@Test
@@ -118,7 +125,9 @@ public class DLURLHelperTest {
 			StringPool.BLANK, true, false);
 
 		Assert.assertFalse(
-			downloadURL, downloadURL.startsWith("http://localhost:8080"));
+			downloadURL,
+			downloadURL.startsWith(
+				"http://localhost:" + PortalUtil.getPortalServerPort(false)));
 	}
 
 	@Test
@@ -165,7 +174,21 @@ public class DLURLHelperTest {
 			StringPool.BLANK, false, true);
 
 		Assert.assertTrue(
-			downloadURL, downloadURL.startsWith("http://localhost:8080"));
+			downloadURL,
+			downloadURL.startsWith(
+				"http://localhost:" + PortalUtil.getPortalServerPort(false)));
+	}
+
+	@Test
+	public void testGetPreviewURL() {
+		String randomFriendlyURL = RandomTestUtil.randomString();
+
+		Assert.assertEquals(
+			StringBundler.concat(
+				"/documents/d", _group.getFriendlyURL(), "/",
+				randomFriendlyURL),
+			_dlURLHelper.getPreviewURL(
+				randomFriendlyURL, _group.getFriendlyURL()));
 	}
 
 	@Test
@@ -206,7 +229,9 @@ public class DLURLHelperTest {
 			StringPool.BLANK, false, true);
 
 		Assert.assertTrue(
-			previewURL, previewURL.startsWith("http://localhost:8080"));
+			previewURL,
+			previewURL.startsWith(
+				"http://localhost:" + PortalUtil.getPortalServerPort(false)));
 	}
 
 	@Test
@@ -229,7 +254,9 @@ public class DLURLHelperTest {
 			StringPool.BLANK, true, false);
 
 		Assert.assertFalse(
-			previewURL, previewURL.startsWith("http://localhost:8080"));
+			previewURL,
+			previewURL.startsWith(
+				"http://localhost:" + PortalUtil.getPortalServerPort(false)));
 	}
 
 	@Test
@@ -275,7 +302,9 @@ public class DLURLHelperTest {
 			StringPool.BLANK, false, true);
 
 		Assert.assertTrue(
-			previewURL, previewURL.startsWith("http://localhost:8080"));
+			previewURL,
+			previewURL.startsWith(
+				"http://localhost:" + PortalUtil.getPortalServerPort(false)));
 	}
 
 	@Test
@@ -327,15 +356,51 @@ public class DLURLHelperTest {
 		Assert.assertTrue(previewURL, previewURL.contains("version=2"));
 	}
 
+	@Test
+	public void testGetPreviewURLWithContextPath() {
+		String contextPath = "/" + RandomTestUtil.randomString();
+
+		PortalImpl portalImpl = new PortalImpl() {
+
+			@Override
+			public String getPathContext() {
+				return contextPath;
+			}
+
+		};
+
+		Portal originalPortal = ReflectionTestUtil.getAndSetFieldValue(
+			_dlURLHelper, "_portal", portalImpl);
+
+		String randomFriendlyURL = RandomTestUtil.randomString();
+
+		Assert.assertEquals(
+			StringBundler.concat(
+				contextPath, "/documents/d", _group.getFriendlyURL(), "/",
+				randomFriendlyURL),
+			_dlURLHelper.getPreviewURL(
+				randomFriendlyURL, _group.getFriendlyURL()));
+
+		ReflectionTestUtil.setFieldValue(
+			_dlURLHelper, "_portal", originalPortal);
+	}
+
 	private ThemeDisplay _getThemeDisplay() {
 		ThemeDisplay themeDisplay = new ThemeDisplay();
 
-		themeDisplay.setPortalURL("http://localhost:8080");
+		int portalServerPort = PortalUtil.getPortalServerPort(false);
+
+		themeDisplay.setPortalURL("http://localhost:" + portalServerPort);
+
 		themeDisplay.setRequest(new MockHttpServletRequest());
-		themeDisplay.setScopeGroupId(_group.getGroupId());
+
+		long groupId = _group.getGroupId();
+
+		themeDisplay.setScopeGroupId(groupId);
+
 		themeDisplay.setServerName("localhost");
-		themeDisplay.setServerPort(8080);
-		themeDisplay.setSiteGroupId(_group.getGroupId());
+		themeDisplay.setServerPort(portalServerPort);
+		themeDisplay.setSiteGroupId(groupId);
 		themeDisplay.setUser(_user);
 
 		return themeDisplay;

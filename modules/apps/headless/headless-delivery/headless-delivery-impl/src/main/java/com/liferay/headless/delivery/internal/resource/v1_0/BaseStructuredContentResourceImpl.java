@@ -5,6 +5,7 @@
 
 package com.liferay.headless.delivery.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.headless.delivery.dto.v1_0.DefaultValue;
 import com.liferay.headless.delivery.dto.v1_0.Rating;
 import com.liferay.headless.delivery.dto.v1_0.StructuredContent;
@@ -2803,9 +2804,53 @@ public abstract class BaseStructuredContentResourceImpl
 
 		UnsafeFunction<StructuredContent, StructuredContent, Exception>
 			structuredContentUnsafeFunction = structuredContent -> {
-				deleteStructuredContent(structuredContent.getId());
+				if (structuredContent.getId() != null) {
+					try {
+						deleteStructuredContent(structuredContent.getId());
 
-				return structuredContent;
+						return structuredContent;
+					}
+					catch (Exception exception) {
+						if (structuredContent.getExternalReferenceCode() !=
+								null) {
+
+							if (parameters.containsKey("assetLibraryId")) {
+								deleteAssetLibraryStructuredContentByExternalReferenceCode(
+									(Long)parameters.get("assetLibraryId"),
+									structuredContent.
+										getExternalReferenceCode());
+
+								return structuredContent;
+							}
+
+							if (parameters.containsKey("siteId")) {
+								deleteSiteStructuredContentByExternalReferenceCode(
+									(Long)parameters.get("siteId"),
+									structuredContent.
+										getExternalReferenceCode());
+
+								return structuredContent;
+							}
+						}
+					}
+				}
+				else if (parameters.containsKey("assetLibraryId")) {
+					deleteAssetLibraryStructuredContentByExternalReferenceCode(
+						(Long)parameters.get("assetLibraryId"),
+						structuredContent.getExternalReferenceCode());
+
+					return structuredContent;
+				}
+				else if (parameters.containsKey("siteId")) {
+					deleteSiteStructuredContentByExternalReferenceCode(
+						(Long)parameters.get("siteId"),
+						structuredContent.getExternalReferenceCode());
+
+					return structuredContent;
+				}
+
+				throw new UnsupportedOperationException(
+					"Unable to delete by external reference code or ID");
 			};
 
 		if (contextBatchUnsafeBiConsumer != null) {
@@ -2901,6 +2946,15 @@ public abstract class BaseStructuredContentResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -3709,3 +3763,4 @@ public abstract class BaseStructuredContentResourceImpl
 		LogFactoryUtil.getLog(BaseStructuredContentResourceImpl.class);
 
 }
+// LIFERAY-REST-BUILDER-HASH:261856597

@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 
 /**
  * @author Peter Yoo
@@ -251,7 +251,7 @@ public class JenkinsConsoleTextLoader {
 
 						line = matcher.replaceAll("$1") + "\n";
 
-						line = StringEscapeUtils.unescapeHtml(line);
+						line = StringEscapeUtils.unescapeHtml4(line);
 
 						JenkinsResultsParserUtil.appendToCacheFile(
 							consoleLogFileKey, line);
@@ -277,10 +277,6 @@ public class JenkinsConsoleTextLoader {
 											" bytes.");
 
 									System.out.println(message);
-
-									NotificationUtil.sendEmail(
-										message, "jenkins", "Large console log",
-										"qa-slave-verify-fail@liferay.com");
 								}
 							}
 						}

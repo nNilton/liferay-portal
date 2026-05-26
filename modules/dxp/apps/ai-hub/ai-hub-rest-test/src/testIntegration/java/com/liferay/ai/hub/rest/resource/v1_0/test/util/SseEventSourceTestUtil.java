@@ -9,6 +9,7 @@ import com.liferay.ai.hub.rest.resource.v1_0.util.SseUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.Base64;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 
 import java.io.BufferedReader;
@@ -41,6 +42,19 @@ public class SseEventSourceTestUtil {
 			String uri)
 		throws Exception {
 
+		String credentials =
+			"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD;
+
+		return open(
+			"Basic " + Base64.encode(credentials.getBytes()), countDownLatches,
+			lines, uri);
+	}
+
+	public static String open(
+			String authorization, List<CountDownLatch> countDownLatches,
+			List<String> lines, String uri)
+		throws Exception {
+
 		CountDownLatch openConnectionCountDownLatch = new CountDownLatch(2);
 
 		HttpClient httpClient = HttpClient.newBuilder(
@@ -48,19 +62,18 @@ public class SseEventSourceTestUtil {
 			Duration.ofSeconds(5)
 		).build();
 
-		String credentials =
-			"test@liferay.com:" + PropsValues.DEFAULT_ADMIN_PASSWORD;
-
 		CompletableFuture<HttpResponse<InputStream>> completableFuture =
 			httpClient.sendAsync(
 				HttpRequest.newBuilder(
 				).header(
 					"Accept", "text/event-stream"
 				).header(
-					"Authorization",
-					"Basic " + Base64.encode(credentials.getBytes())
+					"Authorization", authorization
 				).uri(
-					URI.create("http://localhost:8080/o/ai-hub/v1.0/" + uri)
+					URI.create(
+						"http://localhost:" +
+							PortalUtil.getPortalServerPort(false) +
+								"/o/ai-hub/v1.0/" + uri)
 				).GET(
 				).build(),
 				HttpResponse.BodyHandlers.ofInputStream());
@@ -68,6 +81,7 @@ public class SseEventSourceTestUtil {
 		completableFuture.thenAccept(
 			response -> {
 				try (InputStream inputStream = response.body();
+
 					BufferedReader bufferedReader = new BufferedReader(
 						new InputStreamReader(inputStream))) {
 

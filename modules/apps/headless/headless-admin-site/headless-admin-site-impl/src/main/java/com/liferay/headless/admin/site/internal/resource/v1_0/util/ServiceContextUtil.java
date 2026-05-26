@@ -7,26 +7,24 @@ package com.liferay.headless.admin.site.internal.resource.v1_0.util;
 
 import com.liferay.asset.kernel.model.AssetCategory;
 import com.liferay.asset.kernel.service.AssetCategoryServiceUtil;
+import com.liferay.exportimport.kernel.staging.MergeLayoutPrototypesThreadLocal;
 import com.liferay.headless.admin.site.dto.v1_0.ContentPageSpecification;
-import com.liferay.headless.admin.site.dto.v1_0.ItemExternalReference;
-import com.liferay.headless.admin.site.dto.v1_0.PageSettings;
+import com.liferay.headless.admin.site.dto.v1_0.PageExperience;
 import com.liferay.headless.admin.site.dto.v1_0.PageSpecification;
-import com.liferay.headless.admin.site.dto.v1_0.WidgetPageSettings;
+import com.liferay.headless.admin.site.dto.v1_0.ParentTaxonomyCategory;
+import com.liferay.headless.admin.site.dto.v1_0.ParentTaxonomyVocabulary;
+import com.liferay.headless.admin.site.dto.v1_0.TaxonomyCategoryBrief;
 import com.liferay.headless.admin.site.internal.util.LogUtil;
 import com.liferay.headless.common.spi.service.context.ServiceContextBuilder;
+import com.liferay.headless.common.spi.util.GroupUtil;
 import com.liferay.layout.page.template.constants.LayoutPageTemplateEntryTypeConstants;
-import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
-import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalServiceUtil;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
-import com.liferay.portal.kernel.model.LayoutPrototype;
 import com.liferay.portal.kernel.model.LayoutSet;
 import com.liferay.portal.kernel.model.LayoutSetPrototype;
-import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
 import com.liferay.portal.kernel.service.GroupServiceUtil;
 import com.liferay.portal.kernel.service.LayoutLocalServiceUtil;
-import com.liferay.portal.kernel.service.LayoutPrototypeLocalServiceUtil;
 import com.liferay.portal.kernel.service.LayoutSetLocalServiceUtil;
 import com.liferay.portal.kernel.service.LayoutSetPrototypeLocalServiceUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
@@ -47,11 +45,10 @@ import java.util.Objects;
 public class ServiceContextUtil {
 
 	public static ServiceContext createServiceContext(
-			ItemExternalReference[] assetCategoriesItemExternalReferences,
 			long companyId, Date createDate, long groupId,
 			HttpServletRequest httpServletRequest, String[] keywords,
-			Date modifiedDate, long userId, String uuid,
-			PageSettings pageSettings)
+			Date modifiedDate, TaxonomyCategoryBrief[] taxonomyCategoryBriefs,
+			long userId, String uuid)
 		throws Exception {
 
 		ServiceContext serviceContext = ServiceContextBuilder.create(
@@ -59,61 +56,13 @@ public class ServiceContextUtil {
 		).build();
 
 		serviceContext.setAssetCategoryIds(
-			_getAssetCategoryIds(
-				groupId, assetCategoriesItemExternalReferences));
+			_getAssetCategoryIds(groupId, taxonomyCategoryBriefs));
 		serviceContext.setAssetTagNames(keywords);
 		serviceContext.setCompanyId(companyId);
 		serviceContext.setCreateDate(createDate);
 		serviceContext.setModifiedDate(modifiedDate);
 		serviceContext.setUserId(userId);
 		serviceContext.setUuid(uuid);
-
-		if (pageSettings instanceof WidgetPageSettings) {
-			WidgetPageSettings widgetPageSettings =
-				(WidgetPageSettings)pageSettings;
-
-			serviceContext.setAttribute(
-				"layoutPrototypeLinkEnabled",
-				widgetPageSettings.getInheritChanges());
-
-			ItemExternalReference itemExternalReference =
-				widgetPageSettings.getWidgetPageTemplateReference();
-
-			if (itemExternalReference != null) {
-				long scopeGroupId = groupId;
-
-				Scope scope = itemExternalReference.getScope();
-
-				if (scope != null) {
-					Group group =
-						GroupLocalServiceUtil.getGroupByExternalReferenceCode(
-							scope.getExternalReferenceCode(), companyId);
-
-					scopeGroupId = group.getGroupId();
-				}
-
-				LayoutPageTemplateEntry layoutPageTemplateEntry =
-					LayoutPageTemplateEntryLocalServiceUtil.
-						fetchLayoutPageTemplateEntryByExternalReferenceCode(
-							itemExternalReference.getExternalReferenceCode(),
-							scopeGroupId);
-
-				if (layoutPageTemplateEntry == null) {
-					throw new UnsupportedOperationException();
-				}
-
-				LayoutPrototype layoutPrototype =
-					LayoutPrototypeLocalServiceUtil.fetchLayoutPrototype(
-						layoutPageTemplateEntry.getLayoutPrototypeId());
-
-				if (layoutPrototype == null) {
-					throw new UnsupportedOperationException();
-				}
-
-				serviceContext.setAttribute(
-					"layoutPrototypeUuid", layoutPrototype.getUuid());
-			}
-		}
 
 		return serviceContext;
 	}
@@ -130,16 +79,85 @@ public class ServiceContextUtil {
 		return serviceContext;
 	}
 
-	public static void setLayoutSetPrototypeLayoutERC(
-			long groupId, PageSpecification pageSpecification,
+	public static ServiceContext createServiceContext(
+		long groupId, HttpServletRequest httpServletRequest, long userId,
+		String uuid) {
+
+		ServiceContext serviceContext = createServiceContext(
+			groupId, httpServletRequest, userId);
+
+		serviceContext.setUuid(uuid);
+
+		return serviceContext;
+	}
+
+	public static void setContentPageSpecificationsAttributes(
+			ContentPageSpecification draftContentPageSpecification,
+			long groupId,
+			ContentPageSpecification publishedContentPageSpecification,
 			ServiceContext serviceContext)
 		throws Exception {
 
-		if (Validator.isNull(
-				pageSpecification.
-					getSiteTemplatePageSpecificationExternalReferenceCode())) {
+		PageExperience defaultPageExperience =
+			PageExperienceUtil.getDefaultPageExperience(
+				publishedContentPageSpecification.getPageExperiences());
 
-			return;
+		serviceContext.setAttribute(
+			"defaultSegmentsExperienceExternalReferenceCode",
+			defaultPageExperience.getExternalReferenceCode());
+		serviceContext.setAttribute(
+			"defaultSegmentsExperienceUuid", defaultPageExperience.getUuid());
+
+		defaultPageExperience = PageExperienceUtil.getDefaultPageExperience(
+			draftContentPageSpecification.getPageExperiences());
+
+		serviceContext.setAttribute(
+			"draftLayoutDefaultSegmentsExperienceExternalReferenceCode",
+			defaultPageExperience.getExternalReferenceCode());
+		serviceContext.setAttribute(
+			"draftLayoutDefaultSegmentsExperienceUuid",
+			defaultPageExperience.getUuid());
+
+		serviceContext.setAttribute(
+			"draftLayoutExternalReferenceCode",
+			draftContentPageSpecification.getExternalReferenceCode());
+
+		setLayoutSetPrototypeLayoutERC(
+			groupId, draftContentPageSpecification, serviceContext,
+			draftContentPageSpecification.
+				getSiteTemplatePageSpecificationExternalReferenceCode());
+		setLayoutSetPrototypeLayoutERC(
+			groupId, publishedContentPageSpecification, serviceContext,
+			publishedContentPageSpecification.
+				getSiteTemplatePageSpecificationExternalReferenceCode());
+
+		if (Objects.equals(
+				publishedContentPageSpecification.getStatus(),
+				PageSpecification.Status.APPROVED)) {
+
+			serviceContext.setAttribute("published", Boolean.TRUE.toString());
+		}
+		else {
+			serviceContext.setAttribute("published", Boolean.FALSE.toString());
+		}
+	}
+
+	public static void setLayoutSetPrototypeLayoutERC(
+			long groupId, PageSpecification pageSpecification,
+			ServiceContext serviceContext,
+			String siteTemplatePageSpecificationExternalReferenceCode)
+		throws Exception {
+
+		if (Validator.isNull(
+				siteTemplatePageSpecificationExternalReferenceCode)) {
+
+			if (MergeLayoutPrototypesThreadLocal.isInProgress()) {
+				siteTemplatePageSpecificationExternalReferenceCode =
+					pageSpecification.getExternalReferenceCode();
+			}
+			else {
+				return;
+			}
 		}
 
 		boolean privateLayout = Boolean.FALSE;
@@ -174,7 +192,6 @@ public class ServiceContextUtil {
 						getDraftContentPageSpecificationExternalReferenceCode())) {
 
 				draftLayout = Boolean.TRUE;
-				privateLayout = Boolean.TRUE;
 			}
 		}
 
@@ -190,10 +207,6 @@ public class ServiceContextUtil {
 				getLayoutSetPrototypeByUuidAndCompanyId(
 					layoutSet.getLayoutSetPrototypeUuid(),
 					layoutSet.getCompanyId());
-
-		String siteTemplatePageSpecificationExternalReferenceCode =
-			pageSpecification.
-				getSiteTemplatePageSpecificationExternalReferenceCode();
 
 		Layout layoutSetPrototypeLayout =
 			LayoutLocalServiceUtil.fetchLayoutByExternalReferenceCode(
@@ -214,21 +227,21 @@ public class ServiceContextUtil {
 	}
 
 	private static long[] _getAssetCategoryIds(
-			long groupId, ItemExternalReference[] itemExternalReferences)
+			long groupId, TaxonomyCategoryBrief[] taxonomyCategoryBriefs)
 		throws Exception {
 
-		if (ArrayUtil.isEmpty(itemExternalReferences)) {
+		if (ArrayUtil.isEmpty(taxonomyCategoryBriefs)) {
 			return new long[0];
 		}
 
 		Group group = GroupServiceUtil.getGroup(groupId);
 
 		return TransformUtil.unsafeTransformToLongArray(
-			ListUtil.fromArray(itemExternalReferences),
-			itemExternalReference -> {
+			ListUtil.fromArray(taxonomyCategoryBriefs),
+			taxonomyCategoryBrief -> {
 				long scopeGroupId = groupId;
 
-				Scope scope = itemExternalReference.getScope();
+				Scope scope = taxonomyCategoryBrief.getScope();
 
 				if (scope != null) {
 					scopeGroupId = GroupUtil.getGroupId(
@@ -236,15 +249,26 @@ public class ServiceContextUtil {
 						scope.getExternalReferenceCode());
 				}
 
-				AssetCategory assetCategory =
-					AssetCategoryServiceUtil.
-						fetchCategoryByExternalReferenceCode(
-							itemExternalReference.getExternalReferenceCode(),
-							scopeGroupId);
+				String parentTaxonomyCategoryExternalReferenceCode = null;
 
-				if (assetCategory == null) {
-					throw new UnsupportedOperationException();
+				ParentTaxonomyVocabulary parentTaxonomyVocabulary =
+					taxonomyCategoryBrief.getParentTaxonomyVocabulary();
+
+				ParentTaxonomyCategory parentTaxonomyCategory =
+					taxonomyCategoryBrief.getParentTaxonomyCategory();
+
+				if (parentTaxonomyCategory != null) {
+					parentTaxonomyCategoryExternalReferenceCode =
+						parentTaxonomyCategory.getExternalReferenceCode();
 				}
+
+				AssetCategory assetCategory =
+					AssetCategoryServiceUtil.getOrAddEmptyCategoryWithAncestors(
+						taxonomyCategoryBrief.
+							getTaxonomyCategoryExternalReferenceCode(),
+						scopeGroupId,
+						parentTaxonomyCategoryExternalReferenceCode,
+						parentTaxonomyVocabulary.getExternalReferenceCode());
 
 				return assetCategory.getCategoryId();
 			});

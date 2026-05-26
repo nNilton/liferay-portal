@@ -3,14 +3,16 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {Atom} from '@liferay/frontend-js-state-web';
 import {ModalStatus} from 'frontend-js-components-web';
 import React from 'react';
 
-import {ISnapshot} from '../views/ViewsContext';
+import {IInlineNotificationComponent} from '../inline_notification/InlineNotification';
+import {EEntityFieldType} from '../management_bar/controls/filters/utils/types';
+import {ISnapshots} from '../views/ViewsContext';
 
 export declare function FrontendDataSet({
 	actionParameterName,
-	activeViewSettings,
 	apiURL,
 	appURL,
 	bulkActions,
@@ -33,6 +35,7 @@ export declare function FrontendDataSet({
 	nestedItemsReferenceKey,
 	onActionDropdownItemClick,
 	onBulkActionItemClick,
+	onItemsPropSearch,
 	overrideEmptyResultView,
 	pagination,
 	portletId,
@@ -91,6 +94,7 @@ export interface IInlineEditingSettings {
 }
 
 export interface IActionsDropdown extends IBaseActions {
+	accessibleName?: string;
 	loading: boolean;
 	menuActive?: boolean;
 	onClick: Function;
@@ -104,6 +108,30 @@ export interface IBaseActions {
 	itemId: number | string;
 }
 
+export interface IBulkActionItem {
+	data?: {
+		highlighted?: boolean;
+		id?: string;
+		size?: string;
+	};
+	href?: string;
+	icon?: string;
+	isVisible?: ({
+		activeFilters,
+		activeSearch,
+		allItemsSelectedActive,
+		selectedItems,
+	}: {
+		activeFilters?: Array<IBaseFilterState>;
+		activeSearch?: ISearch;
+		allItemsSelectedActive?: boolean;
+		selectedItems?: Array<any>;
+	}) => boolean;
+	label?: string;
+	method?: string;
+	slug?: string;
+	target?: 'modal' | 'sidePanel';
+}
 export interface ICreationActionItem {
 	data?: {
 		disableHeader?: boolean;
@@ -128,11 +156,13 @@ export interface ICreationActionItem {
 }
 
 export enum EItemActionsType {
+	CONTEXTUAL = 'contextual',
 	GROUP = 'group',
 	ITEM = 'item',
 }
 
 export interface IItemsActions {
+	accessibleName?: string;
 	className?: string;
 	data?: IItemActionsData;
 	disabled?: boolean;
@@ -155,6 +185,7 @@ export interface IItemsActions {
 		| 'link'
 		| 'modal'
 		| 'modal-permissions'
+		| 'modal-workflow-transition'
 		| 'sidePanel'
 		| 'event';
 	type?: EItemActionsType | `${EItemActionsType}`;
@@ -204,6 +235,7 @@ export interface IField {
 	truncate?: boolean;
 }
 export interface ITableSchema {
+	accessibleNameField?: string;
 	fields: Array<IField>;
 }
 
@@ -226,6 +258,7 @@ export interface IDynamicCardLabelSchema extends IBaseCardLabelSchema {
 export type ICardLabelSchema = IStaticCardLabelSchema | IDynamicCardLabelSchema;
 
 export interface ICardSchema {
+	accessibleNameField?: string;
 	description: string;
 	image?: string;
 	labels?: ICardLabelSchema[];
@@ -239,17 +272,14 @@ export interface IHeader {
 	title?: string;
 }
 
-export interface IListTitleRenderer {
-	component: ({itemData}: {itemData: any}) => JSX.Element;
-}
-
 export interface IListSchema {
+	accessibleNameField?: string;
 	description: string;
 	image?: string;
 	sticker?: string;
 	symbol?: string;
 	title: string;
-	titleRenderer: IListTitleRenderer;
+	titleRendererName: string;
 	tooltip?: string;
 }
 
@@ -261,10 +291,12 @@ export interface IView {
 	contentRendererClientExtension?: boolean;
 	contentRendererModuleURL?: string;
 	default?: boolean;
+	initialPaginationDelta?: number;
 	label?: string;
 	name?: string;
 	schema?: ISchema;
 	setItemComponentProps?: ({item, props}: {item: any; props: any}) => any;
+	showPagination?: boolean;
 	thumbnail?: string;
 	views?: Array<any>;
 }
@@ -277,13 +309,27 @@ export interface IFileDropSettings {
 	onFileDrop?: TOnFileDrop;
 }
 
+export type ILoadDataArgs = {
+	additionalAPIURLParameters?: string;
+	apiURL: string;
+	currentURL?: string;
+	delta?: number;
+	odataFiltersStrings?: Array<string>;
+	page?: number;
+	searchParam?: string;
+	sorts?: TSort[];
+};
+
 export interface IFrontendDataSetProps {
 	actionParameterName?: string;
-	activeViewSettings?: string;
 	additionalAPIURLParameters?: string;
+	additionalAPIURLParametersTransformer?: (
+		loadDataArgs: ILoadDataArgs
+	) => string | undefined;
 	apiURL?: string;
 	appURL?: string;
-	bulkActions?: any[];
+	atom?: Atom<IFDSState>;
+	bulkActions?: Array<IBulkActionItem>;
 	configInURLBehavior?: EConfigInURLBehavior;
 	creationMenu?: {
 		loadData?: Function;
@@ -293,8 +339,8 @@ export interface IFrontendDataSetProps {
 	currentURL?: string;
 	customDataRenderers?: any;
 	customRenderers?: {
+		listSection?: Array<IInternalRenderer>;
 		tableCell?: Array<TRenderer>;
-		views?: Array<TRenderer>;
 	};
 	defaultSelectedItems?: any[];
 	emptyState?: IEmptyStateConfiguration;
@@ -303,9 +349,9 @@ export interface IFrontendDataSetProps {
 	};
 	fileDropSettings?: IFileDropSettings;
 	filters?: Array<any>;
-	filtersGroups?: Array<any>;
 	formId?: string;
 	formName?: string;
+	groupedFilters?: Array<any>;
 	header?: IHeader;
 	hideManagementBarInEmptyState?: boolean;
 	id: string;
@@ -316,6 +362,7 @@ export interface IFrontendDataSetProps {
 		method?: string;
 	};
 	inlineEditingSettings?: IInlineEditingSettings;
+	inlineNotificationComponent?: React.ComponentType<IInlineNotificationComponent>;
 	items?: any[];
 	itemsActions?: IItemsActions[];
 	namespace?: string;
@@ -323,6 +370,7 @@ export interface IFrontendDataSetProps {
 	nestedItemsReferenceKey?: string;
 	onActionDropdownItemClick?: any;
 	onBulkActionItemClick?: any;
+	onItemsPropSearch?: (item: any, query: string) => boolean;
 	onSelectedItemsChange?: (selectedItems: Array<any>) => void;
 	overrideEmptyResultView?: boolean;
 	pagination?: {
@@ -342,7 +390,7 @@ export interface IFrontendDataSetProps {
 	showSearch?: boolean;
 	showSelectAll?: boolean;
 	sidePanelId?: string;
-	snapshots?: Array<ISnapshot>;
+	snapshots?: Array<ISnapshots>;
 	snapshotsEnabled?: boolean;
 	sorts?: TSort[];
 	style?: 'default' | 'fluid' | 'stacked';
@@ -353,6 +401,30 @@ export interface IFrontendDataSetProps {
 
 export interface IInfoPanelComponent {
 	items?: Array<any>;
+}
+
+export interface IManagementBarProps {
+	bulkActions: Array<IBulkActionItem>;
+	creationMenu?: {
+		primaryItems: Array<ICreationActionItem>;
+		secondaryItems?: any[];
+	};
+	dataLoading: boolean;
+	deselectItems: (value: any) => void;
+	fluid: boolean;
+	items: Array<any>;
+	onBulkActionsClear: () => void;
+	onSelectAll: (value: boolean) => void;
+	pageSelectedItemsValue?: Array<any>;
+	selectItems: (value: any) => void;
+	selectedItems?: Array<any>;
+	selectedItemsKey: string;
+	selectedItemsValue: Array<any>;
+	selectionType?: 'multiple' | 'single';
+	showNavBarWhenSelected?: boolean;
+	showSearch?: boolean;
+	showSelectAll?: boolean;
+	total: number;
 }
 
 export interface IModalConfig {
@@ -453,3 +525,52 @@ export type IConfigWriter<K extends keyof IConfigInURL> = (
 export type VisibleFieldNames = {
 	[fieldName: string]: boolean;
 };
+
+export interface ISearch {
+	query: string;
+}
+
+export interface IBaseFilterState {
+	active?: boolean;
+	enabled: boolean;
+	entityFieldType: EEntityFieldType;
+	id: string;
+	label: string;
+	moduleURL?: string;
+	multiple?: boolean;
+	odataFilterString?: string;
+	preloadedData: Record<string, unknown>;
+	selectedData?: Record<string, unknown>;
+	selectedItemsLabel: string;
+	type: 'clientExtension' | 'dateRange' | 'dateTimeRange' | 'selection';
+}
+
+export interface IClientExtensionFilterState extends IBaseFilterState {
+	clientExtensionFilterImplementation?: string;
+	clientExtensionFilterURL: string;
+	clientExtensionResolutionError?: string;
+}
+
+export interface ISelectionFilterStateItem {
+	label?: string;
+	value: string;
+}
+interface ISelectionFilterState extends IBaseFilterState {
+	apiURL: string;
+	autocompleteEnabled: boolean;
+	itemKey: string;
+	itemLabel: string;
+	items: Array<ISelectionFilterStateItem>;
+	multiple: boolean;
+	placeholder: string;
+	selectedData?: {
+		exclude: boolean;
+		selectedItems: Array<ISelectionFilterStateItem>;
+	};
+}
+interface IFDSState {
+	filters: Array<IBaseFilterState>;
+	search: ISearch;
+}
+
+export type {IFDSState, ISelectionFilterState};

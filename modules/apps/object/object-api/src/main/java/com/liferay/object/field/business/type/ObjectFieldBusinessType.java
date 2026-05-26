@@ -11,6 +11,7 @@ import com.liferay.object.exception.ObjectFieldSettingNameException;
 import com.liferay.object.exception.ObjectFieldSettingValueException;
 import com.liferay.object.field.render.ObjectFieldRenderingContext;
 import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.model.ObjectField;
 import com.liferay.object.model.ObjectFieldSetting;
 import com.liferay.petra.string.StringPool;
@@ -22,7 +23,10 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleThreadLocal;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.vulcan.dto.converter.DTOConverterContext;
 import com.liferay.portal.vulcan.extension.PropertyDefinition;
+
+import java.io.Serializable;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -64,6 +68,15 @@ public interface ObjectFieldBusinessType {
 		return getValue(null, objectField, userId, values);
 	}
 
+	public default Serializable getDTOValue(
+			DTOConverterContext dtoConverterContext,
+			ObjectDefinition objectDefinition, ObjectEntry objectEntry,
+			ObjectField objectField, Serializable serializable)
+		throws Exception {
+
+		return serializable;
+	}
+
 	public String getLabel(Locale locale);
 
 	public default Map<String, Object> getLocalizedValues(
@@ -103,6 +116,10 @@ public interface ObjectFieldBusinessType {
 	}
 
 	public PropertyDefinition.PropertyType getPropertyType();
+
+	public default Map<String, Object> getRenderingProperties() {
+		return Collections.emptyMap();
+	}
 
 	public default Set<String> getRequiredObjectFieldSettingsNames(
 		ObjectField objectField) {
@@ -184,6 +201,13 @@ public interface ObjectFieldBusinessType {
 			ObjectField newObjectField, ObjectField oldObjectField,
 			List<ObjectFieldSetting> objectFieldSettings)
 		throws PortalException {
+	}
+
+	public default Serializable processValue(
+			ObjectField objectField, Serializable value)
+		throws PortalException {
+
+		return value;
 	}
 
 	public default void validateObjectFieldSettings(

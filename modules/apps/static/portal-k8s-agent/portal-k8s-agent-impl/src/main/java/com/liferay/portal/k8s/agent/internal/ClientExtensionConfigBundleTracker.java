@@ -12,10 +12,10 @@ import com.liferay.portal.configuration.persistence.InMemoryOnlyConfigurationThr
 import com.liferay.portal.k8s.agent.internal.util.ConfigurationUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.upgrade.util.UpgradeProcessUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.URLUtil;
-import com.liferay.portal.tools.DBUpgrader;
 
 import java.net.URL;
 
@@ -53,7 +53,7 @@ public class ClientExtensionConfigBundleTracker {
 	protected void activate(
 		BundleContext bundleContext, Map<String, Object> properties) {
 
-		if (DBUpgrader.isUpgradeClient()) {
+		if (UpgradeProcessUtil.isUpgradeClient()) {
 			return;
 		}
 
@@ -130,7 +130,8 @@ public class ClientExtensionConfigBundleTracker {
 			Configuration[] configurations =
 				_configurationAdmin.listConfigurations(
 					StringBundler.concat(
-						"(.cx.config.key=", virtualInstancePid, ")"));
+						"(.client.extension.config.key=", virtualInstancePid,
+						")"));
 
 			if (ArrayUtil.isNotEmpty(configurations)) {
 				configuration = configurations[0];
@@ -140,7 +141,7 @@ public class ClientExtensionConfigBundleTracker {
 
 				if (Objects.equals(
 						configurationProperties.get(
-							".cx.config.bundle.last.modified"),
+							".client.extension.config.bundle.last.modified"),
 						bundle.getLastModified())) {
 
 					if (_log.isInfoEnabled()) {
@@ -167,10 +168,12 @@ public class ClientExtensionConfigBundleTracker {
 					Configuration.ConfigurationAttribute.READ_ONLY);
 			}
 
-			properties.put(".cx.config.bundle.id", bundle.getBundleId());
 			properties.put(
-				".cx.config.bundle.last.modified", bundle.getLastModified());
-			properties.put(".cx.config.key", virtualInstancePid);
+				".client.extension.config.bundle.id", bundle.getBundleId());
+			properties.put(
+				".client.extension.config.bundle.last.modified",
+				bundle.getLastModified());
+			properties.put(".client.extension.config.key", virtualInstancePid);
 
 			if (_log.isInfoEnabled()) {
 				_log.info("Processed configuration " + properties);

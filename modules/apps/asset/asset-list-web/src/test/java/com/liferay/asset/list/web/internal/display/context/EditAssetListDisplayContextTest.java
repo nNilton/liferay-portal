@@ -7,8 +7,10 @@ package com.liferay.asset.list.web.internal.display.context;
 
 import com.liferay.asset.kernel.AssetRendererFactoryRegistryUtil;
 import com.liferay.asset.kernel.model.AssetRendererFactory;
+import com.liferay.asset.kernel.model.AssetVocabulary;
 import com.liferay.asset.kernel.model.ClassType;
 import com.liferay.asset.kernel.model.ClassTypeReader;
+import com.liferay.asset.kernel.service.AssetVocabularyServiceUtil;
 import com.liferay.asset.list.model.AssetListEntry;
 import com.liferay.asset.list.service.AssetListEntryLocalService;
 import com.liferay.asset.list.service.AssetListEntryLocalServiceUtil;
@@ -22,6 +24,7 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.language.LanguageUtil;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
@@ -41,6 +44,8 @@ import jakarta.portlet.PortletResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.AfterClass;
@@ -122,6 +127,37 @@ public class EditAssetListDisplayContextTest {
 		DropdownItem dropdownItem = dropdownItems.get(0);
 
 		Assert.assertEquals(expectedLabel, dropdownItem.get("label"));
+	}
+
+	@Test
+	public void testGetActionDropdownItemsEmptyClassTypeIdsProperty()
+		throws Exception {
+
+		String className = RandomTestUtil.randomString();
+		long classNameId = RandomTestUtil.randomLong();
+		String expectedLabel = RandomTestUtil.randomString();
+
+		_setUpAssetRendererFactoryRegistryUtil(
+			className, classNameId,
+			_getClassTypeReader(
+				ListUtil.fromArray(
+					_getClassType(), _getClassType(), _getClassType())),
+			true, expectedLabel);
+
+		UnicodeProperties unicodeProperties = UnicodePropertiesBuilder.put(
+			"selectionStyle", "manual"
+		).build();
+
+		_setUpAssetListEntryLocalServiceUtil(
+			StringPool.BLANK, className, unicodeProperties.toString());
+
+		EditAssetListDisplayContext editAssetListDisplayContext =
+			_getEditAssetListDisplayContext(unicodeProperties);
+
+		List<DropdownItem> dropdownItems =
+			editAssetListDisplayContext.getActionDropdownItems();
+
+		Assert.assertEquals(dropdownItems.toString(), 3, dropdownItems.size());
 	}
 
 	@Test
@@ -288,6 +324,65 @@ public class EditAssetListDisplayContextTest {
 				}));
 	}
 
+	@Test
+	public void testGetVocabularyIdsWithMissingClassName() throws Exception {
+		AssetVocabulary assetVocabulary = Mockito.mock(AssetVocabulary.class);
+
+		long missingClassNameId = RandomTestUtil.randomLong();
+
+		Mockito.when(
+			assetVocabulary.getSelectedClassNameIds()
+		).thenReturn(
+			new long[] {missingClassNameId}
+		);
+
+		Mockito.when(
+			_portal.getClassName(missingClassNameId)
+		).thenThrow(
+			new RuntimeException()
+		);
+
+		long[] groupIds = {RandomTestUtil.randomLong()};
+
+		Mockito.when(
+			_portal.getCurrentAndAncestorSiteGroupIds(Mockito.any(long[].class))
+		).thenReturn(
+			groupIds
+		);
+
+		Mockito.when(
+			_portal.getCurrentAndAncestorSiteGroupIds(
+				Mockito.any(long[].class), Mockito.eq(true))
+		).thenReturn(
+			groupIds
+		);
+
+		Mockito.when(
+			_themeDisplay.getScopeGroup()
+		).thenReturn(
+			Mockito.mock(Group.class)
+		);
+
+		try (MockedStatic<AssetVocabularyServiceUtil>
+				assetVocabularyServiceUtilMockedStatic = Mockito.mockStatic(
+					AssetVocabularyServiceUtil.class)) {
+
+			assetVocabularyServiceUtilMockedStatic.when(
+				() -> AssetVocabularyServiceUtil.getGroupsVocabularies(
+					Mockito.any(long[].class))
+			).thenReturn(
+				ListUtil.fromArray(assetVocabulary)
+			);
+
+			EditAssetListDisplayContext editAssetListDisplayContext =
+				_getEditAssetListDisplayContext(new UnicodeProperties());
+
+			Assert.assertEquals(
+				Collections.emptyList(),
+				editAssetListDisplayContext.getVocabularyIds());
+		}
+	}
+
 	private ClassType _getClassType() {
 		return _getClassType(
 			RandomTestUtil.randomLong(), RandomTestUtil.randomString());
@@ -435,6 +530,12 @@ public class EditAssetListDisplayContextTest {
 			);
 
 			Mockito.when(
+				assetRendererFactory.getClassNameId()
+			).thenReturn(
+				classNameId
+			);
+
+			Mockito.when(
 				assetRendererFactory.getClassTypeReader()
 			).thenReturn(
 				classTypeReader
@@ -466,6 +567,18 @@ public class EditAssetListDisplayContextTest {
 		).thenReturn(
 			assetRendererFactory
 		);
+
+		ArrayList<AssetRendererFactory<?>> assetRendererFactories =
+			new ArrayList<>();
+
+		assetRendererFactories.add(assetRendererFactory);
+
+		_assetRendererFactoryRegistryUtilMockedStatic.when(
+			() -> AssetRendererFactoryRegistryUtil.getAssetRendererFactories(
+				Mockito.anyLong(), Mockito.eq(true))
+		).thenReturn(
+			assetRendererFactories
+		);
 	}
 
 	private void _setUpAssetRendererFactoryRegistryUtil(
@@ -484,15 +597,15 @@ public class EditAssetListDisplayContextTest {
 	private void _setUpPortalUtil() {
 		PortalUtil portalUtil = new PortalUtil();
 
-		Portal portal = Mockito.mock(Portal.class);
+		_portal = Mockito.mock(Portal.class);
 
 		Mockito.when(
-			portal.getHttpServletRequest(_portletRequest)
+			_portal.getHttpServletRequest(_portletRequest)
 		).thenReturn(
 			_httpServletRequest
 		);
 
-		portalUtil.setPortal(portal);
+		portalUtil.setPortal(_portal);
 	}
 
 	private static final MockedStatic<AssetRendererFactoryRegistryUtil>
@@ -500,6 +613,7 @@ public class EditAssetListDisplayContextTest {
 			AssetRendererFactoryRegistryUtil.class);
 
 	private HttpServletRequest _httpServletRequest;
+	private Portal _portal;
 	private PortletRequest _portletRequest;
 	private ThemeDisplay _themeDisplay;
 

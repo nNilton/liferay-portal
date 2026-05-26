@@ -2,11 +2,26 @@ import getCN from 'classnames';
 import React from 'react';
 import WorkspaceListItem from './ListItem';
 import {DataSourceStates} from 'shared/util/constants';
-import {getPlanLabel} from 'shared/util/subscriptions';
+import {getPlanLabel, SubscriptionNames} from 'shared/util/subscriptions';
 import {noop} from 'lodash';
 import {Project} from 'shared/util/records';
 import {PropTypes} from 'prop-types';
 import {Routes, toRoute} from 'shared/util/router';
+
+const isSubscriptionLimitReached = subscription => {
+	const hasReached = (limit, count) => limit > 0 && count >= limit;
+
+	return (
+		hasReached(
+			subscription.get('individualsLimit'),
+			subscription.get('individualsCountSinceLastAnniversary')
+		) ||
+		hasReached(
+			subscription.get('pageViewsLimit'),
+			subscription.get('pageViewsCountSinceLastAnniversary')
+		)
+	);
+};
 
 export default class WorkspaceList extends React.Component {
 	static defaultProps = {
@@ -68,6 +83,11 @@ export default class WorkspaceList extends React.Component {
 							state
 						} = project;
 
+						const hasLimitReached =
+							faroSubscription?.get('name') ===
+								SubscriptionNames.LiferayDataPlatform &&
+							isSubscriptionLimitReached(faroSubscription);
+
 						return (
 							<WorkspaceListItem
 								accountName={name}
@@ -79,6 +99,7 @@ export default class WorkspaceList extends React.Component {
 								corpProjectName={corpProjectName}
 								disabled={checkDisabled(project)}
 								groupId={groupId}
+								hasLimitReached={hasLimitReached}
 								href={this.getRoute(project)}
 								isJoinableProjects={isJoinableProjects}
 								key={name}

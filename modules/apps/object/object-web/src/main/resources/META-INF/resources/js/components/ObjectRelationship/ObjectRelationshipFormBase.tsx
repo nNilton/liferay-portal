@@ -101,31 +101,16 @@ export function ObjectRelationshipFormBase({
 	submitError,
 	values,
 }: ObjectRelationshipFormBaseProps) {
-	const [creationLanguageId, setCreationLanguageId] =
-		useState<Liferay.Language.Locale>();
 	const [currentObjectDefinition, setCurrentObjectDefinition] =
 		useState<Partial<ObjectDefinition>>();
 	const [objectDefinition1, setObjectDefinition1] =
 		useState<Partial<ObjectDefinition>>();
 	const [objectDefinition2, setObjectDefinition2] =
 		useState<Partial<ObjectDefinition>>();
-	const [objectDefinitions, setObjectDefinitions] = useState<
-		Partial<ObjectDefinition>[]
-	>([]);
 	const [objectRelationshipTypes, setObjectRelationshipTypes] = useState<
 		ObjectRelationshipTypeInfo[]
 	>([ONE_TO_MANY]);
 	const [reverseOrder, setReverseOrder] = useState<boolean>(false);
-
-	const switchObjects = () => {
-		const previousObjectDefinition1 = {
-			...objectDefinition1,
-		};
-
-		setObjectDefinition1(objectDefinition2);
-
-		setObjectDefinition2(previousObjectDefinition1);
-	};
 
 	const handleHideReverseButton = () => {
 		return (
@@ -173,8 +158,6 @@ export function ObjectRelationshipFormBase({
 			objectDefinitionName2: objectDefinition1?.name,
 		});
 
-		switchObjects();
-
 		setReverseOrder(!reverseOrder);
 	};
 
@@ -214,7 +197,6 @@ export function ObjectRelationshipFormBase({
 				};
 			}
 			setCurrentObjectDefinition(objectDefinition1);
-			setCreationLanguageId(objectDefinition1.defaultLanguageId);
 			setObjectDefinition1(objectDefinition1);
 
 			setValues(newObjectRelationshipValues);
@@ -228,35 +210,20 @@ export function ObjectRelationshipFormBase({
 	}, [objectDefinitionExternalReferenceCode1]);
 
 	useEffect(() => {
-		const fetchObjectDefinitions = async () => {
-			const {items} = await API.getAllObjectDefinitions();
+		if (values.objectDefinitionExternalReferenceCode1) {
+			API.getObjectDefinitionByExternalReferenceCode(
+				values.objectDefinitionExternalReferenceCode1
+			).then(setObjectDefinition1);
+		}
+	}, [values.objectDefinitionExternalReferenceCode1]);
 
-			const objectDefinition = items.find(
-				({externalReferenceCode}) =>
-					objectDefinitionExternalReferenceCode1 ===
-					externalReferenceCode
-			)!;
-
-			const objectDefinitions = items.filter(
-				({modifiable, parameterRequired, storageType}) => {
-					return (
-						(objectDefinition.modifiable || modifiable) &&
-						(!Liferay.FeatureFlags['LPS-135430'] ||
-							storageType === 'default') &&
-						!parameterRequired
-					);
-				}
-			);
-
-			setCreationLanguageId(objectDefinition.defaultLanguageId);
-
-			setObjectDefinitions(objectDefinitions);
-		};
-
-		fetchObjectDefinitions();
-
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [objectDefinitionExternalReferenceCode1, readonly]);
+	useEffect(() => {
+		if (values.objectDefinitionExternalReferenceCode2) {
+			API.getObjectDefinitionByExternalReferenceCode(
+				values.objectDefinitionExternalReferenceCode2
+			).then(setObjectDefinition2);
+		}
+	}, [values.objectDefinitionExternalReferenceCode2]);
 
 	return (
 		<>
@@ -293,8 +260,6 @@ export function ObjectRelationshipFormBase({
 							objectDefinitionName2: objectDefinition1?.name,
 							type: value,
 						});
-
-						switchObjects();
 
 						setReverseOrder(!reverseOrder);
 					}
@@ -349,24 +314,16 @@ export function ObjectRelationshipFormBase({
 							/>
 						) : (
 							<SelectObjectDefinition
-								creationLanguageId={
-									creationLanguageId as Liferay.Language.Locale
-								}
 								disabled={readonly}
 								error={errors.objectDefinitionId2}
+								initialValue={objectDefinition2?.name}
 								label={
 									OBJECT_RELATIONSHIP_TYPES.find(
 										({value}) => value === values.type
 									)?.objectInputLabel2
 								}
-								objectDefinition={objectDefinition2}
-								objectDefinitionExternalReferenceCode={
-									values.objectDefinitionExternalReferenceCode2
-								}
-								objectDefinitions={objectDefinitions}
-								readOnly={readonly}
+								objectDefinition1={objectDefinition1}
 								reverseOrder={reverseOrder}
-								setObjectDefinition={setObjectDefinition2}
 								setValues={setValues}
 							/>
 						)}
@@ -393,24 +350,16 @@ export function ObjectRelationshipFormBase({
 							/>
 						) : (
 							<SelectObjectDefinition
-								creationLanguageId={
-									creationLanguageId as Liferay.Language.Locale
-								}
 								disabled={readonly}
 								error={errors.objectDefinitionId1}
+								initialValue={objectDefinition1?.name}
 								label={
 									OBJECT_RELATIONSHIP_TYPES.find(
 										({value}) => value === values.type
 									)?.objectInputLabel1
 								}
-								objectDefinition={objectDefinition1}
-								objectDefinitionExternalReferenceCode={
-									values.objectDefinitionExternalReferenceCode1
-								}
-								objectDefinitions={objectDefinitions}
-								readOnly={readonly}
+								objectDefinition1={objectDefinition1}
 								reverseOrder={reverseOrder}
-								setObjectDefinition={setObjectDefinition1}
 								setValues={setValues}
 							/>
 						)}
