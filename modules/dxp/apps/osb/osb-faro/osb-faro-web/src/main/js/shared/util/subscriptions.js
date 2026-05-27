@@ -247,7 +247,7 @@ export function getPlanLabel(name) {
 		case PLANS.enterprise.name:
 			return Liferay.Language.get('enterprise-plan');
 
-		case PLANS.dataPlatform.name:
+		case SubscriptionNames.LiferayDataPlatformPrivateBeta:
 			return Liferay.Language.get('liferay-data-platform-private-beta');
 
 		case SubscriptionNames.LiferayDataPlatformEnterprise:
@@ -327,7 +327,7 @@ export function getPropLabel(name) {
 		case PLANS.enterprise.name:
 			return Liferay.Language.get('enterprise');
 
-		case PLANS.dataPlatform.name:
+		case SubscriptionNames.LiferayDataPlatformPrivateBeta:
 			return Liferay.Language.get('liferay-data-platform-private-beta');
 
 		case SubscriptionNames.LiferayDataPlatformEnterprise:
