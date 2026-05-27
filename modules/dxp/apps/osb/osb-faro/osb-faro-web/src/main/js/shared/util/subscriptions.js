@@ -19,8 +19,8 @@ export const SubscriptionNames = {
 		'Liferay Analytics Cloud Enterprise Contacts',
 	LiferayAnalyticsCloudEnterpriseTrackedPages:
 		'Liferay Analytics Cloud Enterprise Tracked Pages',
-	LiferayDataPlatform: 'Liferay Data Platform',
 	LiferayDataPlatformEnterprise: 'Liferay Data Platform Enterprise',
+	LiferayDataPlatformPrivateBeta: 'Liferay Data Platform (Private Beta)',
 	LiferaySaasBusinessPlan: 'Liferay SaaS - Business Plan',
 	LiferaySaasCspCustomUserTier: 'Liferay SaaS - CSP - Custom User Tier',
 	LiferaySaasCspCustomUserTierExtraUser:
@@ -81,8 +81,8 @@ export const PLAN_TYPES = {
 	[SubscriptionNames.LiferayAnalyticsCloudEnterprise]: 'enterprise',
 	[SubscriptionNames.LiferayAnalyticsCloudEnterpriseContacts]: INDIVIDUALS,
 	[SubscriptionNames.LiferayAnalyticsCloudEnterpriseTrackedPages]: PAGEVIEWS,
-	[SubscriptionNames.LiferayDataPlatform]: 'dataPlatform',
 	[SubscriptionNames.LiferayDataPlatformEnterprise]: 'dataPlatformEnterprise',
+	[SubscriptionNames.LiferayDataPlatformPrivateBeta]: 'dataPlatform',
 	[SubscriptionNames.LiferaySaasBusinessPlan]: 'lxcBusiness',
 	[SubscriptionNames.LiferaySaasCspCustomUserTier]: 'lxcCspCustomUserTier',
 	[SubscriptionNames.LiferaySaasCspCustomUserTierExtraUser]:
@@ -248,7 +248,7 @@ export function getPlanLabel(name) {
 			return Liferay.Language.get('enterprise-plan');
 
 		case PLANS.dataPlatform.name:
-			return Liferay.Language.get('liferay-data-platform');
+			return Liferay.Language.get('liferay-data-platform-private-beta');
 
 		case SubscriptionNames.LiferayDataPlatformEnterprise:
 			return Liferay.Language.get('liferay-data-platform-enterprise');
@@ -328,7 +328,7 @@ export function getPropLabel(name) {
 			return Liferay.Language.get('enterprise');
 
 		case PLANS.dataPlatform.name:
-			return Liferay.Language.get('liferay-data-platform');
+			return Liferay.Language.get('liferay-data-platform-private-beta');
 
 		case SubscriptionNames.LiferayDataPlatformEnterprise:
 			return Liferay.Language.get('liferay-data-platform-enterprise');

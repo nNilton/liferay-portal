@@ -85,7 +85,7 @@ export default class WorkspaceList extends React.Component {
 
 						const hasLimitReached =
 							faroSubscription?.get('name') ===
-								SubscriptionNames.LiferayDataPlatform &&
+								SubscriptionNames.LiferayDataPlatformPrivateBeta &&
 							isSubscriptionLimitReached(faroSubscription);
 
 						return (
