@@ -45,12 +45,7 @@ public class AssetEntityAnalyticsBatchEngineTaskItemDelegate
 	extends BaseAnalyticsDXPEntityBatchEngineTaskItemDelegate<AssetEntity> {
 
 	@Override
-	public Class<AssetEntity> getItemClass() {
-		return AssetEntity.class;
-	}
-
-	@Override
-	public Page<AssetEntity> read(
+	public Page<AssetEntity> doRead(
 			Filter filter, Pagination pagination, Sort[] sorts,
 			Map<String, Serializable> parameters, String search)
 		throws Exception {
@@ -72,6 +67,11 @@ public class AssetEntityAnalyticsBatchEngineTaskItemDelegate
 			_assetEntryLocalService.dslQuery(
 				_createCountDSLQuery(
 					contextCompany.getCompanyId(), parameters)));
+	}
+
+	@Override
+	public Class<AssetEntity> getItemClass() {
+		return AssetEntity.class;
 	}
 
 	@Activate
