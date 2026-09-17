@@ -15,11 +15,15 @@ import {globalMenuPagesTest} from '../../../fixtures/globalMenuPagesTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {objectPagesTest} from '../../../fixtures/objectPagesTest';
 import {workflowPagesTest} from '../../../fixtures/workflowPagesTest';
+import {formatDateForUI} from '../../../utils/applyFDSDateTimeRangeFilter';
 import {getRandomInt} from '../../../utils/getRandomInt';
 import getRandomString from '../../../utils/getRandomString';
 import {waitForAlert} from '../../../utils/waitForAlert';
+import {generateFormulaObjectFields} from '../utils/generateFormulaObjectFields';
 import {generateObjectEntryValues} from '../utils/generateObjectEntry';
 import {generateObjectFields} from '../utils/generateObjectFields';
+import {getFreshObjectRelationshipName} from '../utils/getFreshObjectRelationshipName';
+import {postListTypeDefinitionListTypeEntries} from '../utils/postListTypeDefinitionListTypeEntries';
 
 export const test = mergeTests(
 	globalMenuPagesTest,
@@ -197,7 +201,7 @@ test('assert that the user is able to use the ERC field in Sort, on the Custom V
 		entry2
 	);
 
-	await page.getByTitle('Sortable Column').dblclick();
+	await page.getByTitle('Sortable Column').click();
 
 	await expect(page.locator('.cell-externalReferenceCode').nth(1)).toHaveText(
 		entry2
@@ -687,9 +691,10 @@ test(
 					label: {
 						en_US: 'objectRelationshipLabel' + getRandomInt(),
 					},
-					name:
-						'objectRelationshipName' +
-						Math.floor(Math.random() * 99),
+					name: await getFreshObjectRelationshipName(apiHelpers, [
+						'L_ACCOUNT',
+						objectDefinition.externalReferenceCode!,
+					]),
 					objectDefinitionExternalReferenceCode1: 'L_ACCOUNT',
 					objectDefinitionExternalReferenceCode2:
 						objectDefinition.externalReferenceCode,
@@ -785,9 +790,10 @@ test(
 					label: {
 						en_US: 'objectRelationshipLabel' + getRandomInt(),
 					},
-					name:
-						'objectRelationshipName' +
-						Math.floor(Math.random() * 99),
+					name: await getFreshObjectRelationshipName(apiHelpers, [
+						objectDefinition1.externalReferenceCode!,
+						objectDefinition2.externalReferenceCode!,
+					]),
 					objectDefinitionExternalReferenceCode1:
 						objectDefinition1.externalReferenceCode,
 					objectDefinitionExternalReferenceCode2:
@@ -874,7 +880,10 @@ test('can create an object custom view using object relationship entry', async (
 				label: {
 					en_US: 'objectRelationshipLabel' + getRandomInt(),
 				},
-				name: 'objectRelationshipName' + Math.floor(Math.random() * 99),
+				name: await getFreshObjectRelationshipName(apiHelpers, [
+					objectDefinition1.externalReferenceCode!,
+					objectDefinition2.externalReferenceCode!,
+				]),
 				objectDefinitionExternalReferenceCode1:
 					objectDefinition1.externalReferenceCode,
 				objectDefinitionExternalReferenceCode2:
@@ -1033,9 +1042,10 @@ test(
 					label: {
 						en_US: 'objectRelationshipLabel' + getRandomInt(),
 					},
-					name:
-						'objectRelationshipName' +
-						Math.floor(Math.random() * 99),
+					name: await getFreshObjectRelationshipName(apiHelpers, [
+						'L_USER',
+						objectDefinition.externalReferenceCode!,
+					]),
 					objectDefinitionExternalReferenceCode1: 'L_USER',
 					objectDefinitionExternalReferenceCode2:
 						objectDefinition.externalReferenceCode,
@@ -1260,9 +1270,10 @@ test(
 					label: {
 						en_US: 'objectRelationshipLabel' + getRandomInt(),
 					},
-					name:
-						'objectRelationshipName' +
-						Math.floor(Math.random() * 99),
+					name: await getFreshObjectRelationshipName(apiHelpers, [
+						'L_USER',
+						objectDefinition.externalReferenceCode!,
+					]),
 					objectDefinitionExternalReferenceCode1: 'L_USER',
 					objectDefinitionExternalReferenceCode2:
 						objectDefinition.externalReferenceCode,
@@ -1627,9 +1638,10 @@ test(
 					label: {
 						en_US: 'objectRelationshipLabel' + getRandomInt(),
 					},
-					name:
-						'objectRelationshipName' +
-						Math.floor(Math.random() * 99),
+					name: await getFreshObjectRelationshipName(apiHelpers, [
+						'L_USER',
+						objectDefinition.externalReferenceCode!,
+					]),
 					objectDefinitionExternalReferenceCode1: 'L_USER',
 					objectDefinitionExternalReferenceCode2:
 						objectDefinition.externalReferenceCode,
@@ -1701,8 +1713,94 @@ test(
 );
 
 test(
+	'can filter a picklist column with the excludes operator in custom view',
+	{tag: '@LPD-102828'},
+	async ({
+		apiHelpers,
+		editObjectViewPage,
+		objectViewPage,
+		page,
+		viewObjectEntriesPage,
+	}) => {
+		const {listTypeDefinition, listTypeEntries} =
+			await postListTypeDefinitionListTypeEntries({
+				apiHelpers,
+				listTypeEntriesLength: 2,
+			});
+
+		const [excludedListTypeEntry, listTypeEntry] = listTypeEntries;
+
+		const objectFields = generateObjectFields({
+			listTypeDefinitionExternalReferenceCode:
+				listTypeDefinition.externalReferenceCode,
+			objectFieldBusinessTypes: ['Picklist'],
+		});
+
+		const objectDefinition =
+			await apiHelpers.objectAdmin.postRandomObjectDefinition({
+				objectFields,
+				status: {code: 0},
+			});
+
+		apiHelpers.data.push({
+			id: objectDefinition.id,
+			type: 'objectDefinition',
+		});
+
+		const applicationName =
+			'c/' + objectDefinition.name.toLowerCase() + 's';
+
+		for (const listTypeEntryKey of [
+			excludedListTypeEntry.key,
+			listTypeEntry.key,
+		]) {
+			await apiHelpers.objectEntry.postObjectEntry(
+				{[objectFields[0].name as string]: listTypeEntryKey},
+				applicationName
+			);
+		}
+
+		await objectViewPage.goto(objectDefinition.label['en_US']);
+
+		const viewName = 'CustomView' + getRandomInt();
+
+		await objectViewPage.createObjectView(viewName);
+
+		await page.getByRole('link', {name: viewName}).waitFor();
+
+		await page.getByRole('link', {name: viewName}).click();
+
+		await editObjectViewPage.markAsDefaultButton.check();
+
+		await editObjectViewPage.selectObjectFields([
+			objectFields[0].label.en_US,
+		]);
+
+		await editObjectViewPage.createFilter(
+			objectFields[0].label.en_US,
+			'Excludes',
+			excludedListTypeEntry.key
+		);
+
+		await editObjectViewPage.saveButton.last().click();
+
+		await page.waitForLoadState('networkidle');
+
+		await viewObjectEntriesPage.goto(objectDefinition.className);
+
+		await expect(
+			page.getByRole('row').filter({hasText: listTypeEntry.key})
+		).toBeVisible();
+
+		await expect(
+			page.getByRole('row').filter({hasText: excludedListTypeEntry.key})
+		).toHaveCount(0);
+	}
+);
+
+test(
 	'can filter entries by create date in custom view',
-	{tag: '@LPS-169019'},
+	{tag: ['@LPD-102828', '@LPS-169019']},
 	async ({
 		apiHelpers,
 		editObjectViewPage,
@@ -1782,25 +1880,21 @@ test(
 
 		yesterday.setDate(yesterday.getDate() - 1);
 
-		const formatDate = (d: Date) =>
-			`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
 		await page
 			.getByRole('textbox', {name: 'From'})
-			.fill(formatDate(yesterday));
+			.fill(formatDateForUI(yesterday));
 
-		await page.getByRole('textbox', {name: 'To'}).fill(formatDate(today));
+		await page
+			.getByRole('textbox', {name: 'To'})
+			.fill(formatDateForUI(today));
 
 		await page.getByRole('button', {name: 'Add Filter'}).click();
-
-		const formatDisplayDate = (d: Date) =>
-			`${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 
 		await expect(page.getByText('1 Result Found for:')).toBeVisible();
 
 		await expect(
 			page.getByRole('button', {
-				name: `Create Date: ${formatDisplayDate(yesterday)} - ${formatDisplayDate(today)}`,
+				name: `Create Date: ${formatDateForUI(yesterday)} - ${formatDateForUI(today)}`,
 			})
 		).toBeVisible();
 
@@ -1890,25 +1984,21 @@ test(
 
 		yesterday.setDate(yesterday.getDate() - 1);
 
-		const formatDate = (d: Date) =>
-			`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
 		await page
 			.getByRole('textbox', {name: 'From'})
-			.fill(formatDate(yesterday));
+			.fill(formatDateForUI(yesterday));
 
-		await page.getByRole('textbox', {name: 'To'}).fill(formatDate(today));
+		await page
+			.getByRole('textbox', {name: 'To'})
+			.fill(formatDateForUI(today));
 
 		await page.getByRole('button', {name: 'Add Filter'}).click();
-
-		const formatDisplayDate = (d: Date) =>
-			`${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 
 		await expect(page.getByText('1 Result Found for:')).toBeVisible();
 
 		await expect(
 			page.getByRole('button', {
-				name: `Modified Date: ${formatDisplayDate(yesterday)} - ${formatDisplayDate(today)}`,
+				name: `Modified Date: ${formatDateForUI(yesterday)} - ${formatDateForUI(today)}`,
 			})
 		).toBeVisible();
 
@@ -2041,9 +2131,10 @@ test(
 					label: {
 						en_US: 'objectRelationshipLabel' + getRandomInt(),
 					},
-					name:
-						'objectRelationshipName' +
-						Math.floor(Math.random() * 99),
+					name: await getFreshObjectRelationshipName(apiHelpers, [
+						objectDefinitionA.externalReferenceCode!,
+						objectDefinitionB.externalReferenceCode!,
+					]),
 					objectDefinitionExternalReferenceCode1:
 						objectDefinitionA.externalReferenceCode,
 					objectDefinitionExternalReferenceCode2:
@@ -2553,7 +2644,7 @@ test(
 		await page
 			.getByRole('columnheader', {name: 'textField'})
 			.getByRole('button')
-			.dblclick();
+			.click();
 
 		const descendingCells = page.getByRole('cell');
 
@@ -2672,6 +2763,74 @@ test('can use external reference code field in view column', async ({
 		page.getByRole('columnheader', {name: 'External Reference Code'})
 	).toBeVisible();
 });
+
+test(
+	'can view a formula field value on a custom view',
+	{tag: '@LPD-102828'},
+	async ({
+		apiHelpers,
+		editObjectViewPage,
+		objectViewPage,
+		page,
+		viewObjectEntriesPage,
+	}) => {
+		const {
+			firstObjectField,
+			formulaObjectField,
+			objectFields,
+			secondObjectField,
+		} = generateFormulaObjectFields({
+			objectFieldBusinessType: 'Decimal',
+			operator: '*',
+			output: 'Decimal',
+		});
+
+		const objectDefinition =
+			await apiHelpers.objectAdmin.postRandomObjectDefinition({
+				objectFields,
+				status: {code: 0},
+			});
+
+		apiHelpers.data.push({
+			id: objectDefinition.id,
+			type: 'objectDefinition',
+		});
+
+		await objectViewPage.goto(objectDefinition.label['en_US']);
+
+		const viewName = 'CustomView' + getRandomInt();
+
+		await objectViewPage.createObjectView(viewName);
+
+		await page.getByRole('link', {name: viewName}).waitFor();
+
+		await page.getByRole('link', {name: viewName}).click();
+
+		await editObjectViewPage.markAsDefaultButton.check();
+
+		await editObjectViewPage.selectObjectFields([
+			formulaObjectField.label.en_US,
+		]);
+
+		await editObjectViewPage.saveButton.last().click();
+
+		await page.waitForLoadState('networkidle');
+
+		await apiHelpers.objectEntry.postObjectEntry(
+			{
+				[firstObjectField.name as string]: 2468,
+				[secondObjectField.name as string]: 5,
+			},
+			'c/' + objectDefinition.name.toLowerCase() + 's'
+		);
+
+		await viewObjectEntriesPage.goto(objectDefinition.className);
+
+		await expect(
+			page.getByRole('cell', {exact: true, name: '12340'})
+		).toBeVisible();
+	}
+);
 
 test(
 	'can view entries of object in a table view defined as default',
@@ -2933,7 +3092,14 @@ test(
 				objectDefinitionA.externalReferenceCode,
 				{
 					label: {en_US: 'Relationship A' + getRandomInt()},
-					name: 'relationshipA' + getRandomInt(),
+					name: await getFreshObjectRelationshipName(
+						apiHelpers,
+						[
+							objectDefinitionA.externalReferenceCode!,
+							objectDefinitionC.externalReferenceCode!,
+						],
+						'relationshipA'
+					),
 					objectDefinitionExternalReferenceCode1:
 						objectDefinitionA.externalReferenceCode,
 					objectDefinitionExternalReferenceCode2:
@@ -2955,7 +3121,14 @@ test(
 				objectDefinitionB.externalReferenceCode,
 				{
 					label: {en_US: 'Relationship B' + getRandomInt()},
-					name: 'relationshipB' + getRandomInt(),
+					name: await getFreshObjectRelationshipName(
+						apiHelpers,
+						[
+							objectDefinitionB.externalReferenceCode!,
+							objectDefinitionC.externalReferenceCode!,
+						],
+						'relationshipB'
+					),
 					objectDefinitionExternalReferenceCode1:
 						objectDefinitionB.externalReferenceCode,
 					objectDefinitionExternalReferenceCode2:
@@ -3077,6 +3250,52 @@ test('cannot create an object custom view using empty multiselectpicklist entry'
 		page.frameLocator('iframe').getByText('Required')
 	).toBeVisible();
 });
+
+test(
+	'cannot filter by external reference code field in custom view',
+	{tag: '@LPD-102828'},
+	async ({apiHelpers, editObjectViewPage, objectViewPage, page}) => {
+		const objectDefinition =
+			await apiHelpers.objectAdmin.postRandomObjectDefinition({
+				status: {code: 0},
+			});
+
+		apiHelpers.data.push({
+			id: objectDefinition.id,
+			type: 'objectDefinition',
+		});
+
+		await objectViewPage.goto(objectDefinition.label['en_US']);
+
+		const viewName = 'CustomView' + getRandomInt();
+
+		await objectViewPage.createObjectView(viewName);
+
+		await page.getByRole('link', {name: viewName}).waitFor();
+
+		await page.getByRole('link', {name: viewName}).click();
+
+		await editObjectViewPage.filtersTab.click();
+
+		await editObjectViewPage.newFilterButton.click();
+
+		await editObjectViewPage.filterBy.click();
+
+		await expect(
+			editObjectViewPage.sidePanel.getByRole('option', {
+				exact: true,
+				name: 'Status',
+			})
+		).toBeVisible();
+
+		await expect(
+			editObjectViewPage.sidePanel.getByRole('option', {
+				exact: true,
+				name: 'External Reference Code',
+			})
+		).toHaveCount(0);
+	}
+);
 
 test(
 	'cannot leave name field empty when creating a custom view',

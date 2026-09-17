@@ -10,6 +10,7 @@ import com.liferay.analytics.settings.rest.client.json.BaseJSONParser;
 
 import jakarta.annotation.Generated;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -43,28 +44,6 @@ public class DataSourceSerDes {
 		StringBuilder sb = new StringBuilder();
 
 		sb.append("{");
-
-		if (dataSource.getCommerceChannelIds() != null) {
-			if (sb.length() > 1) {
-				sb.append(", ");
-			}
-
-			sb.append("\"commerceChannelIds\": ");
-
-			sb.append("[");
-
-			for (int i = 0; i < dataSource.getCommerceChannelIds().length;
-				 i++) {
-
-				sb.append(dataSource.getCommerceChannelIds()[i]);
-
-				if ((i + 1) < dataSource.getCommerceChannelIds().length) {
-					sb.append(", ");
-				}
-			}
-
-			sb.append("]");
-		}
 
 		if (dataSource.getDataSourceId() != null) {
 			if (sb.length() > 1) {
@@ -118,15 +97,6 @@ public class DataSourceSerDes {
 
 		Map<String, String> map = new TreeMap<>();
 
-		if (dataSource.getCommerceChannelIds() == null) {
-			map.put("commerceChannelIds", null);
-		}
-		else {
-			map.put(
-				"commerceChannelIds",
-				String.valueOf(dataSource.getCommerceChannelIds()));
-		}
-
 		if (dataSource.getDataSourceId() == null) {
 			map.put("dataSourceId", null);
 		}
@@ -160,10 +130,7 @@ public class DataSourceSerDes {
 
 		@Override
 		protected boolean parseMaps(String jsonParserFieldName) {
-			if (Objects.equals(jsonParserFieldName, "commerceChannelIds")) {
-				return false;
-			}
-			else if (Objects.equals(jsonParserFieldName, "dataSourceId")) {
+			if (Objects.equals(jsonParserFieldName, "dataSourceId")) {
 				return false;
 			}
 			else if (Objects.equals(jsonParserFieldName, "siteIds")) {
@@ -178,13 +145,7 @@ public class DataSourceSerDes {
 			DataSource dataSource, String jsonParserFieldName,
 			Object jsonParserFieldValue) {
 
-			if (Objects.equals(jsonParserFieldName, "commerceChannelIds")) {
-				if (jsonParserFieldValue != null) {
-					dataSource.setCommerceChannelIds(
-						toLongs((Object[])jsonParserFieldValue));
-				}
-			}
-			else if (Objects.equals(jsonParserFieldName, "dataSourceId")) {
+			if (Objects.equals(jsonParserFieldName, "dataSourceId")) {
 				if (jsonParserFieldValue != null) {
 					dataSource.setDataSourceId((String)jsonParserFieldValue);
 				}
@@ -244,6 +205,12 @@ public class DataSourceSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -276,4 +243,4 @@ public class DataSourceSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-2130159165
+// LIFERAY-REST-BUILDER-HASH:-1448966806

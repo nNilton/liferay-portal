@@ -21,29 +21,48 @@ interface Props {
 	/** Column descriptors for the `table` layout (header + cell renderer). */
 	columns: ChartLegendColumn[];
 	items: ChartLegendItem[];
+	labelColumnLabel?: string;
 	layout: ChartLegendLayout;
 	onActivate: (id: number) => void;
 	onDeactivate: (id: number) => void;
 	onSelect: (id: number) => void;
+
+	/**
+	 * Where the legend sits relative to the chart. A `list` at the `bottom`
+	 * stacks in a single column and shows the table columns per row; the
+	 * `table` layout ignores it. Default `end`.
+	 */
+	position?: 'bottom' | 'end';
+
+	/** Draw the divider lines under the `table` layout header and rows. Default `true`. */
+	tableDividers?: boolean;
+
 	titleId: string;
 }
 
 export default function ChartLegend({
 	columns,
 	items,
+	labelColumnLabel,
 	layout,
 	onActivate,
 	onDeactivate,
 	onSelect,
+	position = 'end',
+	tableDividers,
 	titleId,
 }: Props) {
 	if (layout === 'list') {
+		const stacked = position === 'bottom';
+
 		return (
 			<ChartLegendList
+				columns={stacked ? columns : undefined}
 				items={items}
 				onActivate={onActivate}
 				onDeactivate={onDeactivate}
 				onSelect={onSelect}
+				stacked={stacked}
 			/>
 		);
 	}
@@ -52,7 +71,9 @@ export default function ChartLegend({
 		return (
 			<ChartLegendTable
 				columns={columns}
+				dividers={tableDividers}
 				items={items}
+				labelColumnLabel={labelColumnLabel}
 				onActivate={onActivate}
 				onDeactivate={onDeactivate}
 				onSelect={onSelect}

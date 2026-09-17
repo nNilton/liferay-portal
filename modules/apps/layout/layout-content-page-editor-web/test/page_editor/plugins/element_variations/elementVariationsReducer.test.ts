@@ -15,9 +15,10 @@ function buildElementVariation(
 	properties: Partial<ElementVariation> = {}
 ): ElementVariation {
 	return {
+		active: true,
 		audienceEntryERCs: [],
 		externalReferenceCode: '',
-		hide: {},
+		hide: false,
 		html: {},
 		js: {},
 		key: 'key-1',
@@ -47,8 +48,9 @@ describe('elementVariationsReducer', () => {
 			const elementVariation = createElementVariation('experience-1');
 
 			expect(elementVariation.segmentsExperienceERC).toBe('experience-1');
+			expect(elementVariation.active).toBe(true);
 			expect(elementVariation.name).toBe('');
-			expect(elementVariation.hide).toEqual({});
+			expect(elementVariation.hide).toBe(false);
 			expect(elementVariation.key).toBeTruthy();
 
 			expect(createElementVariation('experience-1').key).not.toBe(
@@ -69,7 +71,7 @@ describe('elementVariationsReducer', () => {
 			).toEqual({
 				defaultLanguageId: 'en_US',
 				draftElementVariation: null,
-				editableElementOptions: [],
+				editableElementOptions: null,
 				elementVariations: [],
 				experienceKey: '',
 				highlightedTargetElement: null,
@@ -77,15 +79,16 @@ describe('elementVariationsReducer', () => {
 			});
 		});
 
-		it('assigns a key and parses the hide map to each loaded variation', () => {
+		it('assigns a key and derives the hide flag from the hide value', () => {
 			const {draftElementVariation, elementVariations} =
 				createInitialState({
 					defaultLanguageId: 'en_US',
 					elementVariations: [
 						{
+							active: true,
 							audienceEntryERCs: [],
 							externalReferenceCode: 'erc-1',
-							hide: {en_US: 'true'},
+							hide: 'true',
 							html: {},
 							js: {},
 							name: 'Variation 1',
@@ -101,7 +104,7 @@ describe('elementVariationsReducer', () => {
 			expect(elementVariations).toHaveLength(1);
 			expect(elementVariations[0].name).toBe('Variation 1');
 			expect(elementVariations[0].key).toBeTruthy();
-			expect(elementVariations[0].hide).toEqual({en_US: true});
+			expect(elementVariations[0].hide).toBe(true);
 		});
 	});
 
@@ -121,13 +124,13 @@ describe('elementVariationsReducer', () => {
 			const state = reducer(
 				buildState({draftElementVariation: buildElementVariation()}),
 				{
-					properties: {hide: {en_US: true}, name: 'Renamed'},
+					properties: {hide: true, name: 'Renamed'},
 					type: 'UPDATE_ELEMENT_VARIATION_DRAFT',
 				}
 			);
 
 			expect(state.draftElementVariation?.name).toBe('Renamed');
-			expect(state.draftElementVariation?.hide).toEqual({en_US: true});
+			expect(state.draftElementVariation?.hide).toBe(true);
 		});
 
 		it('sets the language on SET_LANGUAGE_ID', () => {
@@ -214,6 +217,18 @@ describe('elementVariationsReducer', () => {
 			expect(state.languageId).toBe('en_US');
 		});
 
+		it('clears the highlighted target element on SAVE_ELEMENT_VARIATION_DRAFT', () => {
+			const state = reducer(
+				buildState({
+					draftElementVariation: buildElementVariation({key: 'new'}),
+					highlightedTargetElement: '.selector',
+				}),
+				{type: 'SAVE_ELEMENT_VARIATION_DRAFT'}
+			);
+
+			expect(state.highlightedTargetElement).toBeNull();
+		});
+
 		it('loads a variation into the draft on EDIT_ELEMENT_VARIATION', () => {
 			const elementVariation = buildElementVariation({key: 'key-1'});
 
@@ -236,6 +251,24 @@ describe('elementVariationsReducer', () => {
 			expect(state.elementVariations).toEqual([]);
 		});
 
+		it('updates the active flag on UPDATE_ELEMENT_VARIATION', () => {
+			const elementVariation = buildElementVariation({
+				active: true,
+				key: 'key-1',
+			});
+
+			const state = reducer(
+				buildState({elementVariations: [elementVariation]}),
+				{
+					active: false,
+					key: 'key-1',
+					type: 'UPDATE_ELEMENT_VARIATION',
+				}
+			);
+
+			expect(state.elementVariations[0].active).toBe(false);
+		});
+
 		it('clears the draft and resets the language on CANCEL_ELEMENT_VARIATION_DRAFT', () => {
 			const state = reducer(
 				buildState({
@@ -247,6 +280,18 @@ describe('elementVariationsReducer', () => {
 
 			expect(state.draftElementVariation).toBeNull();
 			expect(state.languageId).toBe('en_US');
+		});
+
+		it('clears the highlighted target element on CANCEL_ELEMENT_VARIATION_DRAFT', () => {
+			const state = reducer(
+				buildState({
+					draftElementVariation: buildElementVariation(),
+					highlightedTargetElement: '.selector',
+				}),
+				{type: 'CANCEL_ELEMENT_VARIATION_DRAFT'}
+			);
+
+			expect(state.highlightedTargetElement).toBeNull();
 		});
 	});
 });

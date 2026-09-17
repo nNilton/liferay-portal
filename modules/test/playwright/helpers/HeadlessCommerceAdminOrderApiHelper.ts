@@ -13,6 +13,7 @@ type TOrder = {
 	channelId?: number;
 	createDate?: string;
 	currencyCode?: string;
+	externalReferenceCode?: string;
 	id?: number;
 	name?: string;
 	orderItems?: TOrderItem[];
@@ -134,9 +135,21 @@ export class HeadlessCommerceAdminOrderApiHelper {
 		);
 	}
 
-	async getOrdersPage() {
+	async deleteOrdersByAccountId(accountId: number) {
+		const orders = await this.apiHelpers.get(
+			`${this.apiHelpers.baseUrl}${this.basePath}/orders?pageSize=200`
+		);
+
+		for (const order of orders?.items || []) {
+			if (order.accountId === accountId) {
+				await this.deleteOrder(order.id);
+			}
+		}
+	}
+
+	async getOrdersPage(filter?: string) {
 		return this.apiHelpers.get(
-			`${this.apiHelpers.baseUrl}${this.basePath}/orders`
+			`${this.apiHelpers.baseUrl}${this.basePath}/orders${filter ? `?filter=${encodeURIComponent(filter)}` : ''}`
 		);
 	}
 

@@ -370,15 +370,16 @@ public class
 	private CollectionPersistenceFinder
 		<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel,
 		 NoSuchPageTemplateStructureRelElementVariationAudienceEntryRelException>
-			_collectionPersistenceFinderByLayoutPageTemplateStructureRelElementVariationERC;
+			_collectionPersistenceFinderByG_LPTSREVERC;
 
 	/**
-	 * Returns an ordered range of all the layout page template structure rel element variation audience entry rels where layoutPageTemplateStructureRelElementVariationERC = &#63;.
+	 * Returns an ordered range of all the layout page template structure rel element variation audience entry rels where groupId = &#63; and layoutPageTemplateStructureRelElementVariationERC = &#63;.
 	 *
 	 * <p>
 	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>LayoutPageTemplateStructureRelElementVariationAudienceEntryRelModelImpl</code>.
 	 * </p>
 	 *
+	 * @param groupId the group ID
 	 * @param layoutPageTemplateStructureRelElementVariationERC the layout page template structure rel element variation erc
 	 * @param start the lower bound of the range of layout page template structure rel element variation audience entry rels
 	 * @param end the upper bound of the range of layout page template structure rel element variation audience entry rels (not inclusive)
@@ -388,7 +389,8 @@ public class
 	 */
 	@Override
 	public List<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel>
-		findByLayoutPageTemplateStructureRelElementVariationERC(
+		findByG_LPTSREVERC(
+			long groupId,
 			String layoutPageTemplateStructureRelElementVariationERC, int start,
 			int end,
 			OrderByComparator
@@ -396,18 +398,18 @@ public class
 					orderByComparator,
 			boolean useFinderCache) {
 
-		return _collectionPersistenceFinderByLayoutPageTemplateStructureRelElementVariationERC.
-			find(
-				finderCache,
-				new Object[] {
-					layoutPageTemplateStructureRelElementVariationERC
-				},
-				start, end, orderByComparator, useFinderCache);
+		return _collectionPersistenceFinderByG_LPTSREVERC.find(
+			finderCache,
+			new Object[] {
+				groupId, layoutPageTemplateStructureRelElementVariationERC
+			},
+			start, end, orderByComparator, useFinderCache);
 	}
 
 	/**
-	 * Returns the first layout page template structure rel element variation audience entry rel in the ordered set where layoutPageTemplateStructureRelElementVariationERC = &#63;.
+	 * Returns the first layout page template structure rel element variation audience entry rel in the ordered set where groupId = &#63; and layoutPageTemplateStructureRelElementVariationERC = &#63;.
 	 *
+	 * @param groupId the group ID
 	 * @param layoutPageTemplateStructureRelElementVariationERC the layout page template structure rel element variation erc
 	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
 	 * @return the first matching layout page template structure rel element variation audience entry rel
@@ -415,79 +417,185 @@ public class
 	 */
 	@Override
 	public LayoutPageTemplateStructureRelElementVariationAudienceEntryRel
-			findByLayoutPageTemplateStructureRelElementVariationERC_First(
+			findByG_LPTSREVERC_First(
+				long groupId,
 				String layoutPageTemplateStructureRelElementVariationERC,
 				OrderByComparator
 					<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel>
 						orderByComparator)
 		throws NoSuchPageTemplateStructureRelElementVariationAudienceEntryRelException {
 
-		return _collectionPersistenceFinderByLayoutPageTemplateStructureRelElementVariationERC.
-			findFirst(
-				finderCache,
-				new Object[] {
-					layoutPageTemplateStructureRelElementVariationERC
-				},
-				orderByComparator);
+		return _collectionPersistenceFinderByG_LPTSREVERC.findFirst(
+			finderCache,
+			new Object[] {
+				groupId, layoutPageTemplateStructureRelElementVariationERC
+			},
+			orderByComparator);
 	}
 
 	/**
-	 * Returns the first layout page template structure rel element variation audience entry rel in the ordered set where layoutPageTemplateStructureRelElementVariationERC = &#63;.
+	 * Returns the first layout page template structure rel element variation audience entry rel in the ordered set where groupId = &#63; and layoutPageTemplateStructureRelElementVariationERC = &#63;.
 	 *
+	 * @param groupId the group ID
 	 * @param layoutPageTemplateStructureRelElementVariationERC the layout page template structure rel element variation erc
 	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
 	 * @return the first matching layout page template structure rel element variation audience entry rel, or <code>null</code> if a matching layout page template structure rel element variation audience entry rel could not be found
 	 */
 	@Override
 	public LayoutPageTemplateStructureRelElementVariationAudienceEntryRel
-		fetchByLayoutPageTemplateStructureRelElementVariationERC_First(
+		fetchByG_LPTSREVERC_First(
+			long groupId,
 			String layoutPageTemplateStructureRelElementVariationERC,
 			OrderByComparator
 				<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel>
 					orderByComparator) {
 
-		return _collectionPersistenceFinderByLayoutPageTemplateStructureRelElementVariationERC.
-			fetchFirst(
-				finderCache,
-				new Object[] {
-					layoutPageTemplateStructureRelElementVariationERC
-				},
-				orderByComparator);
+		return _collectionPersistenceFinderByG_LPTSREVERC.fetchFirst(
+			finderCache,
+			new Object[] {
+				groupId, layoutPageTemplateStructureRelElementVariationERC
+			},
+			orderByComparator);
 	}
 
 	/**
-	 * Removes all the layout page template structure rel element variation audience entry rels where layoutPageTemplateStructureRelElementVariationERC = &#63; from the database.
+	 * Removes all the layout page template structure rel element variation audience entry rels where groupId = &#63; and layoutPageTemplateStructureRelElementVariationERC = &#63; from the database.
 	 *
+	 * @param groupId the group ID
 	 * @param layoutPageTemplateStructureRelElementVariationERC the layout page template structure rel element variation erc
 	 */
 	@Override
-	public void removeByLayoutPageTemplateStructureRelElementVariationERC(
+	public void removeByG_LPTSREVERC(
+		long groupId,
 		String layoutPageTemplateStructureRelElementVariationERC) {
 
-		_collectionPersistenceFinderByLayoutPageTemplateStructureRelElementVariationERC.
-			remove(
-				finderCache,
-				new Object[] {
-					layoutPageTemplateStructureRelElementVariationERC
-				});
+		_collectionPersistenceFinderByG_LPTSREVERC.remove(
+			finderCache,
+			new Object[] {
+				groupId, layoutPageTemplateStructureRelElementVariationERC
+			});
 	}
 
 	/**
-	 * Returns the number of layout page template structure rel element variation audience entry rels where layoutPageTemplateStructureRelElementVariationERC = &#63;.
+	 * Returns the number of layout page template structure rel element variation audience entry rels where groupId = &#63; and layoutPageTemplateStructureRelElementVariationERC = &#63;.
 	 *
+	 * @param groupId the group ID
 	 * @param layoutPageTemplateStructureRelElementVariationERC the layout page template structure rel element variation erc
 	 * @return the number of matching layout page template structure rel element variation audience entry rels
 	 */
 	@Override
-	public int countByLayoutPageTemplateStructureRelElementVariationERC(
+	public int countByG_LPTSREVERC(
+		long groupId,
 		String layoutPageTemplateStructureRelElementVariationERC) {
 
-		return _collectionPersistenceFinderByLayoutPageTemplateStructureRelElementVariationERC.
-			count(
-				finderCache,
-				new Object[] {
-					layoutPageTemplateStructureRelElementVariationERC
-				});
+		return _collectionPersistenceFinderByG_LPTSREVERC.count(
+			finderCache,
+			new Object[] {
+				groupId, layoutPageTemplateStructureRelElementVariationERC
+			});
+	}
+
+	private CollectionPersistenceFinder
+		<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel,
+		 NoSuchPageTemplateStructureRelElementVariationAudienceEntryRelException>
+			_collectionPersistenceFinderByC_AEERC;
+
+	/**
+	 * Returns an ordered range of all the layout page template structure rel element variation audience entry rels where companyId = &#63; and audienceEntryERC = &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>com.liferay.portal.kernel.dao.orm.QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>LayoutPageTemplateStructureRelElementVariationAudienceEntryRelModelImpl</code>.
+	 * </p>
+	 *
+	 * @param companyId the company ID
+	 * @param audienceEntryERC the audience entry erc
+	 * @param start the lower bound of the range of layout page template structure rel element variation audience entry rels
+	 * @param end the upper bound of the range of layout page template structure rel element variation audience entry rels (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @param useFinderCache whether to use the finder cache
+	 * @return the ordered range of matching layout page template structure rel element variation audience entry rels
+	 */
+	@Override
+	public List<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel>
+		findByC_AEERC(
+			long companyId, String audienceEntryERC, int start, int end,
+			OrderByComparator
+				<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel>
+					orderByComparator,
+			boolean useFinderCache) {
+
+		return _collectionPersistenceFinderByC_AEERC.find(
+			finderCache, new Object[] {companyId, audienceEntryERC}, start, end,
+			orderByComparator, useFinderCache);
+	}
+
+	/**
+	 * Returns the first layout page template structure rel element variation audience entry rel in the ordered set where companyId = &#63; and audienceEntryERC = &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param audienceEntryERC the audience entry erc
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the first matching layout page template structure rel element variation audience entry rel
+	 * @throws NoSuchPageTemplateStructureRelElementVariationAudienceEntryRelException if a matching layout page template structure rel element variation audience entry rel could not be found
+	 */
+	@Override
+	public LayoutPageTemplateStructureRelElementVariationAudienceEntryRel
+			findByC_AEERC_First(
+				long companyId, String audienceEntryERC,
+				OrderByComparator
+					<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel>
+						orderByComparator)
+		throws NoSuchPageTemplateStructureRelElementVariationAudienceEntryRelException {
+
+		return _collectionPersistenceFinderByC_AEERC.findFirst(
+			finderCache, new Object[] {companyId, audienceEntryERC},
+			orderByComparator);
+	}
+
+	/**
+	 * Returns the first layout page template structure rel element variation audience entry rel in the ordered set where companyId = &#63; and audienceEntryERC = &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param audienceEntryERC the audience entry erc
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the first matching layout page template structure rel element variation audience entry rel, or <code>null</code> if a matching layout page template structure rel element variation audience entry rel could not be found
+	 */
+	@Override
+	public LayoutPageTemplateStructureRelElementVariationAudienceEntryRel
+		fetchByC_AEERC_First(
+			long companyId, String audienceEntryERC,
+			OrderByComparator
+				<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel>
+					orderByComparator) {
+
+		return _collectionPersistenceFinderByC_AEERC.fetchFirst(
+			finderCache, new Object[] {companyId, audienceEntryERC},
+			orderByComparator);
+	}
+
+	/**
+	 * Removes all the layout page template structure rel element variation audience entry rels where companyId = &#63; and audienceEntryERC = &#63; from the database.
+	 *
+	 * @param companyId the company ID
+	 * @param audienceEntryERC the audience entry erc
+	 */
+	@Override
+	public void removeByC_AEERC(long companyId, String audienceEntryERC) {
+		_collectionPersistenceFinderByC_AEERC.remove(
+			finderCache, new Object[] {companyId, audienceEntryERC});
+	}
+
+	/**
+	 * Returns the number of layout page template structure rel element variation audience entry rels where companyId = &#63; and audienceEntryERC = &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param audienceEntryERC the audience entry erc
+	 * @return the number of matching layout page template structure rel element variation audience entry rels
+	 */
+	@Override
+	public int countByC_AEERC(long companyId, String audienceEntryERC) {
+		return _collectionPersistenceFinderByC_AEERC.count(
+			finderCache, new Object[] {companyId, audienceEntryERC});
 	}
 
 	private UniquePersistenceFinder
@@ -1140,34 +1248,40 @@ public class
 					LayoutPageTemplateStructureRelElementVariationAudienceEntryRel::
 						getCompanyId));
 
-		_collectionPersistenceFinderByLayoutPageTemplateStructureRelElementVariationERC =
+		_collectionPersistenceFinderByG_LPTSREVERC =
 			new CollectionPersistenceFinder<>(
 				this,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION,
-					"findByLayoutPageTemplateStructureRelElementVariationERC",
+					"findByG_LPTSREVERC",
 					new String[] {
-						String.class.getName(), Integer.class.getName(),
-						Integer.class.getName(),
+						Long.class.getName(), String.class.getName(),
+						Integer.class.getName(), Integer.class.getName(),
 						OrderByComparator.class.getName()
 					},
-					new String[] {"lptsRelElementVariationERC"}, true),
+					new String[] {"groupId", "lptsRelElementVariationERC"},
+					true),
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION,
-					"findByLayoutPageTemplateStructureRelElementVariationERC",
-					new String[] {String.class.getName()},
-					new String[] {"lptsRelElementVariationERC"}, 0, 1, true,
-					null),
+					"findByG_LPTSREVERC",
+					new String[] {Long.class.getName(), String.class.getName()},
+					new String[] {"groupId", "lptsRelElementVariationERC"}, 0,
+					2, true, null),
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION,
-					"countByLayoutPageTemplateStructureRelElementVariationERC",
-					new String[] {String.class.getName()},
-					new String[] {"lptsRelElementVariationERC"}, 0, 1, false,
-					null),
+					"countByG_LPTSREVERC",
+					new String[] {Long.class.getName(), String.class.getName()},
+					new String[] {"groupId", "lptsRelElementVariationERC"}, 0,
+					2, false, null),
 				_SQL_SELECT_LAYOUTPAGETEMPLATESTRUCTURERELELEMENTVARIATIONAUDIENCEENTRYREL_WHERE,
 				_SQL_COUNT_LAYOUTPAGETEMPLATESTRUCTURERELELEMENTVARIATIONAUDIENCEENTRYREL_WHERE,
 				LayoutPageTemplateStructureRelElementVariationAudienceEntryRelModelImpl.ORDER_BY_JPQL,
 				_ENTITY_ALIAS_PREFIX, "", "", null,
+				new FinderColumn<>(
+					"layoutPageTemplateStructureRelElementVariationAudienceEntryRel.",
+					"groupId", FinderColumn.Type.LONG, "=", true, true,
+					LayoutPageTemplateStructureRelElementVariationAudienceEntryRel::
+						getGroupId),
 				new FinderColumn<>(
 					"layoutPageTemplateStructureRelElementVariationAudienceEntryRel.",
 					"layoutPageTemplateStructureRelElementVariationERC",
@@ -1175,6 +1289,43 @@ public class
 					true, true,
 					LayoutPageTemplateStructureRelElementVariationAudienceEntryRel::
 						getLayoutPageTemplateStructureRelElementVariationERC));
+
+		_collectionPersistenceFinderByC_AEERC =
+			new CollectionPersistenceFinder<>(
+				this,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_AEERC",
+					new String[] {
+						Long.class.getName(), String.class.getName(),
+						Integer.class.getName(), Integer.class.getName(),
+						OrderByComparator.class.getName()
+					},
+					new String[] {"companyId", "audienceEntryERC"}, true),
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_AEERC",
+					new String[] {Long.class.getName(), String.class.getName()},
+					new String[] {"companyId", "audienceEntryERC"}, 0, 2, true,
+					null),
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_AEERC",
+					new String[] {Long.class.getName(), String.class.getName()},
+					new String[] {"companyId", "audienceEntryERC"}, 0, 2, false,
+					null),
+				_SQL_SELECT_LAYOUTPAGETEMPLATESTRUCTURERELELEMENTVARIATIONAUDIENCEENTRYREL_WHERE,
+				_SQL_COUNT_LAYOUTPAGETEMPLATESTRUCTURERELELEMENTVARIATIONAUDIENCEENTRYREL_WHERE,
+				LayoutPageTemplateStructureRelElementVariationAudienceEntryRelModelImpl.ORDER_BY_JPQL,
+				_ENTITY_ALIAS_PREFIX, "", "", null,
+				new FinderColumn<>(
+					"layoutPageTemplateStructureRelElementVariationAudienceEntryRel.",
+					"companyId", FinderColumn.Type.LONG, "=", true, true,
+					LayoutPageTemplateStructureRelElementVariationAudienceEntryRel::
+						getCompanyId),
+				new FinderColumn<>(
+					"layoutPageTemplateStructureRelElementVariationAudienceEntryRel.",
+					"audienceEntryERC", FinderColumn.Type.STRING, "=", true,
+					true,
+					LayoutPageTemplateStructureRelElementVariationAudienceEntryRel::
+						getAudienceEntryERC));
 
 		_uniquePersistenceFinderByERC_G = new UniquePersistenceFinder<>(
 			this,
@@ -1279,4 +1430,4 @@ public class
 	}
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1664422624
+// LIFERAY-SERVICE-BUILDER-HASH:-392900454

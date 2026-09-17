@@ -36,7 +36,9 @@ export class FDSSamplePage {
 	readonly emptyStateContainer: Locator;
 	readonly fdsWrapper: Locator;
 	readonly fileDropModal: Locator;
+	readonly filterDeleteButton: Locator;
 	readonly filterDropdownMenu: Locator;
+	readonly filterExcludeToggle: Locator;
 	readonly filterMenu: Locator;
 	readonly filterMenuSearchInput: Locator;
 	readonly filterShowResultsOrAddButton: Locator;
@@ -58,6 +60,11 @@ export class FDSSamplePage {
 		itemsPerPageSelector: Locator;
 	};
 	readonly resubmitButton: Locator;
+	readonly searchSuggestions: {
+		clearAllButton: Locator;
+		entries: Locator;
+		menu: Locator;
+	};
 	readonly sidePanel: Locator;
 	readonly sidePanelFrame: FrameLocator;
 	readonly selectAllCheckbox: Locator;
@@ -128,7 +135,12 @@ export class FDSSamplePage {
 			name: 'Custom dummy file uploader',
 		});
 		this.filterDropdownMenu = page.locator('.data-set-filter');
+		this.filterExcludeToggle =
+			this.filterDropdownMenu.getByLabel('Exclude');
 		this.filterMenu = page.locator('.dropdown-menu');
+		this.filterDeleteButton = this.filterMenu.getByRole('button', {
+			name: 'Delete Filter',
+		});
 		this.filterMenuSearchInput = this.filterMenu
 			.getByLabel('Search')
 			.first();
@@ -178,6 +190,18 @@ export class FDSSamplePage {
 		};
 
 		this.resubmitButton = page.getByRole('button', {name: 'Resubmit'});
+
+		const searchSuggestionsMenu = page.locator('.fds-search-suggestions');
+
+		this.searchSuggestions = {
+			clearAllButton: searchSuggestionsMenu.getByRole('button', {
+				name: 'Clear All',
+			}),
+			entries: searchSuggestionsMenu.locator(
+				'.fds-search-suggestions-item'
+			),
+			menu: searchSuggestionsMenu,
+		};
 
 		this.selectAllCheckbox = page.getByText('Select All');
 
@@ -325,6 +349,41 @@ export class FDSSamplePage {
 		await workflowModal.getByRole('button', {name: 'Save'}).click();
 
 		await workflowModal.waitFor({state: 'hidden'});
+	}
+
+	getFilterItemCheckbox(label: string) {
+		return this.filterDropdownMenu.getByRole('checkbox', {name: label});
+	}
+
+	getFilterRemoveButton(label: string) {
+		return this.activeFiltersToolbar.container
+			.getByRole('group')
+			.filter({hasText: `${label}:`})
+			.getByRole('button', {name: 'Remove Filter'});
+	}
+
+	getFilterSummaryButton(label: string) {
+		return this.activeFiltersToolbar.container
+			.getByRole('button')
+			.filter({hasText: new RegExp(`^${label}:`)});
+	}
+
+	searchSuggestionEntry(query: string) {
+		return this.searchSuggestions.menu.getByRole('menuitem', {
+			exact: true,
+			name: query,
+		});
+	}
+
+	searchSuggestionRemoveButton(query: string) {
+		return this.searchSuggestions.entries
+			.filter({
+				has: this.page.getByRole('menuitem', {
+					exact: true,
+					name: query,
+				}),
+			})
+			.getByRole('menuitem', {name: 'Clear Search'});
 	}
 
 	async search(value: string) {

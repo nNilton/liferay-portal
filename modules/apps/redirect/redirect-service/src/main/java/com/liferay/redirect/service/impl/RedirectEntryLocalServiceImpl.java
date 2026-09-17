@@ -31,6 +31,7 @@ import com.liferay.redirect.model.RedirectEntry;
 import com.liferay.redirect.model.RedirectNotFoundEntry;
 import com.liferay.redirect.service.RedirectNotFoundEntryLocalService;
 import com.liferay.redirect.service.base.RedirectEntryLocalServiceBaseImpl;
+import com.liferay.redirect.service.persistence.RedirectNotFoundEntryPersistence;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -116,8 +117,7 @@ public class RedirectEntryLocalServiceImpl
 		}
 
 		RedirectNotFoundEntry redirectNotFoundEntry =
-			_redirectNotFoundEntryLocalService.fetchRedirectNotFoundEntry(
-				groupId, sourceURL);
+			_redirectNotFoundEntryPersistence.fetchByG_U(groupId, sourceURL);
 
 		if (redirectNotFoundEntry != null) {
 			_redirectNotFoundEntryLocalService.deleteRedirectNotFoundEntry(
@@ -199,6 +199,10 @@ public class RedirectEntryLocalServiceImpl
 	@Override
 	public RedirectEntry fetchRedirectEntry(
 		long groupId, String sourceURL, boolean updateLastOccurrenceDate) {
+
+		if (redirectEntryPersistence.countByGroupId(groupId) == 0) {
+			return null;
+		}
 
 		RedirectEntry redirectEntry = redirectEntryPersistence.fetchByG_S(
 			groupId, sourceURL);
@@ -473,6 +477,9 @@ public class RedirectEntryLocalServiceImpl
 	@Reference
 	private RedirectNotFoundEntryLocalService
 		_redirectNotFoundEntryLocalService;
+
+	@Reference
+	private RedirectNotFoundEntryPersistence _redirectNotFoundEntryPersistence;
 
 	@Reference
 	private ResourceLocalService _resourceLocalService;

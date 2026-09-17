@@ -14,6 +14,8 @@ import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.servlet.ServletResponseUtil;
 import com.liferay.portal.kernel.struts.StrutsAction;
@@ -22,6 +24,7 @@ import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.site.cms.site.initializer.internal.util.ActionUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -44,21 +47,27 @@ public class ResetTranslationDisplayPageStrutsAction implements StrutsAction {
 			HttpServletResponse httpServletResponse)
 		throws Exception {
 
+		long objectDefinitionId = ParamUtil.getLong(
+			httpServletRequest, "objectDefinitionId");
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
+		_objectDefinitionModelResourcePermission.check(
+			themeDisplay.getPermissionChecker(), objectDefinitionId,
+			ActionKeys.UPDATE);
+
 		_write(
 			httpServletResponse, _jsonFactory.createJSONObject(),
 			HttpServletResponse.SC_OK);
 
 		ObjectDefinition objectDefinition =
-			_objectDefinitionService.getObjectDefinition(
-				ParamUtil.getLong(httpServletRequest, "objectDefinitionId"));
+			_objectDefinitionService.getObjectDefinition(objectDefinitionId);
 
 		if ((objectDefinition == null) || !objectDefinition.isApproved()) {
 			return null;
 		}
-
-		ThemeDisplay themeDisplay =
-			(ThemeDisplay)httpServletRequest.getAttribute(
-				WebKeys.THEME_DISPLAY);
 
 		Group group = _groupLocalService.getGroup(
 			themeDisplay.getCompanyId(), GroupConstants.CMS);
@@ -66,20 +75,27 @@ public class ResetTranslationDisplayPageStrutsAction implements StrutsAction {
 		long classNameId = _portal.getClassNameId(
 			objectDefinition.getClassName());
 
-		LayoutPageTemplateEntry layoutPageTemplateEntry =
-			_layoutPageTemplateEntryLocalService.fetchLayoutPageTemplateEntry(
-				group.getGroupId(),
-				_TRANSLATION_LAYOUT_PAGE_TEMPLATE_ENTRY_KEY_PREFIX +
-					classNameId);
+		ActionUtil.deleteCompareContentLayoutPageTemplateEntry(
+			classNameId, group.getGroupId());
 
-		if (layoutPageTemplateEntry == null) {
-			return null;
-		}
-
-		_layoutPageTemplateEntryLocalService.deleteLayoutPageTemplateEntry(
-			layoutPageTemplateEntry);
+		_deleteLayoutPageTemplateEntry(
+			group.getGroupId(),
+			_TRANSLATION_LAYOUT_PAGE_TEMPLATE_ENTRY_KEY_PREFIX + classNameId);
 
 		return null;
+	}
+
+	private void _deleteLayoutPageTemplateEntry(long groupId, String key)
+		throws Exception {
+
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			_layoutPageTemplateEntryLocalService.fetchLayoutPageTemplateEntry(
+				groupId, key);
+
+		if (layoutPageTemplateEntry != null) {
+			_layoutPageTemplateEntryLocalService.deleteLayoutPageTemplateEntry(
+				layoutPageTemplateEntry);
+		}
 	}
 
 	private void _write(
@@ -107,6 +123,12 @@ public class ResetTranslationDisplayPageStrutsAction implements StrutsAction {
 	@Reference
 	private LayoutPageTemplateEntryLocalService
 		_layoutPageTemplateEntryLocalService;
+
+	@Reference(
+		target = "(model.class.name=com.liferay.object.model.ObjectDefinition)"
+	)
+	private ModelResourcePermission<ObjectDefinition>
+		_objectDefinitionModelResourcePermission;
 
 	@Reference
 	private ObjectDefinitionService _objectDefinitionService;

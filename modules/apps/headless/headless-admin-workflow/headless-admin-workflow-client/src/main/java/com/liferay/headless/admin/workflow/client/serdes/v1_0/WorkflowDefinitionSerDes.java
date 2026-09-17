@@ -15,6 +15,7 @@ import jakarta.annotation.Generated;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -231,6 +232,16 @@ public class WorkflowDefinitionSerDes {
 			sb.append("\"");
 		}
 
+		if (workflowDefinition.getSystem() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"system\": ");
+
+			sb.append(workflowDefinition.getSystem());
+		}
+
 		if (workflowDefinition.getTitle() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
@@ -420,6 +431,13 @@ public class WorkflowDefinitionSerDes {
 			map.put("scope", String.valueOf(workflowDefinition.getScope()));
 		}
 
+		if (workflowDefinition.getSystem() == null) {
+			map.put("system", null);
+		}
+		else {
+			map.put("system", String.valueOf(workflowDefinition.getSystem()));
+		}
+
 		if (workflowDefinition.getTitle() == null) {
 			map.put("title", null);
 		}
@@ -511,6 +529,9 @@ public class WorkflowDefinitionSerDes {
 				return false;
 			}
 			else if (Objects.equals(jsonParserFieldName, "scope")) {
+				return false;
+			}
+			else if (Objects.equals(jsonParserFieldName, "system")) {
 				return false;
 			}
 			else if (Objects.equals(jsonParserFieldName, "title")) {
@@ -621,6 +642,11 @@ public class WorkflowDefinitionSerDes {
 					workflowDefinition.setScope((String)jsonParserFieldValue);
 				}
 			}
+			else if (Objects.equals(jsonParserFieldName, "system")) {
+				if (jsonParserFieldValue != null) {
+					workflowDefinition.setSystem((Boolean)jsonParserFieldValue);
+				}
+			}
 			else if (Objects.equals(jsonParserFieldName, "title")) {
 				if (jsonParserFieldValue != null) {
 					workflowDefinition.setTitle((String)jsonParserFieldValue);
@@ -702,6 +728,12 @@ public class WorkflowDefinitionSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -734,4 +766,4 @@ public class WorkflowDefinitionSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1741752813
+// LIFERAY-REST-BUILDER-HASH:-1632286020

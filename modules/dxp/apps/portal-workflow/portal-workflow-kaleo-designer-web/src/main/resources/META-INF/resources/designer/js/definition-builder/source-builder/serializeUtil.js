@@ -682,34 +682,52 @@ function serializeDefinition(xmlNamespace, metadata, nodes, transitions) {
 			buffer.push(XMLUtil.create('script', cdata(script)));
 		}
 
+		if (item.type === 'ai-decision' || item.type === 'llm') {
+			buffer.push(
+				XMLUtil.create(
+					'input-variables',
+					cdata(jsonStringify(item.data.inputVariables || []))
+				)
+			);
+			buffer.push(
+				XMLUtil.create(
+					'output-variables',
+					cdata(jsonStringify(item.data.outputVariables || []))
+				)
+			);
+			buffer.push(XMLUtil.create('prompt', cdata(prompt ? prompt : '')));
+			buffer.push(
+				XMLUtil.create('rag', cdata(jsonStringify(item.data.rag || {})))
+			);
+			buffer.push(
+				XMLUtil.create(
+					'tools',
+					cdata(jsonStringify(item.data.tools || []))
+				)
+			);
+		}
+
+		if (item.type === 'ai-hub-agent') {
+			buffer.push(
+				createTagWithEscapedContent(
+					'agent-definition-external-reference-code',
+					item.data.agentDefinitionExternalReferenceCode || ''
+				)
+			);
+
+			if (item.data.timeout) {
+				buffer.push(
+					createTagWithEscapedContent('timeout', item.data.timeout)
+				);
+			}
+		}
+
 		if (xmlType === 'condition') {
 			buffer.push(
 				createTagWithEscapedContent(
 					'scriptLanguage',
 					scriptLanguage || DEFAULT_LANGUAGE
 				)
-			);
-		}
-
-		if (item.type === 'llm' || item.type === 'ai-decision') {
-			buffer.push(
-				XMLUtil.create(
-					'input-variables',
-					cdata(jsonStringify(item.data.inputVariables))
-				)
-			);
-			buffer.push(
-				XMLUtil.create(
-					'output-variables',
-					cdata(jsonStringify(item.data.outputVariables))
-				)
-			);
-			buffer.push(XMLUtil.create('prompt', cdata(prompt ? prompt : '')));
-			buffer.push(
-				XMLUtil.create('rag', cdata(jsonStringify(item.data.rag)))
-			);
-			buffer.push(
-				XMLUtil.create('tools', cdata(jsonStringify(item.data.tools)))
 			);
 		}
 
@@ -723,13 +741,13 @@ function serializeDefinition(xmlNamespace, metadata, nodes, transitions) {
 			buffer.push(
 				XMLUtil.create(
 					'input-variables',
-					cdata(jsonStringify(item.data.inputVariables))
+					cdata(jsonStringify(item.data.inputVariables || []))
 				)
 			);
 			buffer.push(
 				XMLUtil.create(
 					'output-variables',
-					cdata(jsonStringify(item.data.outputVariables))
+					cdata(jsonStringify(item.data.outputVariables || []))
 				)
 			);
 			buffer.push(

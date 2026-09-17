@@ -1205,15 +1205,24 @@ public class RESTBuilder {
 			String escapedVersion)
 		throws Exception {
 
+		boolean createClientScopeFiles = true;
+
 		for (Map.Entry<String, Schema> entry : allExternalSchemas.entrySet()) {
+			Schema schema = entry.getValue();
 			String schemaName = entry.getKey();
 
 			_putSchema(
 				context, escapedVersion,
-				Collections.singletonMap(schemaName, schemaName),
-				entry.getValue(), schemaName, Collections.emptySet());
+				Collections.singletonMap(schemaName, schemaName), schema,
+				schemaName, Collections.emptySet());
 
 			if (Validator.isNotNull(_configYAML.getClientDir())) {
+				if (createClientScopeFiles && _containsVulcanScope(schema)) {
+					_createClientScopeFile(context);
+
+					createClientScopeFiles = false;
+				}
+
 				_createClientDTOFile(context, escapedVersion, schemaName);
 				_createClientSerDesFile(context, escapedVersion, schemaName);
 			}
@@ -1807,8 +1816,8 @@ public class RESTBuilder {
 
 			String text = CamelCaseUtil.fromCamelCase(selParameterName);
 
-			text = TextFormatter.formatPlural(
-				text.substring(0, text.length() - 3));
+			text = OpenAPIUtil.formatPlural(
+				_configYAML, text.substring(0, text.length() - 3));
 
 			StringBuilder sb = new StringBuilder();
 
@@ -1967,7 +1976,8 @@ public class RESTBuilder {
 				int z = yamlString.indexOf(':', y);
 
 				if (Objects.equals(propertySchema.getType(), "array")) {
-					String plural = TextFormatter.formatPlural(schemaVarName);
+					String plural = OpenAPIUtil.formatPlural(
+						_configYAML, schemaVarName);
 
 					if (propertyName.endsWith(
 							StringUtil.upperCaseFirstLetter(plural)) &&
@@ -2118,7 +2128,8 @@ public class RESTBuilder {
 		}
 
 		context.put("schemaName", schemaName);
-		context.put("schemaNames", TextFormatter.formatPlural(schemaName));
+		context.put(
+			"schemaNames", OpenAPIUtil.formatPlural(_configYAML, schemaName));
 		context.put(
 			"schemaPath", TextFormatter.format(schemaName, TextFormatter.K));
 
@@ -2126,7 +2137,8 @@ public class RESTBuilder {
 
 		context.put("schemaVarName", schemaVarName);
 		context.put(
-			"schemaVarNames", TextFormatter.formatPlural(schemaVarName));
+			"schemaVarNames",
+			OpenAPIUtil.formatPlural(_configYAML, schemaVarName));
 
 		context.put("relatedSchemaNames", relatedSchemaNames);
 	}

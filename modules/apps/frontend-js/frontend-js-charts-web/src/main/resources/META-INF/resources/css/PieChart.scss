@@ -39,6 +39,14 @@
 		}
 	}
 
+	// Neutral ring shown when the total is 0, so the chart keeps its shape
+	// instead of disappearing.
+
+	.chart-pie-track {
+		fill: none;
+		stroke: $light-d1;
+	}
+
 	.chart-pie-center-label {
 		align-items: center;
 		display: flex;
@@ -56,6 +64,11 @@
 
 	.chart-pie-center-label-percent {
 		font-size: 1.5rem;
+		font-weight: 700;
+	}
+
+	.chart-pie-center-label-total {
+		font-size: 2rem;
 		font-weight: 700;
 	}
 
@@ -86,6 +99,19 @@
 .chart-pie-revealed {
 	.chart-pie-svg > path {
 		animation: chart-pie-reveal 400ms ease both;
+	}
+}
+
+// `legendSwatchBorder={false}`: drop the swatch outline (list + table).
+// `transparent` keeps the 12x12 box so nothing shifts. The active variants
+// out-specify the rules that would otherwise re-add a white edge on
+// hover/focus.
+
+.chart-pie-no-swatch-border {
+	.charts-legend__swatch,
+	.charts-legend__item.is-active .charts-legend__swatch,
+	.charts-legend-table__row.is-active .charts-legend__swatch {
+		border-color: transparent;
 	}
 }
 

@@ -19,7 +19,8 @@ import {Map, OrderedMap, Set} from 'immutable';
 import {noop} from 'lodash';
 import {OrderParams} from 'shared/util/records';
 import {setUriFilterValues, setUriQueryValues} from 'shared/util/router';
-import {useHistory} from 'react-router-dom';
+import {toLocale} from 'shared/util/numbers';
+import {useHistoryAdapter} from 'shared/hooks/useHistoryAdapter';
 
 const {cur: defaultPage} = Constants.pagination;
 
@@ -101,7 +102,7 @@ const Toolbar: React.FC<IToolbarProps> = ({
 	showSearch = true,
 	total = 0,
 }) => {
-	const history = useHistory();
+	const history = useHistoryAdapter();
 
 	const itemsSelected = selectEntirePage || selectEntirePageIndeterminate;
 
@@ -344,7 +345,7 @@ const Toolbar: React.FC<IToolbarProps> = ({
 										total,
 										false,
 										[
-											total.toLocaleString(),
+											toLocale(total),
 											<b key="QUERY_TERM">{query}</b>,
 										]
 									)

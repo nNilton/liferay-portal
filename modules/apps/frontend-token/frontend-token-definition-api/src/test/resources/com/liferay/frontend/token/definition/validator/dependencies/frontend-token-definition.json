@@ -1,0 +1,31 @@
+{
+	"frontendTokenCategories": [
+		{
+			"frontendTokenSets": [
+				{
+					"description": "The Grays of the Color System",
+					"frontendTokens": [
+						{
+							"defaultValue": "#FFF",
+							"description": "The White Color",
+							"editorType": "ColorPicker",
+							"label": "white",
+							"mappings": [
+								{
+									"type": "cssVariable",
+									"value": "white"
+								}
+							],
+							"name": "whiteColor",
+							"type": "String"
+						}
+					],
+					"label": "grays",
+					"name": "grays"
+				}
+			],
+			"label": "color-system",
+			"name": "colorSystem"
+		}
+	]
+}

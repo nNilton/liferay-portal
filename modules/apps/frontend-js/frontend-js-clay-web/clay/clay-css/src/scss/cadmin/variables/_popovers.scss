@@ -78,6 +78,7 @@ $cadmin-popover: map-deep-merge(
 		text-transform: none,
 		top: 0px,
 		white-space: normal,
+		width: max-content,
 		word-break: normal,
 		word-spacing: normal,
 		word-wrap: break-word,
@@ -134,7 +135,6 @@ $cadmin-popovers: map-deep-merge(
 $cadmin-popover-header: () !default;
 $cadmin-popover-header: map-deep-merge(
 	(
-		color: $cadmin-popover-header-color,
 		background-color: $cadmin-popover-header-bg,
 		border-bottom: $cadmin-popover-border-width solid
 			unquote('hsl(from #{$cadmin-popover-header-bg} h s calc(l - 5))'),
@@ -143,6 +143,7 @@ $cadmin-popover-header: map-deep-merge(
 			clay-enable-rounded($cadmin-popover-offset-border-width),
 		border-top-right-radius:
 			clay-enable-rounded($cadmin-popover-offset-border-width),
+		color: $cadmin-popover-header-color,
 		font-size: $cadmin-popover-header-font-size,
 		font-weight: $cadmin-popover-header-font-weight,
 		margin-bottom: $cadmin-popover-header-margin-y,

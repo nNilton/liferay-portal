@@ -26,7 +26,6 @@ import com.liferay.portal.kernel.dao.orm.ProjectionFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.ProjectionList;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.Type;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.UserConstants;
@@ -59,8 +58,6 @@ import com.liferay.portlet.asset.model.impl.AssetTagImpl;
 import com.liferay.portlet.asset.service.permission.AssetTagsPermission;
 
 import jakarta.ws.rs.core.MultivaluedMap;
-
-import java.sql.Timestamp;
 
 import java.util.Date;
 import java.util.List;
@@ -343,18 +340,19 @@ public class KeywordResourceImpl
 	public Keyword putKeyword(Long keywordId, Keyword keyword)
 		throws Exception {
 
+		long[] assetLibraryGroupIds = TaxonomyGroupUtil.getAssetLibraryGroupIds(
+			keyword.getAssetLibraries(), contextCompany.getCompanyId());
+
+		if (ArrayUtil.isNotEmpty(keyword.getAssetLibraries())) {
+			_checkAssetLibraryGroupIdsPermission(assetLibraryGroupIds);
+		}
+
 		AssetTag assetTag = _assetTagService.updateTag(
 			keyword.getExternalReferenceCode(), keywordId, keyword.getName(),
 			null);
 
-		if (FeatureFlagManagerUtil.isEnabled(
-				assetTag.getCompanyId(), "LPD-17564")) {
-
-			_assetTagGroupRelLocalService.setAssetTagGroupRels(
-				assetTag.getTagId(),
-				TaxonomyGroupUtil.getAssetLibraryGroupIds(
-					keyword.getAssetLibraries(), assetTag.getCompanyId()));
-		}
+		_assetTagGroupRelLocalService.setAssetTagGroupRels(
+			assetTag.getTagId(), assetLibraryGroupIds);
 
 		return _toKeyword(assetTag);
 	}
@@ -364,12 +362,6 @@ public class KeywordResourceImpl
 		throws Exception {
 
 		AssetTag assetTag = _assetTagService.getTag(toKeywordId);
-
-		if (!FeatureFlagManagerUtil.isEnabled(
-				assetTag.getCompanyId(), "LPD-17564")) {
-
-			throw new UnsupportedOperationException();
-		}
 
 		for (long fromKeywordId : fromKeywordIds) {
 			_assetTagService.mergeTags(fromKeywordId, toKeywordId);
@@ -401,6 +393,11 @@ public class KeywordResourceImpl
 		AssetTag assetTag =
 			_assetTagLocalService.fetchAssetTagByExternalReferenceCode(
 				externalReferenceCode, siteId);
+
+		if (assetTag == null) {
+			assetTag = _assetTagLocalService.fetchTag(
+				siteId, keyword.getName());
+		}
 
 		if (assetTag != null) {
 			return _toKeyword(
@@ -434,10 +431,7 @@ public class KeywordResourceImpl
 			Long siteId)
 		throws Exception {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				group.getCompanyId(), "LPD-17564") ||
-			!group.isCMS()) {
-
+		if (!group.isCMS()) {
 			return _assetTagService.addTag(
 				externalReferenceCode, siteId, keyword.getName(),
 				new ServiceContext());
@@ -458,11 +452,7 @@ public class KeywordResourceImpl
 		long[] assetLibraryGroupIds = TaxonomyGroupUtil.getAssetLibraryGroupIds(
 			keyword.getAssetLibraries(), group.getCompanyId());
 
-		for (long assetLibraryGroupId : assetLibraryGroupIds) {
-			AssetTagsPermission.check(
-				PermissionThreadLocal.getPermissionChecker(),
-				assetLibraryGroupId, ActionKeys.MANAGE_TAG);
-		}
+		_checkAssetLibraryGroupIdsPermission(assetLibraryGroupIds);
 
 		AssetTag assetTag = _assetTagLocalService.addTag(
 			externalReferenceCode, contextUser.getUserId(), siteId,
@@ -472,6 +462,17 @@ public class KeywordResourceImpl
 			assetTag.getTagId(), assetLibraryGroupIds);
 
 		return assetTag;
+	}
+
+	private void _checkAssetLibraryGroupIdsPermission(
+			long[] assetLibraryGroupIds)
+		throws Exception {
+
+		for (long assetLibraryGroupId : assetLibraryGroupIds) {
+			AssetTagsPermission.check(
+				PermissionThreadLocal.getPermissionChecker(),
+				assetLibraryGroupId, ActionKeys.MANAGE_TAG);
+		}
 	}
 
 	private Page<Keyword> _getKeywordsPage(
@@ -623,10 +624,7 @@ public class KeywordResourceImpl
 
 		Group group = _groupLocalService.getGroup(siteId);
 
-		if (FeatureFlagManagerUtil.isEnabled(
-				group.getCompanyId(), "LPD-17564") &&
-			group.isCMS()) {
-
+		if (group.isCMS()) {
 			List<Long> existingGroupIds = transform(
 				_assetTagGroupRelLocalService.getAssetTagGroupRelsByTagId(
 					assetTag.getTagId()),
@@ -661,18 +659,14 @@ public class KeywordResourceImpl
 				}
 
 				setCompanyId((long)assetTags[1]);
-				setCreateDate(_toDate((Timestamp)assetTags[2]));
+				setCreateDate((Date)assetTags[2]);
 				setGroupId((long)assetTags[3]);
-				setModifiedDate(_toDate((Timestamp)assetTags[4]));
+				setModifiedDate((Date)assetTags[4]);
 				setName((String)assetTags[5]);
 				setTagId((long)assetTags[6]);
 				setUserId((long)assetTags[7]);
 			}
 		};
-	}
-
-	private Date _toDate(Timestamp timestamp) {
-		return new Date(timestamp.getTime());
 	}
 
 	private Keyword _toKeyword(AssetTag assetTag) throws Exception {

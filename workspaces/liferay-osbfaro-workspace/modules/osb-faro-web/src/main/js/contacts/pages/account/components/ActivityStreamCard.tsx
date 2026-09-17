@@ -10,58 +10,51 @@ import AccountUserSessionQuery, {
 	AccountUserSessionData,
 	AccountUserSessionVariables,
 } from 'shared/queries/AccountUserSessionQuery';
-import ActivitiesChart from 'contacts/components/ActivitiesChart';
-import ActivityStreamTimeline from './ActivityStreamTimeline';
-import Card from 'shared/components/Card';
-import ClayButton from '@clayui/button';
+import ActivityChartEmptyState from 'shared/components/ActivityChartEmptyState';
+import ActivityStreamCard from 'shared/components/ActivityStreamCard';
 import ClayIcon from '@clayui/icon';
 import ClayLink from '@clayui/link';
-import moment from 'moment';
-import React, {useEffect, useState} from 'react';
-import SearchInput from 'shared/components/SearchInput';
+import ActivityStreamNoResults from 'shared/components/ActivityStreamNoResults';
+import formatAccountSessions from '../utils/formatAccountSessions';
+import NoResultsDisplay from 'shared/components/NoResultsDisplay';
+import React, {useEffect, useMemo, useState} from 'react';
 import URLConstants from 'shared/util/url-constants';
-import {
-	DEFAULT_DATE_FORMAT,
-	formatUTCDate,
-	getDateRangeLabel,
-	getDateRangeLabelFromDate,
-	getEndDate,
-} from 'shared/util/date';
+import {ChartView} from 'shared/components/ChartViewSelector';
 import {fetchPolicyDefinition} from 'shared/util/graphql';
-import {getIcon, getStatsColor} from 'shared/util/metrics';
 import {getSafeRangeSelectors} from 'shared/util/util';
-import {Interval, RangeSelectors, SafeRangeSelectors} from 'shared/types';
-import {isNil} from 'lodash';
+import {getSessionsDateRange} from 'shared/util/activityDateRange';
+import {Interval, RangeSelectors} from 'shared/types';
+import {
+	mapEventMetricToActivityHistory,
+	buildCampaignUrls,
+	buildTouchIndividualUrls,
+	mergeCampaignDays,
+} from 'shared/util/activities';
 import {mapListResultsToProps} from 'shared/util/mappers';
-import {RangeKeyTimeRanges, SessionEntityTypes} from 'shared/util/constants';
-import {sub} from 'shared/util/lang';
-import {Text} from '@clayui/core';
-import {toRounded} from 'shared/util/numbers';
-import {TrendClassification} from 'segment/types';
+import {SessionEntityTypes} from 'shared/util/constants';
+import {toThousands} from 'shared/util/numbers';
+import {useParams} from 'react-router-dom';
+import {useCampaignTouchesByDay} from 'shared/hooks/useCampaignTouchesByDay';
 import {useQuery} from '@apollo/client';
 import {useSelectedPoint} from 'shared/hooks/useSelectedPoint';
 import {useStatefulPagination} from 'shared/hooks/useStatefulPagination';
-import {WrapSafeResults} from 'shared/hoc/util';
-
-const formatTimestamp = (timestamp: number): string => {
-	const date = new Date(timestamp);
-	const hours = date.getUTCHours().toString().padStart(2, '0');
-	const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-	const seconds = date.getUTCSeconds().toString().padStart(2, '0');
-
-	return `${hours}:${minutes}:${seconds}`;
-};
+import {useTimeZone} from 'shared/hooks/useTimeZone';
+import {getDateRangeLabel, getDateRangeLabelFromDate} from 'shared/util/date';
 
 interface IActivityStreamCardProps {
 	accountId: string;
+	accountName?: string;
 	channelId: string;
+	chartView?: ChartView;
 	interval: Interval;
 	rangeSelectors: RangeSelectors;
 }
 
-const ActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
+const AccountActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 	accountId,
+	accountName,
 	channelId,
+	chartView,
 	interval,
 	rangeSelectors,
 }) => {
@@ -72,6 +65,10 @@ const ActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 
 	const {delta, onDeltaChange, onPageChange, page, resetPage} =
 		useStatefulPagination();
+
+	const {timeZoneId} = useTimeZone();
+
+	const {groupId} = useParams<{groupId: string}>();
 
 	const handleChangeSelection = (index: number | null) => {
 		resetPage();
@@ -111,16 +108,7 @@ const ActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 		loading,
 		refetch,
 	} = mapListResultsToProps(metricResponse, ({eventMetric}) => ({
-		items: eventMetric.totalEventsMetric.histogram.metrics?.map(
-			({key, value}, index: number) => ({
-				intervalInitDate: moment.utc(key).valueOf(),
-				totalEvents: value,
-				totalSessions:
-					eventMetric?.totalSessionsMetric?.histogram?.metrics?.[
-						index
-					].value,
-			})
-		),
+		items: mapEventMetricToActivityHistory(eventMetric),
 	}));
 
 	const trendResponse = useQuery<
@@ -138,42 +126,19 @@ const ActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 		},
 	});
 
-	const getDateRange = (): SafeRangeSelectors => {
-		const {intervalInitDate} =
-			(selectedPoint !== undefined && activityHistory[selectedPoint]) ||
-			{};
-
-		const endDate = getEndDate(intervalInitDate, interval);
-		const hasSelectedDate = !isNil(endDate) && !isNil(intervalInitDate);
-
-		if (!hasSelectedDate) {
-			return safeRangeSelectors;
-		}
-
-		const formattedRangeEnd = formatUTCDate(endDate, DEFAULT_DATE_FORMAT);
-		const formattedRangeStart = formatUTCDate(
-			intervalInitDate,
-			DEFAULT_DATE_FORMAT
-		);
-
-		if (rangeSelectors.rangeKey === RangeKeyTimeRanges.Last24Hours) {
-			return getSafeRangeSelectors({
-				rangeEnd: `${formattedRangeEnd}T${formatTimestamp(
-					intervalInitDate + 59 * 60000
-				)}`,
-				rangeKey: rangeSelectors.rangeKey,
-				rangeStart: `${formattedRangeStart}T${formatTimestamp(
-					intervalInitDate
-				)}`,
-			});
-		}
-
-		return getSafeRangeSelectors({
-			rangeEnd: formattedRangeEnd,
-			rangeKey: rangeSelectors.rangeKey,
-			rangeStart: formattedRangeStart,
-		});
-	};
+	const campaignTouches = useCampaignTouchesByDay({
+		accountId,
+		channelId,
+		entityId: '',
+		entityType: SessionEntityTypes.Individual,
+		keywords,
+		...getSessionsDateRange({
+			activityHistory,
+			interval,
+			rangeSelectors,
+			selectedPoint,
+		}),
+	});
 
 	const sessionsResponse = useQuery<
 		AccountUserSessionData,
@@ -188,12 +153,80 @@ const ActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 			keywords,
 			page: page - 1,
 			size: delta,
-			...getDateRange(),
+			...getSessionsDateRange({
+				activityHistory,
+				interval,
+				rangeSelectors,
+				selectedPoint,
+			}),
 		},
 	});
 
-	const sessionsData = sessionsResponse.data?.eventsByUserSessions;
-	const userSessions = sessionsData?.userSessions ?? [];
+	const sessionsMappedResults = useMemo(
+		() =>
+			mapListResultsToProps(
+				sessionsResponse,
+				({eventsByUserSessions}) => ({
+					items: mergeCampaignDays(
+						formatAccountSessions(
+							eventsByUserSessions?.userSessions ?? [],
+							{
+								accountId,
+								accountName,
+								channelId,
+								groupId,
+								rangeSelectors,
+								timeZoneId,
+							}
+						),
+						campaignTouches.days,
+						{
+							isFirstPage: page === 1,
+							isLastPage:
+								page * delta >=
+								(eventsByUserSessions?.totalPageGroupsMetric
+									?.value ?? 0),
+							timeZoneId,
+						}
+					),
+					total:
+						eventsByUserSessions?.totalPageGroupsMetric?.value ?? 0,
+				})
+			),
+		[
+			sessionsResponse.data,
+			sessionsResponse.error,
+			sessionsResponse.loading,
+			campaignTouches.days,
+			accountId,
+			delta,
+			page,
+			accountName,
+			channelId,
+			groupId,
+			rangeSelectors,
+			timeZoneId,
+		]
+	);
+
+	const {
+		onCampaignDeltaChange: handleCampaignDeltaChange,
+		onCampaignPageChange: handleCampaignPageChange,
+	} = campaignTouches;
+
+	const individualUrls = useMemo(
+		() =>
+			buildTouchIndividualUrls(campaignTouches.days, {
+				channelId,
+				groupId,
+			}),
+		[campaignTouches.days, channelId, groupId]
+	);
+
+	const campaignUrls = useMemo(
+		() => buildCampaignUrls(campaignTouches.days, {channelId, groupId}),
+		[campaignTouches.days, channelId, groupId]
+	);
 
 	const handleQuerySubmit = (value: string) => {
 		setKeywords(value);
@@ -210,14 +243,6 @@ const ActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 	const trendMetric =
 		trendResponse.data?.eventsByUserSessions?.totalEventsMetric;
 
-	const trendValue = trendMetric?.value ?? 0;
-	const trendPercentage = trendMetric?.trend?.percentage ?? 0;
-	const trendClassification = trendMetric?.trend?.trendClassification;
-
-	const isChartEmpty =
-		!activityHistory.length ||
-		activityHistory.every(({totalEvents}) => !totalEvents);
-
 	const selected = hasSelectedPoint || selectedPoint !== undefined;
 
 	const {intervalInitDate: selectedIntervalInitDate} =
@@ -227,184 +252,115 @@ const ActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 		? getDateRangeLabelFromDate(selectedIntervalInitDate, interval)
 		: getDateRangeLabel(activityHistory, interval, 'intervalInitDate');
 
-	const totalItems = sessionsData?.totalEventsMetric?.value ?? 0;
-
 	return (
-		<WrapSafeResults
-			className="flex-grow-1 loading-root"
-			error={error}
-			errorProps={{
-				className: 'flex-grow-1',
-				onReload: refetch,
-			}}
-			loading={loading}
-			page={false}
-			pageDisplay={false}
-		>
-			<Card.Body>
-				<div className="account-activity-stream">
-					<div className="trend-summary mb-4">
-						<div className="font-weight-semi-bold">
-							<Text size={7}>
-								{sub(Liferay.Language.get('x-activities'), [
-									trendValue,
-								])}
-							</Text>
-						</div>
-
-						<div className="text-secondary">
-							{!isNil(trendClassification) &&
-								trendClassification !==
-									TrendClassification.Neutral && (
-									<ClayIcon
-										style={{
-											color: getStatsColor(
-												trendClassification
-											),
-										}}
-										symbol={getIcon(trendPercentage) ?? ''}
-									/>
-								)}
-
-							{sub(
-								Liferay.Language.get('x-vs-previous-period'),
-								[
-									<span
-										className="mr-1"
-										key="percentage"
-										style={{
-											color: getStatsColor(
-												trendClassification || ''
-											),
-										}}
-									>
-										{`${toRounded(
-											Math.abs(trendPercentage),
-											2
-										)}%`}
-									</span>,
-								],
-								false
-							)}
-						</div>
-					</div>
-
-					<div className="position-relative">
-						<ActivitiesChart
-							alwaysShowSelectedTooltip
-							hideGrid={isChartEmpty}
-							history={activityHistory}
-							interval={interval}
-							onPointSelect={handleChangeSelection}
-							rangeSelectors={rangeSelectors}
-							selectedPoint={selectedPoint}
-							tooltipRenderRows={({
-								totalEvents,
-								totalSessions,
-							}) => [
-								{
-									label: Liferay.Language.get('events'),
-									value: totalEvents.toLocaleString(),
-								},
-								{
-									label: Liferay.Language.get('sessions'),
-									value: (
-										totalSessions ?? 0
-									).toLocaleString(),
-								},
-							]}
-						/>
-
-						{isChartEmpty && (
-							<div
-								className="position-absolute d-flex flex-column align-items-center justify-content-center text-center px-3"
-								style={{
-									inset: 0,
-									pointerEvents: 'none',
-								}}
-							>
-								<div
-									className="font-weight-semi-bold mb-2"
-									style={{pointerEvents: 'auto'}}
-								>
-									{Liferay.Language.get(
-										'there-is-no-data-for-account-activities'
-									)}
-								</div>
-
-								<div
-									className="text-secondary mb-2"
-									style={{pointerEvents: 'auto'}}
-								>
-									{Liferay.Language.get(
-										'check-back-later-to-verify-if-data-has-been-received-from-your-data-sources'
-									)}
-								</div>
-
-								<ClayLink
-									decoration="underline"
-									href={
-										URLConstants.AccountActivitiesDocumentationLink
-									}
-									style={{pointerEvents: 'auto'}}
-									target="_blank"
-								>
-									{Liferay.Language.get(
-										'learn-more-about-account-activities'
-									)}
-								</ClayLink>
-							</div>
-						)}
-					</div>
-
-					<div className="chart-footer mt-3">
-						<div className="d-flex align-items-baseline">
-							<Text color="secondary" size={3} weight="semi-bold">
-								{sub(
-									Liferay.Language.get('account-s-events-x'),
-									[dateRangeLabel]
-								)}
-							</Text>
-
-							{selected && (
-								<ClayButton
-									className="ml-2 p-0"
-									displayType="link"
-									onClick={() => handleChangeSelection(null)}
-									size="sm"
-								>
-									{Liferay.Language.get(
-										'clear-date-selection'
-									)}
-								</ClayButton>
-							)}
-						</div>
-					</div>
-				</div>
-			</Card.Body>
-
-			<Card.Body className="pt-0">
-				<SearchInput
-					onChange={setSearchValue}
-					onSubmit={handleQuerySubmit}
-					placeholder={Liferay.Language.get('search')}
-					value={searchValue}
+		<ActivityStreamCard
+			activityHistory={activityHistory}
+			campaignDays={campaignTouches.days}
+			campaignUrls={campaignUrls}
+			chartError={error}
+			chartLoading={loading}
+			chartTooltipRenderRows={({
+				totalCampaignResponses,
+				totalEvents,
+				totalSessions,
+			}) => [
+				{
+					label: Liferay.Language.get('events'),
+					value: toThousands(totalEvents),
+				},
+				{
+					label: Liferay.Language.get('sessions'),
+					value: toThousands(totalSessions ?? 0),
+				},
+				{
+					label: Liferay.Language.get('campaign-responses'),
+					value: toThousands(totalCampaignResponses ?? 0),
+				},
+			]}
+			chartView={chartView}
+			delta={delta}
+			emptyChartContent={
+				<ActivityChartEmptyState
+					linkHref={URLConstants.AccountActivitiesDocumentationLink}
+					linkLabel={Liferay.Language.get(
+						'learn-more-about-account-activities'
+					)}
+					title={Liferay.Language.get(
+						'there-is-no-data-for-account-activities'
+					)}
 				/>
-
-				<ActivityStreamTimeline
-					delta={delta}
+			}
+			footerLabel={dateRangeLabel}
+			individualUrls={individualUrls}
+			interval={interval}
+			noResultsRenderer={
+				<ActivityStreamNoResults
 					hasQuery={!!keywords}
-					loading={sessionsResponse.loading ?? false}
-					onClearQuery={handleClearSearch}
-					onDeltaChange={onDeltaChange}
-					onPageChange={onPageChange}
-					page={page}
-					sessions={userSessions}
-					totalItems={totalItems}
+					loading={sessionsMappedResults.loading}
+					noData={
+						<NoResultsDisplay
+							description={
+								<>
+									<span>
+										{Liferay.Language.get(
+											'check-back-later-to-verify-if-data-has-been-received-from-your-data-sources,-or-you-can-try-a-different-date-range'
+										)}
+									</span>
+
+									<ClayLink
+										className="d-block mb-3"
+										decoration="underline"
+										href={
+											URLConstants.AccountsDocumentationLink
+										}
+										key="DOCUMENTATION"
+										target="_blank"
+									>
+										{Liferay.Language.get(
+											'learn-more-about-accounts'
+										)}
+
+										<span className="inline-item inline-item-after">
+											<ClayIcon
+												fontSize={8}
+												symbol="shortcut"
+											/>
+										</span>
+									</ClayLink>
+								</>
+							}
+							spacer
+							title={Liferay.Language.get(
+								'there-is-no-activity-on-the-selected-period'
+							)}
+						/>
+					}
+					onClearSearch={handleClearSearch}
 				/>
-			</Card.Body>
-		</WrapSafeResults>
+			}
+			onCampaignDeltaChange={handleCampaignDeltaChange}
+			onCampaignPageChange={handleCampaignPageChange}
+			onChartReload={refetch}
+			onClearDateSelection={() => handleChangeSelection(null)}
+			onDeltaChange={onDeltaChange}
+			onPageChange={onPageChange}
+			onPointSelect={handleChangeSelection}
+			onSearchChange={setSearchValue}
+			onSearchSubmit={handleQuerySubmit}
+			page={page}
+			rangeSelectors={rangeSelectors}
+			searchValue={searchValue}
+			selected={selected}
+			selectedPoint={selectedPoint}
+			sessionsMappedResults={sessionsMappedResults}
+			timeZoneId={timeZoneId}
+			trendSummary={{
+				classification: trendMetric?.trend?.trendClassification,
+				percentage: trendMetric?.trend?.percentage ?? 0,
+				value: trendMetric?.value ?? 0,
+			}}
+		/>
 	);
 };
 
-export default ActivityStreamCard;
+export default AccountActivityStreamCard;

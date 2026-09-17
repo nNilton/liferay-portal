@@ -5,6 +5,11 @@
 
 package com.liferay.fragment.internal.input.template.parser;
 
+import com.liferay.depot.constants.DepotConstants;
+import com.liferay.depot.model.DepotEntry;
+import com.liferay.depot.service.DepotEntryLocalService;
+import com.liferay.document.library.kernel.processor.ImageProcessor;
+import com.liferay.document.library.kernel.processor.ImageProcessorUtil;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.util.DLURLHelper;
 import com.liferay.fragment.constants.FragmentConfigurationFieldDataType;
@@ -477,7 +482,7 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 
 		Group group = themeDisplay.getScopeGroup();
 
-		inputTemplateNode.addAttribute("isCMS", group.isCMS());
+		inputTemplateNode.addAttribute("isCMS", _isCMSGroup(group));
 
 		String previewURL = _getPreviewURL(httpServletRequest, value);
 
@@ -819,7 +824,7 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 
 	private FileEntry _fetchFileEntry(long fileEntryId) {
 		try {
-			return _dlAppLocalService.getFileEntry(fileEntryId);
+			return _dlAppLocalService.fetchFileEntry(fileEntryId);
 		}
 		catch (PortalException portalException) {
 			if (_log.isWarnEnabled()) {
@@ -1001,6 +1006,15 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			infoField.getUniqueId());
 
 		if (!(infoParameterMapValue instanceof RelatedInfoFieldValue<?>)) {
+			if (infoParameterMapValue == null) {
+				return StringPool.BLANK;
+			}
+
+			if (infoParameterMapValue instanceof Map) {
+				return _parseLocalizedValues(
+					infoField, (Map<Locale, ?>)infoParameterMapValue);
+			}
+
 			return infoParameterMapValue;
 		}
 
@@ -1050,7 +1064,8 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			InfoLocalizedValue<?> infoLocalizedValue =
 				(InfoLocalizedValue<?>)value;
 
-			return infoLocalizedValue.getValues();
+			return _parseLocalizedValues(
+				infoField, infoLocalizedValue.getValues());
 		}
 
 		return String.valueOf(value);
@@ -1083,7 +1098,7 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 			if (availableLocales.contains(locale)) {
 				inputLabel = labelInfoLocalizedValue.getValue(locale);
 			}
-			else {
+			else if (inputLabelJSONObject != null) {
 				inputLabel = inputLabelJSONObject.getString(
 					_language.getLanguageId(LocaleUtil.getSiteDefault()));
 			}
@@ -1132,7 +1147,13 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 
 		FileEntry fileEntry = _fetchFileEntry(GetterUtil.getLong(value));
 
-		if (fileEntry != null) {
+		if (fileEntry == null) {
+			return null;
+		}
+
+		ImageProcessor imageProcessor = ImageProcessorUtil.getImageProcessor();
+
+		if (imageProcessor.isImageSupported(fileEntry.getMimeType())) {
 			try {
 				return _dlURLHelper.getPreviewURL(
 					fileEntry, fileEntry.getFileVersion(),
@@ -1259,6 +1280,43 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 
 		return _parseValue(
 			defaultValue, infoField, locale, infoFieldValue.getValue());
+	}
+
+	private boolean _isCMSGroup(Group group) {
+		if (group.isCMS()) {
+			return true;
+		}
+
+		if (group.isDepot()) {
+			DepotEntry depotEntry =
+				_depotEntryLocalService.fetchGroupDepotEntry(
+					group.getGroupId());
+
+			if ((depotEntry != null) &&
+				(depotEntry.getType() == DepotConstants.TYPE_SPACE)) {
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private Map<Locale, String> _parseLocalizedValues(
+		InfoField infoField, Map<Locale, ?> values) {
+
+		Map<Locale, String> localizedValues = new HashMap<>();
+
+		for (Map.Entry<Locale, ?> entry : values.entrySet()) {
+			localizedValues.put(
+				entry.getKey(),
+				String.valueOf(
+					_parseValue(
+						StringPool.BLANK, infoField, entry.getKey(),
+						entry.getValue())));
+		}
+
+		return localizedValues;
 	}
 
 	private Object _parseValue(
@@ -1438,6 +1496,9 @@ public class FragmentEntryInputTemplateNodeContextHelperImpl
 
 	@Reference
 	private CountryLocalService _countryLocalService;
+
+	@Reference
+	private DepotEntryLocalService _depotEntryLocalService;
 
 	@Reference
 	private DLAppLocalService _dlAppLocalService;

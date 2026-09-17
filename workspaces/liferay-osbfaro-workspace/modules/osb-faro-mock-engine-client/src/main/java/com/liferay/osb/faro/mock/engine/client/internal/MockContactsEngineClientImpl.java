@@ -8,8 +8,11 @@ package com.liferay.osb.faro.mock.engine.client.internal;
 import com.liferay.osb.faro.engine.client.ContactsEngineClient;
 import com.liferay.osb.faro.engine.client.constants.FieldMappingConstants;
 import com.liferay.osb.faro.engine.client.constants.FilterConstants;
+import com.liferay.osb.faro.engine.client.model.ApiUsageMetric;
+import com.liferay.osb.faro.engine.client.model.DataSourceUsageMetric;
 import com.liferay.osb.faro.engine.client.model.Field;
 import com.liferay.osb.faro.engine.client.model.Individual;
+import com.liferay.osb.faro.engine.client.model.ProjectMetric;
 import com.liferay.osb.faro.engine.client.model.ProjectUsageMetric;
 import com.liferay.osb.faro.engine.client.model.Results;
 import com.liferay.osb.faro.engine.client.util.FilterBuilder;
@@ -37,10 +40,20 @@ public class MockContactsEngineClientImpl
 	@Override
 	public Results<Individual> getAccountIndividuals(
 		FaroProject faroProject, String accountId, String channelId,
-		String query, int cur, int delta, String sortString) {
+		String query, String rangeEnd, Integer rangeKey, String rangeStart,
+		int cur, int delta, String sortString) {
 
 		return contactsEngineClient.getAccountIndividuals(
-			faroProject, accountId, channelId, query, cur, delta, sortString);
+			faroProject, accountId, channelId, query, rangeEnd, rangeKey,
+			rangeStart, cur, delta, sortString);
+	}
+
+	@Override
+	public Results<ApiUsageMetric> getApiUsageMetrics(
+		FaroProject faroProject, String endDateString, String startDateString) {
+
+		return contactsEngineClient.getApiUsageMetrics(
+			faroProject, endDateString, startDateString);
 	}
 
 	@Override
@@ -76,6 +89,14 @@ public class MockContactsEngineClientImpl
 			});
 
 		return new Results<>(individuals, individuals.size());
+	}
+
+	@Override
+	public Results<DataSourceUsageMetric> getDataSourceUsageMetrics(
+		FaroProject faroProject, Date date) {
+
+		return contactsEngineClient.getDataSourceUsageMetrics(
+			faroProject, date);
 	}
 
 	@Override
@@ -145,6 +166,11 @@ public class MockContactsEngineClientImpl
 	@Override
 	public Date getLastSeenDate(FaroProject faroProject) {
 		return contactsEngineClient.getLastSeenDate(faroProject);
+	}
+
+	@Override
+	public Results<ProjectMetric> getProjectMetrics(FaroProject faroProject) {
+		return contactsEngineClient.getProjectMetrics(faroProject);
 	}
 
 	@Override

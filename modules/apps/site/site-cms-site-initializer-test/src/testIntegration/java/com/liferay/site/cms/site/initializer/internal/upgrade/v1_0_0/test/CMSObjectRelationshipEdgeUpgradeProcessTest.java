@@ -29,7 +29,6 @@ import com.liferay.object.service.ObjectRelationshipLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.object.test.util.ObjectRelationshipTestUtil;
 import com.liferay.object.test.util.TreeTestUtil;
-import com.liferay.portal.kernel.feature.flag.constants.FeatureFlagConstants;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
@@ -41,15 +40,11 @@ import com.liferay.portal.kernel.upgrade.util.UpgradeProcessUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
-import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.upgrade.registry.UpgradeStepRegistrator;
 import com.liferay.portal.upgrade.test.util.UpgradeTestUtil;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
-import com.liferay.site.cms.site.initializer.test.util.CMSTestUtil;
 
 import java.io.Serializable;
 
@@ -70,9 +65,6 @@ import org.junit.runner.RunWith;
 /**
  * @author Víctor Galán
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-34594")}
-)
 @RunWith(Arquillian.class)
 public class CMSObjectRelationshipEdgeUpgradeProcessTest {
 
@@ -84,9 +76,6 @@ public class CMSObjectRelationshipEdgeUpgradeProcessTest {
 	@Before
 	public void setUp() throws Exception {
 		UserTestUtil.setUser(TestPropsValues.getUser());
-
-		CMSTestUtil.getOrAddGroup(
-			CMSObjectRelationshipEdgeUpgradeProcessTest.class);
 
 		_cmsContentStructuresObjectFolder =
 			_objectFolderLocalService.getObjectFolderByExternalReferenceCode(
@@ -255,8 +244,36 @@ public class CMSObjectRelationshipEdgeUpgradeProcessTest {
 	public void testUpgradeObjectRelationshipsCascadeDeletionType()
 		throws Exception {
 
-		_testUpgradeObjectRelationshipsCascadeDeletionType(false);
-		_testUpgradeObjectRelationshipsCascadeDeletionType(true);
+		ObjectDefinition objectDefinition1 = _addCMSObjectDefinition();
+		ObjectDefinition objectDefinition2 = _addCMSObjectDefinition();
+		ObjectDefinition objectDefinition3 = _addCMSObjectDefinition();
+		ObjectDefinition objectDefinition4 = _addCMSObjectDefinition();
+
+		ObjectRelationship objectRelationship1 = _addObjectRelationship(
+			objectDefinition2, objectDefinition1);
+		ObjectRelationship objectRelationship2 = _addObjectRelationship(
+			objectDefinition3, objectDefinition1);
+		ObjectRelationship objectRelationship3 = _addObjectRelationship(
+			objectDefinition4, objectDefinition2);
+		ObjectRelationship objectRelationship4 = _addObjectRelationship(
+			objectDefinition4, objectDefinition3);
+
+		_runUpgrade();
+
+		_assertObjectRelationshipEdge(
+			true, objectRelationship1.getObjectRelationshipId());
+		_assertObjectRelationshipEdge(
+			true, objectRelationship2.getObjectRelationshipId());
+		_assertObjectRelationshipEdge(
+			true, objectRelationship3.getObjectRelationshipId());
+		_assertObjectRelationshipEdge(
+			true, objectRelationship4.getObjectRelationshipId());
+
+		long objectDefinitionId1 = objectDefinition1.getObjectDefinitionId();
+
+		_assertRootObjectDefinitionIds(objectDefinitionId1, objectDefinition2);
+		_assertRootObjectDefinitionIds(objectDefinitionId1, objectDefinition3);
+		_assertRootObjectDefinitionIds(objectDefinitionId1, objectDefinition4);
 	}
 
 	@Test
@@ -518,51 +535,6 @@ public class CMSObjectRelationshipEdgeUpgradeProcessTest {
 			_upgradeStepRegistrator, _CLASS_NAME);
 
 		upgradeProcess.upgrade();
-	}
-
-	private void _testUpgradeObjectRelationshipsCascadeDeletionType(
-			boolean featureFlagEnabled)
-		throws Exception {
-
-		ObjectDefinition objectDefinition1 = _addCMSObjectDefinition();
-		ObjectDefinition objectDefinition2 = _addCMSObjectDefinition();
-		ObjectDefinition objectDefinition3 = _addCMSObjectDefinition();
-		ObjectDefinition objectDefinition4 = _addCMSObjectDefinition();
-
-		ObjectRelationship objectRelationship1 = _addObjectRelationship(
-			objectDefinition2, objectDefinition1);
-		ObjectRelationship objectRelationship2 = _addObjectRelationship(
-			objectDefinition3, objectDefinition1);
-		ObjectRelationship objectRelationship3 = _addObjectRelationship(
-			objectDefinition4, objectDefinition2);
-		ObjectRelationship objectRelationship4 = _addObjectRelationship(
-			objectDefinition4, objectDefinition3);
-
-		PropsUtil.set(
-			FeatureFlagConstants.getKey("LPD-34594"),
-			String.valueOf(featureFlagEnabled));
-
-		try {
-			_runUpgrade();
-		}
-		finally {
-			PropsUtil.set(FeatureFlagConstants.getKey("LPD-34594"), "true");
-		}
-
-		_assertObjectRelationshipEdge(
-			true, objectRelationship1.getObjectRelationshipId());
-		_assertObjectRelationshipEdge(
-			true, objectRelationship2.getObjectRelationshipId());
-		_assertObjectRelationshipEdge(
-			true, objectRelationship3.getObjectRelationshipId());
-		_assertObjectRelationshipEdge(
-			true, objectRelationship4.getObjectRelationshipId());
-
-		long objectDefinitionId1 = objectDefinition1.getObjectDefinitionId();
-
-		_assertRootObjectDefinitionIds(objectDefinitionId1, objectDefinition2);
-		_assertRootObjectDefinitionIds(objectDefinitionId1, objectDefinition3);
-		_assertRootObjectDefinitionIds(objectDefinitionId1, objectDefinition4);
 	}
 
 	private static final String _CLASS_NAME =

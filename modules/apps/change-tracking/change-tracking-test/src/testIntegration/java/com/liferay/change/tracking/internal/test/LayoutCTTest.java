@@ -57,6 +57,7 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.DateUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.OrderByComparatorFactoryUtil;
 import com.liferay.portal.kernel.util.Time;
@@ -666,6 +667,33 @@ public class LayoutCTTest {
 	}
 
 	@Test
+	public void testPublishDeleteLayoutWithAssetTag() throws Exception {
+		Layout layout = LayoutTestUtil.addTypePortletLayout(_group);
+
+		try (SafeCloseable safeCloseable =
+				CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
+					_ctCollection.getCtCollectionId())) {
+
+			_layoutLocalService.updateAsset(
+				layout.getUserId(), layout, null,
+				new String[] {RandomTestUtil.randomString()});
+
+			_layoutLocalService.deleteLayout(layout);
+		}
+
+		Assert.assertNotNull(_layoutLocalService.fetchLayout(layout.getPlid()));
+
+		_ctProcessLocalService.addCTProcess(
+			_ctCollection.getUserId(), _ctCollection.getCtCollectionId());
+
+		Assert.assertNull(_layoutLocalService.fetchLayout(layout.getPlid()));
+
+		Assert.assertNull(
+			_assetEntryLocalService.fetchEntry(
+				Layout.class.getName(), layout.getPlid()));
+	}
+
+	@Test
 	public void testPublishLayoutWithAssetTag() throws Exception {
 		String tagName1 = "layoutcttesttag1";
 		String tagName2 = "layoutcttesttag2";
@@ -963,9 +991,8 @@ public class LayoutCTTest {
 		Layout productionLayout = _layoutLocalService.fetchLayout(
 			layout.getPlid());
 
-		Assert.assertNotNull(productionLayout);
-
-		Assert.assertEquals(modifiedDate, productionLayout.getModifiedDate());
+		Assert.assertTrue(
+			DateUtil.equals(modifiedDate, productionLayout.getModifiedDate()));
 	}
 
 	@Test

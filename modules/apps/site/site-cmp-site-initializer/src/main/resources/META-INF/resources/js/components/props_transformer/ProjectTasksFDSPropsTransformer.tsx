@@ -23,18 +23,21 @@ import {
 	installCMPTabPersistence,
 	registerTabFDS,
 } from '../../utils/cmpTabPersistence';
+import getCMPProjectObjectEntryIds from '../../utils/getCMPProjectObjectEntryIds';
+import {getFormattedLabel} from '../../utils/getFormattedText';
 import {openCMPModal} from '../../utils/openCMPModal';
+import {transformFDSBulkActions} from '../../utils/transformFDSBulkActions';
 import {ProjectTaskItemData, TaskAction} from '../../utils/types';
 import StateLabel from '../StateLabel';
 import BulkEditAssigneeModalContent from '../modal/BulkEditAssigneeModalContent';
 import BulkEditDueDateModalContent from '../modal/BulkEditDueDateModalContent';
 import BulkEditStateModalContent from '../modal/BulkEditStateModalContent';
 import EditAssigneeModalContent from '../modal/EditAssigneeModalContent';
+import UpdateDueDateModalContent from '../modal/UpdateDueDateModalContent';
 import ACTIONS from './actions/creationMenuActions';
 import {cmpTasksFDSAtom} from './atoms';
 import AssigneeRenderer from './cell_renderers/AssigneeRenderer';
 import CalendarView from './views/calendar_view/CalendarView';
-import UnscheduledTasksPanel from './views/calendar_view/components/UnscheduledTasksPanel';
 import KanbanView from './views/kanban_view/KanbanView';
 
 export default function ProjectTasksFDSPropsTransformer({
@@ -68,9 +71,11 @@ export default function ProjectTasksFDSPropsTransformer({
 		component: (props: any) =>
 			CalendarView({
 				...props,
-				projectId: additionalProps.projectId,
-				projectObjectDefinitionId:
-					additionalProps.projectObjectDefinitionId,
+				cmpProjectObjectDefinitionId:
+					additionalProps.cmpProjectObjectDefinitionId,
+				cmpProjectObjectEntryId:
+					additionalProps.cmpProjectObjectEntryId,
+				hasAddTaskPermission: additionalProps.hasAddTaskPermission,
 			}),
 		default: false,
 		initialPaginationDelta: FDS_PAGINATION_DELTA_ALL,
@@ -84,6 +89,7 @@ export default function ProjectTasksFDSPropsTransformer({
 			symbol: '',
 			title: 'embedded.title',
 		},
+		selectable: false,
 		showPagination: false,
 		thumbnail: 'calendar',
 	};
@@ -92,9 +98,11 @@ export default function ProjectTasksFDSPropsTransformer({
 		component: (props: any) =>
 			KanbanView({
 				...props,
-				projectId: additionalProps.projectId,
-				projectObjectDefinitionId:
-					additionalProps.projectObjectDefinitionId,
+				cmpProjectObjectDefinitionId:
+					additionalProps.cmpProjectObjectDefinitionId,
+				cmpProjectObjectEntryId:
+					additionalProps.cmpProjectObjectEntryId,
+				hasAddTaskPermission: additionalProps.hasAddTaskPermission,
 			}),
 		default: false,
 		initialPaginationDelta: FDS_PAGINATION_DELTA_ALL,
@@ -108,6 +116,7 @@ export default function ProjectTasksFDSPropsTransformer({
 			symbol: '',
 			title: 'embedded.title',
 		},
+		selectable: false,
 		showPagination: false,
 		thumbnail: 'columns',
 	};
@@ -115,7 +124,35 @@ export default function ProjectTasksFDSPropsTransformer({
 	return {
 		...otherProps,
 		atom: cmpTasksFDSAtom,
-		bulkActions: styleBulkActions(bulkActions),
+		bulkActions: transformFDSBulkActions(
+			styleBulkActions(bulkActions).map((action) => ({
+				...action,
+				isVisible: ({
+					allItemsSelectedActive,
+					selectedItems,
+				}: {
+					allItemsSelectedActive: boolean;
+					selectedItems: any[];
+				}) => {
+					if (action?.data?.id !== 'assign-to') {
+						return true;
+					}
+
+					if (allItemsSelectedActive) {
+						return false;
+					}
+
+					if (!selectedItems?.length) {
+						return true;
+					}
+
+					const cmpProjectObjectEntryIds =
+						getCMPProjectObjectEntryIds(selectedItems);
+
+					return cmpProjectObjectEntryIds.size === 1;
+				},
+			}))
+		),
 		creationMenu: {
 			...creationMenu,
 			primaryItems: addOnClickToCreationMenuItems(
@@ -172,9 +209,6 @@ export default function ProjectTasksFDSPropsTransformer({
 		},
 		hideManagementBarInEmptyState: true,
 		id,
-		infoPanelComponent: Liferay.FeatureFlags['LPD-69885']
-			? UnscheduledTasksPanel
-			: null,
 		itemsActions: styleActions(itemsActions),
 		async onActionDropdownItemClick({
 			action,
@@ -189,7 +223,7 @@ export default function ProjectTasksFDSPropsTransformer({
 				await deleteItemAction(
 					sub(
 						Liferay.Language.get('delete-task-confirmation-body'),
-						itemData.embedded.title
+						getFormattedLabel(itemData.embedded.title)
 					),
 					itemData,
 					loadData
@@ -205,10 +239,33 @@ export default function ProjectTasksFDSPropsTransformer({
 					}) => (
 						<EditAssigneeModalContent
 							closeModal={closeModal}
+							cmpProjectObjectEntryId={
+								itemData.embedded
+									.r_cmpProjectToCMPTasks_c_cmpProjectId
+							}
+							cmpTaskObjectEntryId={String(itemData.embedded.id)}
+							cmpTaskObjectEntryTitle={itemData.embedded.title}
 							loadData={loadData}
-							taskId={String(itemData.embedded.id)}
-							taskTitle={itemData.embedded.title}
 							value={itemData.embedded.assignTo}
+						/>
+					),
+					size: 'md',
+				});
+			}
+			else if (action?.data?.id === 'update-due-date') {
+				await openCMPModal({
+					center: true,
+					contentComponent: ({
+						closeModal,
+					}: {
+						closeModal: () => void;
+					}) => (
+						<UpdateDueDateModalContent
+							closeModal={closeModal}
+							cmpTaskObjectEntryId={String(itemData.embedded.id)}
+							cmpTaskObjectEntryTitle={itemData.embedded.title}
+							dueDate={itemData.embedded.dueDate}
+							loadData={loadData}
 						/>
 					),
 					size: 'md',
@@ -223,6 +280,10 @@ export default function ProjectTasksFDSPropsTransformer({
 			selectedData: any;
 		}) => {
 			if (action?.data?.id === 'assign-to') {
+				const [cmpProjectObjectEntryId] = getCMPProjectObjectEntryIds(
+					selectedData?.items ?? []
+				);
+
 				await openCMPModal({
 					center: true,
 					contentComponent: ({
@@ -233,6 +294,7 @@ export default function ProjectTasksFDSPropsTransformer({
 						<BulkEditAssigneeModalContent
 							apiURL={otherProps.apiURL}
 							closeModal={closeModal}
+							cmpProjectObjectEntryId={cmpProjectObjectEntryId}
 							dataSetId={id}
 							selectedData={selectedData}
 							value={{name: null}}
@@ -319,10 +381,6 @@ export default function ProjectTasksFDSPropsTransformer({
 				});
 			}
 		},
-		views: [
-			...nonDefaultViews,
-			kanbanView,
-			...(Liferay.FeatureFlags['LPD-69885'] ? [calendarView] : []),
-		],
+		views: [...nonDefaultViews, kanbanView, calendarView],
 	};
 }

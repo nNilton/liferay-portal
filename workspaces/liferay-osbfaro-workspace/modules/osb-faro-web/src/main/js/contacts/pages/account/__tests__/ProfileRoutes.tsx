@@ -2,11 +2,16 @@ import mockStore from 'test/mock-store';
 import ProfileRoutes from '../ProfileRoutes';
 import React from 'react';
 import {ChannelContext} from 'shared/context/channel';
-import {cleanup, render, screen} from '@testing-library/react';
-import {createMemoryHistory} from 'history';
+import {cleanup, render, screen, waitFor, within} from '@testing-library/react';
+import {
+	MemoryRouter,
+	Route,
+	Routes as RouterRoutes,
+	useLocation,
+} from 'react-router-dom';
 import {mockChannelContext} from 'test/mock-channel-context';
 import {Provider} from 'react-redux';
-import {Router} from 'react-router-dom';
+import {Routes, toRoute} from 'shared/util/router';
 import {useRequest} from 'shared/hooks/useRequest';
 
 jest.unmock('react-dom');
@@ -41,6 +46,13 @@ jest.mock('../Activities', () => ({
 	default: () => <div data-testid="account-activities" />,
 }));
 
+jest.mock('../Overview', () => ({
+	__esModule: true,
+	default: ({account}: {account?: {accountName?: string}}) => (
+		<div data-testid="account-overview">{account?.accountName}</div>
+	),
+}));
+
 jest.mock('../Profile', () => ({
 	__esModule: true,
 	default: () => <div data-testid="account-profile" />,
@@ -48,19 +60,30 @@ jest.mock('../Profile', () => ({
 
 const mockedUseRequest = useRequest as jest.Mock;
 
+const ROUTE_PARAMS = {channelId: '123', groupId: '23', id: 'acc-1'};
+
 const store = mockStore();
 
+const LocationProbe = () => (
+	<div data-testid="location">{useLocation().pathname}</div>
+);
+
 const renderProfileRoutes = (
-	history = createMemoryHistory({
-		initialEntries: ['/workspace/23/123/accounts/acc-1'],
-	})
+	initialEntries = [toRoute(Routes.CONTACTS_ACCOUNT, ROUTE_PARAMS)]
 ) =>
 	render(
 		<Provider store={store}>
 			<ChannelContext.Provider value={mockChannelContext() as any}>
-				<Router history={history}>
-					<ProfileRoutes />
-				</Router>
+				<MemoryRouter initialEntries={initialEntries}>
+					<RouterRoutes>
+						<Route
+							element={<ProfileRoutes />}
+							path={`${Routes.CONTACTS_ACCOUNT}/*`}
+						/>
+					</RouterRoutes>
+
+					<LocationProbe />
+				</MemoryRouter>
 			</ChannelContext.Provider>
 		</Provider>
 	);
@@ -139,5 +162,97 @@ describe('AccountProfileRoutes', () => {
 
 		expect(screen.getAllByText('Acme Corp').length).toBeGreaterThan(0);
 		expect(screen.queryByText('Account Not Found')).not.toBeInTheDocument();
+	});
+
+	it('lists overview as the first tab in the account nav bar', () => {
+		mockedUseRequest.mockReturnValue({
+			data: {accountName: 'Acme Corp'},
+			error: false,
+			loading: false,
+		});
+
+		renderProfileRoutes();
+
+		const navTabs = within(screen.getByRole('navigation')).getAllByRole(
+			'link'
+		);
+
+		expect(navTabs.map((navTab) => navTab.textContent)).toEqual([
+			'Overview',
+			'Activities',
+			'Profile',
+		]);
+		expect(navTabs[0]).toHaveAttribute(
+			'href',
+			toRoute(Routes.CONTACTS_ACCOUNT_OVERVIEW, ROUTE_PARAMS)
+		);
+	});
+
+	it('renders the overview page on the overview route', async () => {
+		mockedUseRequest.mockReturnValue({
+			data: {accountName: 'Acme Corp'},
+			error: false,
+			loading: false,
+		});
+
+		renderProfileRoutes([
+			toRoute(Routes.CONTACTS_ACCOUNT_OVERVIEW, ROUTE_PARAMS),
+		]);
+
+		expect(
+			await screen.findByTestId('account-overview')
+		).toBeInTheDocument();
+	});
+
+	it('passes the account to the overview page', async () => {
+		mockedUseRequest.mockReturnValue({
+			data: {accountName: 'Acme Corp'},
+			error: false,
+			loading: false,
+		});
+
+		renderProfileRoutes([
+			toRoute(Routes.CONTACTS_ACCOUNT_OVERVIEW, ROUTE_PARAMS),
+		]);
+
+		expect(await screen.findByTestId('account-overview')).toHaveTextContent(
+			'Acme Corp'
+		);
+	});
+
+	it('renders the activities page on the activities route', async () => {
+		mockedUseRequest.mockReturnValue({
+			data: {accountName: 'Acme Corp'},
+			error: false,
+			loading: false,
+		});
+
+		renderProfileRoutes([
+			toRoute(Routes.CONTACTS_ACCOUNT_ACTIVITIES, ROUTE_PARAMS),
+		]);
+
+		expect(
+			await screen.findByTestId('account-activities')
+		).toBeInTheDocument();
+	});
+
+	it('lands on overview when opening an account', async () => {
+		mockedUseRequest.mockReturnValue({
+			data: {accountName: 'Acme Corp'},
+			error: false,
+			loading: false,
+		});
+
+		renderProfileRoutes([toRoute(Routes.CONTACTS_ACCOUNT, ROUTE_PARAMS)]);
+
+		await waitFor(() =>
+			expect(screen.getByTestId('location')).toHaveTextContent(
+				toRoute(Routes.CONTACTS_ACCOUNT_OVERVIEW, ROUTE_PARAMS)
+			)
+		);
+
+		expect(
+			await screen.findByTestId('account-overview')
+		).toBeInTheDocument();
 	});
 });

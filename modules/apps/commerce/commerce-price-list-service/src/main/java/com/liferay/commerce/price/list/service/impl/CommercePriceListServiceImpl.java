@@ -24,10 +24,12 @@ import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermission;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.osgi.service.component.annotations.Component;
@@ -170,8 +172,7 @@ public class CommercePriceListServiceImpl
 		throws PortalException {
 
 		CommercePriceList commercePriceList =
-			commercePriceListLocalService.fetchCommercePriceList(
-				commercePriceListId);
+			commercePriceListPersistence.fetchByPrimaryKey(commercePriceListId);
 
 		if (commercePriceList != null) {
 			_commercePriceListModelResourcePermission.check(
@@ -206,7 +207,7 @@ public class CommercePriceListServiceImpl
 		_commercePriceListModelResourcePermission.check(
 			getPermissionChecker(), commercePriceListId, ActionKeys.VIEW);
 
-		return commercePriceListLocalService.getCommercePriceList(
+		return commercePriceListPersistence.findByPrimaryKey(
 			commercePriceListId);
 	}
 
@@ -217,6 +218,10 @@ public class CommercePriceListServiceImpl
 		throws PortalException {
 
 		long[] groupIds = _getGroupIds(companyId);
+
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return Collections.emptyList();
+		}
 
 		if (status == WorkflowConstants.STATUS_ANY) {
 			return commercePriceListPersistence.filterFindByG_C_NotS(
@@ -236,6 +241,10 @@ public class CommercePriceListServiceImpl
 
 		long[] groupIds = _getGroupIds(companyId);
 
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return Collections.emptyList();
+		}
+
 		if (status == WorkflowConstants.STATUS_ANY) {
 			return commercePriceListPersistence.filterFindByG_C_T_NotS(
 				groupIds, companyId, type, WorkflowConstants.STATUS_IN_TRASH,
@@ -251,6 +260,10 @@ public class CommercePriceListServiceImpl
 		throws PortalException {
 
 		long[] groupIds = _getGroupIds(companyId);
+
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return 0;
+		}
 
 		if (status == WorkflowConstants.STATUS_ANY) {
 			return commercePriceListPersistence.filterCountByG_C_NotS(

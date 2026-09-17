@@ -5,28 +5,23 @@
 
 package com.liferay.exportimport.rest.internal.resource.v1_0;
 
-import com.liferay.exportimport.kernel.lar.ExportImportDateUtil;
 import com.liferay.exportimport.kernel.lar.ExportImportHelper;
-import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.exportimport.kernel.lar.PortletDataContextFactory;
-import com.liferay.exportimport.kernel.lar.PortletDataHandler;
+import com.liferay.exportimport.lar.DeletionSystemEventExporter;
 import com.liferay.exportimport.portlet.data.handler.provider.PortletDataHandlerProvider;
 import com.liferay.exportimport.rest.dto.v1_0.ExportPreview;
 import com.liferay.exportimport.rest.dto.v1_0.PreviewPortletDataHandler;
-import com.liferay.exportimport.rest.internal.util.DateRangeUtil;
+import com.liferay.exportimport.rest.internal.util.GroupUtil;
+import com.liferay.exportimport.rest.internal.util.ParameterMapUtil;
 import com.liferay.exportimport.rest.internal.util.PermissionUtil;
 import com.liferay.exportimport.rest.internal.util.PreviewPortletDataHandlerUtil;
 import com.liferay.exportimport.rest.resource.v1_0.ExportPreviewResource;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.service.PortletLocalService;
-import com.liferay.portal.kernel.util.DateRange;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.staging.StagingGroupHelper;
-
-import jakarta.ws.rs.NotFoundException;
 
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -49,89 +44,52 @@ public class ExportPreviewResourceImpl extends BaseExportPreviewResourceImpl {
 
 	@Override
 	public ExportPreview getAssetLibraryExportPreview(
-			String assetLibraryExternalReferenceCode, Date endDate,
+			String assetLibraryExternalReferenceCode, String dateRangeType,
+			Date endDate, Long plid, String portletId, Date startDate)
+		throws Exception {
+
+		return _getExportPreview(
+			dateRangeType, endDate,
+			GroupUtil.getAssetLibraryGroup(
+				contextCompany.getCompanyId(),
+				assetLibraryExternalReferenceCode),
+			GetterUtil.getLong(plid), portletId, startDate);
+	}
+
+	@Override
+	public ExportPreview getExportPreview(
+			String dateRangeType, Date endDate, Long plid, String portletId,
 			Date startDate)
 		throws Exception {
 
-		Group group = _getAssetLibraryGroup(assetLibraryExternalReferenceCode);
-
 		return _getExportPreview(
-			endDate, group.getGroupId(), 0, null, false, startDate);
-	}
-
-	@Override
-	public ExportPreview getAssetLibraryPortletExportPreview(
-			String assetLibraryExternalReferenceCode, String portletId,
-			Date endDate, Long plid, Date startDate)
-		throws Exception {
-
-		Group group = _getAssetLibraryGroup(assetLibraryExternalReferenceCode);
-
-		return _getExportPreview(
-			endDate, group.getGroupId(), GetterUtil.getLong(plid), portletId,
-			false, startDate);
-	}
-
-	@Override
-	public ExportPreview getExportPreview(Date endDate, Date startDate)
-		throws Exception {
-
-		Group group = _stagingGroupHelper.fetchCompanyGroup(
-			contextCompany.getCompanyId());
-
-		if (group == null) {
-			throw new NotFoundException();
-		}
-
-		return _getExportPreview(
-			endDate, group.getGroupId(), 0, null, false, startDate);
+			dateRangeType, endDate,
+			GroupUtil.getCompanyGroup(contextCompany.getCompanyId()),
+			GetterUtil.getLong(plid), portletId, startDate);
 	}
 
 	@Override
 	public ExportPreview getSiteExportPreview(
-			String siteExternalReferenceCode, Date endDate, Date startDate)
+			String siteExternalReferenceCode, String dateRangeType,
+			Date endDate, Long plid, String portletId, Date startDate)
 		throws Exception {
 
-		Group group = _getSiteGroup(siteExternalReferenceCode);
-
 		return _getExportPreview(
-			endDate, group.getGroupId(), 0, null, false, startDate);
-	}
-
-	@Override
-	public ExportPreview getSitePortletExportPreview(
-			String siteExternalReferenceCode, String portletId, Date endDate,
-			Long plid, Date startDate)
-		throws Exception {
-
-		Group group = _getSiteGroup(siteExternalReferenceCode);
-
-		return _getExportPreview(
-			endDate, group.getGroupId(), GetterUtil.getLong(plid), portletId,
-			false, startDate);
-	}
-
-	private Group _getAssetLibraryGroup(String externalReferenceCode) {
-		Group group = groupLocalService.fetchGroupByExternalReferenceCode(
-			externalReferenceCode, contextCompany.getCompanyId());
-
-		if ((group == null) || !group.isDepot()) {
-			throw new NotFoundException();
-		}
-
-		return group;
+			dateRangeType, endDate,
+			GroupUtil.getSiteGroup(
+				contextCompany.getCompanyId(), siteExternalReferenceCode),
+			GetterUtil.getLong(plid), portletId, startDate);
 	}
 
 	private ExportPreview _getExportPreview(
-			Date endDate, long groupId, long plid, String portletId,
-			boolean privateLayout, Date startDate)
+			String dateRangeType, Date endDate, Group group, long plid,
+			String portletId, Date startDate)
 		throws Exception {
+
+		long groupId = group.getGroupId();
 
 		PermissionUtil.checkExportPermission(
 			contextCompany.getCompanyId(), groupId);
-
-		Map<String, List<PreviewPortletDataHandler>>
-			previewPortletDataHandlersMap = new LinkedHashMap<>();
 
 		boolean portletScoped = !Validator.isBlank(portletId);
 
@@ -147,51 +105,20 @@ public class ExportPreviewResourceImpl extends BaseExportPreviewResourceImpl {
 				contextCompany.getCompanyId(), false, groupId);
 		}
 
-		String range = null;
-
-		DateRange dateRange = DateRangeUtil.toDateRange(startDate, endDate);
-
-		if (dateRange != null) {
-			endDate = dateRange.getEndDate();
-			range = ExportImportDateUtil.RANGE_DATE_RANGE;
-			startDate = dateRange.getStartDate();
-		}
-
 		Locale locale = contextAcceptLanguage.getPreferredLocale();
 
-		for (Portlet portlet : portlets) {
-			PortletDataHandler portletDataHandler =
-				_portletDataHandlerProvider.provide(portlet);
+		Map<String, String[]> parameterMap =
+			ParameterMapUtil.putDateRangeParameters(
+				dateRangeType, startDate, endDate, new LinkedHashMap<>(),
+				contextUser);
 
-			if (portletDataHandler == null) {
-				continue;
-			}
-
-			PortletDataContext portletDataContext =
-				_portletDataContextFactory.createPreparePortletDataContext(
-					contextCompany.getCompanyId(), groupId, range, startDate,
-					endDate);
-
-			portletDataHandler.prepareManifestSummary(portletDataContext);
-
-			PreviewPortletDataHandlerUtil.addPreviewPortletDataHandler(
-				contextCompany.getCompanyId(), locale,
-				portletDataContext.getManifestSummary(), portlet,
-				portletDataHandler,
-				PortletDataHandler::getExportPortletDataHandlerControls,
-				portletScoped, previewPortletDataHandlersMap);
-
-			if (portletScoped) {
-				PreviewPortletDataHandlerUtil.
-					addConfigurationPreviewPortletDataHandler(
-						locale, portlet,
-						portletDataHandler.
-							getExportConfigurationPortletDataHandlerControls(
-								contextCompany.getCompanyId(), groupId, portlet,
-								plid, privateLayout),
-						previewPortletDataHandlersMap);
-			}
-		}
+		Map<String, List<PreviewPortletDataHandler>>
+			previewPortletDataHandlersMap =
+				PreviewPortletDataHandlerUtil.getPreviewPortletDataHandlersMap(
+					_deletionSystemEventExporter, group, locale, parameterMap,
+					plid, _portletDataContextFactory,
+					_portletDataHandlerProvider, portlets, portletScoped,
+					contextUser.getTimeZone());
 
 		return new ExportPreview() {
 			{
@@ -210,16 +137,8 @@ public class ExportPreviewResourceImpl extends BaseExportPreviewResourceImpl {
 		};
 	}
 
-	private Group _getSiteGroup(String externalReferenceCode) {
-		Group group = groupLocalService.fetchGroupByExternalReferenceCode(
-			externalReferenceCode, contextCompany.getCompanyId());
-
-		if ((group == null) || (!group.isCMS() && !group.isSite())) {
-			throw new NotFoundException();
-		}
-
-		return group;
-	}
+	@Reference
+	private DeletionSystemEventExporter _deletionSystemEventExporter;
 
 	@Reference
 	private ExportImportHelper _exportImportHelper;
@@ -232,8 +151,5 @@ public class ExportPreviewResourceImpl extends BaseExportPreviewResourceImpl {
 
 	@Reference
 	private PortletLocalService _portletLocalService;
-
-	@Reference
-	private StagingGroupHelper _stagingGroupHelper;
 
 }

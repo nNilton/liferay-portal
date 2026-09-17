@@ -27,11 +27,14 @@ import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
+import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.struts.StrutsAction;
 import com.liferay.portal.kernel.test.TestInfo;
+import com.liferay.portal.kernel.test.context.ContextUserReplace;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.CompanyTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
@@ -41,8 +44,8 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -62,7 +65,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 /**
  * @author Víctor Galán
  */
-@FeatureFlag("LPD-17564")
 @RunWith(Arquillian.class)
 public class ResetTranslationDisplayPageStrutsActionTest {
 
@@ -126,6 +128,92 @@ public class ResetTranslationDisplayPageStrutsActionTest {
 		long classNameId = _portal.getClassNameId(
 			_objectDefinition.getClassName());
 
+		String compareLayoutPageTemplateEntryKey =
+			"LFR_CMS_COMPARE_" + classNameId;
+		String translationLayoutPageTemplateEntryKey =
+			"LFR_CMS_TRANSLATION_" + classNameId;
+
+		DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+			_group.getGroupId(), classNameId, null, false,
+			compareLayoutPageTemplateEntryKey,
+			WorkflowConstants.STATUS_APPROVED);
+
+		DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+			_group.getGroupId(), classNameId, null, false,
+			translationLayoutPageTemplateEntryKey,
+			WorkflowConstants.STATUS_APPROVED);
+
+		_resetStructureDisplayPageStrutsAction.execute(
+			_getMockHttpServletRequest(), new MockHttpServletResponse());
+
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			_layoutPageTemplateEntryLocalService.fetchLayoutPageTemplateEntry(
+				_group.getGroupId(), compareLayoutPageTemplateEntryKey);
+
+		Assert.assertNull(layoutPageTemplateEntry);
+
+		layoutPageTemplateEntry =
+			_layoutPageTemplateEntryLocalService.fetchLayoutPageTemplateEntry(
+				_group.getGroupId(), translationLayoutPageTemplateEntryKey);
+
+		Assert.assertNull(layoutPageTemplateEntry);
+	}
+
+	@Test
+	@TestInfo("LPD-102260")
+	public void testExecuteWithoutUpdatePermission() throws Exception {
+		long classNameId = _portal.getClassNameId(
+			_objectDefinition.getClassName());
+
+		String compareLayoutPageTemplateEntryKey =
+			"LFR_CMS_COMPARE_" + classNameId;
+
+		DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+			_group.getGroupId(), classNameId, null, false,
+			compareLayoutPageTemplateEntryKey,
+			WorkflowConstants.STATUS_APPROVED);
+
+		String translationLayoutPageTemplateEntryKey =
+			"LFR_CMS_TRANSLATION_" + classNameId;
+
+		DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+			_group.getGroupId(), classNameId, null, false,
+			translationLayoutPageTemplateEntryKey,
+			WorkflowConstants.STATUS_APPROVED);
+
+		User user = UserTestUtil.addUser(_company);
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user, PermissionCheckerFactoryUtil.create(user))) {
+
+			_resetStructureDisplayPageStrutsAction.execute(
+				_getMockHttpServletRequest(), new MockHttpServletResponse());
+
+			Assert.fail();
+		}
+		catch (Exception exception) {
+			Assert.assertTrue(
+				exception instanceof PrincipalException.MustHavePermission);
+
+			Assert.assertTrue(
+				StringUtil.startsWith(
+					exception.getMessage(),
+					"User " + user.getUserId() +
+						" must have UPDATE permission for"));
+		}
+
+		Assert.assertNotNull(
+			_layoutPageTemplateEntryLocalService.fetchLayoutPageTemplateEntry(
+				_group.getGroupId(), compareLayoutPageTemplateEntryKey));
+
+		Assert.assertNotNull(
+			_layoutPageTemplateEntryLocalService.fetchLayoutPageTemplateEntry(
+				_group.getGroupId(), translationLayoutPageTemplateEntryKey));
+	}
+
+	private MockHttpServletRequest _getMockHttpServletRequest()
+		throws Exception {
+
 		MockHttpServletRequest mockHttpServletRequest =
 			ContentLayoutTestUtil.getMockHttpServletRequest(
 				_companyLocalService.getCompany(_company.getCompanyId()),
@@ -138,21 +226,7 @@ public class ResetTranslationDisplayPageStrutsActionTest {
 			"redirect", RandomTestUtil.randomString());
 		mockHttpServletRequest.setRequestURI(_layout.getFriendlyURL());
 
-		String layoutPageTemplateEntryKey =
-			"LFR_CMS_TRANSLATION_" + classNameId;
-
-		DisplayPageTemplateTestUtil.addDisplayPageTemplate(
-			_group.getGroupId(), classNameId, null, false,
-			layoutPageTemplateEntryKey, WorkflowConstants.STATUS_APPROVED);
-
-		_resetStructureDisplayPageStrutsAction.execute(
-			mockHttpServletRequest, new MockHttpServletResponse());
-
-		LayoutPageTemplateEntry layoutPageTemplateEntry =
-			_layoutPageTemplateEntryLocalService.fetchLayoutPageTemplateEntry(
-				_group.getGroupId(), layoutPageTemplateEntryKey);
-
-		Assert.assertNull(layoutPageTemplateEntry);
+		return mockHttpServletRequest;
 	}
 
 	private static Company _company;

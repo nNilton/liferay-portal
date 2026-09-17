@@ -1,4 +1,13 @@
 locals {
+	argo_workflows_gateway_class_name="argo-workflows-gateway-class"
+	argo_workflows_gateway_name="argo-workflows-gateway"
+	argo_workflows_tls_enabled=var.argo_workflows_domain_config.hostname != null && var.argo_workflows_domain_config.tls_external_secret_name != null
+	argo_workflows_tls_external_secret_name=var.argo_workflows_domain_config.tls_external_secret_name == null ? null : (
+		startswith(var.argo_workflows_domain_config.tls_external_secret_name, local.secret_prefixes.certificates) ?
+		var.argo_workflows_domain_config.tls_external_secret_name :
+		"${local.secret_prefixes.certificates}${var.argo_workflows_domain_config.tls_external_secret_name}"
+	)
+	argo_workflows_tls_secret_name="argo-workflows-server-tls"
 	argocd_external_url=var.argocd_domain_config.hostname == null ? "" : "${local.argocd_tls_enabled ? "https" : "http"}://${var.argocd_domain_config.hostname}"
 	argocd_gateway_class_name="argocd-gateway-class"
 	argocd_gateway_name="argocd-gateway"
@@ -50,6 +59,39 @@ locals {
 		sql="roles/cloudsql.admin"
 		storage="roles/storage.admin"
 	}
+	dxp_operator_parameters=concat(
+		var.dxp_operator_config.heartbeat_interval == null ? [] : [
+			{
+				name="liferay-dxp-operator.heartbeatInterval"
+				value=var.dxp_operator_config.heartbeat_interval
+			}
+		],
+		var.dxp_operator_config.image.repository == null ? [] : [
+			{
+				name="liferay-dxp-operator.image.repository"
+				value=var.dxp_operator_config.image.repository
+			}
+		],
+		var.dxp_operator_config.image.tag == null ? [] : [
+			{
+				name="liferay-dxp-operator.image.tag"
+				value=var.dxp_operator_config.image.tag
+			}
+		],
+		var.dxp_operator_config.provisioning_base_url == null ? [] : [
+			{
+				name="liferay-dxp-operator.provisioning.baseURL"
+				value=var.dxp_operator_config.provisioning_base_url
+			}
+		],
+		var.dxp_operator_config.retry_max_delay == null ? [] : [
+			{
+				name="liferay-dxp-operator.retry.maxDelay"
+				value=var.dxp_operator_config.retry_max_delay
+			}
+		])
+	filestore_ip=try(data.google_filestore_instance.marketplace.networks[0].ip_addresses[0], "")
+	filestore_zone=try(data.google_compute_zones.available.names[0], "")
 	gateway_class_name="liferay-gateway-class"
 	gateway_name="${var.infrastructure_git_repo_config.target.slugProjectId}-${var.infrastructure_git_repo_config.target.slugEnvironmentId}-gateway"
 	git_repo_auth_configs=merge(

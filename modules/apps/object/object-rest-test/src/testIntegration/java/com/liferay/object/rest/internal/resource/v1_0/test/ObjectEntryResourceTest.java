@@ -125,7 +125,6 @@ import com.liferay.portal.kernel.comment.CommentManager;
 import com.liferay.portal.kernel.comment.WorkflowableComment;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.ModelListenerException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
@@ -189,6 +188,7 @@ import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.DateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.GroupThreadLocal;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.Http;
@@ -218,6 +218,7 @@ import com.liferay.portal.spring.hibernate.PortletTransactionManager;
 import com.liferay.portal.spring.transaction.TransactionExecutor;
 import com.liferay.portal.spring.transaction.TransactionInterceptor;
 import com.liferay.portal.test.log.LogCapture;
+import com.liferay.portal.test.log.LogEntry;
 import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.FeatureFlags;
@@ -238,8 +239,8 @@ import com.liferay.portlet.documentlibrary.constants.DLConstants;
 import com.liferay.sharing.model.SharingEntry;
 import com.liferay.sharing.security.permission.SharingEntryAction;
 import com.liferay.sharing.service.SharingEntryLocalService;
-import com.liferay.site.cms.site.initializer.test.util.CMSTestUtil;
 
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.core.Feature;
@@ -285,7 +286,6 @@ import org.hibernate.SessionFactory;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -306,11 +306,7 @@ import org.springframework.transaction.support.DefaultTransactionStatus;
 /**
  * @author Luis Miguel Barcos
  */
-@FeatureFlags(
-	featureFlags = {
-		@FeatureFlag(value = "LPD-17564"), @FeatureFlag(value = "LPS-164801")
-	}
-)
+@FeatureFlags(featureFlags = @FeatureFlag(value = "LPS-164801"))
 @RunWith(Arquillian.class)
 public class ObjectEntryResourceTest {
 
@@ -1237,18 +1233,35 @@ public class ObjectEntryResourceTest {
 				_objectRelationship7);
 		}
 
-		_objectDefinitionLocalService.deleteObjectDefinition(
-			_objectDefinition1);
-		_objectDefinitionLocalService.deleteObjectDefinition(
-			_objectDefinition2);
-		_objectDefinitionLocalService.deleteObjectDefinition(
-			_objectDefinition3);
-		_objectDefinitionLocalService.deleteObjectDefinition(
-			_objectDefinition4);
-		_objectDefinitionLocalService.deleteObjectDefinition(
-			_siteScopedObjectDefinition1);
-		_objectDefinitionLocalService.deleteObjectDefinition(
-			_siteScopedObjectDefinition2);
+		if (_objectDefinition1 != null) {
+			_objectDefinitionLocalService.deleteObjectDefinition(
+				_objectDefinition1);
+		}
+
+		if (_objectDefinition2 != null) {
+			_objectDefinitionLocalService.deleteObjectDefinition(
+				_objectDefinition2);
+		}
+
+		if (_objectDefinition3 != null) {
+			_objectDefinitionLocalService.deleteObjectDefinition(
+				_objectDefinition3);
+		}
+
+		if (_objectDefinition4 != null) {
+			_objectDefinitionLocalService.deleteObjectDefinition(
+				_objectDefinition4);
+		}
+
+		if (_siteScopedObjectDefinition1 != null) {
+			_objectDefinitionLocalService.deleteObjectDefinition(
+				_siteScopedObjectDefinition1);
+		}
+
+		if (_siteScopedObjectDefinition2 != null) {
+			_objectDefinitionLocalService.deleteObjectDefinition(
+				_siteScopedObjectDefinition2);
+		}
 
 		_listTypeDefinitionLocalService.deleteListTypeDefinition(
 			_listTypeDefinition);
@@ -1279,7 +1292,6 @@ public class ObjectEntryResourceTest {
 			new HashSet<>(nestedFieldsContext.getNestedFields()));
 	}
 
-	@FeatureFlag("LPD-34594")
 	@Test
 	public void testCustomizeNestedFieldsContextWithRootModelHierarchy()
 		throws Exception {
@@ -6198,6 +6210,61 @@ public class ObjectEntryResourceTest {
 	}
 
 	@Test
+	public void testGetObjectEntriesPageWithFilterOnManyToManyRelatedLocalizedObjectField()
+		throws Exception {
+
+		ObjectDefinition objectDefinition1 = _publishLocalizedObjectDefinition(
+			_OBJECT_FIELD_NAME_TEXT);
+		String objectEntryValue1 = RandomTestUtil.randomString();
+
+		ObjectEntry objectEntry1 = ObjectEntryTestUtil.addObjectEntry(
+			objectDefinition1,
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_TEXT, objectEntryValue1
+			).put(
+				_OBJECT_FIELD_NAME_TEXT + "_i18n",
+				HashMapBuilder.<String, Serializable>put(
+					"en_US", objectEntryValue1
+				).build()
+			).build());
+
+		ObjectDefinition objectDefinition2 = _publishLocalizedObjectDefinition(
+			_OBJECT_FIELD_NAME_TEXT);
+		String objectEntryValue2 = RandomTestUtil.randomString();
+
+		ObjectEntry objectEntry2 = ObjectEntryTestUtil.addObjectEntry(
+			objectDefinition2,
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_TEXT, objectEntryValue2
+			).put(
+				_OBJECT_FIELD_NAME_TEXT + "_i18n",
+				HashMapBuilder.<String, Serializable>put(
+					"en_US", objectEntryValue2
+				).build()
+			).build());
+
+		ObjectRelationship objectRelationship =
+			_addObjectRelationshipAndRelateObjectEntries(
+				objectDefinition1, objectDefinition2,
+				objectEntry1.getObjectEntryId(),
+				objectEntry2.getObjectEntryId(),
+				ObjectRelationshipConstants.TYPE_MANY_TO_MANY);
+
+		_assertObjectEntriesPageWithFilterOnRelatedLocalizedObjectField(
+			objectEntryValue1, objectDefinition1, objectRelationship,
+			objectEntryValue2);
+		_assertObjectEntriesPageWithFilterOnRelatedLocalizedObjectField(
+			objectEntryValue2, objectDefinition2, objectRelationship,
+			objectEntryValue1);
+
+		_objectRelationshipLocalService.deleteObjectRelationship(
+			objectRelationship);
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition1);
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition2);
+	}
+
+	@Test
 	public void testGetObjectEntriesPageWithLocalizedObjectField()
 		throws Exception {
 
@@ -6232,7 +6299,6 @@ public class ObjectEntryResourceTest {
 		Assert.assertEquals(1, itemsJSONArray.length());
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	public void testGetObjectEntriesPageWithObjectActions() throws Exception {
 		JSONObject actionsJSONObject1 = _getActionsJSONObject(
@@ -6309,7 +6375,6 @@ public class ObjectEntryResourceTest {
 		);
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	public void testGetObjectEntriesSystemProperties() throws Exception {
 		ObjectEntryTestUtil.addObjectEntry(
@@ -6621,17 +6686,6 @@ public class ObjectEntryResourceTest {
 
 	@Test
 	@TestInfo("LPD-62553")
-	public void testGetObjectEntryActions() throws Exception {
-		Assume.assumeFalse(
-			FeatureFlagManagerUtil.isEnabled(
-				_group.getCompanyId(), "LPD-17564"));
-
-		_testGetObjectEntryActions(false);
-	}
-
-	@FeatureFlag("LPD-17564")
-	@Test
-	@TestInfo("LPD-62553")
 	public void testGetObjectEntryActionsWithCompanySharingDisabled()
 		throws Exception {
 
@@ -6649,7 +6703,6 @@ public class ObjectEntryResourceTest {
 		}
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	@TestInfo("LPD-62553")
 	public void testGetObjectEntryActionsWithGroupSharingDisabled()
@@ -6675,20 +6728,16 @@ public class ObjectEntryResourceTest {
 		}
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	@TestInfo("LPD-62553")
 	public void testGetObjectEntryActionsWithSharingEnabled() throws Exception {
 		_testGetObjectEntryActions(true);
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	@TestInfo("LPD-62553")
 	public void testGetObjectEntryActionsWithSystemSharingDisabled()
 		throws Exception {
-
-		CMSTestUtil.getOrAddGroup(ObjectEntryResourceTest.class);
 
 		try (ConfigurationTemporarySwapper configurationTemporarySwapper =
 				new ConfigurationTemporarySwapper(
@@ -7119,12 +7168,23 @@ public class ObjectEntryResourceTest {
 	public void testGetObjectEntryFilteredByTaxonomyCategories()
 		throws Exception {
 
+		Company company = _companyLocalService.getCompany(
+			TestPropsValues.getCompanyId());
+
+		AssetVocabulary assetVocabulary =
+			_assetVocabularyLocalService.addVocabulary(
+				TestPropsValues.getUserId(), company.getGroupId(),
+				RandomTestUtil.randomString(), new ServiceContext());
+
 		TaxonomyCategory taxonomyCategory1 =
-			_postTaxonomyVocabularyTaxonomyCategory();
+			_postTaxonomyVocabularyTaxonomyCategory(
+				company.getGroupId(), assetVocabulary.getVocabularyId());
 		TaxonomyCategory taxonomyCategory2 =
-			_postTaxonomyVocabularyTaxonomyCategory();
+			_postTaxonomyVocabularyTaxonomyCategory(
+				company.getGroupId(), assetVocabulary.getVocabularyId());
 		TaxonomyCategory taxonomyCategory3 =
-			_postTaxonomyVocabularyTaxonomyCategory();
+			_postTaxonomyVocabularyTaxonomyCategory(
+				company.getGroupId(), assetVocabulary.getVocabularyId());
 
 		_postObjectEntryWithTaxonomyCategories();
 		_postObjectEntryWithTaxonomyCategories(taxonomyCategory1);
@@ -7293,14 +7353,11 @@ public class ObjectEntryResourceTest {
 		);
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	@TestInfo("LPD-83639")
 	public void testGetObjectEntryShareAction() throws Exception {
 
 		// With asset library administrator role
-
-		CMSTestUtil.getOrAddGroup(ObjectEntryResourceTest.class);
 
 		DepotEntry depotEntry = _depotEntryLocalService.addDepotEntry(
 			RandomTestUtil.randomLocaleStringMap(),
@@ -7414,7 +7471,6 @@ public class ObjectEntryResourceTest {
 		Assert.assertFalse(jsonObject.has("share"));
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	public void testGetObjectEntryTranslation() throws Exception {
 		_testGetObjectEntryTranslation(
@@ -7426,7 +7482,6 @@ public class ObjectEntryResourceTest {
 			null);
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	public void testGetObjectEntryTranslationLanguage() throws Exception {
 		_testGetObjectEntryTranslation(
@@ -8567,7 +8622,6 @@ public class ObjectEntryResourceTest {
 			JSONCompareMode.LENIENT);
 	}
 
-	@FeatureFlag("LPD-34594")
 	@Test
 	public void testGetObjectEntryWithRootModelHierarchy() throws Exception {
 		try {
@@ -8700,7 +8754,6 @@ public class ObjectEntryResourceTest {
 			JSONCompareMode.STRICT);
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	public void testGetObjectEntryWithTaxonomyCategories() throws Exception {
 
@@ -9693,7 +9746,6 @@ public class ObjectEntryResourceTest {
 			Http.Method.PUT, _objectDefinition2, _siteScopedObjectDefinition2);
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	public void testPatchPutCustomObjectEntryWithScheduleDates()
 		throws Exception {
@@ -9702,8 +9754,7 @@ public class ObjectEntryResourceTest {
 			_OBJECT_FIELD_NAME_1);
 
 		Date displayDate = new Date();
-		Date expirationDate = new Date(
-			System.currentTimeMillis() + Time.MINUTE);
+		Date expirationDate = new Date(System.currentTimeMillis() + Time.HOUR);
 		Date reviewDate = new Date();
 
 		ObjectEntry objectEntry = ObjectEntryTestUtil.addObjectEntry(
@@ -10114,7 +10165,7 @@ public class ObjectEntryResourceTest {
 						Http.Method.POST);
 
 					Assert.assertEquals(
-						"BAD_REQUEST", jsonObject.getString("status"));
+						"FORBIDDEN", jsonObject.getString("status"));
 				}
 			);
 		}
@@ -12242,6 +12293,42 @@ public class ObjectEntryResourceTest {
 					jsonObject.get("id"), StringPool.SLASH,
 					_objectRelationship2.getName()),
 				Http.Method.GET
+			).toString(),
+			JSONCompareMode.LENIENT);
+	}
+
+	@Test
+	@TestInfo("LPD-103450")
+	public void testPutByExternalReferenceCodeRestoreNotInTrash()
+		throws Exception {
+
+		ObjectEntry objectEntry = _objectEntryLocalService.addObjectEntry(
+			0, TestPropsValues.getUserId(),
+			_objectDefinition1.getObjectDefinitionId(),
+			ObjectEntryFolderConstants.PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
+			null,
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_TEXT, RandomTestUtil.randomString()
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
+
+		Assert.assertFalse(objectEntry.isInTrash());
+
+		JSONAssert.assertEquals(
+			JSONUtil.put(
+				"status", "BAD_REQUEST"
+			).put(
+				"title",
+				"Unable to restore this item because it is not in the " +
+					"Recycle Bin."
+			).toString(),
+			HTTPTestUtil.invokeToJSONObject(
+				null,
+				StringBundler.concat(
+					_getEndpoint(_objectDefinition1, 0),
+					"/by-external-reference-code/",
+					objectEntry.getExternalReferenceCode(), "/restore"),
+				Http.Method.PUT
 			).toString(),
 			JSONCompareMode.LENIENT);
 	}
@@ -16283,6 +16370,43 @@ public class ObjectEntryResourceTest {
 		Assert.assertNull(jsonObject.get("title"));
 	}
 
+	private void
+			_assertObjectEntriesPageWithFilterOnRelatedLocalizedObjectField(
+				String expectedObjectFieldValue,
+				ObjectDefinition objectDefinition,
+				ObjectRelationship objectRelationship,
+				String relatedObjectFieldValue)
+		throws Exception {
+
+		String filterString = StringBundler.concat(
+			objectRelationship.getName(), "/", _OBJECT_FIELD_NAME_TEXT, " eq '",
+			relatedObjectFieldValue, "'");
+
+		JSONObject jsonObject = HTTPTestUtil.invokeToJSONObject(
+			null,
+			StringBundler.concat(
+				objectDefinition.getRESTContextPath(), "?filter=",
+				URLCodec.encodeURL(filterString), "&nestedFields=",
+				objectRelationship.getName()),
+			Http.Method.GET);
+
+		JSONArray itemsJSONArray = jsonObject.getJSONArray("items");
+
+		Assert.assertEquals(
+			itemsJSONArray.toString(), 1, itemsJSONArray.length());
+
+		JSONObject itemJSONObject = itemsJSONArray.getJSONObject(0);
+
+		Assert.assertEquals(
+			expectedObjectFieldValue,
+			itemJSONObject.getString(_OBJECT_FIELD_NAME_TEXT));
+		Assert.assertEquals(
+			relatedObjectFieldValue,
+			JSONUtil.getValueAsString(
+				itemJSONObject, "JSONArray/" + objectRelationship.getName(),
+				"Object/0", "Object/" + _OBJECT_FIELD_NAME_TEXT));
+	}
+
 	private void _assertObjectEntryField(
 		JSONObject objectEntryJSONObject, String objectFieldName,
 		String objectFieldValue) {
@@ -16652,113 +16776,52 @@ public class ObjectEntryResourceTest {
 
 		return HashMapBuilder.<String, Map<String, String>>put(
 			"copy",
-			() -> {
-				if (FeatureFlagManagerUtil.isEnabled(
-						_group.getCompanyId(), "LPD-17564")) {
-
-					return _getActionValue(
-						StringBundler.concat(
-							href,
-							"/by-object-entry-folder-id/{objectEntryFolderId}",
-							"/copy"),
-						"POST");
-				}
-
-				return null;
-			}
+			_getActionValue(
+				StringBundler.concat(
+					href, "/by-object-entry-folder-id/{objectEntryFolderId}",
+					"/copy"),
+				"POST")
 		).put(
 			"copy-replace",
-			() -> {
-				if (FeatureFlagManagerUtil.isEnabled(
-						_group.getCompanyId(), "LPD-17564")) {
-
-					return _getActionValue(
-						StringBundler.concat(
-							href,
-							"/by-object-entry-folder-id/{objectEntryFolderId}",
-							"/copy-replace"),
-						"POST");
-				}
-
-				return null;
-			}
+			_getActionValue(
+				StringBundler.concat(
+					href, "/by-object-entry-folder-id/{objectEntryFolderId}",
+					"/copy-replace"),
+				"POST")
 		).put(
 			"delete", _getActionValue(href, "DELETE")
 		).put(
 			"duplicate",
-			() -> {
-				if (FeatureFlagManagerUtil.isEnabled(
-						_group.getCompanyId(), "LPD-17564")) {
-
-					return _getActionValue(
-						StringBundler.concat(
-							href, "/by-object-entry-folder-id/",
-							objectEntryFolderId, "/copy"),
-						"POST");
-				}
-
-				return null;
-			}
+			_getActionValue(
+				StringBundler.concat(
+					href, "/by-object-entry-folder-id/", objectEntryFolderId,
+					"/copy"),
+				"POST")
 		).put(
 			"expire",
-			() -> {
-				if (FeatureFlagManagerUtil.isEnabled(
-						_group.getCompanyId(), "LPD-17564")) {
-
-					return _getActionValue(
-						StringBundler.concat(
-							scopedEndpoint, "/by-external-reference-code/",
-							externalReferenceCode, "/expire"),
-						"POST");
-				}
-
-				return null;
-			}
+			_getActionValue(
+				StringBundler.concat(
+					scopedEndpoint, "/by-external-reference-code/",
+					externalReferenceCode, "/expire"),
+				"POST")
 		).put(
 			"get", _getActionValue(href, "GET")
 		).put(
-			"get-by-scope",
-			() -> {
-				if (FeatureFlagManagerUtil.isEnabled(
-						_group.getCompanyId(), "LPD-17564")) {
-
-					return _getActionValue(scopedEndpoint, "GET");
-				}
-
-				return null;
-			}
+			"get-by-scope", _getActionValue(scopedEndpoint, "GET")
 		).put(
 			"move",
-			() -> {
-				if (FeatureFlagManagerUtil.isEnabled(
-						_group.getCompanyId(), "LPD-17564")) {
-
-					return _getActionValue(
-						StringBundler.concat(
-							href,
-							"/by-object-entry-folder-id/{objectEntryFolderId}",
-							"/move"),
-						"POST");
-				}
-
-				return null;
-			}
+			_getActionValue(
+				StringBundler.concat(
+					href, "/by-object-entry-folder-id/{objectEntryFolderId}",
+					"/move"),
+				"POST")
 		).put(
 			"move-replace",
-			() -> {
-				if (FeatureFlagManagerUtil.isEnabled(
-						_group.getCompanyId(), "LPD-17564")) {
-
-					return _getActionValue(
-						StringBundler.concat(
-							href,
-							"/by-object-entry-folder-id/{objectEntryFolderId}",
-							"/move-replace"),
-						"POST");
-				}
-
-				return null;
-			}
+			_getActionValue(
+				StringBundler.concat(
+					href, "/by-object-entry-folder-id/{objectEntryFolderId}",
+					"/move-replace"),
+				"POST")
 		).put(
 			"permissions", _getActionValue(href + "/permissions", "GET")
 		).put(
@@ -16766,10 +16829,7 @@ public class ObjectEntryResourceTest {
 		).put(
 			"share",
 			() -> {
-				if (FeatureFlagManagerUtil.isEnabled(
-						_group.getCompanyId(), "LPD-17564") &&
-					sharingEnabled) {
-
+				if (sharingEnabled) {
 					return _getActionValue(href, "GET");
 				}
 
@@ -17564,18 +17624,14 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
 				"parentCommentExternalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		String endpoint = _getEndpoint(objectDefinition, groupId);
@@ -17818,32 +17874,28 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
 				"parentCommentExternalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		_postObjectEntryWithComments(
 			commentsJSONArray, groupId, false, objectDefinition);
 
 		JSONAssert.assertEquals(
-			commentsJSONArray.toString(),
+			_toExpectedCommentsJSONArray(
+				commentsJSONArray
+			).toString(),
 			_getCommentsJSONArray(
 				groupId, objectDefinition
 			).toString(),
@@ -18748,8 +18800,7 @@ public class ObjectEntryResourceTest {
 			fileEntry -> JSONUtil.put(
 				_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE,
 				_getFileEntryJSONObject(
-					_getDLFolder(depotEntry.getGroupId(), objectDefinition),
-					fileEntry, objectDefinition,
+					null, fileEntry, objectDefinition,
 					_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE)),
 			_toFileEntry(
 				Base64::encode, DLTestUtil.randomTextFileBytes(),
@@ -19107,25 +19158,43 @@ public class ObjectEntryResourceTest {
 
 		// Documents and media source, file from URL not found
 
+		String notFoundPath = "/" + RandomTestUtil.randomString();
+
 		String httpCode404URL = StringBundler.concat(
 			"http://", company.getVirtualHostname(), ":",
-			PortalUtil.getPortalServerPort(false), "/",
-			RandomTestUtil.randomString());
+			PortalUtil.getPortalServerPort(false), notFoundPath);
 
-		_testPatchPutCustomObjectEntryWithAttachmentField(
-			fileEntry -> JSONUtil.put(
-				"status", "BAD_REQUEST"
-			).put(
-				"title",
-				"Unable to download file from " + httpCode404URL +
-					", unexpected HTTP code: 404"
-			),
-			_toFileEntry(
-				RandomTestUtil.randomString() + ".txt", httpCode404URL, null,
-				null, customFileEntry1.getMimeType()),
-			httpMethod, null, objectDefinition,
-			_OBJECT_FIELD_NAME_ATTACHMENT_DOCS_AND_MEDIA_SOURCE,
-			useExternalReferenceCode);
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"portal_web.docroot.errors.code_jsp", LoggerTestUtil.WARN)) {
+
+			_testPatchPutCustomObjectEntryWithAttachmentField(
+				fileEntry -> JSONUtil.put(
+					"status", "BAD_REQUEST"
+				).put(
+					"title",
+					"Unable to download file from " + httpCode404URL +
+						", unexpected HTTP code: 404"
+				),
+				_toFileEntry(
+					RandomTestUtil.randomString() + ".txt", httpCode404URL,
+					null, null, customFileEntry1.getMimeType()),
+				httpMethod, null, objectDefinition,
+				_OBJECT_FIELD_NAME_ATTACHMENT_DOCS_AND_MEDIA_SOURCE,
+				useExternalReferenceCode);
+
+			List<LogEntry> logEntries = logCapture.getLogEntries();
+
+			Assert.assertEquals(logEntries.toString(), 1, logEntries.size());
+
+			LogEntry logEntry = logEntries.get(0);
+
+			Assert.assertEquals(LoggerTestUtil.WARN, logEntry.getPriority());
+
+			String message = logEntry.getMessage();
+
+			Assert.assertTrue(message, message.contains("code=\"404\""));
+			Assert.assertTrue(message, message.contains("uri=" + notFoundPath));
+		}
 
 		// Documents and media source, file from URL with unsupported protocol
 
@@ -19527,22 +19596,20 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
 				"parentCommentExternalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		JSONAssert.assertEquals(
-			commentsJSONArray.toString(),
+			_toExpectedCommentsJSONArray(
+				commentsJSONArray
+			).toString(),
 			_patchPutObjectEntryWithComments(
 				commentsJSONArray, groupId, httpMethod, objectDefinition,
 				objectEntryJSONObject
@@ -19553,29 +19620,25 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
 				"parentCommentExternalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		JSONAssert.assertEquals(
-			commentsJSONArray.toString(),
+			_toExpectedCommentsJSONArray(
+				commentsJSONArray
+			).toString(),
 			_patchPutObjectEntryWithComments(
 				commentsJSONArray, groupId, httpMethod, objectDefinition,
 				objectEntryJSONObject
@@ -19719,8 +19782,7 @@ public class ObjectEntryResourceTest {
 			fileEntry -> JSONUtil.put(
 				_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE,
 				_getFileEntryJSONObject(
-					_getDLFolder(depotEntry.getGroupId(), objectDefinition),
-					fileEntry, objectDefinition,
+					null, fileEntry, objectDefinition,
 					_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE)),
 			_toFileEntry(
 				Base64::encode, DLTestUtil.randomTextFileBytes(),
@@ -20088,24 +20150,43 @@ public class ObjectEntryResourceTest {
 
 		// Documents and media source, file from URL not found
 
+		String notFoundPath = "/" + RandomTestUtil.randomString();
+
 		String resourceNotFoundFileURL = StringBundler.concat(
 			"http://", company.getVirtualHostname(), ":",
-			PortalUtil.getPortalServerPort(false), "/",
-			RandomTestUtil.randomString());
+			PortalUtil.getPortalServerPort(false), notFoundPath);
 
-		_testPostCustomObjectEntryWithAttachmentObjectField(
-			fileEntry -> JSONUtil.put(
-				"status", "BAD_REQUEST"
-			).put(
-				"title",
-				"Unable to download file from " + resourceNotFoundFileURL +
-					", unexpected HTTP code: 404"
-			),
-			_toFileEntry(
-				RandomTestUtil.randomString() + ".txt", resourceNotFoundFileURL,
-				null, _group.getGroupId(), customFileEntry1.getMimeType()),
-			null, objectDefinition,
-			_OBJECT_FIELD_NAME_ATTACHMENT_DOCS_AND_MEDIA_SOURCE);
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"portal_web.docroot.errors.code_jsp", LoggerTestUtil.WARN)) {
+
+			_testPostCustomObjectEntryWithAttachmentObjectField(
+				fileEntry -> JSONUtil.put(
+					"status", "BAD_REQUEST"
+				).put(
+					"title",
+					"Unable to download file from " + resourceNotFoundFileURL +
+						", unexpected HTTP code: 404"
+				),
+				_toFileEntry(
+					RandomTestUtil.randomString() + ".txt",
+					resourceNotFoundFileURL, null, _group.getGroupId(),
+					customFileEntry1.getMimeType()),
+				null, objectDefinition,
+				_OBJECT_FIELD_NAME_ATTACHMENT_DOCS_AND_MEDIA_SOURCE);
+
+			List<LogEntry> logEntries = logCapture.getLogEntries();
+
+			Assert.assertEquals(logEntries.toString(), 1, logEntries.size());
+
+			LogEntry logEntry = logEntries.get(0);
+
+			Assert.assertEquals(LoggerTestUtil.WARN, logEntry.getPriority());
+
+			String message = logEntry.getMessage();
+
+			Assert.assertTrue(message, message.contains("code=\"404\""));
+			Assert.assertTrue(message, message.contains("uri=" + notFoundPath));
+		}
 
 		// Documents and media source, file from URL with unsupported protocol
 
@@ -20713,9 +20794,7 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		Assert.assertEquals(
@@ -20727,7 +20806,9 @@ public class ObjectEntryResourceTest {
 		_enableComments(objectDefinition);
 
 		JSONAssert.assertEquals(
-			commentsJSONArray.toString(),
+			_toExpectedCommentsJSONArray(
+				commentsJSONArray
+			).toString(),
 			_postObjectEntryWithComments(
 				commentsJSONArray, groupId, true, objectDefinition
 			).toString(),
@@ -20739,22 +20820,20 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
 				"parentCommentExternalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		JSONAssert.assertEquals(
-			commentsJSONArray.toString(),
+			_toExpectedCommentsJSONArray(
+				commentsJSONArray
+			).toString(),
 			_postObjectEntryWithComments(
 				commentsJSONArray, groupId, true, objectDefinition
 			).toString(),
@@ -20969,7 +21048,17 @@ public class ObjectEntryResourceTest {
 				"id"
 			));
 
-		_assetVocabularyLocalService.deleteVocabulary(systemAssetVocabulary);
+		boolean deleteInProcess = GroupThreadLocal.isDeleteInProcess();
+
+		try {
+			GroupThreadLocal.setDeleteInProcess(true);
+
+			_assetVocabularyLocalService.deleteVocabulary(
+				systemAssetVocabulary);
+		}
+		finally {
+			GroupThreadLocal.setDeleteInProcess(deleteInProcess);
+		}
 
 		// Cannot add a category from an unassociated vocabulary
 
@@ -21204,6 +21293,11 @@ public class ObjectEntryResourceTest {
 						objectValidationRule1.getExternalReferenceCode())));
 
 			_setUpPermissionThreadLocal(TestPropsValues.getUser());
+
+			AssertUtils.assertFailure(
+				BadRequestException.class, "No values found in body",
+				() -> _validate(
+					scopeKey, objectEntryResource, new ValidationRequest()));
 
 			ValidationResponse validationResponse = _validate(
 				scopeKey, objectEntryResource,
@@ -22155,6 +22249,27 @@ public class ObjectEntryResourceTest {
 
 		return JSONFactoryUtil.createJSONObject(
 			embeddedTaxonomyCategory.toString());
+	}
+
+	private JSONArray _toExpectedCommentsJSONArray(JSONArray commentsJSONArray)
+		throws Exception {
+
+		JSONArray expectedCommentsJSONArray = JSONFactoryUtil.createJSONArray();
+
+		for (int i = 0; i < commentsJSONArray.length(); i++) {
+			JSONObject commentJSONObject = commentsJSONArray.getJSONObject(i);
+
+			expectedCommentsJSONArray.put(
+				JSONFactoryUtil.createJSONObject(
+					commentJSONObject.toString()
+				).put(
+					"text",
+					StringBundler.concat(
+						"<p>", commentJSONObject.getString("text"), "</p>")
+				));
+		}
+
+		return expectedCommentsJSONArray;
 	}
 
 	private com.liferay.object.rest.dto.v1_0.FileEntry _toFileEntry(

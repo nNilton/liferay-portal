@@ -11,7 +11,10 @@ import com.liferay.exportimport.rest.client.dto.v1_0.ExportProcess;
 import com.liferay.exportimport.rest.client.dto.v1_0.ExportProcessRequest;
 import com.liferay.exportimport.rest.client.dto.v1_0.ProcessProgress;
 import com.liferay.exportimport.rest.client.dto.v1_0.RequestPortletDataHandler;
+import com.liferay.exportimport.rest.client.dto.v1_0.RequestPortletDataHandlerControl;
 import com.liferay.exportimport.rest.client.http.HttpInvoker;
+import com.liferay.exportimport.rest.client.pagination.Page;
+import com.liferay.exportimport.rest.client.pagination.Pagination;
 import com.liferay.exportimport.rest.client.resource.v1_0.ExportProcessResource;
 import com.liferay.exportimport.test.util.ExportImportTestUtil;
 import com.liferay.layout.test.util.LayoutTestUtil;
@@ -25,6 +28,7 @@ import com.liferay.object.rest.test.util.ObjectEntryTestUtil;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
+import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.function.UnsafeFunction;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.background.task.model.BackgroundTask;
@@ -32,6 +36,8 @@ import com.liferay.portal.background.task.service.BackgroundTaskLocalService;
 import com.liferay.portal.kernel.backgroundtask.BackgroundTaskStatus;
 import com.liferay.portal.kernel.backgroundtask.BackgroundTaskStatusRegistryUtil;
 import com.liferay.portal.kernel.backgroundtask.constants.BackgroundTaskConstants;
+import com.liferay.portal.kernel.json.JSONArray;
+import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
@@ -40,15 +46,18 @@ import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LoggerTestUtil;
+import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.staging.StagingGroupHelper;
 
@@ -108,6 +117,16 @@ public class ExportProcessResourceTest
 
 	@Override
 	@Test
+	public void testGetExportProcess() throws Exception {
+		super.testGetExportProcess();
+
+		_testGetExportProcessErrorMessageWhenStatusIsSuccessful();
+		_testGetExportProcessErrorMessageWhenStatusMessageIsNotJSON();
+	}
+
+	@Override
+	@Test
+	@TestInfo("LPS-88498")
 	public void testGetExportProcessContent() throws Exception {
 		ObjectDefinition objectDefinition = _publishObjectDefinition(
 			ObjectDefinitionConstants.SCOPE_SITE);
@@ -133,7 +152,8 @@ public class ExportProcessResourceTest
 				LoggerTestUtil.WARN)) {
 
 			exportProcess = exportProcessResource.postSiteExportProcess(
-				testGroup.getExternalReferenceCode(), exportProcessRequest);
+				testGroup.getExternalReferenceCode(), 0L, null,
+				exportProcessRequest);
 
 			ExportProcess finalExportProcess = exportProcess;
 
@@ -158,6 +178,11 @@ public class ExportProcessResourceTest
 
 		Assert.assertNotNull(httpResponse.getContent());
 
+		assertHttpResponseStatusCode(
+			404,
+			_exportProcessResource.getExportProcessContentHttpResponse(
+				exportProcess.getId()));
+
 		BackgroundTask backgroundTask =
 			_backgroundTaskLocalService.getBackgroundTask(
 				exportProcess.getId());
@@ -175,11 +200,64 @@ public class ExportProcessResourceTest
 
 	@Override
 	@Test
+	public void testGetExportProcessesPage() throws Exception {
+		Page<ExportProcess> page = exportProcessResource.getExportProcessesPage(
+			null, null, null, null, Pagination.of(1, 10), null);
+
+		long totalCount = page.getTotalCount();
+
+		ExportProcess exportProcess1 =
+			testGetExportProcessesPage_addExportProcess(randomExportProcess());
+
+		ExportProcess exportProcess2 =
+			testGetExportProcessesPage_addExportProcess(randomExportProcess());
+
+		String portletId = RandomTestUtil.randomString();
+
+		ExportProcess portletExportProcess = _addExportProcess(
+			_getCompanyGroupId(), portletId,
+			BackgroundTaskExecutorNames.
+				PORTLET_EXPORT_BACKGROUND_TASK_EXECUTOR);
+
+		page = exportProcessResource.getExportProcessesPage(
+			null, null, null, null, Pagination.of(1, (int)totalCount + 2),
+			null);
+
+		Assert.assertEquals(totalCount + 2, page.getTotalCount());
+
+		assertContains(exportProcess1, (List<ExportProcess>)page.getItems());
+		assertContains(exportProcess2, (List<ExportProcess>)page.getItems());
+		assertValid(page, testGetExportProcessesPage_getExpectedActions());
+
+		page = exportProcessResource.getExportProcessesPage(
+			null, portletId, null, null, Pagination.of(1, 10), null);
+
+		Assert.assertEquals(1, page.getTotalCount());
+
+		assertContains(
+			portletExportProcess, (List<ExportProcess>)page.getItems());
+
+		page = exportProcessResource.getExportProcessesPage(
+			null, RandomTestUtil.randomString(), null, null,
+			Pagination.of(1, 10), null);
+
+		Assert.assertEquals(0, page.getTotalCount());
+
+		exportProcessResource.deleteExportProcess(exportProcess1.getId());
+		exportProcessResource.deleteExportProcess(exportProcess2.getId());
+		exportProcessResource.deleteExportProcess(portletExportProcess.getId());
+	}
+
+	@Override
+	@Test
 	public void testPostAssetLibraryExportProcess() throws Exception {
+		String externalReferenceCode =
+			testDepotEntryGroup.getExternalReferenceCode();
+
 		assertHttpResponseStatusCode(
 			403,
 			_exportProcessResource.postAssetLibraryExportProcessHttpResponse(
-				testDepotEntryGroup.getExternalReferenceCode(),
+				externalReferenceCode, 0L, null,
 				new ExportProcessRequest() {
 					{
 						name = RandomTestUtil.randomString();
@@ -189,67 +267,36 @@ public class ExportProcessResourceTest
 		_testPostExportProcessWithInvalidDateRange(
 			exportProcessRequest ->
 				exportProcessResource.postAssetLibraryExportProcessHttpResponse(
-					testDepotEntryGroup.getExternalReferenceCode(),
-					exportProcessRequest));
+					externalReferenceCode, 0L, null, exportProcessRequest));
 
 		ObjectDefinition objectDefinition = _publishObjectDefinition(
 			ObjectDefinitionConstants.SCOPE_DEPOT);
 
-		try {
-			_testPostExportProcessWithObjectDefinition(
-				exportProcessRequest ->
-					exportProcessResource.postAssetLibraryExportProcess(
-						testDepotEntryGroup.getExternalReferenceCode(),
-						exportProcessRequest),
-				testDepotEntryGroup.getGroupId(), objectDefinition,
-				_addObjectEntries(
-					objectDefinition, testDepotEntryGroup.getGroupId()));
-		}
-		finally {
-			_objectDefinitionLocalService.deleteObjectDefinition(
-				objectDefinition);
-		}
-	}
+		ObjectEntry[] objectEntries = _addObjectEntries(
+			objectDefinition, testDepotEntryGroup.getGroupId());
 
-	@Override
-	@Test
-	public void testPostAssetLibraryPortletExportProcess() throws Exception {
-		Layout layout = LayoutTestUtil.addTypePortletLayout(
-			testDepotEntryGroup);
-
-		ObjectDefinition objectDefinition = _publishObjectDefinition(
-			ObjectDefinitionConstants.SCOPE_DEPOT);
+		_testPostExportProcessWithObjectDefinition(
+			exportProcessRequest ->
+				exportProcessResource.postAssetLibraryExportProcess(
+					externalReferenceCode, 0L, null, exportProcessRequest),
+			testDepotEntryGroup.getGroupId(), objectDefinition, objectEntries);
 
 		String portletId = objectDefinition.getPortletId();
 
-		LayoutTestUtil.addPortletToLayout(layout, portletId);
+		long plid = _addLayoutWithPortlet(testDepotEntryGroup, portletId);
 
-		assertHttpResponseStatusCode(
-			403,
-			_exportProcessResource.
-				postAssetLibraryPortletExportProcessHttpResponse(
-					testDepotEntryGroup.getExternalReferenceCode(), portletId,
-					layout.getPlid(),
-					new ExportProcessRequest() {
-						{
-							name = RandomTestUtil.randomString();
-						}
-					}));
-
-		_testPostExportProcessWithInvalidDateRange(
-			exportProcessRequest ->
-				exportProcessResource.
-					postAssetLibraryPortletExportProcessHttpResponse(
-						testDepotEntryGroup.getExternalReferenceCode(),
-						portletId, layout.getPlid(), exportProcessRequest));
 		_testPostExportProcessWithObjectDefinition(
 			exportProcessRequest ->
-				exportProcessResource.postAssetLibraryPortletExportProcess(
-					testDepotEntryGroup.getExternalReferenceCode(), portletId,
-					layout.getPlid(), exportProcessRequest),
-			testDepotEntryGroup.getGroupId(), objectDefinition,
-			_addObjectEntries(
-				objectDefinition, testDepotEntryGroup.getGroupId()));
+				exportProcessResource.postAssetLibraryExportProcess(
+					externalReferenceCode, plid, portletId,
+					exportProcessRequest),
+			testDepotEntryGroup.getGroupId(), objectDefinition, objectEntries);
+
+		_testPostExportProcessWithoutPlid(
+			exportProcessRequest ->
+				exportProcessResource.postAssetLibraryExportProcessHttpResponse(
+					externalReferenceCode, 0L, portletId,
+					exportProcessRequest));
 
 		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
 	}
@@ -260,6 +307,7 @@ public class ExportProcessResourceTest
 		assertHttpResponseStatusCode(
 			403,
 			_exportProcessResource.postExportProcessHttpResponse(
+				0L, null,
 				new ExportProcessRequest() {
 					{
 						name = RandomTestUtil.randomString();
@@ -270,31 +318,119 @@ public class ExportProcessResourceTest
 			testCompany.getCompanyId());
 
 		_testPostExportProcessWithInvalidDateRange(
-			exportProcessResource::postExportProcessHttpResponse);
+			exportProcessRequest ->
+				exportProcessResource.postExportProcessHttpResponse(
+					0L, null, exportProcessRequest));
 
 		ObjectDefinition objectDefinition = _publishObjectDefinition(
 			ObjectDefinitionConstants.SCOPE_COMPANY);
 
-		try {
-			_testPostExportProcessWithObjectDefinition(
-				exportProcessResource::postExportProcess,
-				companyGroup.getGroupId(), objectDefinition,
-				_addObjectEntries(
-					objectDefinition, GroupConstants.DEFAULT_PARENT_GROUP_ID));
-		}
-		finally {
-			_objectDefinitionLocalService.deleteObjectDefinition(
-				objectDefinition);
-		}
+		ObjectEntry[] objectEntries = _addObjectEntries(
+			objectDefinition, GroupConstants.DEFAULT_PARENT_GROUP_ID);
+
+		_testPostExportProcessWithObjectDefinition(
+			exportProcessRequest -> exportProcessResource.postExportProcess(
+				0L, null, exportProcessRequest),
+			companyGroup.getGroupId(), objectDefinition, objectEntries);
+		_testPostExportProcessWithDateRange(
+			companyGroup.getGroupId(), objectDefinition, objectEntries);
+		_testPostExportProcessWithPermissions(
+			companyGroup.getGroupId(), objectDefinition, objectEntries);
+
+		_testPostExportProcessWithSameName(companyGroup.getGroupId());
+
+		String portletId = objectDefinition.getPortletId();
+
+		long plid = _addLayoutWithPortlet(testGroup, portletId);
+
+		_testPostExportProcessWithObjectDefinition(
+			exportProcessRequest -> exportProcessResource.postExportProcess(
+				plid, portletId, exportProcessRequest),
+			companyGroup.getGroupId(), objectDefinition, objectEntries);
+
+		_testPostExportProcessWithoutPlid(
+			exportProcessRequest ->
+				exportProcessResource.postExportProcessHttpResponse(
+					0L, portletId, exportProcessRequest));
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
 	}
 
 	@Override
 	@Test
+	@TestInfo("LRQA-47649")
+	public void testPostExportProcessRelaunch() throws Exception {
+		super.testPostExportProcessRelaunch();
+
+		ObjectDefinition objectDefinition = _publishObjectDefinition(
+			ObjectDefinitionConstants.SCOPE_SITE);
+
+		ExportProcessRequest exportProcessRequest = new ExportProcessRequest();
+
+		exportProcessRequest.setName(RandomTestUtil.randomString());
+		exportProcessRequest.setRequestPortletDataHandlers(
+			new RequestPortletDataHandler[] {
+				new RequestPortletDataHandler() {
+					{
+						name =
+							"PORTLET_DATA_" + objectDefinition.getPortletId();
+					}
+				}
+			});
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.batch.engine.internal." +
+					"BatchEngineExportTaskExecutorImpl",
+				LoggerTestUtil.WARN)) {
+
+			ExportProcess exportProcess =
+				exportProcessResource.postSiteExportProcess(
+					testGroup.getExternalReferenceCode(), 0L, null,
+					exportProcessRequest);
+
+			ExportImportTestUtil.assertBackgroundTaskSuccessful(
+				exportProcess.getId());
+
+			ExportProcess relaunchedExportProcess =
+				exportProcessResource.postExportProcessRelaunch(
+					exportProcess.getId());
+
+			Assert.assertNotEquals(
+				exportProcess.getId(), relaunchedExportProcess.getId());
+
+			ExportImportTestUtil.assertBackgroundTaskSuccessful(
+				relaunchedExportProcess.getId());
+
+			BackgroundTask relaunchedBackgroundTask =
+				_backgroundTaskLocalService.getBackgroundTask(
+					relaunchedExportProcess.getId());
+
+			Assert.assertFalse(
+				ListUtil.isEmpty(
+					relaunchedBackgroundTask.getAttachmentsFileEntries()));
+
+			BackgroundTask backgroundTask =
+				_backgroundTaskLocalService.getBackgroundTask(
+					exportProcess.getId());
+
+			Assert.assertEquals(
+				BackgroundTaskConstants.STATUS_SUCCESSFUL,
+				backgroundTask.getStatus());
+		}
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+	}
+
+	@FeatureFlag("LPD-38869")
+	@Override
+	@Test
 	public void testPostSiteExportProcess() throws Exception {
+		String externalReferenceCode = testGroup.getExternalReferenceCode();
+
 		assertHttpResponseStatusCode(
 			403,
 			_exportProcessResource.postSiteExportProcessHttpResponse(
-				testGroup.getExternalReferenceCode(),
+				externalReferenceCode, 0L, null,
 				new ExportProcessRequest() {
 					{
 						name = RandomTestUtil.randomString();
@@ -304,62 +440,39 @@ public class ExportProcessResourceTest
 		_testPostExportProcessWithInvalidDateRange(
 			exportProcessRequest ->
 				exportProcessResource.postSiteExportProcessHttpResponse(
-					testGroup.getExternalReferenceCode(),
-					exportProcessRequest));
+					externalReferenceCode, 0L, null, exportProcessRequest));
+		_testPostExportProcessWithLayoutSet(
+			exportProcessRequest ->
+				exportProcessResource.postSiteExportProcessHttpResponse(
+					externalReferenceCode, 0L, null, exportProcessRequest),
+			exportProcessRequest -> exportProcessResource.postSiteExportProcess(
+				externalReferenceCode, 0L, null, exportProcessRequest));
 
 		ObjectDefinition objectDefinition = _publishObjectDefinition(
 			ObjectDefinitionConstants.SCOPE_SITE);
 
-		try {
-			_testPostExportProcessWithObjectDefinition(
-				exportProcessRequest ->
-					exportProcessResource.postSiteExportProcess(
-						testGroup.getExternalReferenceCode(),
-						exportProcessRequest),
-				testGroup.getGroupId(), objectDefinition,
-				_addObjectEntries(objectDefinition, testGroup.getGroupId()));
-		}
-		finally {
-			_objectDefinitionLocalService.deleteObjectDefinition(
-				objectDefinition);
-		}
-	}
+		ObjectEntry[] objectEntries = _addObjectEntries(
+			objectDefinition, testGroup.getGroupId());
 
-	@Override
-	@Test
-	public void testPostSitePortletExportProcess() throws Exception {
-		Layout layout = LayoutTestUtil.addTypePortletLayout(testGroup);
-
-		ObjectDefinition objectDefinition = _publishObjectDefinition(
-			ObjectDefinitionConstants.SCOPE_SITE);
+		_testPostExportProcessWithObjectDefinition(
+			exportProcessRequest -> exportProcessResource.postSiteExportProcess(
+				externalReferenceCode, 0L, null, exportProcessRequest),
+			testGroup.getGroupId(), objectDefinition, objectEntries);
 
 		String portletId = objectDefinition.getPortletId();
 
-		LayoutTestUtil.addPortletToLayout(layout, portletId);
+		long plid = _addLayoutWithPortlet(testGroup, portletId);
 
-		assertHttpResponseStatusCode(
-			403,
-			_exportProcessResource.postSitePortletExportProcessHttpResponse(
-				testGroup.getExternalReferenceCode(), portletId,
-				layout.getPlid(),
-				new ExportProcessRequest() {
-					{
-						name = RandomTestUtil.randomString();
-					}
-				}));
-
-		_testPostExportProcessWithInvalidDateRange(
-			exportProcessRequest ->
-				exportProcessResource.postSitePortletExportProcessHttpResponse(
-					testGroup.getExternalReferenceCode(), portletId,
-					layout.getPlid(), exportProcessRequest));
 		_testPostExportProcessWithObjectDefinition(
+			exportProcessRequest -> exportProcessResource.postSiteExportProcess(
+				externalReferenceCode, plid, portletId, exportProcessRequest),
+			testGroup.getGroupId(), objectDefinition, objectEntries);
+
+		_testPostExportProcessWithoutPlid(
 			exportProcessRequest ->
-				exportProcessResource.postSitePortletExportProcess(
-					testGroup.getExternalReferenceCode(), portletId,
-					layout.getPlid(), exportProcessRequest),
-			testGroup.getGroupId(), objectDefinition,
-			_addObjectEntries(objectDefinition, testGroup.getGroupId()));
+				exportProcessResource.postSiteExportProcessHttpResponse(
+					externalReferenceCode, 0L, portletId,
+					exportProcessRequest));
 
 		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
 	}
@@ -404,36 +517,6 @@ public class ExportProcessResourceTest
 		throws Exception {
 
 		return new HashMap<>();
-	}
-
-	@Override
-	protected ExportProcess
-			testGetAssetLibraryPortletExportProcessesPage_addExportProcess(
-				String assetLibraryExternalReferenceCode, String portletId,
-				ExportProcess exportProcess)
-		throws Exception {
-
-		return _addExportProcess(
-			_getGroupId(assetLibraryExternalReferenceCode), portletId,
-			BackgroundTaskExecutorNames.
-				PORTLET_EXPORT_BACKGROUND_TASK_EXECUTOR);
-	}
-
-	@Override
-	protected Map<String, Map<String, String>>
-			testGetAssetLibraryPortletExportProcessesPage_getExpectedActions(
-				String assetLibraryExternalReferenceCode, String portletId)
-		throws Exception {
-
-		return new HashMap<>();
-	}
-
-	@Override
-	protected String
-			testGetAssetLibraryPortletExportProcessesPage_getPortletId()
-		throws Exception {
-
-		return RandomTestUtil.randomString();
 	}
 
 	@Override
@@ -491,35 +574,6 @@ public class ExportProcessResourceTest
 	}
 
 	@Override
-	protected ExportProcess
-			testGetSitePortletExportProcessesPage_addExportProcess(
-				String siteExternalReferenceCode, String portletId,
-				ExportProcess exportProcess)
-		throws Exception {
-
-		return _addExportProcess(
-			_getGroupId(siteExternalReferenceCode), portletId,
-			BackgroundTaskExecutorNames.
-				PORTLET_EXPORT_BACKGROUND_TASK_EXECUTOR);
-	}
-
-	@Override
-	protected Map<String, Map<String, String>>
-			testGetSitePortletExportProcessesPage_getExpectedActions(
-				String siteExternalReferenceCode, String portletId)
-		throws Exception {
-
-		return new HashMap<>();
-	}
-
-	@Override
-	protected String testGetSitePortletExportProcessesPage_getPortletId()
-		throws Exception {
-
-		return RandomTestUtil.randomString();
-	}
-
-	@Override
 	protected ExportProcess testPostExportProcessRelaunch_addExportProcess(
 			ExportProcess exportProcess)
 		throws Exception {
@@ -569,6 +623,16 @@ public class ExportProcessResourceTest
 		}
 	}
 
+	private long _addLayoutWithPortlet(Group group, String portletId)
+		throws Exception {
+
+		Layout layout = LayoutTestUtil.addTypePortletLayout(group);
+
+		LayoutTestUtil.addPortletToLayout(layout, portletId);
+
+		return layout.getPlid();
+	}
+
 	private ObjectEntry[] _addObjectEntries(
 			ObjectDefinition objectDefinition, long groupId)
 		throws Exception {
@@ -590,6 +654,82 @@ public class ExportProcessResourceTest
 			).build());
 	}
 
+	private <T> void _assertExportedExternalReferenceCodes(
+			BackgroundTask backgroundTask, String fileNamePrefix, long groupId,
+			T[] items, UnsafeFunction<T, String, Exception> unsafeFunction)
+		throws Exception {
+
+		List<FileEntry> fileEntries =
+			backgroundTask.getAttachmentsFileEntries();
+
+		Assert.assertEquals(fileEntries.toString(), 1, fileEntries.size());
+
+		FileEntry larFileEntry = fileEntries.get(0);
+
+		JSONAssert.assertEquals(
+			JSONUtil.toJSONArray(
+				items,
+				item -> JSONUtil.put(
+					"externalReferenceCode", unsafeFunction.apply(item))
+			).toString(),
+			String.valueOf(
+				ExportImportTestUtil.getExportedJSONArray(
+					fileNamePrefix, groupId, larFileEntry.getContentStream())),
+			JSONCompareMode.LENIENT);
+	}
+
+	private void _assertExportedLayouts(
+			String controlName,
+			UnsafeFunction<ExportProcessRequest, ExportProcess, Exception>
+				unsafeFunction,
+			Layout... layouts)
+		throws Exception {
+
+		ExportProcess exportProcess = unsafeFunction.apply(
+			new ExportProcessRequest() {
+				{
+					name = RandomTestUtil.randomString();
+
+					setRequestPortletDataHandlers(
+						new RequestPortletDataHandler[] {
+							new RequestPortletDataHandler() {
+								{
+									name = "PORTLET_DATA_" + _PORTLET_ID;
+
+									setRequestPortletDataHandlerControls(
+										new RequestPortletDataHandlerControl[] {
+											new RequestPortletDataHandlerControl() {
+												{
+													name = controlName;
+												}
+											}
+										});
+								}
+							}
+						});
+				}
+			});
+
+		ExportImportTestUtil.retryAssert(
+			1, TimeUnit.SECONDS, 30, TimeUnit.SECONDS,
+			() -> {
+				BackgroundTask backgroundTask =
+					_backgroundTaskLocalService.getBackgroundTask(
+						exportProcess.getId());
+
+				Assert.assertEquals(
+					BackgroundTaskConstants.STATUS_SUCCESSFUL,
+					backgroundTask.getStatus());
+			});
+
+		_assertExportedExternalReferenceCodes(
+			_backgroundTaskLocalService.getBackgroundTask(
+				exportProcess.getId()),
+			"com.liferay.headless.admin.site.internal.resource.v1_0." +
+				"SitePageResourceImpl",
+			testGroup.getGroupId(), layouts, Layout::getExternalReferenceCode);
+	}
+
 	private long _getCompanyGroupId() throws Exception {
 		Group group = _stagingGroupHelper.fetchCompanyGroup(
 			testCompany.getCompanyId());
@@ -597,11 +737,83 @@ public class ExportProcessResourceTest
 		return group.getGroupId();
 	}
 
+	private JSONArray _getExportedJSONArray(
+			ExportProcess exportProcess, long groupId,
+			ObjectDefinition objectDefinition)
+		throws Exception {
+
+		BackgroundTask backgroundTask =
+			_backgroundTaskLocalService.getBackgroundTask(
+				exportProcess.getId());
+
+		List<FileEntry> fileEntries =
+			backgroundTask.getAttachmentsFileEntries();
+
+		Assert.assertEquals(fileEntries.toString(), 1, fileEntries.size());
+
+		FileEntry larFileEntry = fileEntries.get(0);
+
+		return ExportImportTestUtil.getExportedJSONArray(
+			objectDefinition.getExternalReferenceCode(), groupId,
+			larFileEntry.getContentStream());
+	}
+
 	private long _getGroupId(String externalReferenceCode) throws Exception {
 		Group group = _groupLocalService.getGroupByExternalReferenceCode(
 			externalReferenceCode, testCompany.getCompanyId());
 
 		return group.getGroupId();
+	}
+
+	private ExportProcess _postExportProcess(
+			UnsafeFunction<ExportProcessRequest, ExportProcess, Exception>
+				unsafeFunction,
+			ObjectDefinition objectDefinition,
+			UnsafeConsumer<ExportProcessRequest, Exception> unsafeConsumer)
+		throws Exception {
+
+		ExportProcessRequest exportProcessRequest = new ExportProcessRequest();
+
+		exportProcessRequest.setName(RandomTestUtil.randomString());
+		exportProcessRequest.setRequestPortletDataHandlers(
+			new RequestPortletDataHandler[] {
+				new RequestPortletDataHandler() {
+					{
+						name =
+							"PORTLET_DATA_" + objectDefinition.getPortletId();
+					}
+				}
+			});
+
+		unsafeConsumer.accept(exportProcessRequest);
+
+		ExportProcess exportProcess = null;
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.batch.engine.internal." +
+					"BatchEngineExportTaskExecutorImpl",
+				LoggerTestUtil.WARN)) {
+
+			exportProcess = unsafeFunction.apply(exportProcessRequest);
+
+			assertValid(exportProcess);
+
+			ExportProcess finalExportProcess = exportProcess;
+
+			ExportImportTestUtil.retryAssert(
+				1, TimeUnit.SECONDS, 30, TimeUnit.SECONDS,
+				() -> {
+					BackgroundTask backgroundTask =
+						_backgroundTaskLocalService.getBackgroundTask(
+							finalExportProcess.getId());
+
+					Assert.assertEquals(
+						BackgroundTaskConstants.STATUS_SUCCESSFUL,
+						backgroundTask.getStatus());
+				});
+		}
+
+		return exportProcess;
 	}
 
 	private ObjectDefinition _publishObjectDefinition(String scope)
@@ -626,6 +838,86 @@ public class ExportProcessResourceTest
 		}
 
 		return objectDefinition;
+	}
+
+	@TestInfo("LPD-102315")
+	private void _testGetExportProcessErrorMessageWhenStatusIsSuccessful()
+		throws Exception {
+
+		ExportProcess exportProcess = _addExportProcess(
+			testGroup.getGroupId(), RandomTestUtil.randomString(),
+			BackgroundTaskExecutorNames.LAYOUT_EXPORT_BACKGROUND_TASK_EXECUTOR);
+
+		_backgroundTaskLocalService.amendBackgroundTask(
+			exportProcess.getId(), null, null,
+			BackgroundTaskConstants.STATUS_SUCCESSFUL, null, null);
+
+		ExportProcess successfulExportProcess =
+			exportProcessResource.getExportProcess(exportProcess.getId());
+
+		Assert.assertNull(successfulExportProcess.getErrorMessage());
+	}
+
+	@TestInfo("LPD-102315")
+	private void _testGetExportProcessErrorMessageWhenStatusMessageIsNotJSON()
+		throws Exception {
+
+		ExportProcess exportProcess = _addExportProcess(
+			testGroup.getGroupId(), RandomTestUtil.randomString(),
+			BackgroundTaskExecutorNames.LAYOUT_EXPORT_BACKGROUND_TASK_EXECUTOR);
+
+		_backgroundTaskLocalService.amendBackgroundTask(
+			exportProcess.getId(), null, null,
+			BackgroundTaskConstants.STATUS_FAILED, _STATUS_MESSAGE, null);
+
+		ExportProcess failedExportProcess =
+			exportProcessResource.getExportProcess(exportProcess.getId());
+
+		String errorMessage = failedExportProcess.getErrorMessage();
+
+		Assert.assertNotEquals(_STATUS_MESSAGE, errorMessage);
+		Assert.assertFalse(errorMessage, errorMessage.contains(".java:"));
+		Assert.assertFalse(errorMessage, errorMessage.contains("\tat "));
+		Assert.assertFalse(errorMessage, errorMessage.contains("java.lang."));
+	}
+
+	@TestInfo("LPD-90359")
+	private void _testPostExportProcessWithDateRange(
+			long groupId, ObjectDefinition objectDefinition,
+			ObjectEntry[] objectEntries)
+		throws Exception {
+
+		long time = System.currentTimeMillis();
+
+		Assert.assertNull(
+			_getExportedJSONArray(
+				_postExportProcess(
+					exportProcessRequest ->
+						exportProcessResource.postExportProcess(
+							0L, null, exportProcessRequest),
+					objectDefinition,
+					exportProcessRequest -> {
+						exportProcessRequest.setEndDate(
+							new Date(time - Time.DAY));
+						exportProcessRequest.setStartDate(
+							new Date(time - (2 * Time.DAY)));
+					}),
+				groupId, objectDefinition));
+
+		ExportProcess exportProcess = _postExportProcess(
+			exportProcessRequest -> exportProcessResource.postExportProcess(
+				0L, null, exportProcessRequest),
+			objectDefinition,
+			exportProcessRequest -> {
+				exportProcessRequest.setEndDate(new Date(time));
+				exportProcessRequest.setStartDate(new Date(time - Time.HOUR));
+			});
+
+		_assertExportedExternalReferenceCodes(
+			_backgroundTaskLocalService.getBackgroundTask(
+				exportProcess.getId()),
+			objectDefinition.getExternalReferenceCode(), groupId, objectEntries,
+			ObjectEntry::getExternalReferenceCode);
 	}
 
 	private void _testPostExportProcessWithInvalidDateRange(
@@ -654,6 +946,63 @@ public class ExportProcessResourceTest
 		}
 	}
 
+	private void _testPostExportProcessWithLayoutSet(
+			UnsafeFunction
+				<ExportProcessRequest, HttpInvoker.HttpResponse, Exception>
+					httpResponseUnsafeFunction,
+			UnsafeFunction<ExportProcessRequest, ExportProcess, Exception>
+				unsafeFunction)
+		throws Exception {
+
+		Layout privateLayout = LayoutTestUtil.addTypeContentLayout(
+			testGroup, true, false);
+		Layout publicLayout = LayoutTestUtil.addTypeContentLayout(
+			testGroup, false, false);
+
+		_assertExportedLayouts(
+			"privateLayoutPages", unsafeFunction, privateLayout);
+		_assertExportedLayouts(
+			"publicLayoutPages", unsafeFunction, publicLayout);
+
+		ExportProcessRequest exportProcessRequest = new ExportProcessRequest() {
+			{
+				name = RandomTestUtil.randomString();
+
+				setRequestPortletDataHandlers(
+					new RequestPortletDataHandler[] {
+						new RequestPortletDataHandler() {
+							{
+								name = "PORTLET_DATA_" + _PORTLET_ID;
+
+								setRequestPortletDataHandlerControls(
+									new RequestPortletDataHandlerControl[] {
+										new RequestPortletDataHandlerControl() {
+											{
+												name = "publicLayoutPages";
+											}
+										},
+										new RequestPortletDataHandlerControl() {
+											{
+												name = "privateLayoutPages";
+											}
+										}
+									});
+							}
+						}
+					});
+			}
+		};
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.portal.vulcan.internal.jaxrs.exception.mapper." +
+					"WebApplicationExceptionMapper",
+				LoggerTestUtil.WARN)) {
+
+			assertHttpResponseStatusCode(
+				400, httpResponseUnsafeFunction.apply(exportProcessRequest));
+		}
+	}
+
 	private void _testPostExportProcessWithObjectDefinition(
 			UnsafeFunction<ExportProcessRequest, ExportProcess, Exception>
 				unsafeFunction,
@@ -661,69 +1010,111 @@ public class ExportProcessResourceTest
 			ObjectEntry[] objectEntries)
 		throws Exception {
 
-		ExportProcessRequest exportProcessRequest = new ExportProcessRequest();
-
-		exportProcessRequest.setName(RandomTestUtil.randomString());
-		exportProcessRequest.setRequestPortletDataHandlers(
-			new RequestPortletDataHandler[] {
-				new RequestPortletDataHandler() {
-					{
-						name =
-							"PORTLET_DATA_" + objectDefinition.getPortletId();
-					}
-				}
+		ExportProcess exportProcess = _postExportProcess(
+			unsafeFunction, objectDefinition,
+			exportProcessRequest -> {
 			});
 
-		ExportProcess exportProcess = null;
+		_assertExportedExternalReferenceCodes(
+			_backgroundTaskLocalService.getBackgroundTask(
+				exportProcess.getId()),
+			objectDefinition.getExternalReferenceCode(), groupId, objectEntries,
+			ObjectEntry::getExternalReferenceCode);
+	}
+
+	private void _testPostExportProcessWithoutPlid(
+			UnsafeFunction
+				<ExportProcessRequest, HttpInvoker.HttpResponse, Exception>
+					unsafeFunction)
+		throws Exception {
 
 		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
-				"com.liferay.batch.engine.internal." +
-					"BatchEngineExportTaskExecutorImpl",
+				"com.liferay.portal.vulcan.internal.jaxrs.exception.mapper." +
+					"WebApplicationExceptionMapper",
 				LoggerTestUtil.WARN)) {
 
-			exportProcess = unsafeFunction.apply(exportProcessRequest);
+			ExportProcessRequest exportProcessRequest =
+				new ExportProcessRequest();
 
-			assertValid(exportProcess);
+			exportProcessRequest.setName(RandomTestUtil.randomString());
 
-			ExportProcess finalExportProcess = exportProcess;
-
-			ExportImportTestUtil.retryAssert(
-				1, TimeUnit.SECONDS, 30, TimeUnit.SECONDS,
-				() -> {
-					BackgroundTask backgroundTask =
-						_backgroundTaskLocalService.getBackgroundTask(
-							finalExportProcess.getId());
-
-					Assert.assertEquals(
-						BackgroundTaskConstants.STATUS_SUCCESSFUL,
-						backgroundTask.getStatus());
-				});
+			assertHttpResponseStatusCode(
+				400, unsafeFunction.apply(exportProcessRequest));
 		}
-
-		BackgroundTask backgroundTask =
-			_backgroundTaskLocalService.getBackgroundTask(
-				exportProcess.getId());
-
-		List<FileEntry> fileEntries =
-			backgroundTask.getAttachmentsFileEntries();
-
-		Assert.assertEquals(fileEntries.toString(), 1, fileEntries.size());
-
-		FileEntry larFileEntry = fileEntries.get(0);
-
-		JSONAssert.assertEquals(
-			JSONUtil.toJSONArray(
-				objectEntries,
-				objectEntry -> JSONUtil.put(
-					"externalReferenceCode",
-					objectEntry.getExternalReferenceCode())
-			).toString(),
-			String.valueOf(
-				ExportImportTestUtil.getExportedObjectEntriesJSONArray(
-					objectDefinition.getExternalReferenceCode(),
-					larFileEntry.getContentStream(), groupId)),
-			JSONCompareMode.LENIENT);
 	}
+
+	@TestInfo("LPD-90359")
+	private void _testPostExportProcessWithPermissions(
+			long groupId, ObjectDefinition objectDefinition,
+			ObjectEntry[] objectEntries)
+		throws Exception {
+
+		JSONArray jsonArray = _getExportedJSONArray(
+			_postExportProcess(
+				exportProcessRequest -> exportProcessResource.postExportProcess(
+					0L, null, exportProcessRequest),
+				objectDefinition,
+				exportProcessRequest -> exportProcessRequest.setPermissions(
+					true)),
+			groupId, objectDefinition);
+
+		Assert.assertEquals(objectEntries.length, jsonArray.length());
+
+		for (int i = 0; i < jsonArray.length(); i++) {
+			JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+			Assert.assertTrue(
+				jsonObject.toString(), jsonObject.has("permissions"));
+		}
+	}
+
+	@TestInfo("LPD-90359")
+	private void _testPostExportProcessWithSameName(long groupId)
+		throws Exception {
+
+		ObjectDefinition objectDefinition = _publishObjectDefinition(
+			ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		_addObjectEntry(
+			objectDefinition, GroupConstants.DEFAULT_PARENT_GROUP_ID);
+
+		String name = RandomTestUtil.randomString();
+
+		ExportProcess exportProcess1 = _postExportProcess(
+			exportProcessRequest -> exportProcessResource.postExportProcess(
+				0L, null, exportProcessRequest),
+			objectDefinition,
+			exportProcessRequest -> exportProcessRequest.setName(name));
+
+		_addObjectEntry(
+			objectDefinition, GroupConstants.DEFAULT_PARENT_GROUP_ID);
+
+		ExportProcess exportProcess2 = _postExportProcess(
+			exportProcessRequest -> exportProcessResource.postExportProcess(
+				0L, null, exportProcessRequest),
+			objectDefinition,
+			exportProcessRequest -> exportProcessRequest.setName(name));
+
+		JSONArray jsonArray1 = _getExportedJSONArray(
+			exportProcess1, groupId, objectDefinition);
+
+		Assert.assertEquals(1, jsonArray1.length());
+
+		JSONArray jsonArray2 = _getExportedJSONArray(
+			exportProcess2, groupId, objectDefinition);
+
+		Assert.assertEquals(2, jsonArray2.length());
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+	}
+
+	private static final String _PORTLET_ID =
+		"com_liferay_layout_admin_web_portlet_LayoutSetLayoutsPortlet";
+
+	private static final String _STATUS_MESSAGE =
+		"java.lang.NullPointerException\n\tat com.liferay.exportimport." +
+			"internal.controller.LayoutExportController.doExport(" +
+				"LayoutExportController.java:412)";
 
 	@Inject
 	private BackgroundTaskLocalService _backgroundTaskLocalService;

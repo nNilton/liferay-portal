@@ -364,6 +364,12 @@ public interface CPConfigurationListLocalService
 	public CPConfigurationList getMasterCPConfigurationList(long groupId)
 		throws NoSuchCPConfigurationListException;
 
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public CPConfigurationList getOrAddEmptyCPConfigurationList(
+			String externalReferenceCode, long companyId, long userId,
+			long groupId)
+		throws PortalException;
+
 	/**
 	 * Returns the OSGi service identifier.
 	 *
@@ -405,6 +411,11 @@ public interface CPConfigurationListLocalService
 			boolean neverExpire, ServiceContext serviceContext)
 		throws PortalException;
 
+	@Indexable(type = IndexableType.REINDEX)
+	public CPConfigurationList updateExternalReferenceCode(
+			long cpConfigurationListId, String externalReferenceCode)
+		throws PortalException;
+
 	@Override
 	@Transactional(enabled = false)
 	public CTPersistence<CPConfigurationList> getCTPersistence();
@@ -421,4 +432,4 @@ public interface CPConfigurationListLocalService
 		throws E;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1656689447
+// LIFERAY-SERVICE-BUILDER-HASH:-532709251

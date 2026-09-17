@@ -22,7 +22,6 @@ import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.bean.BeanReference;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.ModelHintsUtil;
@@ -47,6 +46,7 @@ import com.liferay.portal.kernel.service.ResourceLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.permission.ModelPermissions;
+import com.liferay.portal.kernel.service.persistence.UserPersistence;
 import com.liferay.portal.kernel.systemevent.SystemEvent;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -178,7 +178,7 @@ public class AssetVocabularyLocalServiceImpl
 
 		// Vocabulary
 
-		User user = _userLocalService.getUser(userId);
+		User user = _userPersistence.findByPrimaryKey(userId);
 
 		Map<Locale, String> trimmedTitleMap = _getTrimmedTitleMap(titleMap);
 
@@ -291,9 +291,7 @@ public class AssetVocabularyLocalServiceImpl
 	public AssetVocabulary deleteVocabulary(AssetVocabulary vocabulary)
 		throws PortalException {
 
-		if (FeatureFlagManagerUtil.isEnabled(
-				vocabulary.getCompanyId(), "LPD-86291") &&
-			!ExportImportThreadLocal.isImportInProcess() &&
+		if (!ExportImportThreadLocal.isImportInProcess() &&
 			!GroupThreadLocal.isDeleteInProcess() && vocabulary.isSystem()) {
 
 			throw new SystemVocabularyException.MustNotDelete(
@@ -337,6 +335,11 @@ public class AssetVocabularyLocalServiceImpl
 	}
 
 	@Override
+	public int getCompanyVocabulariesCount(long companyId) {
+		return assetVocabularyPersistence.countByCompanyId(companyId);
+	}
+
+	@Override
 	public List<AssetVocabulary> getGroupsVocabularies(long[] groupIds) {
 		return getGroupsVocabularies(groupIds, null);
 	}
@@ -352,6 +355,10 @@ public class AssetVocabularyLocalServiceImpl
 	@Override
 	public List<AssetVocabulary> getGroupsVocabularies(
 		long[] groupIds, String className, long classTypePK) {
+
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return Collections.emptyList();
+		}
 
 		List<AssetVocabulary> vocabularies =
 			assetVocabularyPersistence.findByGroupId(groupIds);
@@ -402,6 +409,10 @@ public class AssetVocabularyLocalServiceImpl
 
 	@Override
 	public List<AssetVocabulary> getGroupVocabularies(long[] groupIds) {
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return Collections.emptyList();
+		}
+
 		return assetVocabularyPersistence.findByGroupId(groupIds);
 	}
 
@@ -409,11 +420,19 @@ public class AssetVocabularyLocalServiceImpl
 	public List<AssetVocabulary> getGroupVocabularies(
 		long[] groupIds, int[] visibilityTypes) {
 
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return Collections.emptyList();
+		}
+
 		return assetVocabularyPersistence.findByG_V(groupIds, visibilityTypes);
 	}
 
 	@Override
 	public int getGroupVocabulariesCount(long[] groupIds) {
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return 0;
+		}
+
 		return assetVocabularyPersistence.countByGroupId(groupIds);
 	}
 
@@ -815,9 +834,7 @@ public class AssetVocabularyLocalServiceImpl
 			int visibilityType, AssetVocabulary vocabulary)
 		throws PortalException {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				vocabulary.getCompanyId(), "LPD-86291") ||
-			ExportImportThreadLocal.isImportInProcess() ||
+		if (ExportImportThreadLocal.isImportInProcess() ||
 			!vocabulary.isSystem()) {
 
 			return;
@@ -870,5 +887,8 @@ public class AssetVocabularyLocalServiceImpl
 
 	@BeanReference(type = UserLocalService.class)
 	private UserLocalService _userLocalService;
+
+	@BeanReference(type = UserPersistence.class)
+	private UserPersistence _userPersistence;
 
 }

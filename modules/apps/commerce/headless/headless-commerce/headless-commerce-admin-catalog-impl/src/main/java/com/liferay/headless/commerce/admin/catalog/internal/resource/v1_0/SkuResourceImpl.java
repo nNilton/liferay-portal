@@ -20,6 +20,7 @@ import com.liferay.commerce.product.service.CPDefinitionOptionValueRelService;
 import com.liferay.commerce.product.service.CPDefinitionService;
 import com.liferay.commerce.product.service.CPInstanceService;
 import com.liferay.commerce.product.service.CPInstanceUnitOfMeasureService;
+import com.liferay.commerce.product.service.CPOptionService;
 import com.liferay.commerce.product.type.CPType;
 import com.liferay.commerce.product.type.CPTypeRegistry;
 import com.liferay.commerce.product.type.virtual.constants.VirtualCPTypeConstants;
@@ -34,12 +35,14 @@ import com.liferay.headless.commerce.admin.catalog.dto.v1_0.SkuVirtualSettings;
 import com.liferay.headless.commerce.admin.catalog.internal.dto.v1_0.converter.constants.DTOConverterConstants;
 import com.liferay.headless.commerce.admin.catalog.internal.odata.entity.v1_0.SkuEntityModel;
 import com.liferay.headless.commerce.admin.catalog.internal.util.DateConfigUtil;
+import com.liferay.headless.commerce.admin.catalog.internal.util.v1_0.ProductUtil;
 import com.liferay.headless.commerce.admin.catalog.internal.util.v1_0.SkuUnitOfMeasureUtil;
 import com.liferay.headless.commerce.admin.catalog.internal.util.v1_0.SkuUtil;
 import com.liferay.headless.commerce.admin.catalog.internal.util.v1_0.SkuVirtualSettingsUtil;
 import com.liferay.headless.commerce.admin.catalog.resource.v1_0.SkuResource;
 import com.liferay.headless.commerce.core.helper.ServiceContextHelper;
 import com.liferay.headless.commerce.core.util.DateConfig;
+import com.liferay.journal.service.JournalArticleService;
 import com.liferay.petra.function.UnsafeFunction;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
@@ -49,6 +52,7 @@ import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.Filter;
+import com.liferay.portal.kernel.service.GroupService;
 import com.liferay.portal.kernel.service.RepositoryLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -264,10 +268,9 @@ public class SkuResourceImpl extends BaseSkuResourceImpl {
 		throws Exception {
 
 		CPDefinition cpDefinition =
-			_cpDefinitionService.
-				fetchCPDefinitionByCProductExternalReferenceCode(
-					externalReferenceCode, contextCompany.getCompanyId(),
-					false);
+			ProductUtil.fetchCPDefinitionByCProductExternalReferenceCode(
+				externalReferenceCode, contextCompany.getCompanyId(),
+				_cpDefinitionService);
 
 		if (cpDefinition == null) {
 			throw new NoSuchCPDefinitionException(
@@ -280,8 +283,8 @@ public class SkuResourceImpl extends BaseSkuResourceImpl {
 
 	@Override
 	public Sku postProductIdSku(Long id, Sku sku) throws Exception {
-		CPDefinition cpDefinition =
-			_cpDefinitionService.fetchCPDefinitionByCProductId(id, false);
+		CPDefinition cpDefinition = ProductUtil.fetchCPDefinitionByCProductId(
+			id, _cpDefinitionService);
 
 		if (cpDefinition == null) {
 			throw new NoSuchCPDefinitionException(
@@ -522,7 +525,7 @@ public class SkuResourceImpl extends BaseSkuResourceImpl {
 		CPInstance cpInstance = SkuUtil.addOrUpdateCPInstance(
 			_cpInstanceService, sku, cpDefinition,
 			_cpDefinitionOptionRelService, _cpDefinitionOptionValueRelService,
-			serviceContext);
+			_cpOptionService, serviceContext);
 
 		serviceContext.setExpandoBridgeAttributes(null);
 
@@ -697,8 +700,8 @@ public class SkuResourceImpl extends BaseSkuResourceImpl {
 				cpInstance, skuVirtualSettings,
 				_cpDefinitionVirtualSettingService,
 				_cpdVirtualSettingFileEntryService, _dlAppService,
-				_repositoryLocalService, _uniqueFileNameProvider,
-				serviceContext);
+				_groupService, _journalArticleService, _repositoryLocalService,
+				_uniqueFileNameProvider, serviceContext);
 		}
 
 		return cpInstance;
@@ -969,6 +972,9 @@ public class SkuResourceImpl extends BaseSkuResourceImpl {
 	private CPInstanceUnitOfMeasureService _cpInstanceUnitOfMeasureService;
 
 	@Reference
+	private CPOptionService _cpOptionService;
+
+	@Reference
 	private CPTypeRegistry _cpTypeRegistry;
 
 	@Reference
@@ -976,6 +982,12 @@ public class SkuResourceImpl extends BaseSkuResourceImpl {
 
 	@Reference
 	private DTOConverterRegistry _dtoConverterRegistry;
+
+	@Reference
+	private GroupService _groupService;
+
+	@Reference
+	private JournalArticleService _journalArticleService;
 
 	@Reference
 	private RepositoryLocalService _repositoryLocalService;

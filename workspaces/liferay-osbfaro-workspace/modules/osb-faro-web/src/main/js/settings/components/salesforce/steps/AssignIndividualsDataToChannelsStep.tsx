@@ -8,11 +8,13 @@ import React, {useEffect, useState} from 'react';
 import {Alert, Modal} from 'shared/types';
 import {ClayCheckbox} from '@clayui/form';
 import {DataSource} from 'shared/util/records';
+import {getChannelsAutoSelectFilter} from 'shared/util/data-sources';
 import {modalTypes} from 'shared/actions/modals';
 import {Routes, toRoute} from 'shared/util/router';
 import {sub} from 'shared/util/lang';
 import {Text} from '@clayui/core';
-import {useHistory, useParams} from 'react-router-dom';
+import {useParams} from 'react-router-dom';
+import {useHistoryAdapter} from 'shared/hooks/useHistoryAdapter';
 import {useWizardPage} from 'settings/components/base-page/WizardPageContext';
 import {WizardPageButtonGroup} from 'settings/components/base-page/WizardPageButtonGroup';
 
@@ -33,7 +35,7 @@ const AssignIndividualsDataToPropertiesStep = ({
 	open,
 	updateDataSourceFn,
 }: IAssignIndividualsDataToPropertiesStepProps) => {
-	const history = useHistory();
+	const history = useHistoryAdapter();
 	const {groupId = ''} = useParams<{groupId: string}>();
 	const [selectedItems, setSelectedItems] = useState<string[]>([]);
 	const [allChannelsSelected, setAllChannelsSelected] = useState(false);
@@ -151,6 +153,10 @@ const AssignIndividualsDataToPropertiesStep = ({
 								displayType="secondary"
 								onClick={() => {
 									open(modalTypes.SELECT_CHANNELS_MODAL, {
+										autoSelectFilter:
+											getChannelsAutoSelectFilter(
+												dataSource
+											),
 										groupId,
 										initialItems: selectedItems,
 										onClose: close,

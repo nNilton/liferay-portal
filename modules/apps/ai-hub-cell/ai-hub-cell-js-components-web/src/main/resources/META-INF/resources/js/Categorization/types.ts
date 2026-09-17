@@ -8,12 +8,15 @@ export enum ECategorizationAgent {
 	GENERATE_TAGS = 'L_GENERATE_TAGS',
 }
 
+export const CATEGORIZATION_INTENT_AGENT = 'L_CATEGORIZATION_INTENT';
+
 export type CategorizationStatus =
 	| 'empty'
 	| 'error'
 	| 'idle'
 	| 'loading'
-	| 'ready';
+	| 'ready'
+	| 'stopped';
 
 export interface CandidateCategory {
 	id: number;
@@ -22,10 +25,23 @@ export interface CandidateCategory {
 }
 
 export interface CategorizationContext {
+	appliedCategoryIds?: number[];
+	appliedTags?: string[];
 	candidateCategories?: CandidateCategory[];
 	content: string;
 	count?: number;
 	existingTags?: string[];
+}
+
+export interface IntentAction {
+	agent: 'categorize' | 'tag';
+	count: number;
+	targets: string[];
+}
+
+export interface IntentVerdict {
+	actions: IntentAction[];
+	passthrough: boolean;
 }
 
 export interface Suggestion {

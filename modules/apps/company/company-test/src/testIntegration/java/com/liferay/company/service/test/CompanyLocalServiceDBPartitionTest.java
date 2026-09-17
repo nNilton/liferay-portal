@@ -27,6 +27,7 @@ import com.liferay.portal.db.partition.test.util.BaseDBPartitionTestCase;
 import com.liferay.portal.db.partition.util.DBPartitionUtil;
 import com.liferay.portal.kernel.dao.db.DBInspector;
 import com.liferay.portal.kernel.dao.db.DBType;
+import com.liferay.portal.kernel.db.partition.DBPartition;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.instance.PortalInstancePool;
 import com.liferay.portal.kernel.model.ClassName;
@@ -48,6 +49,8 @@ import com.liferay.portal.kernel.service.RepositoryLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.VirtualHostLocalService;
+import com.liferay.portal.kernel.spring.orm.LastSessionRecorderHelper;
+import com.liferay.portal.kernel.spring.orm.LastSessionRecorderHelperUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.AssumeTestRule;
@@ -72,7 +75,6 @@ import com.liferay.portal.service.impl.ClassNameLocalServiceImpl;
 import com.liferay.portal.service.impl.CompanyLocalServiceImpl;
 import com.liferay.portal.service.impl.ResourceActionLocalServiceImpl;
 import com.liferay.portal.spring.aop.AopInvocationHandler;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -181,6 +183,81 @@ public class CompanyLocalServiceDBPartitionTest
 	}
 
 	@Test
+	public void testAddCompanyDoesNotWriteToDefaultPartition()
+		throws Exception {
+
+		Company company = CompanyTestUtil.addCompany();
+
+		try {
+			Assert.assertEquals(
+				0,
+				_getResourcePermissionsCount(
+					defaultPartitionName, company.getCompanyId()));
+		}
+		finally {
+			companyLocalService.deleteCompany(company);
+
+			_deleteResourcePermissions(
+				defaultPartitionName, company.getCompanyId());
+		}
+	}
+
+	@Test
+	public void testAddCompanyFlushesPendingWritesBeforeApplyingNewCompany()
+		throws Exception {
+
+		List<Long> companyIds = new ArrayList<>();
+
+		Thread currentThread = Thread.currentThread();
+
+		LastSessionRecorderHelper lastSessionRecorderHelper =
+			ReflectionTestUtil.getFieldValue(
+				LastSessionRecorderHelperUtil.class,
+				"_lastSessionRecorderHelper");
+
+		ReflectionTestUtil.setFieldValue(
+			LastSessionRecorderHelperUtil.class, "_lastSessionRecorderHelper",
+			new LastSessionRecorderHelper() {
+
+				@Override
+				public void syncLastSessionState() {
+					lastSessionRecorderHelper.syncLastSessionState();
+				}
+
+				@Override
+				public void syncLastSessionState(boolean portalSessionOnly) {
+
+					// Only a full sync flushes every session, so it is the
+					// one a company scope switch depends on
+
+					if (!portalSessionOnly &&
+						(currentThread == Thread.currentThread())) {
+
+						companyIds.add(CompanyThreadLocal.getCompanyId());
+					}
+
+					lastSessionRecorderHelper.syncLastSessionState(
+						portalSessionOnly);
+				}
+
+			});
+
+		try {
+			_company1 = CompanyTestUtil.addCompany();
+		}
+		finally {
+			ReflectionTestUtil.setFieldValue(
+				LastSessionRecorderHelperUtil.class,
+				"_lastSessionRecorderHelper", lastSessionRecorderHelper);
+		}
+
+		Assert.assertFalse(companyIds.toString(), companyIds.isEmpty());
+
+		Assert.assertEquals(
+			companyIds.toString(), _defaultCompanyId, (long)companyIds.get(0));
+	}
+
+	@Test
 	public void testAddCompanyUsesVirtualHostCounter() throws Exception {
 		long counter = _counterLocalService.increment();
 
@@ -272,7 +349,6 @@ public class CompanyLocalServiceDBPartitionTest
 		}
 	}
 
-	@FeatureFlag("LPD-11342")
 	@Test
 	public void testAddDBPartitionCompany() throws Exception {
 		Company company = CompanyTestUtil.addCompany();
@@ -306,7 +382,7 @@ public class CompanyLocalServiceDBPartitionTest
 				Assert.assertTrue(
 					dbPartitionDB.existsPartition(
 						connection,
-						CompanyLocalServiceTestUtil.getExportedPartitionName(
+						DBPartitionUtil.getExportedPartitionName(
 							company.getCompanyId())));
 			}
 
@@ -335,7 +411,7 @@ public class CompanyLocalServiceDBPartitionTest
 		finally {
 			db.runSQL(
 				dbPartitionDB.getDropPartitionSQL(
-					CompanyLocalServiceTestUtil.getExportedPartitionName(
+					DBPartitionUtil.getExportedPartitionName(
 						company.getCompanyId())));
 
 			if (ArrayUtil.contains(
@@ -350,7 +426,6 @@ public class CompanyLocalServiceDBPartitionTest
 		}
 	}
 
-	@FeatureFlag("LPD-11342")
 	@Test
 	public void testAddDBPartitionCompanyWhenCompanyLocalServiceFails()
 		throws Exception {
@@ -380,7 +455,7 @@ public class CompanyLocalServiceDBPartitionTest
 
 				CompanyLocalServiceTestUtil.checkStandaloneDBPartitionTables(
 					connection, dbPartitionDB,
-					CompanyLocalServiceTestUtil.getExportedPartitionName(
+					DBPartitionUtil.getExportedPartitionName(
 						company.getCompanyId()),
 					"Company", "VirtualHost");
 			}
@@ -388,7 +463,7 @@ public class CompanyLocalServiceDBPartitionTest
 		finally {
 			db.runSQL(
 				dbPartitionDB.getDropPartitionSQL(
-					CompanyLocalServiceTestUtil.getExportedPartitionName(
+					DBPartitionUtil.getExportedPartitionName(
 						company.getCompanyId())));
 
 			if (ArrayUtil.contains(
@@ -403,7 +478,6 @@ public class CompanyLocalServiceDBPartitionTest
 		}
 	}
 
-	@FeatureFlag("LPD-11342")
 	@Test
 	public void testAddDBPartitionCompanyWhenDBPartitionUtilFails()
 		throws Exception {
@@ -446,7 +520,7 @@ public class CompanyLocalServiceDBPartitionTest
 
 				CompanyLocalServiceTestUtil.checkStandaloneDBPartitionTables(
 					connection, dbPartitionDB,
-					CompanyLocalServiceTestUtil.getExportedPartitionName(
+					DBPartitionUtil.getExportedPartitionName(
 						company.getCompanyId()),
 					"Company", "VirtualHost");
 			}
@@ -454,7 +528,7 @@ public class CompanyLocalServiceDBPartitionTest
 		finally {
 			db.runSQL(
 				dbPartitionDB.getDropPartitionSQL(
-					CompanyLocalServiceTestUtil.getExportedPartitionName(
+					DBPartitionUtil.getExportedPartitionName(
 						company.getCompanyId())));
 
 			if (ArrayUtil.contains(
@@ -469,26 +543,6 @@ public class CompanyLocalServiceDBPartitionTest
 		}
 	}
 
-	@Test
-	public void testAddDBPartitionCompanyWithoutFF() {
-		try {
-			_companyLocalService.addDBPartitionCompany(
-				PortalInstancePool.getDefaultCompanyId(),
-				RandomTestUtil.randomString(), RandomTestUtil.randomString(),
-				RandomTestUtil.randomString());
-
-			Assert.fail();
-		}
-		catch (Exception exception) {
-			Assert.assertTrue(
-				exception instanceof UnsupportedOperationException);
-
-			Assert.assertEquals(
-				"Feature flag LPD-11342 is disabled", exception.getMessage());
-		}
-	}
-
-	@FeatureFlag("LPD-11342")
 	@Test
 	public void testCopyDBPartitionCompany() throws Exception {
 		long rulesCount = _getRulesCount(defaultPartitionName);
@@ -617,7 +671,6 @@ public class CompanyLocalServiceDBPartitionTest
 		}
 	}
 
-	@FeatureFlag("LPD-11342")
 	@Test
 	public void testCopyDBPartitionCompanyWhenCompanyLocalServiceFails()
 		throws Exception {
@@ -652,7 +705,6 @@ public class CompanyLocalServiceDBPartitionTest
 		}
 	}
 
-	@FeatureFlag("LPD-11342")
 	@Test
 	public void testCopyDBPartitionCompanyWhenDBPartitionUtilFails()
 		throws Exception {
@@ -705,25 +757,6 @@ public class CompanyLocalServiceDBPartitionTest
 		}
 		finally {
 			companyLocalService.deleteCompany(company);
-		}
-	}
-
-	@Test
-	public void testCopyDBPartitionCompanyWithoutFF() {
-		try {
-			_companyLocalService.copyDBPartitionCompany(
-				PortalInstancePool.getDefaultCompanyId(),
-				RandomTestUtil.nextLong(), RandomTestUtil.randomString(),
-				RandomTestUtil.randomString(), RandomTestUtil.randomString());
-
-			Assert.fail();
-		}
-		catch (Exception exception) {
-			Assert.assertTrue(
-				exception instanceof UnsupportedOperationException);
-
-			Assert.assertEquals(
-				"Feature flag LPD-11342 is disabled", exception.getMessage());
 		}
 	}
 
@@ -860,6 +893,111 @@ public class CompanyLocalServiceDBPartitionTest
 			companyIds::add, new long[] {companyId});
 
 		Assert.assertEquals(Collections.singletonList(companyId), companyIds);
+	}
+
+	@Test
+	public void testIsCurrentCompanyRestricted() throws Exception {
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					_defaultCompanyId)) {
+
+			Assert.assertFalse(DBPartition.isCurrentCompanyRestricted());
+		}
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					CompanyConstants.SYSTEM)) {
+
+			Assert.assertFalse(DBPartition.isCurrentCompanyRestricted());
+		}
+
+		_company1 = CompanyTestUtil.addCompany();
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					_company1.getCompanyId())) {
+
+			Assert.assertTrue(DBPartition.isCurrentCompanyRestricted());
+		}
+	}
+
+	@Test
+	public void testUpdateCompanyMx() throws Exception {
+		_company1 = CompanyTestUtil.addCompany();
+
+		String mx = _company1.getMx();
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					_company1.getCompanyId())) {
+
+			companyLocalService.updateCompany(
+				_company1.getCompanyId(), _company1.getVirtualHostname(),
+				StringUtil.toLowerCase(RandomTestUtil.randomString()) + ".com",
+				_company1.getMaxUsers(), _company1.isActive());
+		}
+
+		Company company = companyLocalService.getCompany(
+			_company1.getCompanyId());
+
+		Assert.assertEquals(mx, company.getMx());
+
+		String updatedMx =
+			StringUtil.toLowerCase(RandomTestUtil.randomString()) + ".com";
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					_defaultCompanyId)) {
+
+			companyLocalService.updateCompany(
+				_company1.getCompanyId(), _company1.getVirtualHostname(),
+				updatedMx, _company1.getMaxUsers(), _company1.isActive());
+		}
+
+		company = companyLocalService.getCompany(_company1.getCompanyId());
+
+		Assert.assertEquals(updatedMx, company.getMx());
+
+		String legalName = RandomTestUtil.randomString();
+		String name = RandomTestUtil.randomString();
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					_company1.getCompanyId())) {
+
+			companyLocalService.updateCompany(
+				_company1.getCompanyId(), _company1.getVirtualHostname(),
+				StringUtil.toLowerCase(RandomTestUtil.randomString()) + ".com",
+				company.getHomeURL(), false, null, name, legalName,
+				company.getLegalId(), company.getLegalType(),
+				company.getSicCode(), company.getTickerSymbol(),
+				company.getIndustry(), company.getType(), company.getSize());
+		}
+
+		company = companyLocalService.getCompany(_company1.getCompanyId());
+
+		Assert.assertEquals(legalName, company.getLegalName());
+		Assert.assertEquals(updatedMx, company.getMx());
+		Assert.assertEquals(name, company.getName());
+
+		updatedMx =
+			StringUtil.toLowerCase(RandomTestUtil.randomString()) + ".com";
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					_defaultCompanyId)) {
+
+			companyLocalService.updateCompany(
+				_company1.getCompanyId(), _company1.getVirtualHostname(),
+				updatedMx, company.getHomeURL(), false, null, name, legalName,
+				company.getLegalId(), company.getLegalType(),
+				company.getSicCode(), company.getTickerSymbol(),
+				company.getIndustry(), company.getType(), company.getSize());
+		}
+
+		company = companyLocalService.getCompany(_company1.getCompanyId());
+
+		Assert.assertEquals(updatedMx, company.getMx());
 	}
 
 	private void _addCopyDBPartitionCompanyCache(long companyId) {
@@ -1168,6 +1306,21 @@ public class CompanyLocalServiceDBPartitionTest
 		}
 	}
 
+	private void _deleteResourcePermissions(
+			String partitionName, long companyId)
+		throws Exception {
+
+		try (PreparedStatement preparedStatement = connection.prepareStatement(
+				StringBundler.concat(
+					"delete from ", partitionName,
+					".ResourcePermission where companyId = ?"))) {
+
+			preparedStatement.setLong(1, companyId);
+
+			preparedStatement.executeUpdate();
+		}
+	}
+
 	private int _getDBPartitionsCount() throws Exception {
 		DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -1184,6 +1337,25 @@ public class CompanyLocalServiceDBPartitionTest
 		}
 
 		throw new SQLException("At least one database partition is required");
+	}
+
+	private int _getResourcePermissionsCount(
+			String partitionName, long companyId)
+		throws Exception {
+
+		try (PreparedStatement preparedStatement = connection.prepareStatement(
+				StringBundler.concat(
+					"select count(*) COUNT_VALUE from ", partitionName,
+					".ResourcePermission where companyId = ?"))) {
+
+			preparedStatement.setLong(1, companyId);
+
+			try (ResultSet resultSet = preparedStatement.executeQuery()) {
+				resultSet.next();
+
+				return resultSet.getInt("COUNT_VALUE");
+			}
+		}
 	}
 
 	private long _getRulesCount(String partitionName) throws Exception {

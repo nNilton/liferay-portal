@@ -1,9 +1,10 @@
+import BasePage from 'shared/components/base-page';
 import PagePathCard from '../PagePathCard';
 import React from 'react';
 import {CHART_COLORS, MAIN_NODE_COLOR, SECONDARY_NODE_COLOR} from '../utils';
 import {cleanup, fireEvent, getByTestId, render} from '@testing-library/react';
 import {InMemoryCache} from '@apollo/client';
-import {MemoryRouter, Route} from 'react-router-dom';
+import {MemoryRouter, Route, Routes as RouterRoutes} from 'react-router-dom';
 import {MockedProvider} from '@apollo/client/testing';
 import {mockPagePathReq} from 'test/graphql-data';
 import {RangeKeyTimeRanges} from 'shared/util/constants';
@@ -111,6 +112,7 @@ const EMPTY_STATE_DATA = {
 };
 
 const WrapperComponent = ({
+	accountId,
 	data,
 	rangeSelectors = {
 		rangeEnd: '',
@@ -118,24 +120,44 @@ const WrapperComponent = ({
 		rangeStart: '',
 	},
 	reqOptions = {},
+	segmentId,
 }: {
+	accountId?: string;
 	data: any;
 	rangeSelectors?: RangeSelectors;
 	reqOptions?: Record<string, unknown>;
+	segmentId?: string;
 }) => (
 	<MemoryRouter
 		initialEntries={[
 			'/workspace/4567/123/sites/pages/overview/https%3A%2F%2Fliferay.com%2Fhome/Liferay%20DXP%20-%20Home?rangeKey=30',
 		]}
 	>
-		<Route path="/workspace/:groupId/:channelId/sites/pages/overview/:touchpoint/:title">
-			<MockedProvider
-				cache={new InMemoryCache({freezeResults: false} as any)}
-				mocks={[mockPagePathReq(data, reqOptions)]}
-			>
-				<PagePathCard rangeSelectors={rangeSelectors} />
-			</MockedProvider>
-		</Route>
+		<RouterRoutes>
+			<Route
+				element={
+					<BasePage.Context.Provider
+						value={{accountId, filters: {}, router: {}, segmentId}}
+					>
+						<MockedProvider
+							cache={
+								new InMemoryCache({freezeResults: false} as any)
+							}
+							mocks={[
+								mockPagePathReq(data, {
+									accountId,
+									segmentId,
+									...reqOptions,
+								} as any),
+							]}
+						>
+							<PagePathCard rangeSelectors={rangeSelectors} />
+						</MockedProvider>
+					</BasePage.Context.Provider>
+				}
+				path="/workspace/:groupId/:channelId/sites/pages/overview/:touchpoint/:title/*"
+			/>
+		</RouterRoutes>
 	</MemoryRouter>
 );
 
@@ -150,6 +172,26 @@ describe('PagePathCard', () => {
 		expect(container).toMatchSnapshot();
 	});
 
+	it('should filter by the selected account', async () => {
+		const {container} = render(
+			<WrapperComponent accountId="100" data={DATA} />
+		);
+
+		await waitForLoadingToBeRemoved(container);
+
+		expect(container).toMatchSnapshot();
+	});
+
+	it('should filter by the selected segment', async () => {
+		const {container} = render(
+			<WrapperComponent data={DATA} segmentId="segment-100" />
+		);
+
+		await waitForLoadingToBeRemoved(container);
+
+		expect(container).toMatchSnapshot();
+	});
+
 	it('should render empty state', async () => {
 		const {container, getByText} = render(
 			<WrapperComponent data={EMPTY_STATE_DATA} />
@@ -158,7 +200,7 @@ describe('PagePathCard', () => {
 		await waitForLoadingToBeRemoved(container);
 
 		expect(getByText('Path Analysis')).toBeInTheDocument();
-		expect(getByText('There are no data found.')).toBeInTheDocument();
+		expect(getByText('No data was found.')).toBeInTheDocument();
 		expect(
 			getByText(
 				'Check back later to verify if data has been received from your data sources.'

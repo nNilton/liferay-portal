@@ -44,6 +44,7 @@ export const IMPRESSIONS_METRIC = 'impressionMadeMetric';
 export const INDIVIDUAL_COUNT = 'individualCount';
 export const INDIVIDUAL_EMAIL = 'individualEmail';
 export const INDIVIDUAL_NAME = 'individualName';
+export const INDIVIDUAL_TYPE = 'individualType';
 export const INTERESTS = 'interests';
 export const JOB_TITLE = 'jobTitle';
 export const KEYWORD = 'keyword';
@@ -53,7 +54,6 @@ export const LOCATION = 'location';
 export const MODIFIED_DATE = 'modifiedDate';
 export const NAME = 'name';
 export const OPERATION = 'operation';
-export const PROFILE_TYPE = 'profileType';
 export const PROVIDER_TYPE = 'providerType';
 export const RATINGS_METRIC = 'ratingsMetric';
 export const READING_TIME_METRIC = 'readingTimeMetric';
@@ -168,6 +168,16 @@ export function buildOrderByFields({field, sortOrder}, entityType) {
 	else {
 		return [createOrderByField(field, sortOrder)];
 	}
+}
+
+export function buildSortString(orderParams, entityType) {
+	const [{fieldName}] = buildOrderByFields(orderParams, entityType);
+
+	const {sortOrder} = orderParams;
+
+	return `${fieldName}:${
+		sortOrder === OrderByDirections.Descending ? 'desc' : 'asc'
+	}`;
 }
 
 const ORDER_BY_DIRECTIONS_MAP = {

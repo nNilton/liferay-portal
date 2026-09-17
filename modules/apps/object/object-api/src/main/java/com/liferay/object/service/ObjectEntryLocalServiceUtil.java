@@ -365,12 +365,12 @@ public class ObjectEntryLocalServiceUtil {
 	public static Map<Object, Long> getAggregationCounts(
 			long groupId, long objectDefinitionId, String aggregationTerm,
 			com.liferay.petra.sql.dsl.expression.Predicate predicate,
-			boolean preferApproved, int start, int end)
+			boolean preferApproved)
 		throws PortalException {
 
 		return getService().getAggregationCounts(
 			groupId, objectDefinitionId, aggregationTerm, predicate,
-			preferApproved, start, end);
+			preferApproved);
 	}
 
 	public static com.liferay.portal.kernel.dao.orm.ExportActionableDynamicQuery
@@ -512,6 +512,13 @@ public class ObjectEntryLocalServiceUtil {
 		return getService().getObjectEntriesCount(groupId, objectDefinitionId);
 	}
 
+	public static int getObjectEntriesCount(
+		long groupId, long objectDefinitionId, int status) {
+
+		return getService().getObjectEntriesCount(
+			groupId, objectDefinitionId, status);
+	}
+
 	public static long getObjectEntriesCount(
 			long groupId, String languageId,
 			com.liferay.object.model.ObjectDefinition objectDefinition,
@@ -576,12 +583,12 @@ public class ObjectEntryLocalServiceUtil {
 			long groupId, long objectDefinitionId, long objectEntryId,
 			long objectRelationshipId, String aggregationTerm,
 			com.liferay.petra.sql.dsl.expression.Predicate predicate,
-			boolean related, String search, int start, int end)
+			boolean related, String search)
 		throws PortalException {
 
 		return getService().getOneToManyAggregationCounts(
 			groupId, objectDefinitionId, objectEntryId, objectRelationshipId,
-			aggregationTerm, predicate, related, search, start, end);
+			aggregationTerm, predicate, related, search);
 	}
 
 	public static List<ObjectEntry> getOneToManyObjectEntries(
@@ -722,6 +729,14 @@ public class ObjectEntryLocalServiceUtil {
 
 		getService().insertIntoOrUpdateExtensionTable(
 			userId, objectDefinitionId, primaryKey, values);
+	}
+
+	public static void loadValues(
+			com.liferay.object.model.ObjectDefinition objectDefinition,
+			List<ObjectEntry> objectEntries)
+		throws PortalException {
+
+		getService().loadValues(objectDefinition, objectEntries);
 	}
 
 	public static void moveObjectEntriesToTrash(
@@ -903,4 +918,4 @@ public class ObjectEntryLocalServiceUtil {
 			ObjectEntryLocalServiceUtil.class, ObjectEntryLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-191694864
+// LIFERAY-SERVICE-BUILDER-HASH:-742764202

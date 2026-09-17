@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.liferay.headless.admin.user.dto.v1_0.Creator;
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
@@ -28,6 +29,8 @@ import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
@@ -235,7 +238,7 @@ public class ResourceFolder implements Serializable {
 	private Supplier<String> _externalReferenceCodeSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
-		description = "The resource folder's fragment set, referenced by its `externalReferenceCode`. During LAR import, it is created if it does not exist."
+		description = "The resource folder's fragment set. On read, returned only when `nestedFields=fragmentSet` is requested. On write, used only during LAR import, where it is created if it does not exist."
 	)
 	@Valid
 	public FragmentSet getFragmentSet() {
@@ -272,13 +275,63 @@ public class ResourceFolder implements Serializable {
 	}
 
 	@GraphQLField(
-		description = "The resource folder's fragment set, referenced by its `externalReferenceCode`. During LAR import, it is created if it does not exist."
+		description = "The resource folder's fragment set. On read, returned only when `nestedFields=fragmentSet` is requested. On write, used only during LAR import, where it is created if it does not exist."
 	)
 	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
 	protected FragmentSet fragmentSet;
 
 	@JsonIgnore
 	private Supplier<FragmentSet> _fragmentSetSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "The external reference code of the resource folder's fragment set, used to reference an existing fragment set. Takes precedence over `fragmentSet` when both are set."
+	)
+	public String getFragmentSetExternalReferenceCode() {
+		if (_fragmentSetExternalReferenceCodeSupplier != null) {
+			fragmentSetExternalReferenceCode =
+				_fragmentSetExternalReferenceCodeSupplier.get();
+
+			_fragmentSetExternalReferenceCodeSupplier = null;
+		}
+
+		return fragmentSetExternalReferenceCode;
+	}
+
+	public void setFragmentSetExternalReferenceCode(
+		String fragmentSetExternalReferenceCode) {
+
+		this.fragmentSetExternalReferenceCode =
+			fragmentSetExternalReferenceCode;
+
+		_fragmentSetExternalReferenceCodeSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setFragmentSetExternalReferenceCode(
+		UnsafeSupplier<String, Exception>
+			fragmentSetExternalReferenceCodeUnsafeSupplier) {
+
+		_fragmentSetExternalReferenceCodeSupplier = () -> {
+			try {
+				return fragmentSetExternalReferenceCodeUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "The external reference code of the resource folder's fragment set, used to reference an existing fragment set. Takes precedence over `fragmentSet` when both are set."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String fragmentSetExternalReferenceCode;
+
+	@JsonIgnore
+	private Supplier<String> _fragmentSetExternalReferenceCodeSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "The resource folder's name."
@@ -322,7 +375,7 @@ public class ResourceFolder implements Serializable {
 	private Supplier<String> _nameSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
-		description = "The resource folder's parent resource folder. On write, used only during LAR import, where it is created if it does not exist."
+		description = "The resource folder's parent resource folder. On read, returned only when `nestedFields=parentResourceFolder` is requested. On write, used only during LAR import, where it is created if it does not exist."
 	)
 	@Valid
 	public ResourceFolder getParentResourceFolder() {
@@ -360,7 +413,7 @@ public class ResourceFolder implements Serializable {
 	}
 
 	@GraphQLField(
-		description = "The resource folder's parent resource folder. On write, used only during LAR import, where it is created if it does not exist."
+		description = "The resource folder's parent resource folder. On read, returned only when `nestedFields=parentResourceFolder` is requested. On write, used only during LAR import, where it is created if it does not exist."
 	)
 	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
 	protected ResourceFolder parentResourceFolder;
@@ -521,6 +574,23 @@ public class ResourceFolder implements Serializable {
 			sb.append(String.valueOf(fragmentSet));
 		}
 
+		String fragmentSetExternalReferenceCode =
+			getFragmentSetExternalReferenceCode();
+
+		if (fragmentSetExternalReferenceCode != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"fragmentSetExternalReferenceCode\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(fragmentSetExternalReferenceCode));
+
+			sb.append("\"");
+		}
+
 		String name = getName();
 
 		if (name != null) {
@@ -659,6 +729,27 @@ public class ResourceFolder implements Serializable {
 		return sb.toString();
 	}
 
+	private static String _toJSON(Object value) {
+		if (value instanceof Collection) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray((Collection<?>)value));
+		}
+		else if (value instanceof Map) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONObject((Map<?, ?>)value));
+		}
+		else if (value instanceof Object[]) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray(
+					Arrays.asList((Object[])value)));
+		}
+		else if (value instanceof String) {
+			return StringBundler.concat("\"", _escape(value), "\"");
+		}
+
+		return String.valueOf(value);
+	}
+
 	private static final String[][] _JSON_ESCAPE_STRINGS = {
 		{"\\", "\"", "\b", "\f", "\n", "\r", "\t"},
 		{"\\\\", "\\\"", "\\b", "\\f", "\\n", "\\r", "\\t"}
@@ -667,4 +758,4 @@ public class ResourceFolder implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:-635616269
+// LIFERAY-REST-BUILDER-HASH:422697684

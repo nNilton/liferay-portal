@@ -403,6 +403,9 @@ public interface PropsKeys {
 	public static final String CHANGE_TRACKING_DELETION_PROTECTION_ENABLED =
 		"change.tracking.deletion.protection.enabled";
 
+	public static final String CLUSTER_LINK_AUTH_KEYSTORE_TYPE =
+		"cluster.link.auth.keystore.type";
+
 	public static final String CLUSTER_LINK_AUTH_VALUE =
 		"cluster.link.auth.value";
 
@@ -1018,6 +1021,9 @@ public interface PropsKeys {
 	public static final String EHCACHE_SINGLE_VM_CONFIG_LOCATION =
 		"ehcache.single.vm.config.location";
 
+	public static final String ENTERPRISE_PRODUCT_AI_HUB_ENABLED =
+		"enterprise.product.ai.hub.enabled";
+
 	public static final String ENTERPRISE_PRODUCT_NOTIFICATION_ENABLED =
 		"enterprise.product.notification.enabled";
 
@@ -1075,6 +1081,12 @@ public interface PropsKeys {
 	public static final String
 		FIELD_ENABLE_COM_LIFERAY_PORTAL_KERNEL_MODEL_ORGANIZATION_STATUS =
 			"field.enable.com.liferay.portal.kernel.model.Organization.status";
+
+	public static final String FIPS_AUDIT_DEPLOYMENT_INSTANCE_ID =
+		"fips.audit.deployment.instance.id";
+
+	public static final String FIPS_AUDIT_PROVIDER_CMVP_CERTIFICATE_ID =
+		"fips.audit.provider.cmvp.certificate.id";
 
 	public static final String FIPS_ENABLED = "fips.enabled";
 
@@ -1794,9 +1806,6 @@ public interface PropsKeys {
 
 	public static final String NETVIBES_SERVLET_MAPPING =
 		"netvibes.servlet.mapping";
-
-	public static final String NOTIFICATION_EMAIL_TEMPLATE_ENABLED =
-		"notification.email.template.enabled";
 
 	public static final String NOTIFICATIONS_MAX_EVENTS =
 		"notifications.max.events";
@@ -2690,6 +2699,9 @@ public interface PropsKeys {
 	public static final String TUNNEL_SERVLET_HIDE_EXCEPTION_DATA =
 		"tunnel.servlet.hide.exception.data";
 
+	public static final String TUNNEL_UTIL_VERIFY_SSL_HOSTNAME =
+		"com.liferay.portal.kernel.service.http.TunnelUtil.verify.ssl.hostname";
+
 	public static final String TUNNELING_SERVLET_ENCRYPTION_ALGORITHM =
 		"tunneling.servlet.encryption.algorithm";
 
@@ -2707,9 +2719,6 @@ public interface PropsKeys {
 
 	public static final String UPGRADE_CONCURRENT_FETCH_SIZE =
 		"upgrade.concurrent.fetch.size";
-
-	public static final String UPGRADE_CONCURRENT_PROCESS_FUTURE_LIST_MAX_SIZE =
-		"upgrade.concurrent.process.future.list.max.size";
 
 	public static final String UPGRADE_DATABASE_AUTO_RUN =
 		"upgrade.database.auto.run";

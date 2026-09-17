@@ -13,8 +13,8 @@ import com.liferay.headless.admin.site.dto.v1_0.WidgetPageTemplate;
 import com.liferay.headless.admin.site.dto.v1_0.WidgetPageTemplateSettings;
 import com.liferay.headless.admin.site.dto.v1_0.util.ThumbnailURLReferenceUtil;
 import com.liferay.headless.admin.site.internal.dto.v1_0.util.AssetUtil;
+import com.liferay.headless.admin.site.internal.dto.v1_0.util.CreatorUtil;
 import com.liferay.headless.admin.site.internal.resource.v1_0.util.NavigationSettingsUtil;
-import com.liferay.headless.admin.user.dto.v1_0.Creator;
 import com.liferay.layout.page.template.constants.LayoutPageTemplateEntryTypeConstants;
 import com.liferay.layout.page.template.model.LayoutPageTemplateCollection;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
@@ -22,10 +22,8 @@ import com.liferay.layout.page.template.service.LayoutPageTemplateCollectionLoca
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutPrototype;
 import com.liferay.portal.kernel.model.LayoutTypePortletConstants;
-import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.LayoutPrototypeService;
-import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.PropsValues;
@@ -41,10 +39,7 @@ import org.osgi.service.component.annotations.Reference;
 /**
  * @author Lourdes Fernández Besada
  */
-@Component(
-	property = "dto.class.name=com.liferay.layout.page.template.model.LayoutPageTemplateEntry",
-	service = DTOConverter.class
-)
+@Component(service = DTOConverter.class)
 public class PageTemplateDTOConverter
 	implements DTOConverter<LayoutPageTemplateEntry, PageTemplate> {
 
@@ -81,21 +76,9 @@ public class PageTemplateDTOConverter
 		return new ContentPageTemplate() {
 			{
 				setCreator(
-					() -> {
-						User user = _userLocalService.fetchUser(
-							layoutPageTemplateEntry.getUserId());
-
-						if (user == null) {
-							return null;
-						}
-
-						return new Creator() {
-							{
-								setExternalReferenceCode(
-									user::getExternalReferenceCode);
-							}
-						};
-					});
+					() -> CreatorUtil.toCreator(
+						layoutPageTemplateEntry.getUserId(),
+						layoutPageTemplateEntry.getUserName()));
 				setDateCreated(layoutPageTemplateEntry::getCreateDate);
 				setDateModified(layoutPageTemplateEntry::getModifiedDate);
 				setDatePublished(layout::getPublishDate);
@@ -169,21 +152,9 @@ public class PageTemplateDTOConverter
 			{
 				setActive(layoutPrototype::isActive);
 				setCreator(
-					() -> {
-						User user = _userLocalService.fetchUser(
-							layoutPageTemplateEntry.getUserId());
-
-						if (user == null) {
-							return null;
-						}
-
-						return new Creator() {
-							{
-								setExternalReferenceCode(
-									user::getExternalReferenceCode);
-							}
-						};
-					});
+					() -> CreatorUtil.toCreator(
+						layoutPageTemplateEntry.getUserId(),
+						layoutPageTemplateEntry.getUserName()));
 				setDateCreated(layoutPageTemplateEntry::getCreateDate);
 				setDateModified(layoutPageTemplateEntry::getModifiedDate);
 				setDatePublished(layout::getPublishDate);
@@ -272,8 +243,5 @@ public class PageTemplateDTOConverter
 	)
 	private DTOConverter<LayoutPageTemplateCollection, PageTemplateSet>
 		_pageTemplateSetDTOConverter;
-
-	@Reference
-	private UserLocalService _userLocalService;
 
 }

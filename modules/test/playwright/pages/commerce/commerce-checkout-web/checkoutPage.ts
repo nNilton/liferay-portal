@@ -5,11 +5,14 @@
 
 import {FrameLocator, Locator, Page, expect} from '@playwright/test';
 
+import {performLoginViaApi, performLogout} from '../../../utils/performLogin';
 import {CommerceLayoutsPage} from '../commerce-order-content-web/commerceLayoutsPage';
+import {CommerceThemeMiniumCatalogPage} from '../commerce-theme-minium/commerceThemeMiniumCatalogPage';
 import {
 	CommerceDNDTablePage,
 	searchTableRowByValue,
 } from '../commerceDNDTablePage';
+import {CommerceMiniCartPage} from '../commerceMiniCartPage';
 
 type TAddress = {
 	asGuest?: boolean | false;
@@ -45,6 +48,8 @@ export class CheckoutPage extends CommerceDNDTablePage {
 	readonly goToOrderDetailsButton: Locator;
 	readonly headingDeliveryGroupModal: (name: string) => Locator;
 	readonly iframeOkButton: Locator;
+	readonly commerceMiniCartPage: CommerceMiniCartPage;
+	readonly commerceThemeMiniumCatalogPage: CommerceThemeMiniumCatalogPage;
 	readonly layoutsPage: CommerceLayoutsPage;
 	readonly multishippingTabLink: Locator;
 	readonly multishippingTableLocator: Locator;
@@ -62,11 +67,16 @@ export class CheckoutPage extends CommerceDNDTablePage {
 	) => Promise<{column: Locator; row: Locator}>;
 	readonly page: Page;
 	readonly paymentMethodRadio: (name: string) => Locator;
+	readonly paymentMethodRadios: Locator;
 	readonly paymentTermLink: (label: string) => Locator;
 	readonly paymentTermOption: (label: string) => Locator;
 	readonly phoneNumberInput: Locator;
 	readonly previousButton: Locator;
 	readonly regionInput: Locator;
+	readonly requestedDeliveryDateDayInput: Locator;
+	readonly requestedDeliveryDateInput: Locator;
+	readonly requestedDeliveryDateMonthInput: Locator;
+	readonly requestedDeliveryDateYearInput: Locator;
 	readonly saveButton: Locator;
 	readonly shippingAddressSelect: Locator;
 	readonly shippingCost: Locator;
@@ -140,6 +150,9 @@ export class CheckoutPage extends CommerceDNDTablePage {
 		this.goToOrderDetailsButton = page.getByRole('button', {
 			name: 'Go to Order Details',
 		});
+		this.commerceMiniCartPage = new CommerceMiniCartPage(page);
+		this.commerceThemeMiniumCatalogPage =
+			new CommerceThemeMiniumCatalogPage(page);
 		this.layoutsPage = new CommerceLayoutsPage(page);
 		this.multishippingTabLink = page.getByRole('link', {
 			exact: true,
@@ -186,6 +199,9 @@ export class CheckoutPage extends CommerceDNDTablePage {
 		this.page = page;
 		this.paymentMethodRadio = (name: string) =>
 			page.getByRole('radio', {name});
+		this.paymentMethodRadios = page.locator(
+			'input[name$="commercePaymentMethodKey"]'
+		);
 		this.paymentTermLink = (label: string) =>
 			page.getByRole('link', {name: label});
 		this.paymentTermOption = (label: string) => page.getByLabel(label);
@@ -194,6 +210,18 @@ export class CheckoutPage extends CommerceDNDTablePage {
 		});
 		this.previousButton = page.getByRole('button', {name: 'Previous'});
 		this.regionInput = page.getByTitle('Region');
+		this.requestedDeliveryDateInput = page.locator(
+			'input[id$="_requestedDeliveryDate"]'
+		);
+		this.requestedDeliveryDateDayInput = page.locator(
+			'input[id$="_requestedDeliveryDateDay"]'
+		);
+		this.requestedDeliveryDateMonthInput = page.locator(
+			'input[id$="_requestedDeliveryDateMonth"]'
+		);
+		this.requestedDeliveryDateYearInput = page.locator(
+			'input[id$="_requestedDeliveryDateYear"]'
+		);
 		this.commerceShippingAddress = page.getByTestId(
 			'commerceShippingAddress'
 		);
@@ -305,15 +333,63 @@ export class CheckoutPage extends CommerceDNDTablePage {
 		}
 	}
 
+	async checkoutAsBuyer(siteName: string, buyerScreenName: string) {
+		await performLogout(this.page);
+		await performLoginViaApi({
+			page: this.page,
+			screenName: buyerScreenName,
+		});
+
+		await this.page.goto(`/web/${siteName}/catalog`);
+
+		await this.commerceThemeMiniumCatalogPage.addToCart('Mount');
+
+		await this.commerceMiniCartPage.miniCartButton.click();
+		await this.commerceMiniCartPage.submitButton.click();
+
+		await this.performCheckoutUntilStep('Order Summary');
+
+		await this.continueButton.click();
+
+		await expect(this.orderConfirmationContainer).toBeVisible();
+	}
+
+	async setRequestedDeliveryDate(date: Date) {
+		const day = date.getDate();
+		const month = date.getMonth();
+		const year = date.getFullYear();
+
+		await this.requestedDeliveryDateInput.click();
+		await this.requestedDeliveryDateInput.pressSequentially(
+			`${String(month + 1).padStart(2, '0')}/${String(day).padStart(2, '0')}/${year}`
+		);
+		await this.requestedDeliveryDateInput.press('Enter');
+
+		await expect(this.requestedDeliveryDateDayInput).toHaveValue(
+			String(day)
+		);
+		await expect(this.requestedDeliveryDateMonthInput).toHaveValue(
+			String(month)
+		);
+		await expect(this.requestedDeliveryDateYearInput).toHaveValue(
+			String(year)
+		);
+	}
+
 	async performCheckoutUntilStep(stopAt: string) {
 		let currentStep = await this.activeCheckoutStep.textContent();
 
 		while (!currentStep.includes(stopAt)) {
-			await this.continueButton.click();
+			const previousStep = currentStep;
 
-			await this.page.waitForLoadState('networkidle');
+			await expect(async () => {
+				await this.continueButton.click();
 
-			await expect(this.activeCheckoutStep).not.toHaveText(currentStep);
+				await expect(this.activeCheckoutStep).not.toHaveText(
+					previousStep,
+					{timeout: 5000}
+				);
+			}).toPass({timeout: 30000});
 
 			currentStep = await this.activeCheckoutStep.textContent();
 		}

@@ -5,16 +5,18 @@
 
 // eslint-disable-next-line @liferay/portal/no-cross-module-deep-import
 import {checkAccessibility} from '@liferay/layout-js-components-web/test/__lib__/index';
-import {render, screen, waitFor, within} from '@testing-library/react';
+import {act, render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fetch from 'jest-fetch-mock';
 import React from 'react';
 
+import '@testing-library/jest-dom';
+
 import {NewExport} from '../../../../../src/main/resources/META-INF/resources/revamp/js/pages/export/NewExport';
-import {ExportPreview} from '../../../../../src/main/resources/META-INF/resources/revamp/js/types/exportImportPreview';
+import {Preview} from '../../../../../src/main/resources/META-INF/resources/revamp/js/types/exportImportPreview';
 import {LAYOUT_SET_LAYOUTS_PORTLET_DATA_KEY} from '../../../../../src/main/resources/META-INF/resources/revamp/js/utils/contentSelection';
-import {mockExportPreview} from '../../mocks/mockExportPreview';
 import {mockPageTreeItems} from '../../mocks/mockPageTreeItems';
+import {mockPreview} from '../../mocks/mockPreview';
 
 jest.mock('staging-taglib', () => ({
 	PagesTree: require('../../mocks/MockPagesTree').MockPagesTree,
@@ -31,14 +33,20 @@ const expandSection = async (label: string) => {
 	await userEvent.click(button);
 };
 
+const getExportCall = () =>
+	fetch.mock.calls.find(
+		([url, init]) =>
+			String(url).includes('export-processes') && init?.method === 'POST'
+	);
+
 const DEFAULT_PROPS = {
 	backURL: '/some/back/url',
 	exportPreviewAPIURL: '/o/export-import/v1.0/export-preview',
 	exportProcessAPIURL: '/o/export-import/v1.0/export-processes',
 	pageTreeModalConfiguration: {
-		liveGroupId: 20121,
+		groupId: 20121,
 		pageSize: 20,
-		privateLayoutsEnabled: false,
+		privateLayoutsAvailable: false,
 	},
 };
 
@@ -49,11 +57,15 @@ const renderComponent = (
 describe('NewExport', () => {
 	beforeEach(() => {
 		fetch.resetMocks();
-		fetch.mockResponse(JSON.stringify(mockExportPreview));
+		fetch.mockResponse(JSON.stringify(mockPreview));
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
 	});
 
 	it('preloads the preview without fetching when it is provided', async () => {
-		renderComponent({exportPreview: mockExportPreview});
+		renderComponent({exportPreview: mockPreview});
 
 		await screen.findByText('loaded');
 
@@ -105,6 +117,35 @@ describe('NewExport', () => {
 		expect(
 			screen.getByRole('checkbox', {name: 'Content & Data'})
 		).toBeChecked();
+	});
+
+	it('renders the root model handler tag and description', async () => {
+		renderComponent({
+			exportPreview: {
+				...mockPreview,
+				previewPortletDataHandlerSections: [
+					{
+						label: 'Content & Data',
+						name: 'category.site_administration.content',
+						previewPortletDataHandlers: [
+							{
+								description: 'Child 1, Child 2',
+								label: 'Root Handler',
+								name: 'handler',
+								tag: 'root-object',
+							},
+						],
+					},
+				],
+			},
+		});
+
+		await screen.findByText('loaded');
+
+		await expandSection('Content & Data');
+
+		expect(screen.getByText('Child 1, Child 2')).toBeInTheDocument();
+		expect(screen.getByText('root-object')).toBeInTheDocument();
 	});
 
 	it('renders the error alert when the API fails', async () => {
@@ -204,15 +245,55 @@ describe('NewExport', () => {
 		);
 	});
 
-	it('exports the last range window resolved at apply, not at submit', async () => {
+	it('ignores a stale filtered preview after the filter is cleared', async () => {
+		renderComponent();
+
+		await screen.findByText('loaded');
+
+		let resolveFilteredPreview = () => {};
+
+		fetch.mockResponseOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveFilteredPreview = () =>
+						resolve(
+							JSON.stringify({
+								...mockPreview,
+								previewPortletDataHandlerSections: [],
+							})
+						);
+				})
+		);
+
+		await userEvent.selectOptions(
+			screen.getByRole('combobox', {name: 'filter-content-by'}),
+			'last'
+		);
+		await userEvent.click(
+			screen.getByRole('button', {name: /show-results/i})
+		);
+
+		await userEvent.click(screen.getByText('clear-filters'));
+
+		expect(screen.getByText('loaded')).toBeInTheDocument();
+
+		await act(async () => {
+			resolveFilteredPreview();
+
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+
+		expect(screen.getByRole('checkbox', {name: 'Design'})).toBeChecked();
+		expect(screen.getByText('loaded')).toBeInTheDocument();
+	});
+
+	it('exports the last range start date resolved at apply, not at submit', async () => {
 		const HOUR = 60 * 60 * 1000;
 		const applyTime = Date.UTC(2026, 0, 1, 12, 0, 0);
 
 		let now = applyTime;
 
-		const dateNowSpy = jest
-			.spyOn(Date, 'now')
-			.mockImplementation(() => now);
+		jest.spyOn(Date, 'now').mockImplementation(() => now);
 
 		renderComponent();
 
@@ -239,19 +320,16 @@ describe('NewExport', () => {
 		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
 
 		await waitFor(() => {
-			const exportCall = fetch.mock.calls.find(
-				([, init]) => init?.method === 'POST'
-			);
+			const exportCall = getExportCall();
 
 			const body = JSON.parse(exportCall![1]!.body as string);
 
+			expect(body.dateRangeType).toBe('LAST');
 			expect(body.startDate).toBe(
 				new Date(applyTime - 12 * HOUR).toISOString()
 			);
-			expect(body.endDate).toBe(new Date(applyTime).toISOString());
+			expect(body.endDate).toBeUndefined();
 		});
-
-		dateNowSpy.mockRestore();
 	});
 
 	it('enables the export button once the name is set since entities are checked by default', async () => {
@@ -278,7 +356,7 @@ describe('NewExport', () => {
 		fetch.resetMocks();
 		fetch.mockResponse(
 			JSON.stringify({
-				...mockExportPreview,
+				...mockPreview,
 				deletionCount: 0,
 			})
 		);
@@ -311,7 +389,7 @@ describe('NewExport', () => {
 	});
 
 	describe('page selection', () => {
-		const previewWithPagePicker: ExportPreview = {
+		const previewWithPagePicker: Preview = {
 			additionCount: 1,
 			deletionCount: 0,
 			previewPortletDataHandlerSections: [
@@ -330,18 +408,11 @@ describe('NewExport', () => {
 
 		const privatePageTreeModalConfiguration = {
 			...DEFAULT_PROPS.pageTreeModalConfiguration,
-			privateLayoutsEnabled: true,
+			privateLayoutsAvailable: true,
 		};
 
-		const getExportRequest = () => {
-			const exportProcessCall = fetch.mock.calls.find(
-				([url, init]) =>
-					String(url).includes('export-processes') &&
-					init?.method === 'POST'
-			);
-
-			return JSON.parse(String(exportProcessCall?.[1]?.body));
-		};
+		const getExportRequest = () =>
+			JSON.parse(String(getExportCall()?.[1]?.body));
 
 		const typeFileName = () =>
 			userEvent.type(
@@ -396,7 +467,7 @@ describe('NewExport', () => {
 					{
 						name: LAYOUT_SET_LAYOUTS_PORTLET_DATA_KEY,
 						requestPortletDataHandlerControls: [
-							{name: 'privateLayout', values: ['false']},
+							{name: 'publicLayoutPages'},
 						],
 					},
 				])
@@ -418,7 +489,7 @@ describe('NewExport', () => {
 			expect(screen.queryAllByRole('radio')).toHaveLength(0);
 
 			await userEvent.click(
-				screen.getByRole('button', {name: 'select-layouts'})
+				screen.getByRole('button', {name: 'select-x'})
 			);
 
 			expect(await screen.findByLabelText('page-1')).toBeChecked();
@@ -434,8 +505,7 @@ describe('NewExport', () => {
 					{
 						name: LAYOUT_SET_LAYOUTS_PORTLET_DATA_KEY,
 						requestPortletDataHandlerControls: [
-							{name: 'privateLayout', values: ['false']},
-							{name: 'layoutIds', values: ['1']},
+							{name: 'publicLayoutPages', values: ['1']},
 						],
 					},
 				])
@@ -468,7 +538,7 @@ describe('NewExport', () => {
 					{
 						name: LAYOUT_SET_LAYOUTS_PORTLET_DATA_KEY,
 						requestPortletDataHandlerControls: [
-							{name: 'privateLayout', values: ['true']},
+							{name: 'privateLayoutPages'},
 						],
 					},
 				])
@@ -541,8 +611,7 @@ describe('NewExport', () => {
 					{
 						name: LAYOUT_SET_LAYOUTS_PORTLET_DATA_KEY,
 						requestPortletDataHandlerControls: [
-							{name: 'privateLayout', values: ['true']},
-							{name: 'layoutIds', values: ['1']},
+							{name: 'privateLayoutPages', values: ['1']},
 						],
 					},
 				])
@@ -570,14 +639,7 @@ describe('NewExport', () => {
 		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
 
 		await waitFor(() => {
-			const exportCall = fetch.mock.calls.find(([, init]) => {
-				const body = init?.body;
-
-				return (
-					typeof body === 'string' &&
-					body.includes('"requestPortletDataHandlers"')
-				);
-			});
+			const exportCall = getExportCall();
 
 			expect(exportCall).toBeDefined();
 
@@ -589,7 +651,8 @@ describe('NewExport', () => {
 			expect(body.siteTemplateSettings).toBe(false);
 
 			const handlerNames = body.requestPortletDataHandlers.map(
-				(handler: {name: string}) => handler.name
+				(previewPortletDataHandler: {name: string}) =>
+					previewPortletDataHandler.name
 			);
 
 			expect(handlerNames).not.toContain('lookAndFeel');
@@ -612,14 +675,7 @@ describe('NewExport', () => {
 		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
 
 		await waitFor(() => {
-			const exportCall = fetch.mock.calls.find(([, init]) => {
-				const body = init?.body;
-
-				return (
-					typeof body === 'string' &&
-					body.includes('"requestPortletDataHandlers"')
-				);
-			});
+			const exportCall = getExportCall();
 
 			expect(exportCall).toBeDefined();
 
@@ -629,6 +685,60 @@ describe('NewExport', () => {
 			expect(body.logo).toBe(true);
 			expect(body.sitePagesSettings).toBe(true);
 			expect(body.siteTemplateSettings).toBe(true);
+		});
+	});
+
+	it('does not submit the permissions flag by default', async () => {
+		renderComponent();
+
+		await screen.findByText('loaded');
+
+		const nameInput = await screen.findByRole('textbox', {
+			name: /^name/i,
+		});
+
+		await userEvent.type(nameInput, 'test-file');
+
+		fetch.mockResponseOnce(JSON.stringify({}));
+
+		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
+
+		await waitFor(() => {
+			const exportCall = getExportCall();
+
+			expect(exportCall).toBeDefined();
+
+			const body = JSON.parse(exportCall![1]!.body as string);
+
+			expect(body.permissions).toBe(false);
+		});
+	});
+
+	it('submits the permissions flag when the checkbox is checked', async () => {
+		renderComponent();
+
+		await screen.findByText('loaded');
+
+		const nameInput = await screen.findByRole('textbox', {
+			name: /^name/i,
+		});
+
+		await userEvent.type(nameInput, 'test-file');
+
+		await userEvent.click(screen.getByLabelText(/^export-permissions/));
+
+		fetch.mockResponseOnce(JSON.stringify({}));
+
+		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
+
+		await waitFor(() => {
+			const exportCall = getExportCall();
+
+			expect(exportCall).toBeDefined();
+
+			const body = JSON.parse(exportCall![1]!.body as string);
+
+			expect(body.permissions).toBe(true);
 		});
 	});
 
@@ -651,14 +761,7 @@ describe('NewExport', () => {
 		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
 
 		await waitFor(() => {
-			const exportCall = fetch.mock.calls.find(([, init]) => {
-				const body = init?.body;
-
-				return (
-					typeof body === 'string' &&
-					body.includes('"requestPortletDataHandlers"')
-				);
-			});
+			const exportCall = getExportCall();
 
 			expect(exportCall).toBeDefined();
 
@@ -668,7 +771,8 @@ describe('NewExport', () => {
 			expect(body.ratings).toBe(false);
 
 			const handlerNames = body.requestPortletDataHandlers.map(
-				(handler: {name: string}) => handler.name
+				(previewPortletDataHandler: {name: string}) =>
+					previewPortletDataHandler.name
 			);
 
 			expect(handlerNames).not.toContain('commentsAndRatings');

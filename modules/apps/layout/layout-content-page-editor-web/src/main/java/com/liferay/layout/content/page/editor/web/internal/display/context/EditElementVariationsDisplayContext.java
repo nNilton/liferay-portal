@@ -5,6 +5,7 @@
 
 package com.liferay.layout.content.page.editor.web.internal.display.context;
 
+import com.liferay.audiences.constants.AudiencesPortletKeys;
 import com.liferay.audiences.service.AudiencesEntryService;
 import com.liferay.fragment.model.FragmentEntry;
 import com.liferay.fragment.model.FragmentEntryLink;
@@ -39,9 +40,13 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
+import com.liferay.segments.model.SegmentsExperienceAudienceEntryRel;
+import com.liferay.segments.service.SegmentsExperienceAudienceEntryRelLocalService;
 import com.liferay.segments.service.SegmentsExperienceService;
 
+import jakarta.portlet.PortletRequest;
 import jakarta.portlet.PortletResponse;
+import jakarta.portlet.PortletURL;
 import jakarta.portlet.WindowState;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -64,7 +69,10 @@ public class EditElementVariationsDisplayContext {
 		LayoutLocalService layoutLocalService,
 		LayoutPageTemplateStructureRelElementVariationService
 			layoutPageTemplateStructureRelElementVariationService,
-		Portal portal, SegmentsExperienceService segmentsExperienceService) {
+		Portal portal,
+		SegmentsExperienceAudienceEntryRelLocalService
+			segmentsExperienceAudienceEntryRelLocalService,
+		SegmentsExperienceService segmentsExperienceService) {
 
 		_audiencesEntryService = audiencesEntryService;
 		_fragmentEntryLinkLocalService = fragmentEntryLinkLocalService;
@@ -73,6 +81,8 @@ public class EditElementVariationsDisplayContext {
 		_layoutPageTemplateStructureRelElementVariationService =
 			layoutPageTemplateStructureRelElementVariationService;
 		_portal = portal;
+		_segmentsExperienceAudienceEntryRelLocalService =
+			segmentsExperienceAudienceEntryRelLocalService;
 		_segmentsExperienceService = segmentsExperienceService;
 
 		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
@@ -88,6 +98,8 @@ public class EditElementVariationsDisplayContext {
 						"_variation")
 		).put(
 			"audiences", _getAudiencesEntries()
+		).put(
+			"createAudienceURL", _getCreateAudienceURL()
 		).put(
 			"defaultLanguageId",
 			LocaleUtil.toLanguageId(_themeDisplay.getSiteDefaultLocale())
@@ -118,7 +130,28 @@ public class EditElementVariationsDisplayContext {
 			"redirect", getRedirect()
 		).put(
 			"selectedSegmentsExperienceId", _getSegmentsExperienceId()
+		).put(
+			"updateAudiencesPriorityURL",
+			_getActionURL(
+				"/layout_content_page_editor" +
+					"/update_segments_experience_audience_entry_rels")
+		).put(
+			"updateElementVariationURL",
+			_getActionURL(
+				"/layout_content_page_editor" +
+					"/update_layout_page_template_structure_rel_element" +
+						"_variation")
 		).build();
+	}
+
+	public String getLayoutName() {
+		Layout layout = _layoutLocalService.fetchLayout(_getPlid());
+
+		if (layout == null) {
+			return StringPool.BLANK;
+		}
+
+		return layout.getName(_themeDisplay.getLocale());
 	}
 
 	public String getRedirect() {
@@ -186,6 +219,14 @@ public class EditElementVariationsDisplayContext {
 		return availableLocalesJSONArray;
 	}
 
+	private String _getCreateAudienceURL() {
+		PortletURL portletURL = _portal.getControlPanelPortletURL(
+			_httpServletRequest, AudiencesPortletKeys.AUDIENCES,
+			PortletRequest.RENDER_PHASE);
+
+		return portletURL.toString();
+	}
+
 	private List<Map<String, Object>>
 		_getLayoutPageTemplateStructureRelElementVariations() {
 
@@ -196,6 +237,10 @@ public class EditElementVariationsDisplayContext {
 						_getPlid()),
 				layoutPageTemplateStructureRelElementVariation ->
 					HashMapBuilder.<String, Object>put(
+						"active",
+						layoutPageTemplateStructureRelElementVariation.
+							isActive()
+					).put(
 						"audienceEntryERCs",
 						layoutPageTemplateStructureRelElementVariation.
 							getAudienceEntryERCs()
@@ -205,9 +250,7 @@ public class EditElementVariationsDisplayContext {
 							getExternalReferenceCode()
 					).put(
 						"hide",
-						LocalizedMapUtil.getLanguageIdMap(
-							layoutPageTemplateStructureRelElementVariation.
-								getHideMap())
+						layoutPageTemplateStructureRelElementVariation.getHide()
 					).put(
 						"html",
 						LocalizedMapUtil.getLanguageIdMap(
@@ -347,6 +390,14 @@ public class EditElementVariationsDisplayContext {
 				_segmentsExperienceService.getSegmentsExperiences(
 					_themeDisplay.getScopeGroupId(), _getPlid(), true),
 				segmentsExperience -> HashMapBuilder.<String, Object>put(
+					"audienceEntryERCs",
+					TransformUtil.transform(
+						_segmentsExperienceAudienceEntryRelLocalService.
+							getSegmentsExperienceAudienceEntryRels(
+								_themeDisplay.getScopeGroupId(),
+								segmentsExperience.getExternalReferenceCode()),
+						SegmentsExperienceAudienceEntryRel::getAudienceEntryERC)
+				).put(
 					"label",
 					segmentsExperience.getName(_themeDisplay.getLocale())
 				).put(
@@ -376,6 +427,8 @@ public class EditElementVariationsDisplayContext {
 	private Long _plid;
 	private final Portal _portal;
 	private String _redirect;
+	private final SegmentsExperienceAudienceEntryRelLocalService
+		_segmentsExperienceAudienceEntryRelLocalService;
 	private Long _segmentsExperienceId;
 	private final SegmentsExperienceService _segmentsExperienceService;
 	private final ThemeDisplay _themeDisplay;

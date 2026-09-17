@@ -5,24 +5,19 @@ import mockStore from 'test/mock-store';
 import React from 'react';
 import {act} from '@testing-library/react';
 import {ChannelContext} from 'shared/context/channel';
-import {cleanup, render, screen} from '@testing-library/react';
-import {MemoryRouter, Route} from 'react-router-dom';
+import {cleanup, render, screen, within} from '@testing-library/react';
+import {formatDateToTimeZone, getCustomDateTimeFormat} from 'shared/util/date';
+import {getTimestamp} from 'test/data';
+import {MemoryRouter, Route, Routes as RouterRoutes} from 'react-router-dom';
 import {mockChannelContext} from 'test/mock-channel-context';
 import {Provider} from 'react-redux';
 import {Routes} from 'shared/util/router';
-import {SegmentTypes} from 'shared/util/constants';
+import {SegmentCategories, SegmentTypes} from 'shared/util/constants';
 import {UnassignedSegmentsContext} from 'shared/context/unassignedSegments';
 import {User} from 'shared/util/records';
 import {waitForLoadingToBeRemoved} from 'test/helpers';
 
 jest.unmock('react-dom');
-
-jest.mock('shared/util/feature-flags', () => ({
-	...jest.requireActual('shared/util/feature-flags'),
-	ENABLE_REAL_TIME_SEGMENTS: false
-}));
-
-const featureFlags = jest.requireMock('shared/util/feature-flags');
 
 const MOCK_UNASSIGNED_SEGMENTS_CONTEXT = {
 	showUnassignedAlert: false,
@@ -39,23 +34,28 @@ const DefaultComponent = ({queryString = '', ...otherProps}) => (
 				`/workspace/23/123/contacts/segments${queryString}`
 			]}
 		>
-			<Route path={Routes.CONTACTS_LIST_SEGMENT}>
-				<UnassignedSegmentsContext.Provider
-					value={MOCK_UNASSIGNED_SEGMENTS_CONTEXT}
-				>
-					<ChannelContext.Provider value={mockChannelContext()}>
-						<List
-							channelId='123'
-							currentUser={data.getImmutableMock(
-								User,
-								data.mockUser
-							)}
-							groupId='23'
-							{...otherProps}
-						/>
-					</ChannelContext.Provider>
-				</UnassignedSegmentsContext.Provider>
-			</Route>
+			<RouterRoutes>
+				<Route
+					element={
+						<UnassignedSegmentsContext.Provider
+							value={MOCK_UNASSIGNED_SEGMENTS_CONTEXT}
+						>
+							<ChannelContext.Provider value={mockChannelContext()}>
+								<List
+									channelId='123'
+									currentUser={data.getImmutableMock(
+										User,
+										data.mockUser
+									)}
+									groupId='23'
+									{...otherProps}
+								/>
+							</ChannelContext.Provider>
+						</UnassignedSegmentsContext.Provider>
+					}
+					path={`${Routes.CONTACTS_LIST_SEGMENT}/*`}
+				/>
+			</RouterRoutes>
 		</MemoryRouter>
 	</Provider>
 );
@@ -65,8 +65,6 @@ describe('List', () => {
 		jest.clearAllMocks();
 
 		jest.useFakeTimers();
-
-		featureFlags.ENABLE_REAL_TIME_SEGMENTS = true;
 	});
 
 	afterEach(() => {
@@ -75,22 +73,9 @@ describe('List', () => {
 		jest.useRealTimers();
 	});
 
-	it('should disable batch segment when limit is reached', async () => {
-		API.projects.fetchFeatureUsages.mockReturnValueOnce(
-			Promise.resolve([
-				{
-					currentUsage: 1,
-					limit: 3,
-					name: 'Segment',
-					type: 'Real Time'
-				},
-				{
-					currentUsage: 5,
-					limit: 5,
-					name: 'Segment',
-					type: 'Batch'
-				}
-			])
+	it('should enable every segment option regardless of the segment count', async () => {
+		API.individualSegment.search.mockReturnValue(
+			Promise.resolve(data.mockSearch(data.mockSegment, 20))
 		);
 
 		render(<DefaultComponent />);
@@ -98,131 +83,23 @@ describe('List', () => {
 		await act(async () => {
 			jest.runAllTimers();
 		});
-
-		const batchOption = screen.getByTestId('batch-segment-dropdown-item');
-		expect(batchOption.closest('a')).toHaveClass('disabled');
-
-		const realTimeOption = screen.getByTestId(
-			'real-time-segment-dropdown-item'
-		);
-		expect(realTimeOption.closest('a')).not.toHaveClass('disabled');
-	});
-
-	it('should disable real time segment when limit is reached', async () => {
-		API.projects.fetchFeatureUsages.mockReturnValueOnce(
-			Promise.resolve([
-				{
-					currentUsage: 3,
-					limit: 3,
-					name: 'Segment',
-					type: 'Real Time'
-				},
-				{
-					currentUsage: 2,
-					limit: 5,
-					name: 'Segment',
-					type: 'Batch'
-				}
-			])
-		);
-
-		render(<DefaultComponent />);
-
-		await act(async () => {
-			jest.runAllTimers();
-		});
-
-		const realTimeOption = screen.getByTestId(
-			'real-time-segment-dropdown-item'
-		);
-		expect(realTimeOption.closest('a')).toHaveClass('disabled');
 
 		const batchOption = screen.getByTestId('batch-segment-dropdown-item');
 		expect(batchOption.closest('a')).not.toHaveClass('disabled');
-	});
-
-	it('should enable segments when usage is under the limit', async () => {
-		API.projects.fetchFeatureUsages.mockReturnValueOnce(
-			Promise.resolve([
-				{
-					currentUsage: 2,
-					limit: 3,
-					name: 'Segment',
-					type: 'Real Time'
-				},
-				{
-					currentUsage: 2,
-					limit: 5,
-					name: 'Segment',
-					type: 'Batch'
-				}
-			])
-		);
-
-		render(<DefaultComponent />);
-
-		await act(async () => {
-			jest.runAllTimers();
-		});
 
 		const realTimeOption = screen.getByTestId(
 			'real-time-segment-dropdown-item'
 		);
 		expect(realTimeOption.closest('a')).not.toHaveClass('disabled');
 
-		const batchOption = screen.getByTestId('batch-segment-dropdown-item');
-		expect(batchOption.closest('a')).not.toHaveClass('disabled');
-	});
+		expect(
+			screen.getByText('New Segment').closest('button')
+		).not.toBeDisabled();
 
-	it('should enable segment options when the limit is set to -1 (unlimited)', async () => {
-		API.projects.fetchFeatureUsages.mockReturnValueOnce(
-			Promise.resolve([
-				{
-					currentUsage: 2,
-					limit: -1,
-					name: 'Segment',
-					type: 'Real Time'
-				},
-				{
-					currentUsage: 2,
-					limit: -1,
-					name: 'Segment',
-					type: 'Batch'
-				}
-			])
-		);
-
-		render(<DefaultComponent />);
-
-		await act(async () => {
-			jest.runAllTimers();
-		});
-
-		const realTimeOption = screen.getByTestId(
-			'real-time-segment-dropdown-item'
-		);
-		expect(realTimeOption.closest('a')).not.toHaveClass('disabled');
-
-		const batchOption = screen.getByTestId('batch-segment-dropdown-item');
-		expect(batchOption.closest('a')).not.toHaveClass('disabled');
+		expect(API.projects.fetchFeatureUsages).not.toHaveBeenCalled();
 	});
 
 	it('should render', async () => {
-		API.projects.fetchFeatureUsages.mockResolvedValueOnce([
-			{
-				currentUsage: 0,
-				limit: -1,
-				name: 'Segment',
-				type: 'Real Time'
-			},
-			{
-				currentUsage: 0,
-				limit: -1,
-				name: 'Segment',
-				type: 'Batch'
-			}
-		]);
-
 		render(<DefaultComponent />);
 
 		await waitForLoadingToBeRemoved(document.body);
@@ -231,7 +108,6 @@ describe('List', () => {
 	});
 
 	it('should show the sequential info icon for real time sequential segments', async () => {
-		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
 		API.individualSegment.search.mockReturnValue(
 			Promise.resolve(
 				data.mockSearch(data.mockSegment, 1, {
@@ -249,7 +125,6 @@ describe('List', () => {
 	});
 
 	it('should not show the sequential info icon for real time non-sequential segments', async () => {
-		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
 		API.individualSegment.search.mockReturnValue(
 			Promise.resolve(
 				data.mockSearch(data.mockSegment, 1, {
@@ -269,7 +144,6 @@ describe('List', () => {
 	});
 
 	it('should not show the sequential info icon for batch segments', async () => {
-		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
 		API.individualSegment.search.mockReturnValue(
 			Promise.resolve(
 				data.mockSearch(data.mockSegment, 1, {
@@ -288,57 +162,7 @@ describe('List', () => {
 		).not.toBeInTheDocument();
 	});
 
-	describe('when real time segments are disabled', () => {
-		beforeEach(() => {
-			featureFlags.ENABLE_REAL_TIME_SEGMENTS = false;
-		});
-
-		it('creates a batch segment directly without a type dropdown', async () => {
-			API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
-
-			render(<DefaultComponent />);
-
-			await act(async () => {
-				jest.runAllTimers();
-			});
-
-			expect(
-				screen.getByTestId('batch-segment-button')
-			).toBeInTheDocument();
-
-			expect(
-				screen.queryByTestId('batch-segment-dropdown-item')
-			).not.toBeInTheDocument();
-			expect(
-				screen.queryByTestId('real-time-segment-dropdown-item')
-			).not.toBeInTheDocument();
-		});
-
-		it('disables the new segment button when the batch limit is reached', async () => {
-			API.projects.fetchFeatureUsages.mockReturnValueOnce(
-				Promise.resolve([
-					{
-						currentUsage: 5,
-						limit: 5,
-						name: 'Segment',
-						type: 'Batch'
-					}
-				])
-			);
-
-			render(<DefaultComponent />);
-
-			await act(async () => {
-				jest.runAllTimers();
-			});
-
-			expect(screen.getByTestId('batch-segment-button')).toBeDisabled();
-		});
-	});
-
-	it('shows the segment type dropdown when real time segments are enabled', async () => {
-		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
-
+	it('shows the segment type dropdown', async () => {
 		render(<DefaultComponent />);
 
 		await act(async () => {
@@ -346,13 +170,204 @@ describe('List', () => {
 		});
 
 		expect(
+			screen.getByTestId('account-batch-segment-dropdown-item')
+		).toBeInTheDocument();
+		expect(
 			screen.getByTestId('batch-segment-dropdown-item')
 		).toBeInTheDocument();
 		expect(
 			screen.getByTestId('real-time-segment-dropdown-item')
 		).toBeInTheDocument();
+
+		const accountOption = screen.getByTestId(
+			'account-batch-segment-dropdown-item'
+		);
+
+		const [accountGroup, individualGroup] = accountOption
+			.closest('.dropdown-menu')
+			.querySelectorAll('.dropdown-subheader');
+
+		expect(accountGroup).toHaveTextContent('Account');
+		expect(individualGroup).toHaveTextContent('Individual');
+	});
+
+	it('shows the account count for account segments', async () => {
+		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
+		API.individualSegment.search.mockReturnValue(
+			Promise.resolve(
+				data.mockSearch(data.mockSegment, 1, {
+					accountsCount: 1800,
+					individualCount: 2300,
+					lastMembershipUpdateDate: getTimestamp(),
+					segmentCategory: SegmentCategories.Account
+				})
+			)
+		);
+
+		render(<DefaultComponent />);
+
+		await waitForLoadingToBeRemoved(document.body);
+
+		const row = screen.getByText('Seattle0').closest('tr');
+
+		expect(within(row).getByText('Account')).toBeInTheDocument();
+		expect(within(row).getByText('1.8K accounts')).toBeInTheDocument();
+	});
+
+	it('shows the individual count for individual segments', async () => {
+		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
+		API.individualSegment.search.mockReturnValue(
+			Promise.resolve(
+				data.mockSearch(data.mockSegment, 1, {
+					accountsCount: 1800,
+					individualCount: 2300,
+					lastMembershipUpdateDate: getTimestamp(),
+					segmentCategory: SegmentCategories.Individual
+				})
+			)
+		);
+
+		render(<DefaultComponent />);
+
+		await waitForLoadingToBeRemoved(document.body);
+
+		const row = screen.getByText('Seattle0').closest('tr');
+
+		expect(within(row).getByText('Individual')).toBeInTheDocument();
+		expect(within(row).getByText('2.3K individuals')).toBeInTheDocument();
+	});
+
+	it('shows a dash as the membership of a segment without members', async () => {
+		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
+		API.individualSegment.search.mockReturnValue(
+			Promise.resolve(
+				data.mockSearch(data.mockSegment, 1, {
+					accountsCount: 0,
+					individualCount: 0,
+					lastMembershipUpdateDate: getTimestamp(),
+					segmentCategory: SegmentCategories.Individual
+				})
+			)
+		);
+
+		render(<DefaultComponent />);
+
+		await waitForLoadingToBeRemoved(document.body);
+
+		const row = screen.getByText('Seattle0').closest('tr');
+
+		expect(within(row).getByText('-')).toBeInTheDocument();
+		expect(within(row).queryByText('0 individuals')).toBeNull();
+	});
+
+	it('shows a dash as the membership of an account segment without accounts', async () => {
+		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
+		API.individualSegment.search.mockReturnValue(
+			Promise.resolve(
+				data.mockSearch(data.mockSegment, 1, {
+					accountsCount: 0,
+					individualCount: 2300,
+					lastMembershipUpdateDate: getTimestamp(),
+					segmentCategory: SegmentCategories.Account
+				})
+			)
+		);
+
+		render(<DefaultComponent />);
+
+		await waitForLoadingToBeRemoved(document.body);
+
+		const row = screen.getByText('Seattle0').closest('tr');
+
+		expect(within(row).getByText('-')).toBeInTheDocument();
+		expect(within(row).queryByText('0 accounts')).toBeNull();
+	});
+
+	it('shows both columns as processing when the segment has never been counted', async () => {
+		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
+		API.individualSegment.search.mockReturnValue(
+			Promise.resolve(
+				data.mockSearch(data.mockSegment, 1, {
+					accountsCount: 0,
+					individualCount: 0,
+					lastMembershipUpdateDate: null,
+					segmentCategory: SegmentCategories.Individual
+				})
+			)
+		);
+
+		render(<DefaultComponent />);
+
+		await waitForLoadingToBeRemoved(document.body);
+
+		const row = screen.getByText('Seattle0').closest('tr');
+
+		expect(within(row).getAllByText('Processing')).toHaveLength(2);
+		expect(within(row).queryByText('-')).toBeNull();
+	});
+
+	it('hides a stale count behind processing when the segment has never been counted', async () => {
+		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
+		API.individualSegment.search.mockReturnValue(
+			Promise.resolve(
+				data.mockSearch(data.mockSegment, 1, {
+					accountsCount: 1800,
+					individualCount: 2300,
+					lastMembershipUpdateDate: null,
+					segmentCategory: SegmentCategories.Individual
+				})
+			)
+		);
+
+		render(<DefaultComponent />);
+
+		await waitForLoadingToBeRemoved(document.body);
+
+		const row = screen.getByText('Seattle0').closest('tr');
+
+		expect(within(row).getAllByText('Processing')).toHaveLength(2);
+		expect(within(row).queryByText('2.3K individuals')).toBeNull();
+	});
+
+	it('shows the last membership update date', async () => {
+		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
+		API.individualSegment.search.mockReturnValue(
+			Promise.resolve(
+				data.mockSearch(data.mockSegment, 1, {
+					lastMembershipUpdateDate: getTimestamp()
+				})
+			)
+		);
+
+		render(<DefaultComponent />);
+
+		await waitForLoadingToBeRemoved(document.body);
+
+		const row = screen.getByText('Seattle0').closest('tr');
+
 		expect(
-			screen.queryByTestId('batch-segment-button')
-		).not.toBeInTheDocument();
+			within(row).getByText(
+				formatDateToTimeZone(getTimestamp(), getCustomDateTimeFormat())
+			)
+		).toBeInTheDocument();
+	});
+
+	it('shows the last membership update date as processing while it is not available', async () => {
+		API.projects.fetchFeatureUsages.mockResolvedValueOnce([]);
+		API.individualSegment.search.mockReturnValue(
+			Promise.resolve(
+				data.mockSearch(data.mockSegment, 1, {
+					lastMembershipUpdateDate: null
+				})
+			)
+		);
+
+		render(<DefaultComponent />);
+
+		await waitForLoadingToBeRemoved(document.body);
+
+		const row = screen.getByText('Seattle0').closest('tr');
+
+		expect(within(row).getAllByText('Processing')).toHaveLength(2);
 	});
 });

@@ -31,6 +31,7 @@ import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
+import com.liferay.portal.kernel.test.util.JAXRSWhiteboardTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -91,6 +92,8 @@ public abstract class BaseResourceFolderResourceTestCase {
 	public static void setUpClass() throws Exception {
 		_format = FastDateFormatFactoryUtil.getSimpleDateFormat(
 			"yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+		JAXRSWhiteboardTestUtil.ensureReady();
 	}
 
 	@Before
@@ -186,6 +189,7 @@ public abstract class BaseResourceFolderResourceTestCase {
 		ResourceFolder resourceFolder = randomResourceFolder();
 
 		resourceFolder.setExternalReferenceCode(regex);
+		resourceFolder.setFragmentSetExternalReferenceCode(regex);
 		resourceFolder.setName(regex);
 		resourceFolder.setParentResourceFolderExternalReferenceCode(regex);
 
@@ -196,6 +200,8 @@ public abstract class BaseResourceFolderResourceTestCase {
 		resourceFolder = ResourceFolderSerDes.toDTO(json);
 
 		Assert.assertEquals(regex, resourceFolder.getExternalReferenceCode());
+		Assert.assertEquals(
+			regex, resourceFolder.getFragmentSetExternalReferenceCode());
 		Assert.assertEquals(regex, resourceFolder.getName());
 		Assert.assertEquals(
 			regex,
@@ -295,7 +301,7 @@ public abstract class BaseResourceFolderResourceTestCase {
 
 		page = resourceFolderResource.getSiteFragmentSetResourceFoldersPage(
 			siteExternalReferenceCode, fragmentSetExternalReferenceCode,
-			Pagination.of(1, 10));
+			Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -553,7 +559,7 @@ public abstract class BaseResourceFolderResourceTestCase {
 
 		page = resourceFolderResource.getSiteResourceFolderResourceFoldersPage(
 			siteExternalReferenceCode, resourceFolderExternalReferenceCode,
-			Pagination.of(1, 10));
+			Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -775,7 +781,8 @@ public abstract class BaseResourceFolderResourceTestCase {
 				siteExternalReferenceCode, randomResourceFolder());
 
 		page = resourceFolderResource.getSiteResourceFoldersPage(
-			siteExternalReferenceCode, null, Pagination.of(1, 10));
+			siteExternalReferenceCode, null,
+			Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -1285,6 +1292,19 @@ public abstract class BaseResourceFolderResourceTestCase {
 				continue;
 			}
 
+			if (Objects.equals(
+					"fragmentSetExternalReferenceCode",
+					additionalAssertFieldName)) {
+
+				if (resourceFolder.getFragmentSetExternalReferenceCode() ==
+						null) {
+
+					valid = false;
+				}
+
+				continue;
+			}
+
 			if (Objects.equals("name", additionalAssertFieldName)) {
 				if (resourceFolder.getName() == null) {
 					valid = false;
@@ -1488,6 +1508,21 @@ public abstract class BaseResourceFolderResourceTestCase {
 				if (!Objects.deepEquals(
 						resourceFolder1.getFragmentSet(),
 						resourceFolder2.getFragmentSet())) {
+
+					return false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals(
+					"fragmentSetExternalReferenceCode",
+					additionalAssertFieldName)) {
+
+				if (!Objects.deepEquals(
+						resourceFolder1.getFragmentSetExternalReferenceCode(),
+						resourceFolder2.
+							getFragmentSetExternalReferenceCode())) {
 
 					return false;
 				}
@@ -1756,6 +1791,53 @@ public abstract class BaseResourceFolderResourceTestCase {
 				"Invalid entity field " + entityFieldName);
 		}
 
+		if (entityFieldName.equals("fragmentSetExternalReferenceCode")) {
+			Object object =
+				resourceFolder.getFragmentSetExternalReferenceCode();
+
+			String value = String.valueOf(object);
+
+			if (operator.equals("contains")) {
+				sb = new StringBundler();
+
+				sb.append("contains(");
+				sb.append(entityFieldName);
+				sb.append(",'");
+
+				if ((object != null) && (value.length() > 2)) {
+					sb.append(value.substring(1, value.length() - 1));
+				}
+				else {
+					sb.append(value);
+				}
+
+				sb.append("')");
+			}
+			else if (operator.equals("startswith")) {
+				sb = new StringBundler();
+
+				sb.append("startswith(");
+				sb.append(entityFieldName);
+				sb.append(",'");
+
+				if ((object != null) && (value.length() > 1)) {
+					sb.append(value.substring(0, value.length() - 1));
+				}
+				else {
+					sb.append(value);
+				}
+
+				sb.append("')");
+			}
+			else {
+				sb.append("'");
+				sb.append(value);
+				sb.append("'");
+			}
+
+			return sb.toString();
+		}
+
 		if (entityFieldName.equals("name")) {
 			Object object = resourceFolder.getName();
 
@@ -1906,6 +1988,8 @@ public abstract class BaseResourceFolderResourceTestCase {
 				dateCreated = RandomTestUtil.nextDate();
 				dateModified = RandomTestUtil.nextDate();
 				externalReferenceCode = StringUtil.toLowerCase(
+					RandomTestUtil.randomString());
+				fragmentSetExternalReferenceCode = StringUtil.toLowerCase(
 					RandomTestUtil.randomString());
 				name = StringUtil.toLowerCase(RandomTestUtil.randomString());
 				parentResourceFolderExternalReferenceCode =
@@ -2158,4 +2242,4 @@ public abstract class BaseResourceFolderResourceTestCase {
 			_resourceFolderResource;
 
 }
-// LIFERAY-REST-BUILDER-HASH:180874773
+// LIFERAY-REST-BUILDER-HASH:-1367045151

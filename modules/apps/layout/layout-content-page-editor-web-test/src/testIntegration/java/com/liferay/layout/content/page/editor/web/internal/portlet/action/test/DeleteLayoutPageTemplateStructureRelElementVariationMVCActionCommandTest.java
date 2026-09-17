@@ -59,12 +59,12 @@ public class
 		_layoutPageTemplateStructureRelElementVariationLocalService.
 			addOrUpdateLayoutPageTemplateStructureRelElementVariation(
 				externalReferenceCode, TestPropsValues.getUserId(),
-				group.getGroupId(),
-				new String[] {RandomTestUtil.randomString()},
-				Collections.emptyMap(), Collections.emptyMap(),
+				group.getGroupId(), RandomTestUtil.randomBoolean(),
+				RandomTestUtil.randomString(), Collections.emptyMap(),
 				Collections.emptyMap(), RandomTestUtil.randomString(),
 				layout.getPlid(), RandomTestUtil.randomString(),
 				RandomTestUtil.randomString(),
+				new String[] {RandomTestUtil.randomString()},
 				ServiceContextTestUtil.getServiceContext(
 					group, TestPropsValues.getUserId()));
 
@@ -79,8 +79,7 @@ public class
 			layoutPageTemplateStructureRelElementVariations.size());
 
 		_mvcActionCommand.processAction(
-			_getMockLiferayPortletActionRequest(
-				externalReferenceCode, group, layout),
+			_getMockLiferayPortletActionRequest(externalReferenceCode, group),
 			new MockLiferayPortletActionResponse());
 
 		layoutPageTemplateStructureRelElementVariations =
@@ -94,15 +93,13 @@ public class
 	}
 
 	private MockLiferayPortletActionRequest _getMockLiferayPortletActionRequest(
-		String externalReferenceCode, Group group, Layout layout) {
+		String externalReferenceCode, Group group) {
 
 		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
 			new MockLiferayPortletActionRequest();
 
 		mockLiferayPortletActionRequest.addParameter(
 			"externalReferenceCode", externalReferenceCode);
-		mockLiferayPortletActionRequest.addParameter(
-			"plid", String.valueOf(layout.getPlid()));
 
 		ThemeDisplay themeDisplay = new ThemeDisplay();
 

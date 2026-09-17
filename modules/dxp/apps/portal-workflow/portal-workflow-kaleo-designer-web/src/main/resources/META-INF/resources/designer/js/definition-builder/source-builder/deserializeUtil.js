@@ -16,13 +16,23 @@ import {
 } from './utils';
 import XMLDefinition from './xmlDefinition';
 
-function parseJSONArray(value) {
+function parseJSON(value, defaultValue) {
 	try {
 		return JSON.parse(value);
 	}
 	catch (error) {
-		return [];
+		return defaultValue;
 	}
+}
+
+function parseRAG(value) {
+	const rag = parseJSON(value, {});
+
+	if (Array.isArray(rag) && !rag.length) {
+		return {};
+	}
+
+	return rag;
 }
 
 export default function DeserializeUtil(content) {
@@ -106,9 +116,60 @@ DeserializeUtil.prototype = {
 					script: node.script,
 				};
 
+				if (type === 'ai-decision' || type === 'llm') {
+					data.inputVariables = parseJSON(
+						node['input-variables'],
+						[]
+					);
+
+					data.outputVariables = parseJSON(
+						node['output-variables'],
+						[]
+					);
+
+					data.prompt = node.prompt || '';
+
+					data.rag = parseRAG(node.rag);
+
+					data.tools = parseJSON(node.tools, []);
+
+					data.userMessage = node['user-message'] || '';
+				}
+
+				if (type === 'ai-hub-agent') {
+					data.agentDefinitionExternalReferenceCode =
+						node['agent-definition-external-reference-code'] || '';
+
+					data.timeout = node.timeout || '';
+				}
+
 				if (type === 'condition') {
 					data.scriptLanguage =
 						node.scriptLanguage || DEFAULT_LANGUAGE;
+				}
+
+				if (type === 'http-request') {
+					data.httpMethod = node['http-method'] || 'GET';
+
+					data.inputVariables = parseJSON(
+						node['input-variables'],
+						[]
+					);
+
+					data.outputVariables = parseJSON(
+						node['output-variables'],
+						[]
+					);
+
+					data.requestBody = node['request-body'] || '';
+
+					data.timeout = node.timeout || '';
+
+					data.url = node.url || '';
+				}
+
+				if (type === 'service') {
+					data.javaDelegate = node['java-delegate'] || '';
 				}
 
 				if (type === 'task') {
@@ -121,46 +182,6 @@ DeserializeUtil.prototype = {
 
 					data.scriptLanguage =
 						node.scriptLanguage || DEFAULT_LANGUAGE;
-				}
-
-				if (type === 'llm' || type === 'ai-decision') {
-					data.inputVariables = parseJSONArray(
-						node['input-variables']
-					);
-
-					data.outputVariables = parseJSONArray(
-						node['output-variables']
-					);
-
-					data.prompt = node.prompt || '';
-
-					data.rag = parseJSONArray(node.rag);
-
-					data.tools = parseJSONArray(node.tools);
-
-					data.userMessage = node['user-message'] || '';
-				}
-
-				if (type === 'http-request') {
-					data.httpMethod = node['http-method'] || 'GET';
-
-					data.inputVariables = parseJSONArray(
-						node['input-variables']
-					);
-
-					data.outputVariables = parseJSONArray(
-						node['output-variables']
-					);
-
-					data.requestBody = node['request-body'] || '';
-
-					data.timeout = node.timeout || '';
-
-					data.url = node.url || '';
-				}
-
-				if (type === 'service') {
-					data.javaDelegate = node['java-delegate'] || '';
 				}
 
 				data.actions = node.actions?.length && parseActions(node);

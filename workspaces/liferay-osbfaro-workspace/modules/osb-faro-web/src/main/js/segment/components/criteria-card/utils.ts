@@ -1,10 +1,10 @@
 import moment from 'moment';
-import {formatDateToTimeZone} from 'shared/util/date';
+import {formatDateToTimeZone, getCustomDateTimeFormat} from 'shared/util/date';
 import {formatTime} from 'shared/util/time';
 import {
 	GEOLOCATION_OPTIONS,
+	getCustomInputOperators,
 	INPUT_DATE_FORMAT,
-	INPUT_DISPLAY_DATE_TIME_FORMAT,
 	isKnown,
 	isUnknown,
 	PropertyTypes,
@@ -51,6 +51,16 @@ export function getOperatorLabel(
 		case PropertyTypes.SessionGeolocation:
 			supportedOperators = GEOLOCATION_OPTIONS;
 			break;
+
+		// Channel and UTM Parameter compare their value with the operators
+		// their input offers rather than with the ones their own type maps
+		// to, which describe the enclosing "sessions.filter" call instead.
+
+		case PropertyTypes.SessionChannel:
+		case PropertyTypes.SessionUtmParameter:
+			supportedOperators = getCustomInputOperators(type);
+			break;
+		case PropertyTypes.AccountSelectText:
 		case PropertyTypes.Behavior:
 		case PropertyTypes.Boolean:
 		case PropertyTypes.Date:
@@ -100,8 +110,11 @@ export function maybeFormatValue(
 		case PropertyTypes.AccountText:
 		case PropertyTypes.Behavior:
 		case PropertyTypes.Interest:
+		case PropertyTypes.SearchTerm:
+		case PropertyTypes.SessionChannel:
 		case PropertyTypes.SessionGeolocation:
 		case PropertyTypes.SessionText:
+		case PropertyTypes.SessionUtmParameter:
 		case PropertyTypes.Text:
 			return `"${value}"`;
 		case PropertyTypes.Boolean:
@@ -112,7 +125,7 @@ export function maybeFormatValue(
 		case PropertyTypes.SessionDateTime:
 			return formatDateToTimeZone(
 				value,
-				INPUT_DISPLAY_DATE_TIME_FORMAT,
+				getCustomDateTimeFormat(),
 				timeZoneId
 			);
 		case PropertyTypes.Duration:

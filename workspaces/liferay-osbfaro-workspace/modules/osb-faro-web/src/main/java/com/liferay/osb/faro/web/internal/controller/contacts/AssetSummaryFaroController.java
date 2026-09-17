@@ -33,13 +33,18 @@ public class AssetSummaryFaroController extends BaseFaroController {
 	public FaroFDSResultsDisplay<AssetSummary>
 			getAssetSummaryFaroFDSResultsDisplay(
 				@PathParam("groupId") long groupId,
+				@QueryParam("accountId") String accountId,
 				@QueryParam("channelId") long channelId,
 				@QueryParam("filter") String filterString,
+				@QueryParam("individualId") String individualId,
 				@QueryParam("objectType") String objectType,
 				@QueryParam("page") int page,
 				@DefaultValue("20") @QueryParam("pageSize") int pageSize,
+				@QueryParam("rangeEnd") String rangeEnd,
 				@DefaultValue("90") @QueryParam("rangeKey") int rangeKey,
+				@QueryParam("rangeStart") String rangeStart,
 				@QueryParam("search") String search,
+				@QueryParam("segmentId") String segmentId,
 				@QueryParam("selectedMetric") String selectedMetric,
 				@DefaultValue(StringPool.BLANK) @QueryParam("sort") String
 					sortString)
@@ -48,7 +53,8 @@ public class AssetSummaryFaroController extends BaseFaroController {
 		return new FaroFDSResultsDisplay<>(
 			contactsEngineClient.getAssetSummaries(
 				faroProjectLocalService.getFaroProjectByGroupId(groupId),
-				channelId, filterString, search, objectType, rangeKey,
+				accountId, channelId, filterString, individualId, search,
+				objectType, rangeEnd, rangeKey, rangeStart, segmentId,
 				selectedMetric, page, pageSize, sortString),
 			AssetSummaryDisplay::new, page, pageSize);
 	}

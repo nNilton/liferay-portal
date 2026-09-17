@@ -124,6 +124,10 @@ public class CPInstanceHelperImpl implements CPInstanceHelper {
 		try {
 			CommerceContext commerceContext = CommerceContextThreadLocal.get();
 
+			if (commerceContext == null) {
+				return null;
+			}
+
 			CommerceMoney unitPriceCommerceMoney =
 				_commerceProductPriceCalculation.getUnitPrice(
 					cpInstance.getCPInstanceId(), BigDecimal.ONE,
@@ -145,6 +149,10 @@ public class CPInstanceHelperImpl implements CPInstanceHelper {
 	public BigDecimal fetchCPInstanceUnitPromoPrice(CPInstance cpInstance) {
 		try {
 			CommerceContext commerceContext = CommerceContextThreadLocal.get();
+
+			if (commerceContext == null) {
+				return null;
+			}
 
 			CommerceMoney unitPromoPriceCommerceMoney =
 				_commerceProductPriceCalculation.getPromoPrice(
@@ -770,37 +778,20 @@ public class CPInstanceHelperImpl implements CPInstanceHelper {
 		for (CPInstanceOptionValueRel cpInstanceOptionValueRel :
 				cpDefinitionCPInstanceOptionValueRels) {
 
-			if (!cpDefinitionOptionRelCPDefinitionOptionValueRelIds.containsKey(
-					cpInstanceOptionValueRel.getCPDefinitionOptionRelId())) {
-
-				continue;
-			}
-
 			List<Long> cpDefinitionOptionValueIds =
 				cpDefinitionOptionRelCPDefinitionOptionValueRelIds.get(
 					cpInstanceOptionValueRel.getCPDefinitionOptionRelId());
 
-			if (!cpDefinitionOptionValueIds.contains(
+			if ((cpDefinitionOptionValueIds == null) ||
+				!cpDefinitionOptionValueIds.contains(
 					cpInstanceOptionValueRel.
 						getCPDefinitionOptionValueRelId())) {
 
 				continue;
 			}
 
-			if (cpInstanceCPInstanceOptionValueHits.containsKey(
-					cpInstanceOptionValueRel.getCPInstanceId())) {
-
-				int value = cpInstanceCPInstanceOptionValueHits.get(
-					cpInstanceOptionValueRel.getCPInstanceId());
-
-				cpInstanceCPInstanceOptionValueHits.put(
-					cpInstanceOptionValueRel.getCPInstanceId(), value + 1);
-
-				continue;
-			}
-
-			cpInstanceCPInstanceOptionValueHits.put(
-				cpInstanceOptionValueRel.getCPInstanceId(), 1);
+			cpInstanceCPInstanceOptionValueHits.merge(
+				cpInstanceOptionValueRel.getCPInstanceId(), 1, Integer::sum);
 		}
 
 		if (cpInstanceCPInstanceOptionValueHits.isEmpty()) {
@@ -852,37 +843,20 @@ public class CPInstanceHelperImpl implements CPInstanceHelper {
 		for (CPInstanceOptionValueRel cpInstanceOptionValueRel :
 				cpDefinitionCPInstanceOptionValueRels) {
 
-			if (!cpDefinitionOptionRelCPDefinitionOptionValueRelIds.containsKey(
-					cpInstanceOptionValueRel.getCPDefinitionOptionRelId())) {
-
-				continue;
-			}
-
 			List<Long> cpDefinitionOptionValueIds =
 				cpDefinitionOptionRelCPDefinitionOptionValueRelIds.get(
 					cpInstanceOptionValueRel.getCPDefinitionOptionRelId());
 
-			if (!cpDefinitionOptionValueIds.contains(
+			if ((cpDefinitionOptionValueIds == null) ||
+				!cpDefinitionOptionValueIds.contains(
 					cpInstanceOptionValueRel.
 						getCPDefinitionOptionValueRelId())) {
 
 				continue;
 			}
 
-			if (cpInstanceCPInstanceOptionValueHits.containsKey(
-					cpInstanceOptionValueRel.getCPInstanceId())) {
-
-				int value = cpInstanceCPInstanceOptionValueHits.get(
-					cpInstanceOptionValueRel.getCPInstanceId());
-
-				cpInstanceCPInstanceOptionValueHits.put(
-					cpInstanceOptionValueRel.getCPInstanceId(), value + 1);
-
-				continue;
-			}
-
-			cpInstanceCPInstanceOptionValueHits.put(
-				cpInstanceOptionValueRel.getCPInstanceId(), 1);
+			cpInstanceCPInstanceOptionValueHits.merge(
+				cpInstanceOptionValueRel.getCPInstanceId(), 1, Integer::sum);
 		}
 
 		if (cpInstanceCPInstanceOptionValueHits.isEmpty()) {

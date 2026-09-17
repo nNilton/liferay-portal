@@ -5,13 +5,13 @@
 
 package com.liferay.headless.admin.fragment.internal.resource.v1_0;
 
+import com.liferay.fragment.constants.FragmentActionKeys;
 import com.liferay.fragment.constants.FragmentConstants;
 import com.liferay.fragment.constants.FragmentPortletKeys;
 import com.liferay.fragment.exception.RequiredFragmentEntryVersionException;
 import com.liferay.fragment.exception.UnsupportedUnpublishFragmentEntryOperationException;
 import com.liferay.fragment.model.FragmentCollection;
 import com.liferay.fragment.model.FragmentEntry;
-import com.liferay.fragment.service.FragmentCollectionLocalService;
 import com.liferay.fragment.service.FragmentCollectionService;
 import com.liferay.fragment.service.FragmentEntryLocalService;
 import com.liferay.fragment.service.FragmentEntryService;
@@ -30,11 +30,13 @@ import com.liferay.headless.common.spi.util.GroupUtil;
 import com.liferay.portal.kernel.exception.NoSuchModelException;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.Language;
-import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.UserConstants;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.filter.Filter;
+import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
+import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermission;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -131,6 +133,10 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 			true, true, contextCompany.getCompanyId(),
 			siteExternalReferenceCode);
 
+		if (!_hasManageFragmentEntriesPermission(groupId)) {
+			return Page.of(Collections.emptyList());
+		}
+
 		FragmentCollection fragmentCollection =
 			_fragmentCollectionService.
 				getFragmentCollectionByExternalReferenceCode(
@@ -149,12 +155,15 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 
 		EnabledUtil.checkEnabled(contextCompany);
 
-		return _getFragmentsPage(
-			filter, 0,
-			GroupUtil.getGroupId(
-				true, true, contextCompany.getCompanyId(),
-				siteExternalReferenceCode),
-			pagination);
+		long groupId = GroupUtil.getGroupId(
+			true, true, contextCompany.getCompanyId(),
+			siteExternalReferenceCode);
+
+		if (!_hasManageFragmentEntriesPermission(groupId)) {
+			return Page.of(Collections.emptyList());
+		}
+
+		return _getFragmentsPage(filter, 0, groupId, pagination);
 	}
 
 	@Override
@@ -169,8 +178,7 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 
 		return _addFragmentEntry(
 			fragment.getExternalReferenceCode(), fragment,
-			_getOrAddFragmentCollection(fragment.getFragmentSet(), groupId),
-			groupId);
+			_getOrAddFragmentCollection(fragment, groupId), groupId);
 	}
 
 	@Override
@@ -227,8 +235,7 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 
 			return _addFragmentEntry(
 				fragmentExternalReferenceCode, fragment,
-				_getOrAddFragmentCollection(fragment.getFragmentSet(), groupId),
-				groupId);
+				_getOrAddFragmentCollection(fragment, groupId), groupId);
 		}
 	}
 
@@ -317,6 +324,8 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 				searchContext.setAttribute("headListable", Boolean.TRUE);
 				searchContext.setCompanyId(contextCompany.getCompanyId());
 				searchContext.setGroupIds(new long[] {groupId});
+				searchContext.setUserId(UserConstants.USER_ID_DEFAULT);
+				searchContext.setVulcanCheckPermissions(false);
 			},
 			null,
 			document -> {
@@ -351,42 +360,17 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 	}
 
 	private FragmentCollection _getOrAddFragmentCollection(
-			FragmentSet fragmentSet, long groupId)
+			Fragment fragment, long groupId)
 		throws Exception {
 
-		if ((fragmentSet == null) ||
-			Validator.isNull(fragmentSet.getExternalReferenceCode())) {
-
-			throw new IllegalArgumentException(
-				_language.get(
-					contextAcceptLanguage.getPreferredLocale(),
-					"a-fragment-set-external-reference-code-is-required-to-" +
-						"create-a-new-fragment"));
-		}
-
-		FragmentCollection fragmentCollection =
-			_fragmentCollectionLocalService.
-				fetchFragmentCollectionByExternalReferenceCode(
-					fragmentSet.getExternalReferenceCode(), groupId);
-
-		if (fragmentCollection != null) {
-			return fragmentCollection;
-		}
-
-		if (!LazyReferencingThreadLocal.isEnabled()) {
-			throw new IllegalArgumentException(
-				_language.format(
-					contextAcceptLanguage.getPreferredLocale(),
-					"no-fragment-set-was-found-with-external-reference-code-x",
-					fragmentSet.getExternalReferenceCode()));
-		}
-
-		return FragmentSetUtil.addFragmentCollection(
-			fragmentSet,
-			ServiceContextUtil.getServiceContext(
-				contextCompany.getCompanyId(), fragmentSet.getDateCreated(),
-				groupId, contextHttpServletRequest,
-				fragmentSet.getDateModified(), contextUser.getUserId()));
+		return FragmentSetUtil.getOrAddFragmentCollection(
+			contextCompany.getCompanyId(), fragment.getFragmentSet(),
+			fragment.getFragmentSetExternalReferenceCode(), groupId,
+			contextHttpServletRequest,
+			"a-fragment-set-external-reference-code-is-required-to-create-a-" +
+				"new-fragment",
+			contextAcceptLanguage.getPreferredLocale(),
+			contextUser.getUserId());
 	}
 
 	private long _getPreviewFileEntryId(Fragment fragment, long groupId)
@@ -425,6 +409,12 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 				(Object[])FieldTypeUtil.toInternalFieldTypes(
 					formFragment.getFieldTypes()))
 		).toString();
+	}
+
+	private boolean _hasManageFragmentEntriesPermission(long groupId) {
+		return _portletResourcePermission.contains(
+			PermissionThreadLocal.getPermissionChecker(), groupId,
+			FragmentActionKeys.MANAGE_FRAGMENT_ENTRIES);
 	}
 
 	private Fragment _toFragment(FragmentEntry fragmentEntry) throws Exception {
@@ -486,11 +476,13 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 
 		FragmentSet fragmentSet = fragment.getFragmentSet();
 
-		if ((fragmentSet != null) &&
-			Validator.isNotNull(fragmentSet.getExternalReferenceCode())) {
+		if (((fragmentSet != null) &&
+			 Validator.isNotNull(fragmentSet.getExternalReferenceCode())) ||
+			Validator.isNotNull(
+				fragment.getFragmentSetExternalReferenceCode())) {
 
 			FragmentCollection fragmentCollection = _getOrAddFragmentCollection(
-				fragmentSet, groupId);
+				fragment, groupId);
 
 			fragmentCollectionId = fragmentCollection.getFragmentCollectionId();
 		}
@@ -551,9 +543,6 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 	private DTOConverterRegistry _dtoConverterRegistry;
 
 	@Reference
-	private FragmentCollectionLocalService _fragmentCollectionLocalService;
-
-	@Reference
 	private FragmentCollectionService _fragmentCollectionService;
 
 	@Reference(
@@ -569,5 +558,10 @@ public class FragmentResourceImpl extends BaseFragmentResourceImpl {
 
 	@Reference
 	private Language _language;
+
+	@Reference(
+		target = "(resource.name=" + FragmentConstants.RESOURCE_NAME + ")"
+	)
+	private PortletResourcePermission _portletResourcePermission;
 
 }

@@ -9,7 +9,7 @@ import {modalTypes} from 'shared/actions/modals';
 import {Routes, toRoute} from 'shared/util/router';
 import {Text} from '@clayui/core';
 import {updateSearchParams} from 'settings/components/base-page/utis';
-import {useHistory} from 'react-router-dom';
+import {useHistoryAdapter} from 'shared/hooks/useHistoryAdapter';
 import {useWizardPage} from '../../base-page/WizardPageContext';
 import {WizardPageButtonGroup} from 'settings/components/base-page/WizardPageButtonGroup';
 
@@ -28,7 +28,7 @@ const ConnectSalesforceStep = ({
 	onNext,
 	open,
 }: IConnectSalesforceStepProps) => {
-	const history = useHistory();
+	const history = useHistoryAdapter();
 	const {dataSource, refetchDataSource} = useWizardPage();
 
 	if (!dataSource) {
@@ -85,7 +85,7 @@ const ConnectSalesforceStep = ({
 							message: (
 								<Text as="p" size={4}>
 									{Liferay.Language.get(
-										'this-action-will-stop-syncing-data-from-salesforce-to-this-analytics-cloud-workspace.-the-data-that-was-already-synced-will-remain-available-in-the-properties-the-data-source-was-connected-to.-are-you-sure-you-want-to-continue'
+										'this-action-will-stop-syncing-data-from-this-data-source-to-this-liferay-data-platform-workspace.-the-data-that-was-already-synced-will-remain-available-in-the-properties-the-data-source-was-connected-to.-are-you-sure-you-want-to-continue'
 									)}
 								</Text>
 							),

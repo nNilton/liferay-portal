@@ -1,3 +1,14 @@
+variable "argo_workflows_domain_config" {
+	default={}
+	type=object({
+		hostname=optional(string, null)
+		tls_external_secret_name=optional(string, null)
+	})
+}
+variable "argo_workflows_namespace" {
+	default="argo-workflows-system"
+	type=string
+}
 variable "argocd_domain_config" {
 	default={}
 	type=object({
@@ -19,6 +30,21 @@ variable "deployment_name" {
 		condition=can(regex("^[a-z][a-z0-9-]{2,23}$", var.deployment_name))
 		error_message="The variable \"deployment_name\" must be 3-24 characters, start with a lowercase letter, and contain only lowercase letters, numbers, and hyphens."
 	}
+}
+variable "dxp_operator_config" {
+	default={}
+	type=object(
+		{
+			heartbeat_interval=optional(string, null)
+			image=optional(
+				object(
+					{
+						repository=optional(string, null)
+						tag=optional(string, null)
+					}), {})
+			provisioning_base_url=optional(string, null)
+			retry_max_delay=optional(string, null)
+		})
 }
 variable "external_secret_store_provider_hcl" {
 	default=null

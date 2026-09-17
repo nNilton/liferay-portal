@@ -47,7 +47,6 @@ import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.BaseModelListener;
-import com.liferay.portal.kernel.model.ClassName;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
@@ -66,7 +65,6 @@ import com.liferay.portal.kernel.model.VirtualHost;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.portlet.PortalPreferences;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
-import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.LayoutPrototypeLocalService;
@@ -87,6 +85,7 @@ import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.randomizerbumpers.NumericStringRandomizerBumper;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DataGuard;
+import com.liferay.portal.kernel.test.util.DataCleanupTestUtil;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.PropsValuesTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
@@ -111,7 +110,6 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.model.impl.CompanyImpl;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -182,6 +180,8 @@ public class CompanyLocalServiceTest {
 
 		_bundleContext = bundle.getBundleContext();
 
+		_classNamesSavepointSafeCloseable =
+			DataCleanupTestUtil.getClassNamesSavepointSafeCloseable();
 		_connection = DataAccess.getConnection();
 
 		_db = DBManagerUtil.getDB();
@@ -195,12 +195,9 @@ public class CompanyLocalServiceTest {
 
 		_dbPartitionDB = ReflectionTestUtil.getFieldValue(
 			DBPartitionUtil.class, "_dbPartitionDB");
+		_modelListeners = _registerModelListeners();
 		_safeCloseable = CompanyThreadLocal.setCompanyIdWithSafeCloseable(
 			PortalInstancePool.getDefaultCompanyId());
-
-		_initializeClassNames();
-
-		_modelListeners = _registerModelListeners();
 
 		_deletedCompany = _addCompany();
 
@@ -228,7 +225,8 @@ public class CompanyLocalServiceTest {
 
 	@Before
 	public void setUp() throws Exception {
-		_initializeClassNames();
+		_classNamesSavepointSafeCloseable =
+			DataCleanupTestUtil.getClassNamesSavepointSafeCloseable();
 	}
 
 	@After
@@ -861,7 +859,6 @@ public class CompanyLocalServiceTest {
 			PortalInstancePool.getDefaultCompanyId());
 	}
 
-	@FeatureFlag("LPD-11342")
 	@Test
 	public void testExportCompany() throws Exception {
 		Assume.assumeTrue(_db.isSupportsDBPartition());
@@ -882,12 +879,12 @@ public class CompanyLocalServiceTest {
 			Assert.assertTrue(
 				_dbPartitionDB.existsPartition(
 					_connection,
-					CompanyLocalServiceTestUtil.getExportedPartitionName(
+					DBPartitionUtil.getExportedPartitionName(
 						_company.getCompanyId())));
 
 			CompanyLocalServiceTestUtil.checkStandaloneDBPartitionTables(
 				_connection, _dbPartitionDB,
-				CompanyLocalServiceTestUtil.getExportedPartitionName(
+				DBPartitionUtil.getExportedPartitionName(
 					_company.getCompanyId()),
 				"Company", "VirtualHost");
 
@@ -905,12 +902,11 @@ public class CompanyLocalServiceTest {
 		finally {
 			_db.runSQL(
 				_dbPartitionDB.getDropPartitionSQL(
-					CompanyLocalServiceTestUtil.getExportedPartitionName(
+					DBPartitionUtil.getExportedPartitionName(
 						_company.getCompanyId())));
 		}
 	}
 
-	@FeatureFlag("LPD-11342")
 	@Test
 	public void testExportCompanyDefaultCompany() {
 		Assume.assumeTrue(_db.isSupportsDBPartition());
@@ -926,7 +922,47 @@ public class CompanyLocalServiceTest {
 		}
 	}
 
-	@FeatureFlag("LPD-11342")
+	@Test
+	public void testExportCompanyExistingExportedPartition() throws Exception {
+		Assume.assumeTrue(_db.isSupportsDBPartition());
+
+		String exportedPartitionName = DBPartitionUtil.getExportedPartitionName(
+			_company.getCompanyId());
+
+		try {
+			_companyLocalService.exportCompany(_company.getCompanyId());
+
+			Assert.assertTrue(
+				_dbPartitionDB.existsPartition(
+					_connection, exportedPartitionName));
+
+			IllegalArgumentException illegalArgumentException =
+				Assert.assertThrows(
+					IllegalArgumentException.class,
+					() -> _companyLocalService.exportCompany(
+						_company.getCompanyId()));
+
+			Assert.assertEquals(
+				StringBundler.concat(
+					"Database partition ", exportedPartitionName,
+					" already exists. Drop it before exporting company ",
+					_company.getCompanyId(), " again"),
+				illegalArgumentException.getMessage());
+
+			Assert.assertTrue(
+				_dbPartitionDB.existsPartition(
+					_connection, exportedPartitionName));
+
+			CompanyLocalServiceTestUtil.checkStandaloneDBPartitionTables(
+				_connection, _dbPartitionDB, exportedPartitionName, "Company",
+				"VirtualHost");
+		}
+		finally {
+			_db.runSQL(
+				_dbPartitionDB.getDropPartitionSQL(exportedPartitionName));
+		}
+	}
+
 	@Test
 	public void testExportCompanyWhenDBPartitionUtilFails() throws Exception {
 		Assume.assumeTrue(_db.isSupportsDBPartition());
@@ -968,31 +1004,14 @@ public class CompanyLocalServiceTest {
 			Assert.assertFalse(
 				_dbPartitionDB.existsPartition(
 					_connection,
-					CompanyLocalServiceTestUtil.getExportedPartitionName(
+					DBPartitionUtil.getExportedPartitionName(
 						_company.getCompanyId())));
 		}
 		finally {
 			_db.runSQL(
 				_dbPartitionDB.getDropPartitionSQL(
-					CompanyLocalServiceTestUtil.getExportedPartitionName(
+					DBPartitionUtil.getExportedPartitionName(
 						_company.getCompanyId())));
-		}
-	}
-
-	@Test
-	public void testExportCompanyWithoutFF() {
-		try {
-			_companyLocalService.exportCompany(
-				PortalInstancePool.getDefaultCompanyId());
-
-			Assert.fail();
-		}
-		catch (Exception exception) {
-			Assert.assertTrue(
-				exception instanceof UnsupportedOperationException);
-
-			Assert.assertEquals(
-				"Feature flag LPD-11342 is disabled", exception.getMessage());
 		}
 	}
 
@@ -1367,14 +1386,7 @@ public class CompanyLocalServiceTest {
 	}
 
 	private static void _cleanUpData() throws Exception {
-		List<ClassName> classNames = ListUtil.remove(
-			_classNameLocalService.getClassNames(
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS),
-			_classNames);
-
-		for (ClassName className : classNames) {
-			_classNameLocalService.deleteClassName(className);
-		}
+		_classNamesSavepointSafeCloseable.close();
 
 		_resetBackgroundTaskThreadLocal();
 
@@ -1395,11 +1407,6 @@ public class CompanyLocalServiceTest {
 		serviceContext.setCompanyId(companyId);
 
 		return serviceContext;
-	}
-
-	private static void _initializeClassNames() throws Exception {
-		_classNames = _classNameLocalService.getClassNames(
-			QueryUtil.ALL_POS, QueryUtil.ALL_POS);
 	}
 
 	private static List<String> _registerModelListeners() {
@@ -1572,7 +1579,7 @@ public class CompanyLocalServiceTest {
 					"COMPANY_MX_UPDATE", mailMxUpdate);
 			SafeCloseable safeCloseable2 =
 				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
-					_company.getCompanyId())) {
+					PortalInstancePool.getDefaultCompanyId())) {
 
 			_company = _companyLocalService.updateCompany(
 				_company.getCompanyId(), _company.getVirtualHostname(), mx,
@@ -1594,20 +1601,27 @@ public class CompanyLocalServiceTest {
 			Assert.assertTrue(mailMxUpdate);
 		}
 		finally {
-			_company = _companyLocalService.updateCompany(
-				_company.getCompanyId(), _company.getVirtualHostname(),
-				originalMx, _company.getMaxUsers(), _company.isActive());
+			try (SafeCloseable safeCloseable =
+					CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+						PortalInstancePool.getDefaultCompanyId())) {
+
+				_company = _companyLocalService.updateCompany(
+					_company.getCompanyId(), _company.getVirtualHostname(),
+					originalMx, _company.getMaxUsers(), _company.isActive());
+			}
 		}
 	}
 
 	private void _testUpdateCompanyNames(boolean expectFailure)
 		throws Exception {
 
-		String name = _company.getName();
-
 		try (SafeCloseable safeCloseable =
 				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
 					_company.getCompanyId())) {
+
+			_company = _companyLocalService.getCompany(_company.getCompanyId());
+
+			String name = _company.getName();
 
 			Group group = null;
 
@@ -1656,15 +1670,23 @@ public class CompanyLocalServiceTest {
 					CompanyThreadLocal.setCompanyIdWithSafeCloseable(
 						company.getCompanyId())) {
 
+				String legalName = RandomTestUtil.randomString();
+
 				company = _companyLocalService.updateCompany(
 					company.getCompanyId(), company.getVirtualHostname(),
 					company.getMx(), company.getHomeURL(), true, null, name,
-					company.getLegalName(), company.getLegalId(),
-					company.getLegalType(), company.getSicCode(),
-					company.getTickerSymbol(), company.getIndustry(),
-					company.getType(), company.getSize());
+					legalName, company.getLegalId(), company.getLegalType(),
+					company.getSicCode(), company.getTickerSymbol(),
+					company.getIndustry(), company.getType(),
+					company.getSize());
 
 				Assert.assertFalse(expectFailure);
+
+				company = _companyLocalService.getCompany(
+					company.getCompanyId());
+
+				Assert.assertEquals(legalName, company.getLegalName());
+				Assert.assertEquals(name, company.getName());
 			}
 			catch (CompanyNameException companyNameException) {
 				if (_log.isDebugEnabled()) {
@@ -1733,11 +1755,7 @@ public class CompanyLocalServiceTest {
 		CompanyLocalServiceTest.class);
 
 	private static BundleContext _bundleContext;
-
-	@Inject
-	private static ClassNameLocalService _classNameLocalService;
-
-	private static List<ClassName> _classNames;
+	private static SafeCloseable _classNamesSavepointSafeCloseable;
 	private static Company _company;
 
 	@Inject

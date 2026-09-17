@@ -5,6 +5,8 @@
 
 package com.liferay.headless.commerce.admin.catalog.internal.dto.v1_0.converter;
 
+import com.liferay.account.model.AccountEntry;
+import com.liferay.account.service.AccountEntryLocalService;
 import com.liferay.commerce.currency.model.CommerceCurrency;
 import com.liferay.commerce.currency.service.CommerceCurrencyLocalService;
 import com.liferay.commerce.product.model.CommerceCatalog;
@@ -20,7 +22,10 @@ import org.osgi.service.component.annotations.Reference;
  * @author Alessio Antonio Rendina
  */
 @Component(
-	property = "dto.class.name=com.liferay.commerce.product.model.CommerceCatalog",
+	property = {
+		"default=true",
+		"dto.class.name=com.liferay.commerce.product.model.CommerceCatalog"
+	},
 	service = DTOConverter.class
 )
 public class CatalogDTOConverter
@@ -39,6 +44,8 @@ public class CatalogDTOConverter
 			_commerceCatalogService.getCommerceCatalog(
 				(Long)dtoConverterContext.getId());
 
+		AccountEntry accountEntry = _accountEntryLocalService.fetchAccountEntry(
+			commerceCatalog.getAccountEntryId());
 		CommerceCurrency commerceCurrency =
 			_commerceCurrencyLocalService.getCommerceCurrency(
 				commerceCatalog.getCompanyId(),
@@ -46,7 +53,23 @@ public class CatalogDTOConverter
 
 		return new Catalog() {
 			{
+				setAccountExternalReferenceCode(
+					() -> {
+						if (accountEntry == null) {
+							return null;
+						}
+
+						return accountEntry.getExternalReferenceCode();
+					});
 				setAccountId(commerceCatalog::getAccountEntryId);
+				setAccountType(
+					() -> {
+						if (accountEntry == null) {
+							return null;
+						}
+
+						return AccountType.create(accountEntry.getType());
+					});
 				setActions(dtoConverterContext::getActions);
 				setCurrencyCode(commerceCurrency::getCode);
 				setCurrencyExternalReferenceCode(
@@ -62,6 +85,9 @@ public class CatalogDTOConverter
 			}
 		};
 	}
+
+	@Reference
+	private AccountEntryLocalService _accountEntryLocalService;
 
 	@Reference
 	private CommerceCatalogService _commerceCatalogService;

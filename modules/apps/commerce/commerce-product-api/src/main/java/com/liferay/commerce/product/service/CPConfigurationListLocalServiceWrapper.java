@@ -493,6 +493,17 @@ public class CPConfigurationListLocalServiceWrapper
 			groupId);
 	}
 
+	@Override
+	public CPConfigurationList getOrAddEmptyCPConfigurationList(
+			String externalReferenceCode, long companyId, long userId,
+			long groupId)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _cpConfigurationListLocalService.
+			getOrAddEmptyCPConfigurationList(
+				externalReferenceCode, companyId, userId, groupId);
+	}
+
 	/**
 	 * Returns the OSGi service identifier.
 	 *
@@ -556,6 +567,15 @@ public class CPConfigurationListLocalServiceWrapper
 	}
 
 	@Override
+	public CPConfigurationList updateExternalReferenceCode(
+			long cpConfigurationListId, String externalReferenceCode)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _cpConfigurationListLocalService.updateExternalReferenceCode(
+			cpConfigurationListId, externalReferenceCode);
+	}
+
+	@Override
 	public BasePersistence<?> getBasePersistence() {
 		return _cpConfigurationListLocalService.getBasePersistence();
 	}
@@ -595,4 +615,4 @@ public class CPConfigurationListLocalServiceWrapper
 	private CPConfigurationListLocalService _cpConfigurationListLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1182628334
+// LIFERAY-SERVICE-BUILDER-HASH:-1441783210

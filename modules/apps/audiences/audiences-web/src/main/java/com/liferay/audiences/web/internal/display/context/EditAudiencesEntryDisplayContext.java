@@ -17,11 +17,14 @@ import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ParamUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
 
 import jakarta.portlet.PortletURL;
 import jakarta.portlet.RenderResponse;
@@ -78,8 +81,12 @@ public class EditAudiencesEntryDisplayContext {
 			return _backURL;
 		}
 
-		_backURL = ParamUtil.getString(
-			_httpServletRequest, "backURL", getRedirect());
+		_backURL = PortalUtil.escapeRedirect(
+			ParamUtil.getString(_httpServletRequest, "backURL"));
+
+		if (Validator.isNull(_backURL)) {
+			_backURL = getRedirect();
+		}
 
 		return _backURL;
 	}
@@ -147,15 +154,28 @@ public class EditAudiencesEntryDisplayContext {
 					"label", audiencesCriteriaType.getLabel()
 				).build())
 		).put(
+			"audiencesEntryId", getAudiencesEntryId()
+		).put(
 			"backURL", getBackURL()
 		).put(
 			"backURLTitle", getBackURLTitle()
+		).put(
+			"externalReferenceCode", _getExternalReferenceCode()
 		).put(
 			"name", _getName()
 		).put(
 			"namespace", _renderResponse.getNamespace()
 		).put(
+			"redirect", getRedirect()
+		).put(
 			"rulesGroup", getAudiencesEntryJSONObject()
+		).put(
+			"updateAudiencesEntryActionURL",
+			PortletURLBuilder.createActionURL(
+				PortalUtil.getLiferayPortletResponse(_renderResponse)
+			).setActionName(
+				"/audiences/update_audiences_entry"
+			).buildString()
 		).build();
 	}
 
@@ -164,7 +184,8 @@ public class EditAudiencesEntryDisplayContext {
 			return _redirect;
 		}
 
-		_redirect = ParamUtil.getString(_httpServletRequest, "redirect");
+		_redirect = PortalUtil.escapeRedirect(
+			ParamUtil.getString(_httpServletRequest, "redirect"));
 
 		if (Validator.isNull(_redirect)) {
 			PortletURL portletURL = _renderResponse.createRenderURL();
@@ -207,6 +228,23 @@ public class EditAudiencesEntryDisplayContext {
 		}
 
 		return null;
+	}
+
+	private String _getExternalReferenceCode() {
+		try {
+			AudiencesEntry audiencesEntry = _getAudiencesEntry();
+
+			if (audiencesEntry != null) {
+				return audiencesEntry.getExternalReferenceCode();
+			}
+		}
+		catch (PortalException portalException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(portalException);
+			}
+		}
+
+		return PortalUUIDUtil.generate();
 	}
 
 	private String _getName() {

@@ -11,7 +11,7 @@ import fetchMock from 'fetch-mock';
 
 import AnalyticsClient from '../../src/analytics';
 import {Analytics as AnalyticsTypes} from '../../src/types';
-import {INITIAL_ANALYTICS_CONFIG, wait} from '../helpers';
+import {INITIAL_ANALYTICS_CONFIG, mockVisibleRect, wait} from '../helpers';
 
 const applicationId = 'ObjectEntry';
 
@@ -187,12 +187,74 @@ describe('ObjectEntry Plugin', () => {
 		});
 	});
 
+	describe('objectEntryViewed visibility gating', () => {
+		it('is not fired when objectEntry is in the viewport but hidden by CSS', async () => {
+			const element = createObjectEntryElement(
+				AnalyticsTypes.ElementAction.View
+			);
+
+			element.style.visibility = 'hidden';
+
+			mockVisibleRect(element);
+
+			document.dispatchEvent(new Event('DOMContentLoaded'));
+
+			await wait(300);
+
+			const events = Analytics.getEvents().filter(
+				({eventId}) =>
+					eventId === AnalyticsTypes.EventId.ObjectEntryViewed
+			);
+
+			expect(events.length).toBe(0);
+
+			document.body.removeChild(element);
+		});
+
+		it('is fired when a hidden objectEntry becomes visible after a reveal event', async () => {
+			const element = createObjectEntryElement(
+				AnalyticsTypes.ElementAction.View
+			);
+
+			element.style.visibility = 'hidden';
+
+			mockVisibleRect(element);
+
+			document.dispatchEvent(new Event('DOMContentLoaded'));
+
+			await wait(300);
+
+			expect(
+				Analytics.getEvents().filter(
+					({eventId}) =>
+						eventId === AnalyticsTypes.EventId.ObjectEntryViewed
+				).length
+			).toBe(0);
+
+			element.style.visibility = 'visible';
+
+			element.dispatchEvent(new Event('click', {bubbles: true}));
+
+			await wait(300);
+
+			expect(
+				Analytics.getEvents().filter(
+					({eventId}) =>
+						eventId === AnalyticsTypes.EventId.ObjectEntryViewed
+				).length
+			).toBe(1);
+
+			document.body.removeChild(element);
+		});
+	});
+
 	describe('ObjectEntry optional payload fields', () => {
 		const createObjectEntryLinkElementWithOptions = (options: {
 			analyticsAssetCategories?: string;
 			analyticsAssetMimeType?: string;
 			analyticsAssetTags?: string;
 			analyticsAssetVocabularies?: string;
+			analyticsCmpProjects?: string;
 		}) => {
 			const element = document.createElement('a');
 
@@ -225,6 +287,11 @@ describe('ObjectEntry Plugin', () => {
 			if (options.analyticsAssetVocabularies !== undefined) {
 				element.dataset.analyticsAssetVocabularies =
 					options.analyticsAssetVocabularies;
+			}
+
+			if (options.analyticsCmpProjects !== undefined) {
+				element.dataset.analyticsCmpProjects =
+					options.analyticsCmpProjects;
 			}
 
 			document.body.appendChild(element);
@@ -328,6 +395,38 @@ describe('ObjectEntry Plugin', () => {
 			document.body.removeChild(element);
 		});
 
+		it('includes cmpProjects in the payload when set', async () => {
+			const element = createObjectEntryLinkElementWithOptions({
+				analyticsCmpProjects: '[{"id":39601,"name":"Spring Campaign"}]',
+			});
+
+			await userEvent.click(element);
+
+			expect(Analytics.getEvents()).toEqual([
+				expect.objectContaining({
+					applicationId: AnalyticsTypes.ApplicationId.ObjectEntry,
+					eventId: AnalyticsTypes.EventId.ObjectEntryDownloaded,
+					properties: expect.objectContaining({
+						cmpProjects: '[{"id":39601,"name":"Spring Campaign"}]',
+					}),
+				}),
+			]);
+
+			document.body.removeChild(element);
+		});
+
+		it('does not include cmpProjects in the payload when not set', async () => {
+			const element = createObjectEntryLinkElementWithOptions({});
+
+			await userEvent.click(element);
+
+			expect(Analytics.getEvents()[0].properties).not.toHaveProperty(
+				'cmpProjects'
+			);
+
+			document.body.removeChild(element);
+		});
+
 		it('includes mimeType from analyticsAssetMimeType when set', async () => {
 			const element = createObjectEntryLinkElementWithOptions({
 				analyticsAssetMimeType: 'application/pdf',
@@ -353,6 +452,8 @@ describe('ObjectEntry Plugin', () => {
 				analyticsAssetCategories: '  category1  ',
 				analyticsAssetTags: '  tag1  ',
 				analyticsAssetVocabularies: '  vocabulary1  ',
+				analyticsCmpProjects:
+					'  [{"id":39601,"name":"Spring Campaign"}]  ',
 			});
 
 			await userEvent.click(element);
@@ -363,6 +464,7 @@ describe('ObjectEntry Plugin', () => {
 						assetCategories: 'category1',
 						assetTags: 'tag1',
 						assetVocabularies: 'vocabulary1',
+						cmpProjects: '[{"id":39601,"name":"Spring Campaign"}]',
 					}),
 				}),
 			]);

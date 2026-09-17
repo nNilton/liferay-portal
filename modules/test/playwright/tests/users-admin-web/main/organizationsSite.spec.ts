@@ -6,10 +6,10 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
+import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {usersAndOrganizationsPagesTest} from '../../../fixtures/usersAndOrganizationsPagesTest';
 import {liferayConfig} from '../../../liferay.config';
-import {MessageBoardsPage} from '../../../pages/message-boards/MessageBoardsPage';
 import {OrganizationTypeSettingsPage} from '../../../pages/users-admin-web/OrganizationTypeSettingsPage';
 import getRandomString from '../../../utils/getRandomString';
 import {performUserSwitch, userData} from '../../../utils/performLogin';
@@ -17,6 +17,9 @@ import {waitForAlert} from '../../../utils/waitForAlert';
 
 const test = mergeTests(
 	dataApiHelpersTest,
+	featureFlagsTest({
+		'LPD-105225': {enabled: true},
+	}),
 	loginTest(),
 	usersAndOrganizationsPagesTest
 );
@@ -182,29 +185,36 @@ test(
 			});
 
 			await test.step('Remove Guest and Site Member VIEW permissions on both MB sites', async () => {
-				const mbPage = new MessageBoardsPage(page);
+				const companyId = String(
+					await page.evaluate(() =>
+						Liferay.ThemeDisplay.getCompanyId()
+					)
+				);
 
-				for (const siteURL of [
-					`/${organization2SiteURL}`,
-					`/${organization1SiteURL}`,
-				]) {
-					await mbPage.goto(siteURL);
+				const guestRole = await apiHelpers.jsonWebServicesRole.getRole(
+					companyId,
+					'Guest'
+				);
+				const siteMemberRole =
+					await apiHelpers.jsonWebServicesRole.getRole(
+						companyId,
+						'Site Member'
+					);
 
-					await mbPage.optionsMenu.click();
-					await mbPage.homeCategoryPermissionsMenuItem.click();
+				for (const organization of [organization2, organization1]) {
+					const groupId = siteIds[organization.name];
 
-					await mbPage.homeCategoryPermissionsFrame
-						.locator('#guest_ACTION_VIEW')
-						.first()
-						.uncheck();
-					await mbPage.homeCategoryPermissionsFrame
-						.locator('#site-member_ACTION_VIEW')
-						.first()
-						.uncheck();
-
-					await mbPage.saveButton.click();
-
-					await page.getByLabel('Close', {exact: true}).click();
+					for (const role of [guestRole, siteMemberRole]) {
+						await apiHelpers.jsonWebServicesResourcePermissionApiHelper.removeResourcePermission(
+							'VIEW',
+							companyId,
+							groupId,
+							'com.liferay.message.boards',
+							groupId,
+							String(role.roleId),
+							'4'
+						);
+					}
 				}
 			});
 

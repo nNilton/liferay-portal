@@ -5,6 +5,12 @@
 
 package com.liferay.site.internal.configuration.manager;
 
+import com.liferay.object.constants.ObjectDefinitionSettingConstants;
+import com.liferay.object.definition.setting.util.ObjectDefinitionSettingUtil;
+import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectDefinitionSetting;
+import com.liferay.object.service.ObjectDefinitionLocalService;
+import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.model.Group;
@@ -18,6 +24,9 @@ import com.liferay.site.configuration.manager.SitemapConfigurationManager;
 import com.liferay.site.constants.SitemapConstants;
 import com.liferay.site.internal.configuration.SitemapCompanyConfiguration;
 import com.liferay.site.internal.configuration.SitemapGroupConfiguration;
+
+import java.util.List;
+import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -54,14 +63,42 @@ public class SitemapConfigurationManagerImpl
 	}
 
 	@Override
-	public long getXMLSitemapRegenerationDelay(long companyId)
+	public List<ObjectDefinition> getCompanySitemapObjectDefinitions(
+			long companyId)
+		throws ConfigurationException {
+
+		Map<Long, ObjectDefinitionSetting> objectDefinitionSettingsMap =
+			_objectDefinitionSettingLocalService.getObjectDefinitionSettingsMap(
+				companyId, ObjectDefinitionSettingConstants.NAME_SITEMAPABLE);
+
+		return TransformUtil.transformToList(
+			getCompanySitemapObjectDefinitionIds(companyId),
+			objectDefinitionId -> {
+				ObjectDefinition objectDefinition =
+					_objectDefinitionLocalService.fetchObjectDefinition(
+						objectDefinitionId);
+
+				if ((objectDefinition == null) ||
+					!objectDefinition.isActive() ||
+					!ObjectDefinitionSettingUtil.isSitemapable(
+						objectDefinition, objectDefinitionSettingsMap)) {
+
+					return null;
+				}
+
+				return objectDefinition;
+			});
+	}
+
+	@Override
+	public String getXMLSitemapIndexMode(long companyId)
 		throws ConfigurationException {
 
 		SitemapCompanyConfiguration sitemapCompanyConfiguration =
 			_configurationProvider.getCompanyConfiguration(
 				SitemapCompanyConfiguration.class, companyId);
 
-		return sitemapCompanyConfiguration.xmlSitemapRegenerationDelay();
+		return sitemapCompanyConfiguration.xmlSitemapIndexMode();
 	}
 
 	@Override
@@ -143,7 +180,18 @@ public class SitemapConfigurationManagerImpl
 	}
 
 	@Override
-	public boolean indexModeAssetTypeCompanyEnabled(long companyId)
+	public boolean isCachedGenerationCompanyEnabled(long companyId)
+		throws ConfigurationException {
+
+		SitemapCompanyConfiguration sitemapCompanyConfiguration =
+			_configurationProvider.getCompanyConfiguration(
+				SitemapCompanyConfiguration.class, companyId);
+
+		return sitemapCompanyConfiguration.cachedGenerationEnabled();
+	}
+
+	@Override
+	public boolean isIndexModeAssetTypeCompanyEnabled(long companyId)
 		throws ConfigurationException {
 
 		SitemapCompanyConfiguration sitemapCompanyConfiguration =
@@ -176,8 +224,20 @@ public class SitemapConfigurationManagerImpl
 	}
 
 	@Override
+	public boolean isXMLSitemapIndexCompanyEnabled(long companyId)
+		throws ConfigurationException {
+
+		SitemapCompanyConfiguration sitemapCompanyConfiguration =
+			_configurationProvider.getCompanyConfiguration(
+				SitemapCompanyConfiguration.class, companyId);
+
+		return sitemapCompanyConfiguration.xmlSitemapIndexEnabled();
+	}
+
+	@Override
 	public void saveSitemapCompanyConfiguration(
-			long companyId, long[] companySitemapGroupIds,
+			boolean cachedGenerationEnabled, long companyId,
+			long[] companySitemapGroupIds,
 			long[] companySitemapObjectDefinitionIds, boolean includeCategories,
 			boolean includePages, boolean includeWebContent,
 			boolean xmlSitemapIndexEnabled, String xmlSitemapIndexMode)
@@ -186,6 +246,8 @@ public class SitemapConfigurationManagerImpl
 		_configurationProvider.saveCompanyConfiguration(
 			SitemapCompanyConfiguration.class, companyId,
 			HashMapDictionaryBuilder.<String, Object>put(
+				"cachedGenerationEnabled", cachedGenerationEnabled
+			).put(
 				"companySitemapGroupIds", companySitemapGroupIds
 			).put(
 				"companySitemapObjectDefinitionIds",
@@ -222,32 +284,17 @@ public class SitemapConfigurationManagerImpl
 			).build());
 	}
 
-	@Override
-	public boolean xmlSitemapIndexCompanyEnabled(long companyId)
-		throws ConfigurationException {
-
-		SitemapCompanyConfiguration sitemapCompanyConfiguration =
-			_configurationProvider.getCompanyConfiguration(
-				SitemapCompanyConfiguration.class, companyId);
-
-		return sitemapCompanyConfiguration.xmlSitemapIndexEnabled();
-	}
-
-	@Override
-	public String xmlSitemapIndexMode(long companyId)
-		throws ConfigurationException {
-
-		SitemapCompanyConfiguration sitemapCompanyConfiguration =
-			_configurationProvider.getCompanyConfiguration(
-				SitemapCompanyConfiguration.class, companyId);
-
-		return sitemapCompanyConfiguration.xmlSitemapIndexMode();
-	}
-
 	@Reference
 	private ConfigurationProvider _configurationProvider;
 
 	@Reference
 	private GroupLocalService _groupLocalService;
+
+	@Reference
+	private ObjectDefinitionLocalService _objectDefinitionLocalService;
+
+	@Reference
+	private ObjectDefinitionSettingLocalService
+		_objectDefinitionSettingLocalService;
 
 }

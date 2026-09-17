@@ -13,6 +13,7 @@ import jakarta.annotation.Generated;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -51,6 +52,16 @@ public class FragmentSetSerDes {
 
 		DateFormat liferayToJSONDateFormat = new SimpleDateFormat(
 			"yyyy-MM-dd'T'HH:mm:ssXX");
+
+		if (fragmentSet.getActions() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"actions\": ");
+
+			sb.append(_toJSON(fragmentSet.getActions()));
+		}
 
 		if (fragmentSet.getCreator() != null) {
 			if (sb.length() > 1) {
@@ -180,6 +191,13 @@ public class FragmentSetSerDes {
 		DateFormat liferayToJSONDateFormat = new SimpleDateFormat(
 			"yyyy-MM-dd'T'HH:mm:ssXX");
 
+		if (fragmentSet.getActions() == null) {
+			map.put("actions", null);
+		}
+		else {
+			map.put("actions", String.valueOf(fragmentSet.getActions()));
+		}
+
 		if (fragmentSet.getCreator() == null) {
 			map.put("creator", null);
 		}
@@ -262,7 +280,10 @@ public class FragmentSetSerDes {
 
 		@Override
 		protected boolean parseMaps(String jsonParserFieldName) {
-			if (Objects.equals(jsonParserFieldName, "creator")) {
+			if (Objects.equals(jsonParserFieldName, "actions")) {
+				return true;
+			}
+			else if (Objects.equals(jsonParserFieldName, "creator")) {
 				return false;
 			}
 			else if (Objects.equals(jsonParserFieldName, "dateCreated")) {
@@ -297,7 +318,13 @@ public class FragmentSetSerDes {
 			FragmentSet fragmentSet, String jsonParserFieldName,
 			Object jsonParserFieldValue) {
 
-			if (Objects.equals(jsonParserFieldName, "creator")) {
+			if (Objects.equals(jsonParserFieldName, "actions")) {
+				if (jsonParserFieldValue != null) {
+					fragmentSet.setActions(
+						(Map<String, Map<String, String>>)jsonParserFieldValue);
+				}
+			}
+			else if (Objects.equals(jsonParserFieldName, "creator")) {
 				if (jsonParserFieldValue != null) {
 					fragmentSet.setCreator(
 						CreatorSerDes.toDTO((String)jsonParserFieldValue));
@@ -392,6 +419,12 @@ public class FragmentSetSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -424,4 +457,4 @@ public class FragmentSetSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:218393883
+// LIFERAY-REST-BUILDER-HASH:795918261

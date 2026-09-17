@@ -28,6 +28,17 @@ export enum EventNames {
 	View = 'view',
 }
 
+/**
+ * The coarse classification the engine stores next to each asset's `assetType`.
+ * Every asset is either authored content (blogs, web content, forms, object
+ * entries) or an uploaded file (documents and media).
+ */
+
+export enum AssetObjectTypes {
+	Content = 'content',
+	File = 'file',
+}
+
 export enum AssetTypes {
 	Asset = 'Asset',
 	Blog = 'Blog',
@@ -38,6 +49,24 @@ export enum AssetTypes {
 	WebContent = 'WebContent',
 	WebPage = 'Page',
 }
+
+/**
+ * Application ids produced by Liferay DXP itself. Everything else comes from an
+ * external data source (a webhook), which the activity stream both labels
+ * differently and leaves ungrouped, since only DXP events are page bound.
+ */
+export const LIFERAY_DXP_APPLICATION_IDS = new Set([
+	'Blog',
+	'Comment',
+	'CustomEvent',
+	'Document',
+	'Form',
+	'Layout',
+	'ObjectEntry',
+	'Page',
+	'Ratings',
+	'WebContent',
+]);
 
 export enum ChannelPermissionTypes {
 	AllUsers = 0,
@@ -106,7 +135,8 @@ export enum DataSourceTypes {
 	Demandbase = 'DEMANDBASE',
 	Hubspot = 'HUBSPOT',
 	Liferay = 'LIFERAY',
-	Marketo = 'MARKETO',
+	MarketoCampaign = 'MARKETO_CAMPAIGN',
+	MarketoEventStream = 'MARKETO',
 	Salesforce = 'SALESFORCE',
 }
 
@@ -250,6 +280,7 @@ export enum ProjectStates {
 }
 
 export enum RangeKeyTimeRanges {
+	AllTime = '-1',
 	CustomRange = 'CUSTOM',
 	Last180Days = '180',
 	Last24Hours = '0',
@@ -263,12 +294,16 @@ export enum RangeKeyTimeRanges {
 
 export enum SegmentActivationScheduleTypes {
 	Batch = 'BATCH',
-	RealTime = 'REAL_TIME',
 }
 
 export enum SegmentActivationFrequencyTypes {
 	Between = 'BETWEEN',
 	Indefinitely = 'INDEFINITELY',
+}
+
+export enum SegmentCategories {
+	Account = 'ACCOUNT',
+	Individual = 'INDIVIDUAL',
 }
 
 export enum SegmentStates {
@@ -468,6 +503,12 @@ export const TIME_RANGE_LABELS = {
 	[RangeKeyTimeRanges.LastYear]: Liferay.Language.get('last-year'),
 	[RangeKeyTimeRanges.Yesterday]: Liferay.Language.get('yesterday'),
 };
+
+/**
+ * Fills the trend row on cards without a trend so that it keeps its height,
+ * leaving the value aligned with the sibling cards that do render a trend.
+ */
+export const TREND_PLACEHOLDER = '\u00A0';
 
 export const TWO_DAYS = '172800000';
 

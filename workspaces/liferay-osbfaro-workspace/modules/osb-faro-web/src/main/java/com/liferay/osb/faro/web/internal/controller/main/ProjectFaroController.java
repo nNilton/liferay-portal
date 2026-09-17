@@ -26,6 +26,7 @@ import com.liferay.osb.faro.provisioning.client.ProvisioningClient;
 import com.liferay.osb.faro.provisioning.client.constants.CorpProjectConstants;
 import com.liferay.osb.faro.provisioning.client.constants.ProductConstants;
 import com.liferay.osb.faro.provisioning.client.model.OSBAccountEntry;
+import com.liferay.osb.faro.provisioning.client.model.OSBAccountEntryBuilder;
 import com.liferay.osb.faro.provisioning.client.model.OSBOfferingEntry;
 import com.liferay.osb.faro.provisioning.client.model.display.main.FaroSubscriptionDisplay;
 import com.liferay.osb.faro.service.FaroNotificationLocalService;
@@ -50,6 +51,7 @@ import com.liferay.osb.faro.web.internal.model.display.contacts.TimeZoneDisplay;
 import com.liferay.osb.faro.web.internal.model.display.contacts.UsageMetric;
 import com.liferay.osb.faro.web.internal.param.FaroParam;
 import com.liferay.osb.faro.web.internal.util.JSONUtil;
+import com.liferay.osb.faro.web.internal.util.OSBAccountEntryUtil;
 import com.liferay.osb.faro.web.internal.util.TimeZoneUtil;
 import com.liferay.petra.executor.PortalExecutorManager;
 import com.liferay.petra.function.transform.TransformUtil;
@@ -58,6 +60,8 @@ import com.liferay.petra.sql.dsl.DSLQueryFactoryUtil;
 import com.liferay.petra.sql.dsl.expression.Predicate;
 import com.liferay.petra.sql.dsl.query.DSLQuery;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.cache.MultiVMPool;
+import com.liferay.portal.kernel.cache.PortalCache;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.GroupFriendlyURLException;
 import com.liferay.portal.kernel.exception.LayoutFriendlyURLException;
@@ -75,6 +79,7 @@ import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.ResourceBundleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Time;
@@ -111,7 +116,9 @@ import java.util.ResourceBundle;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.annotations.ReferencePolicyOption;
@@ -208,15 +215,17 @@ public class ProjectFaroController extends BaseFaroController {
 			return new ProjectDisplay(faroProject);
 		}
 
-		User user = getUser();
+		if (!FaroPropsValues.OSB_FARO_SUBSCRIPTION_PUSH_ENABLED) {
+			User user = getUser();
 
-		_provisioningClient.addCorpProjectUsers(
-			faroProject.getCorpProjectUuid(),
-			new String[] {user.getUserUuid()});
-
-		_provisioningClient.addUserCorpProjectRoles(
-			faroProject.getCorpProjectUuid(), new String[] {user.getUserUuid()},
-			CorpProjectConstants.ROLE_OWNER);
+			_provisioningClient.addCorpProjectUsers(
+				faroProject.getCorpProjectUuid(),
+				new String[] {user.getUserUuid()});
+			_provisioningClient.addUserCorpProjectRoles(
+				faroProject.getCorpProjectUuid(),
+				new String[] {user.getUserUuid()},
+				CorpProjectConstants.ROLE_OWNER);
+		}
 
 		faroProject.setState(FaroProjectConstants.STATE_NOT_READY);
 
@@ -249,7 +258,8 @@ public class ProjectFaroController extends BaseFaroController {
 			if (Validator.isNull(faroProject.getCorpProjectUuid()) ||
 				Objects.equals(
 					faroProject.getCorpProjectUuid(),
-					FaroPropsValues.FARO_PROJECT_ID)) {
+					FaroPropsValues.FARO_PROJECT_ID) ||
+				FaroPropsValues.OSB_FARO_SUBSCRIPTION_PUSH_ENABLED) {
 
 				continue;
 			}
@@ -286,6 +296,7 @@ public class ProjectFaroController extends BaseFaroController {
 	@POST
 	@RolesAllowed(StringPool.BLANK)
 	public ProjectDisplay createProvisioned(
+			@FormParam("corpProjectName") String corpProjectName,
 			@FormParam("corpProjectUuid") String corpProjectUuid,
 			@DefaultValue(JSONConstants.NULL_JSON_ARRAY)
 			@FormParam("emailAddressDomains")
@@ -299,48 +310,64 @@ public class ProjectFaroController extends BaseFaroController {
 			FaroParam
 				<List<String>> incidentReportEmailAddressesFaroParam,
 			@FormParam("name") String name,
+			@DefaultValue(JSONConstants.NULL_JSON_ARRAY)
+			@FormParam("offeringEntries")
+			FaroParam
+				<List<OSBOfferingEntry>> offeringEntriesFaroParam,
 			@FormParam("ownerEmailAddress") String ownerEmailAddress,
 			@FormParam("serverLocation") String serverLocation,
 			@DefaultValue("UTC") @FormParam("timeZoneId") String timeZoneId)
 		throws Exception {
 
-		User user = getUser();
+		_checkProvisionBackoff(corpProjectUuid);
 
-		FaroProject faroProject = _create(
-			corpProjectUuid, name, emailAddressDomainsFaroParam.getValue(),
-			friendlyURL, incidentReportEmailAddressesFaroParam.getValue(),
-			serverLocation, FaroProjectConstants.STATE_UNCONFIGURED,
-			timeZoneId);
+		try {
+			User user = getUser();
 
-		Role role = _roleLocalService.getRole(
-			user.getCompanyId(), RoleConstants.SITE_OWNER);
+			FaroProject faroProject = _create(
+				corpProjectName, corpProjectUuid,
+				emailAddressDomainsFaroParam.getValue(), friendlyURL,
+				incidentReportEmailAddressesFaroParam.getValue(), name,
+				offeringEntriesFaroParam.getValue(), serverLocation,
+				FaroProjectConstants.STATE_UNCONFIGURED, timeZoneId);
 
-		_faroUserLocalService.addFaroUser(
-			getUserId(), faroProject.getGroupId(), 0, role.getRoleId(),
-			ownerEmailAddress, FaroUserConstants.STATUS_PENDING, false);
+			Role role = _roleLocalService.getRole(
+				user.getCompanyId(), RoleConstants.SITE_OWNER);
 
-		if (_shouldSendCreatedWorkspaceEmail(faroProject)) {
-			_faroProjectLocalService.sendCreatedWorkspaceEmail(
-				faroProject.getWeDeployKey());
+			_faroUserLocalService.addFaroUser(
+				getUserId(), faroProject.getGroupId(), 0, role.getRoleId(),
+				ownerEmailAddress, FaroUserConstants.STATUS_PENDING, false);
+
+			if (_shouldSendCreatedWorkspaceEmail(faroProject)) {
+				_faroProjectLocalService.sendCreatedWorkspaceEmail(
+					faroProject.getWeDeployKey());
+			}
+
+			ProjectDisplay projectDisplay = null;
+
+			if (enableAutoConfiguration) {
+				projectDisplay = configure(
+					friendlyURL, faroProject.getGroupId(),
+					emailAddressDomainsFaroParam,
+					incidentReportEmailAddressesFaroParam, name, timeZoneId);
+			}
+			else {
+				projectDisplay = new ProjectDisplay(faroProject);
+			}
+
+			projectDisplay.setDataSourceAccessToken(
+				_dataSourceFaroController.generateDataSourceAccessToken(
+					faroProject.getGroupId(), faroProject.getFaroProjectId()));
+
+			_clearProvisionBackoff(corpProjectUuid);
+
+			return projectDisplay;
 		}
+		catch (Exception exception) {
+			_putProvisionBackoff(corpProjectUuid, exception);
 
-		ProjectDisplay projectDisplay = null;
-
-		if (enableAutoConfiguration) {
-			projectDisplay = configure(
-				friendlyURL, faroProject.getGroupId(),
-				emailAddressDomainsFaroParam,
-				incidentReportEmailAddressesFaroParam, name, timeZoneId);
+			throw exception;
 		}
-		else {
-			projectDisplay = new ProjectDisplay(faroProject);
-		}
-
-		projectDisplay.setDataSourceAccessToken(
-			_dataSourceFaroController.generateDataSourceAccessToken(
-				faroProject.getGroupId(), faroProject.getFaroProjectId()));
-
-		return projectDisplay;
 	}
 
 	@Path("/trial")
@@ -413,11 +440,24 @@ public class ProjectFaroController extends BaseFaroController {
 			return projectDisplay;
 		}
 
-		return _createUnprovisioned(
-			name, accountKey, accountName, corpProjectName, corpProjectUuid,
-			emailAddressDomainsFaroParam.getValue(), friendlyURL,
-			incidentReportEmailAddressesFaroParam.getValue(), ownerEmailAddress,
-			serverLocation, timeZoneId, trial);
+		_checkProvisionBackoff(corpProjectUuid);
+
+		try {
+			ProjectDisplay projectDisplay = _createUnprovisioned(
+				name, accountKey, accountName, corpProjectName, corpProjectUuid,
+				emailAddressDomainsFaroParam.getValue(), friendlyURL,
+				incidentReportEmailAddressesFaroParam.getValue(),
+				ownerEmailAddress, serverLocation, timeZoneId, trial);
+
+			_clearProvisionBackoff(corpProjectUuid);
+
+			return projectDisplay;
+		}
+		catch (Exception exception) {
+			_putProvisionBackoff(corpProjectUuid, exception);
+
+			throw exception;
+		}
 	}
 
 	@DELETE
@@ -923,28 +963,7 @@ public class ProjectFaroController extends BaseFaroController {
 				timeZoneId)
 		throws Exception {
 
-		if ((friendlyURL == null) || Validator.isBlank(friendlyURL.trim())) {
-			Group group = _groupLocalService.getGroup(groupId);
-
-			group.setFriendlyURL(null);
-
-			_groupLocalService.updateGroup(group);
-		}
-		else {
-			_validateFriendlyURL(friendlyURL);
-
-			try {
-				_groupLocalService.updateFriendlyURL(groupId, friendlyURL);
-			}
-			catch (GroupFriendlyURLException groupFriendlyURLException) {
-				_log.error(groupFriendlyURLException);
-
-				throw new FaroValidationException(
-					"friendlyURL",
-					_getFriendlyURLErrorMessage(
-						groupFriendlyURLException.getType()));
-			}
-		}
+		_updateFriendlyURL(friendlyURL, groupId);
 
 		FaroProject faroProject =
 			faroProjectLocalService.getFaroProjectByGroupId(groupId);
@@ -990,6 +1009,78 @@ public class ProjectFaroController extends BaseFaroController {
 			faroProjectLocalService.updateFaroProject(faroProject));
 	}
 
+	@PATCH
+	@Path("/corpProjectUuid/{corpProjectUuid}/subscription")
+	@RolesAllowed(StringPool.BLANK)
+	public ProjectDisplay updateSubscription(
+			@PathParam("corpProjectUuid") String corpProjectUuid,
+			@FormParam("offeringEntries") FaroParam<List<OSBOfferingEntry>>
+				offeringEntriesFaroParam)
+		throws Exception {
+
+		if (!FaroPropsValues.OSB_FARO_SUBSCRIPTION_PUSH_ENABLED) {
+			throw new FaroException(
+				"Subscription push is not enabled",
+				Response.Status.NOT_IMPLEMENTED);
+		}
+
+		FaroProject faroProject =
+			_faroProjectLocalService.fetchFaroProjectByCorpProjectUuid(
+				corpProjectUuid);
+
+		if (faroProject == null) {
+			throw new FaroException(
+				"No project exists with the corp project UUID " +
+					corpProjectUuid,
+				Response.Status.NOT_FOUND);
+		}
+
+		_validateOfferingEntries(offeringEntriesFaroParam.getValue());
+
+		OSBAccountEntry osbAccountEntry = new OSBAccountEntry();
+
+		osbAccountEntry.setOfferingEntries(offeringEntriesFaroParam.getValue());
+
+		FaroSubscriptionDisplay faroSubscriptionDisplay =
+			new FaroSubscriptionDisplay(osbAccountEntry);
+
+		if (_isSubscriptionPlanChanged(
+				faroProject, faroSubscriptionDisplay.getName())) {
+
+			faroProject.setSubscriptionModifiedTime(System.currentTimeMillis());
+		}
+
+		try {
+			if (Objects.equals(
+					faroProject.getState(),
+					FaroProjectConstants.STATE_UNAVAILABLE)) {
+
+				faroProject.setState(FaroProjectConstants.STATE_READY);
+			}
+
+			faroSubscriptionDisplay.setCounts(
+				faroProject, _faroProjectUsageLocalService);
+
+			faroProject.setSubscription(
+				JSONUtil.writeValueAsString(faroSubscriptionDisplay));
+		}
+		catch (Exception exception) {
+			_log.error(exception);
+
+			faroProject.setState(FaroProjectConstants.STATE_UNAVAILABLE);
+		}
+
+		return _getProjectDisplay(
+			_faroProjectLocalService.updateFaroProject(faroProject));
+	}
+
+	@Activate
+	protected void activate() {
+		_provisionBackoffPortalCache =
+			(PortalCache<String, Long>)_multiVMPool.getPortalCache(
+				_PORTAL_CACHE_NAME);
+	}
+
 	protected OSBAccountEntry createOSBAccountEntry(boolean trial) {
 		return new OSBAccountEntry() {
 			{
@@ -998,11 +1089,11 @@ public class ProjectFaroController extends BaseFaroController {
 				if (trial) {
 					osbOfferingEntry.setProductEntryId(
 						ProductConstants.
-							DATA_PLATFORM_PRIVATE_BETA_PRODUCT_ENTRY_ID);
+							PRODUCT_ENTRY_ID_DATA_PLATFORM_PRIVATE_BETA);
 				}
 				else {
 					osbOfferingEntry.setProductEntryId(
-						ProductConstants.ENTERPRISE_PRODUCT_ENTRY_ID);
+						ProductConstants.PRODUCT_ENTRY_ID_ENTERPRISE);
 				}
 
 				osbOfferingEntry.setQuantity(1);
@@ -1011,6 +1102,11 @@ public class ProjectFaroController extends BaseFaroController {
 				setOfferingEntries(Collections.singletonList(osbOfferingEntry));
 			}
 		};
+	}
+
+	@Deactivate
+	protected void deactivate() {
+		_multiVMPool.removePortalCache(_PORTAL_CACHE_NAME);
 	}
 
 	protected OSBAccountEntry getOSBAccountEntry(FaroProject faroProject)
@@ -1023,7 +1119,7 @@ public class ProjectFaroController extends BaseFaroController {
 
 					osbOfferingEntry.setProductEntryId(
 						ProductConstants.
-							DATA_PLATFORM_PRIVATE_BETA_PRODUCT_ENTRY_ID);
+							PRODUCT_ENTRY_ID_DATA_PLATFORM_PRIVATE_BETA);
 					osbOfferingEntry.setQuantity(1);
 					osbOfferingEntry.setStartDate(
 						new Date(faroProject.getCreateTime()));
@@ -1032,6 +1128,10 @@ public class ProjectFaroController extends BaseFaroController {
 						Collections.singletonList(osbOfferingEntry));
 				}
 			};
+		}
+
+		if (FaroPropsValues.OSB_FARO_SUBSCRIPTION_PUSH_ENABLED) {
+			return OSBAccountEntryUtil.build(faroProject);
 		}
 
 		return _provisioningClient.getOSBAccountEntry(
@@ -1048,10 +1148,47 @@ public class ProjectFaroController extends BaseFaroController {
 		return _provisioningClient.getOSBAccountEntry(corpProjectUuid);
 	}
 
+	private void _checkProvisionBackoff(String corpProjectUuid) {
+		if (Validator.isNull(corpProjectUuid)) {
+			return;
+		}
+
+		Long retryAfterTime = _provisionBackoffPortalCache.get(corpProjectUuid);
+
+		if (retryAfterTime == null) {
+			return;
+		}
+
+		long now = System.currentTimeMillis();
+
+		if (now >= retryAfterTime) {
+			return;
+		}
+
+		throw new FaroException(
+			HashMapBuilder.<String, Object>put(
+				"Retry-After",
+				String.valueOf(
+					((retryAfterTime - now) + (Time.SECOND - 1)) / Time.SECOND)
+			).build(),
+			"Too many failed provisioning attempts for corp project UUID " +
+				corpProjectUuid,
+			Response.Status.TOO_MANY_REQUESTS);
+	}
+
+	private void _clearProvisionBackoff(String corpProjectUuid) {
+		if (Validator.isNull(corpProjectUuid)) {
+			return;
+		}
+
+		_provisionBackoffPortalCache.remove(corpProjectUuid);
+	}
+
 	private FaroProject _create(
-			String corpProjectUuid, String name,
+			String corpProjectName, String corpProjectUuid,
 			List<String> emailAddressDomains, String friendlyURL,
-			List<String> incidentReportEmailAddresses, String serverLocation,
+			List<String> incidentReportEmailAddresses, String name,
+			List<OSBOfferingEntry> offeringEntries, String serverLocation,
 			String state, String timeZoneId)
 		throws Exception {
 
@@ -1059,7 +1196,20 @@ public class ProjectFaroController extends BaseFaroController {
 		_validateIncidentReportEmailAddresses(incidentReportEmailAddresses);
 		_validateTimeZoneId(timeZoneId);
 
-		OSBAccountEntry osbAccountEntry = getOSBAccountEntry(corpProjectUuid);
+		OSBAccountEntry osbAccountEntry = null;
+
+		if (FaroPropsValues.OSB_FARO_SUBSCRIPTION_PUSH_ENABLED) {
+			_validateOfferingEntries(offeringEntries);
+
+			osbAccountEntry = OSBAccountEntryBuilder.setName(
+				corpProjectName
+			).setOfferingEntries(
+				offeringEntries
+			).build();
+		}
+		else {
+			osbAccountEntry = getOSBAccountEntry(corpProjectUuid);
+		}
 
 		FaroSubscriptionDisplay faroSubscriptionDisplay =
 			new FaroSubscriptionDisplay(osbAccountEntry);
@@ -1104,7 +1254,9 @@ public class ProjectFaroController extends BaseFaroController {
 
 		faroProject.setWeDeployKey(weDeployKey);
 
-		if (!Objects.equals(corpProjectUuid, FaroPropsValues.FARO_PROJECT_ID)) {
+		if (!FaroPropsValues.OSB_FARO_SUBSCRIPTION_PUSH_ENABLED &&
+			!Objects.equals(corpProjectUuid, FaroPropsValues.FARO_PROJECT_ID)) {
+
 			_provisioningClient.addProductConsumption(
 				corpProjectUuid, faroProject.getGroupId());
 		}
@@ -1594,6 +1746,25 @@ public class ProjectFaroController extends BaseFaroController {
 		return true;
 	}
 
+	private void _putProvisionBackoff(
+		String corpProjectUuid, Exception exception) {
+
+		if (Validator.isNull(corpProjectUuid)) {
+			return;
+		}
+
+		_log.error(
+			"Unable to provision project for corp project UUID " +
+				corpProjectUuid,
+			exception);
+
+		_provisionBackoffPortalCache.put(
+			corpProjectUuid,
+			System.currentTimeMillis() +
+				FaroPropsValues.
+					OSB_FARO_PROJECT_PROVISION_BACKOFF_WINDOW_MILLIS);
+	}
+
 	private void _refreshProjectState(FaroProject faroProject)
 		throws Exception {
 
@@ -1640,18 +1811,52 @@ public class ProjectFaroController extends BaseFaroController {
 
 		if (StringUtil.equals(
 				faroSubscriptionDisplay.getName(),
-				ProductConstants.BASIC_PRODUCT_ENTRY_NAME) ||
+				ProductConstants.PRODUCT_ENTRY_NAME_BASIC) ||
 			StringUtil.equals(
 				faroSubscriptionDisplay.getName(),
-				ProductConstants.BUSINESS_PRODUCT_ENTRY_NAME) ||
+				ProductConstants.PRODUCT_ENTRY_NAME_BUSINESS) ||
 			StringUtil.equals(
 				faroSubscriptionDisplay.getName(),
-				ProductConstants.ENTERPRISE_PRODUCT_ENTRY_NAME)) {
+				ProductConstants.PRODUCT_ENTRY_NAME_ENTERPRISE)) {
 
 			return true;
 		}
 
 		return false;
+	}
+
+	private void _updateFriendlyURL(String friendlyURL, long groupId)
+		throws Exception {
+
+		if ((friendlyURL == null) || Validator.isBlank(friendlyURL.trim())) {
+			Group group = _groupLocalService.getGroup(groupId);
+
+			group.setFriendlyURL(null);
+
+			_groupLocalService.updateGroup(group);
+
+			return;
+		}
+
+		_validateFriendlyURL(friendlyURL);
+
+		Group group = _groupLocalService.getGroup(groupId);
+
+		if (StringUtil.equals(group.getFriendlyURL(), friendlyURL)) {
+			return;
+		}
+
+		try {
+			_groupLocalService.updateFriendlyURL(groupId, friendlyURL);
+		}
+		catch (GroupFriendlyURLException groupFriendlyURLException) {
+			_log.error(groupFriendlyURLException);
+
+			throw new FaroValidationException(
+				"friendlyURL",
+				_getFriendlyURLErrorMessage(
+					groupFriendlyURLException.getType()));
+		}
 	}
 
 	private void _validateCorpProjectUuid(String corpProjectUuid)
@@ -1722,12 +1927,52 @@ public class ProjectFaroController extends BaseFaroController {
 		}
 	}
 
+	private void _validateOfferingEntries(
+		List<OSBOfferingEntry> offeringEntries) {
+
+		if (ListUtil.isEmpty(offeringEntries)) {
+			throw new FaroValidationException(
+				"offeringEntries", "Offering entries are required");
+		}
+
+		for (OSBOfferingEntry offeringEntry : offeringEntries) {
+			String productEntryId = offeringEntry.getProductEntryId();
+
+			if ((productEntryId == null) ||
+				(ProductConstants.getProductName(productEntryId) == null)) {
+
+				throw new FaroValidationException(
+					"offeringEntries",
+					"Offering entries must have a valid \"productEntryId\"");
+			}
+
+			if (offeringEntry.getQuantity() < 1) {
+				throw new FaroValidationException(
+					"offeringEntries",
+					"Offering entries must have a positive \"quantity\"");
+			}
+
+			int status = offeringEntry.getStatus();
+
+			if ((status != 0) &&
+				(status != ProductConstants.OSB_OFFERING_ENTRY_STATUS_ACTIVE)) {
+
+				throw new FaroValidationException(
+					"offeringEntries",
+					"Offering entries must have a valid \"status\"");
+			}
+		}
+	}
+
 	private void _validateTimeZoneId(String timeZoneId) {
 		if (!TimeZoneUtil.validate(timeZoneId)) {
 			throw new FaroValidationException(
 				"timeZoneId", _getTimeZoneIdErrorMessage(getUser()));
 		}
 	}
+
+	private static final String _PORTAL_CACHE_NAME =
+		ProjectFaroController.class.getName() + ".provisionBackoffPortalCache";
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		ProjectFaroController.class);
@@ -1771,10 +2016,15 @@ public class ProjectFaroController extends BaseFaroController {
 	private JSONFactory _jsonFactory;
 
 	@Reference
+	private MultiVMPool _multiVMPool;
+
+	@Reference
 	private PortalExecutorManager _portalExecutorManager;
 
 	@Reference
 	private ProjectUsageHelper _projectUsageHelper;
+
+	private PortalCache<String, Long> _provisionBackoffPortalCache;
 
 	@Reference(
 		policy = ReferencePolicy.DYNAMIC,

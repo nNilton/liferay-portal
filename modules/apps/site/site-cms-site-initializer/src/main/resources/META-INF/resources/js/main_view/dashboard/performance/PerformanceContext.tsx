@@ -9,7 +9,8 @@ import {
 } from '@liferay/analytics-reports-js-components-web';
 import React, {createContext, useMemo, useState} from 'react';
 
-import {SpaceOption, initialSpace} from '../common/SpacesDropdown';
+import {SpaceOption, initialSpace} from '../common/SpacePicker';
+import {DashboardAdditionalProps} from './types';
 
 const initialRange: RangeSelector = {
 	rangeEnd: '',
@@ -18,28 +19,52 @@ const initialRange: RangeSelector = {
 };
 
 type State = {
+	additionalProps?: DashboardAdditionalProps;
+	constants: {[key: string]: string};
 	range: RangeSelector;
 	setRange: (range: RangeSelector) => void;
 	setSpace: (space: SpaceOption) => void;
 	space: SpaceOption;
+	spaceIds: string[];
 };
 
 const PerformanceContext = createContext<State>({
+	additionalProps: undefined,
+	constants: {},
 	range: initialRange,
 	setRange: () => {},
 	setSpace: () => {},
 	space: initialSpace,
+	spaceIds: [],
 });
 
 PerformanceContext.displayName = 'PerformanceContext';
 
-function PerformanceContextProvider({children}: {children: React.ReactNode}) {
+function PerformanceContextProvider({
+	additionalProps,
+	children,
+	constants = {},
+	spaceIds = [],
+}: {
+	additionalProps?: DashboardAdditionalProps;
+	children: React.ReactNode;
+	constants?: {[key: string]: string};
+	spaceIds?: string[];
+}) {
 	const [range, setRange] = useState<RangeSelector>(initialRange);
 	const [space, setSpace] = useState<SpaceOption>(initialSpace);
 
 	const value = useMemo(
-		() => ({range, setRange, setSpace, space}),
-		[range, space]
+		() => ({
+			additionalProps,
+			constants,
+			range,
+			setRange,
+			setSpace,
+			space,
+			spaceIds,
+		}),
+		[additionalProps, constants, range, space, spaceIds]
 	);
 
 	return (

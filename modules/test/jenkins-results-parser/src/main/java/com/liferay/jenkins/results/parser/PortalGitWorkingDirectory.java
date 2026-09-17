@@ -41,29 +41,44 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 		String upstreamBranchName = getUpstreamBranchName();
 
 		if (!JenkinsResultsParserUtil.isCloudCINode() ||
-			upstreamBranchName.startsWith("ee-")) {
+			upstreamBranchName.startsWith("ee-") ||
+			!_isGitArchiveYarnCacheEnabled()) {
 
 			return archiveFile;
 		}
 
+		createYarnCache(fileName);
+
+		return archiveFile;
+	}
+
+	public File createYarnCache(String fileName) {
 		setUpYarn();
+
+		StringBuilder sb = new StringBuilder();
+
+		for (String excludeRegex : _BINARIES_CACHE_EXCLUDE_REGEXES) {
+			sb.append(" | grep -v '");
+			sb.append(excludeRegex);
+			sb.append("'");
+		}
 
 		GitUtil.ExecutionResult executionResult = executeBashCommands(
 			3, GitUtil.MILLIS_RETRY_DELAY, 1000 * 60 * 10,
 			JenkinsResultsParserUtil.combine(
-				"zip -r -y ", fileName,
-				" $(git ls-files --directory --no-empty-directory --others | ",
-				"grep -v \\\\.gradle/) modules/yarn.lock"));
+				"zip -q -r -y ", fileName,
+				" $(git ls-files --directory --no-empty-directory --others ",
+				sb.toString(), ") modules/yarn.lock"));
 
 		if (executionResult.getExitValue() != 0) {
 			throw new GitWorkingDirectoryRuntimeException(
 				this,
 				JenkinsResultsParserUtil.combine(
-					"Failed to add build/node to ", fileName, "\n",
+					"Unable to create the yarn cache ", fileName, "\n",
 					executionResult.getStandardError()));
 		}
 
-		return archiveFile;
+		return new File(getWorkingDirectory(), fileName);
 	}
 
 	public Properties getAppServerProperties() {
@@ -83,7 +98,35 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 		}
 
 		_jsUnitFiles = new ArrayList<>(
-			findFiles(null, "describe\\( -- '*.js' '*.jsx' '*.ts' '*.tsx'"));
+			findFiles(null, _FILE_CONTENT_SNIPPET_JS_UNIT));
+
+		File portalPrivateDir = getPortalPrivateDir();
+
+		if (portalPrivateDir != null) {
+			String standardOut = null;
+
+			try {
+				Process process = JenkinsResultsParserUtil.executeBashCommands(
+					false, portalPrivateDir, 60 * 1000,
+					"git grep " + _FILE_CONTENT_SNIPPET_JS_UNIT);
+
+				standardOut = JenkinsResultsParserUtil.readInputStream(
+					process.getInputStream());
+			}
+			catch (IOException | TimeoutException exception) {
+				throw new GitWorkingDirectoryRuntimeException(
+					this, "Unable to run: git grep in " + portalPrivateDir,
+					exception);
+			}
+
+			Matcher matcher = _jsUnitFilePathPattern.matcher(standardOut);
+
+			while (matcher.find()) {
+				String filePath = matcher.group("filePath");
+
+				_jsUnitFiles.add(new File(portalPrivateDir, filePath));
+			}
+		}
 
 		return _jsUnitFiles;
 	}
@@ -359,6 +402,28 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 			"Unable to find a plugins Git working directory");
 	}
 
+	public File getPortalPrivateDir() {
+		String portalPrivateDirPath = JenkinsResultsParserUtil.getProperty(
+			getTestProperties(), "liferay.portal.private.dir");
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(portalPrivateDirPath)) {
+			return null;
+		}
+
+		File portalPrivateDir = new File(portalPrivateDirPath);
+
+		if (!portalPrivateDir.isAbsolute()) {
+			portalPrivateDir = new File(
+				getWorkingDirectory(), portalPrivateDirPath);
+		}
+
+		if (!portalPrivateDir.exists()) {
+			return null;
+		}
+
+		return JenkinsResultsParserUtil.getCanonicalFile(portalPrivateDir);
+	}
+
 	public Properties getReleaseProperties() {
 		if (_releaseProperties != null) {
 			return _releaseProperties;
@@ -388,43 +453,15 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 		return _testProperties;
 	}
 
-	public void setUpYarn() {
+	public synchronized void setUpYarn() {
+		if (_setUpYarn) {
+			return;
+		}
+
 		File workingDirectory = getWorkingDirectory();
 
 		try {
-			Map<String, String> filteredEnv = new HashMap<>();
-
-			Map<String, String> env = Environment.getAll();
-
-			for (Map.Entry<String, String> entry : env.entrySet()) {
-				String key = entry.getKey();
-
-				if (!key.startsWith("ANT_") && !key.startsWith("JAVA_") &&
-					!key.startsWith("JENKINS_HOME")) {
-
-					continue;
-				}
-
-				filteredEnv.put(key, entry.getValue());
-			}
-
-			String antOptsDefault = JenkinsResultsParserUtil.getBuildProperty(
-				"ant.opts.default", getUpstreamBranchName());
-
-			if (!JenkinsResultsParserUtil.isNullOrEmpty(antOptsDefault)) {
-				filteredEnv.put("ANT_OPTS", antOptsDefault);
-				filteredEnv.put("JAVA_OPTS", antOptsDefault);
-			}
-
-			String javaJDKDefaultRuntime =
-				JenkinsResultsParserUtil.getBuildProperty(
-					"java.jdk.default.runtime", getUpstreamBranchName());
-
-			if (!JenkinsResultsParserUtil.isNullOrEmpty(
-					javaJDKDefaultRuntime)) {
-
-				filteredEnv.put("JAVA_HOME", javaJDKDefaultRuntime);
-			}
+			Map<String, String> filteredEnv = getFilteredEnvironment();
 
 			Properties properties = new Properties();
 
@@ -439,7 +476,8 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 				properties.put(
 					propertyName,
 					JenkinsResultsParserUtil.getBuildProperty(
-						"portal.build.properties[" + propertyName + "]"));
+						"portal.build.properties[" + propertyName + "]",
+						getUpstreamBranchName()));
 			}
 
 			JenkinsResultsParserUtil.writePropertiesFile(
@@ -457,6 +495,8 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 				workingDirectory, "modules/node_modules_cache");
 
 			if (!nodeModulesCacheDir.exists()) {
+				_setUpYarn = true;
+
 				return;
 			}
 
@@ -497,6 +537,8 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 			throw new GitWorkingDirectoryRuntimeException(
 				this, "Failed to run setup-yarn in " + workingDirectory);
 		}
+
+		_setUpYarn = true;
 	}
 
 	public static class Module {
@@ -572,6 +614,65 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 		super(upstreamBranchName, workingDirectoryPath, gitRepositoryName);
 	}
 
+	protected Map<String, String> getFilteredEnvironment() throws IOException {
+		Map<String, String> filteredEnv = new HashMap<>();
+
+		Map<String, String> env = Environment.getAll();
+
+		for (Map.Entry<String, String> entry : env.entrySet()) {
+			String key = entry.getKey();
+
+			if (!key.startsWith("ANT_") && !key.startsWith("JAVA_") &&
+				!key.startsWith("JENKINS_HOME")) {
+
+				continue;
+			}
+
+			filteredEnv.put(key, entry.getValue());
+		}
+
+		String antOptsDefault = JenkinsResultsParserUtil.getBuildProperty(
+			"ant.opts.default", getUpstreamBranchName());
+
+		if (!JenkinsResultsParserUtil.isNullOrEmpty(antOptsDefault)) {
+			filteredEnv.put("ANT_OPTS", antOptsDefault);
+			filteredEnv.put("JAVA_OPTS", antOptsDefault);
+		}
+
+		String javaJDKDefaultRuntime =
+			JenkinsResultsParserUtil.getBuildProperty(
+				"java.jdk.default.runtime", getUpstreamBranchName());
+
+		if (!JenkinsResultsParserUtil.isNullOrEmpty(javaJDKDefaultRuntime)) {
+			filteredEnv.put("JAVA_HOME", javaJDKDefaultRuntime);
+		}
+
+		return filteredEnv;
+	}
+
+	private boolean _isGitArchiveYarnCacheEnabled() {
+		String gitArchiveYarnCacheEnabled = null;
+
+		try {
+			gitArchiveYarnCacheEnabled =
+				JenkinsResultsParserUtil.getBuildProperty(
+					"git.archive.yarn.cache.enabled",
+					Environment.get("CI_TEST_SUITE"),
+					Environment.get("JOB_NAME"), getUpstreamBranchName());
+		}
+		catch (IOException ioException) {
+			return true;
+		}
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(
+				gitArchiveYarnCacheEnabled)) {
+
+			return true;
+		}
+
+		return Boolean.parseBoolean(gitArchiveYarnCacheEnabled);
+	}
+
 	private boolean _isNPMTestModuleDir(File moduleDir) {
 		List<File> packageJSONFiles = JenkinsResultsParserUtil.findFiles(
 			moduleDir, "package\\.json");
@@ -612,13 +713,23 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 		return false;
 	}
 
+	private static final String[] _BINARIES_CACHE_EXCLUDE_REGEXES = {
+		"\\.gradle/", "\\.yarn/", "modules/\\.tsc/", "node_modules_cache"
+	};
+
+	private static final String _FILE_CONTENT_SNIPPET_JS_UNIT =
+		"describe\\( -- '*.js' '*.jsx' '*.ts' '*.tsx'";
+
 	private static final Pattern _esBuildFileNamePattern = Pattern.compile(
 		"@esbuild-(linux-.*?)-.*");
+	private static final Pattern _jsUnitFilePathPattern = Pattern.compile(
+		"(?<filePath>[^:]+):.+");
 
 	private Properties _appServerProperties;
 	private List<File> _jsUnitFiles;
 	private List<File> _modifiedModuleDirs;
 	private Properties _releaseProperties;
+	private boolean _setUpYarn;
 	private Properties _testProperties;
 
 }

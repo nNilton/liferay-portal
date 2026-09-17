@@ -60,6 +60,10 @@ public class ExpandoColumnAnalyticsDXPEntityBatchEngineTaskItemDelegateTest {
 			_batchEngineTaskItemDelegate, "contextCompany",
 			CompanyLocalServiceUtil.getCompany(_companyId));
 
+		ReflectionTestUtil.setFieldValue(
+			_batchEngineTaskItemDelegate, "contextUser",
+			TestPropsValues.getUser());
+
 		_expandoTable = _expandoTableLocalService.addTable(
 			_companyId, PortalUtil.getClassNameId(User.class),
 			ExpandoTableConstants.DEFAULT_TABLE_NAME);

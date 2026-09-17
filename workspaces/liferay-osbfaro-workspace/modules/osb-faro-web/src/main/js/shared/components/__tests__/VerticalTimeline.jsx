@@ -1,313 +1,662 @@
-import mockDate from 'test/mock-date';
+import mockStore from 'test/mock-store';
 import React from 'react';
 import VerticalTimeline from '../VerticalTimeline';
-import {cleanup, fireEvent, render, waitFor} from '@testing-library/react';
-import {StaticRouter} from 'react-router';
+import {cleanup, fireEvent, render, screen, within} from '@testing-library/react';
+import {Provider} from 'react-redux';
 
 jest.unmock('react-dom');
 
-const ITEMS = [
-	{
-		header: true,
-		title: 'Yesterday'
-	},
-	{
-		attributes: {
-			contentLanguageID: undefined,
-			header: 'Session Attributes',
-			screenHeight: '1229',
-			screenWidth: '1541',
-			timezoneOffset: '-07:00',
-			userAgent:
-				'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'
-		},
-		browserName: 'Firefox',
-		device: 'Unknown',
-		endTime: undefined,
-		nestedItems: [
-			{
-				attributes: {
-					canonicalUrl: 'http://192.168.86.193:3001/',
-					header: 'Event Attributes',
-					referrer: '',
-					title: 'Liferay Home Page',
-					url: 'http://192.168.86.193:3001/'
-				},
-				subtitle: 'www.liferay.com/testing',
-				symbol: 'web-content',
-				time: 1518648993917,
-				title: 'Visited Liferay: Testing'
-			},
-			{
-				subtitle: 'www.liferay.com/testing 2',
-				symbol: 'web-content',
-				time: 1518648993917,
-				title: 'Visited Liferay: Testing 2'
-			}
-		],
-		subtitle: '3 Document Downloads, 2 Form Submissions, 24 Page Visits',
-		symbol: 'web-content',
-		time: 1518648993917,
-		title: 'Opened Email',
-		type: 'Download'
-	},
-	{
-		header: true,
-		title: 'Today'
-	},
-	{
-		attributes: {
-			header: 'Session Attributes',
-			screenHeight: '1229',
-			screenWidth: '1541',
-			timezoneOffset: '-07:00',
-			userAgent:
-				'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'
-		},
-		browserName: 'Firefox',
-		device: 'Mobile',
-		endTime: 'Wed Sep 01 20:52:49 GMT 2021',
-		nestedItems: [
-			{
-				attributes: {
-					canonicalUrl: 'http://192.168.86.193:3001/',
-					header: 'Event Attributes',
-					referrer: '',
-					title: 'Liferay Home Page',
-					url: 'http://192.168.86.193:3001/'
-				},
-				subtitle: 'www.liferay.com/testing',
-				symbol: 'web-content',
-				time: 1518648993917,
-				title: 'Visited Liferay: Testing'
-			},
-			{
-				subtitle: 'www.liferay.com/testing 2',
-				symbol: 'web-content',
-				time: 1518648993917,
-				title: 'Visited Liferay: Testing 2'
-			}
-		],
-		subtitle: '3 Document Downloads, 2 Form Submissions, 24 Page Visits',
-		symbol: 'web-content',
-		time: 1518648993917,
-		title: 'Opened Email',
-		type: 'Download'
-	},
-	{
-		attributes: {
-			header: 'Session Attributes',
-			screenHeight: '1229',
-			screenWidth: '1541',
-			timezoneOffset: '-07:00',
-			userAgent:
-				'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'
-		},
-		browserName: 'Firefox',
-		device: 'Desktop',
-		endTime: 'Wed Sep 01 20:52:49 GMT 2021',
-		nestedItems: [
-			{
-				attributes: {
-					canonicalUrl: 'http://192.168.86.193:3001/',
-					header: 'Event Attributes',
-					referrer: '',
-					title: 'Liferay Home Page',
-					url: 'http://192.168.86.193:3001/'
-				},
-				description:
-					'Liferay: Digital experience software tailored to your needs',
-				subtitle: 'www.liferay.com/testing',
-				symbol: 'web-content',
-				time: 1518648993917,
-				title: 'Visited Liferay: Testing'
-			},
-			{
-				attributes: {
-					canonicalUrl: 'http://192.168.86.193:3001/',
-					header: 'Event Attributes',
-					referrer: '',
-					title: 'Liferay Home Page',
-					url: 'http://192.168.86.193:3001/'
-				},
-				subtitle: 'www.liferay.com/testing 2',
-				symbol: 'web-content',
-				time: 1518648993917,
-				title: 'Visited Liferay: Testing 2'
-			}
-		],
-		subtitle: '3 Document Downloads, 2 Form Submissions, 24 Page Visits',
-		symbol: 'web-content',
-		time: 1518648993917,
-		title: 'Opened Email',
-		type: 'Download',
-		url: 'www.liferay.com'
-	}
-];
+const TIME_ZONE_ID = 'UTC';
 
-const SESSION_ATTRIBUTES_TITLE = 'Session Attributes';
+// The raw payload view carries a copy button, which announces a successful
+// copy through the alert store.
 
-const DefaultComponent = props => (
-	<StaticRouter>
-		<VerticalTimeline {...props} />
-	</StaticRouter>
-);
-
-const createDataSourceItem = ({applicationId, userAgent}) => ({
-	applicationId,
-	attributes: {
-		header: 'Session Attributes'
-	},
-	browserName: 'Firefox',
-	device: 'Desktop',
-	nestedItems: [
-		{
-			subtitle: 'www.liferay.com/testing',
-			time: 1518648993917,
-			title: 'Visited Liferay: Testing'
-		}
-	],
-	time: 1518648993917,
-	title: 'Opened Email',
-	userAgent
-});
+const renderTimeline = (props) =>
+	render(
+		<Provider store={mockStore()}>
+			<VerticalTimeline timeZoneId={TIME_ZONE_ID} {...props} />
+		</Provider>
+	);
 
 describe('VerticalTimeline', () => {
 	afterEach(cleanup);
 
-	beforeAll(mockDate);
-
-	it('should render with a header and initialExpanded', () => {
-		const {container} = render(
-			<DefaultComponent
-				headerLabels={{
-					count: 'count',
-					label: 'label',
-					title: 'title'
-				}}
-				initialExpanded
-				items={ITEMS}
-			/>
-		);
-
-		expect(container).toMatchSnapshot();
-	});
-
-	it('should render on loading state', () => {
-		const {container} = render(<DefaultComponent loading />);
+	it('renders on loading state', () => {
+		const {container} = renderTimeline({loading: true});
 
 		expect(container.querySelector('.loading-root')).toBeInTheDocument();
 	});
 
-	it('should expand TimelineItem when clicked', async () => {
-		const {container, getAllByText} = render(
-			<DefaultComponent
-				headerLabels={{
-					count: 'count',
-					label: 'label',
-					title: 'title'
-				}}
-				initialExpanded
-				items={ITEMS}
-			/>
-		);
+	describe('individual row', () => {
+		const INDIVIDUAL_ITEM = {
+			individual: true,
+			individualId: 'ind-1',
+			individualName: 'Ada Lovelace',
+			individualUrl: '/workspace/liferay.com/1/contacts/individuals/known-individuals/ind-1',
+			isAnonymous: false
+		};
 
-		fireEvent.click(
-			container.getElementsByClassName(
-				'timeline-panel-body-content selectable'
-			)[0]
-		);
+		it('renders the individual\'s name as a link when a url is provided', () => {
+			renderTimeline({items: [INDIVIDUAL_ITEM]});
 
-		const sessionAttributes = await waitFor(
-			() => getAllByText(/Session Attributes/)[0]
-		);
-
-		expect(sessionAttributes).toHaveTextContent(SESSION_ATTRIBUTES_TITLE);
-	});
-
-	it('should display the "DXP" label for Liferay DXP data sources', () => {
-		['CustomEvent', 'WebContent'].forEach(applicationId => {
-			const {getByText, unmount} = render(
-				<DefaultComponent
-					items={[
-						createDataSourceItem({
-							applicationId,
-							userAgent:
-								'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
-						})
-					]}
-				/>
+			expect(screen.getByText('Ada Lovelace').closest('a')).toHaveAttribute(
+				'href',
+				INDIVIDUAL_ITEM.individualUrl
 			);
+		});
 
-			expect(getByText('DXP')).toBeInTheDocument();
+		it('renders the individual\'s name as plain text when there is no url', () => {
+			renderTimeline({
+				items: [{...INDIVIDUAL_ITEM, individualUrl: undefined}]
+			});
 
-			unmount();
+			expect(screen.getByText('Ada Lovelace').closest('a')).toBeNull();
+		});
+
+		it('heads an anonymous individual with their id and labels them beneath it', () => {
+			const {container} = renderTimeline({
+				items: [
+					{
+						...INDIVIDUAL_ITEM,
+						individualId: 'e484348e-anon',
+						individualName: 'Anonymous User',
+						individualUrl: undefined,
+						isAnonymous: true
+					}
+				]
+			});
+
+			expect(
+				container.querySelector('.individual-title')
+			).toHaveTextContent('e484348e-anon');
+			expect(
+				container.querySelector('.individual-subtitle')
+			).toHaveTextContent('Anonymous User');
+		});
+
+		it('falls back to the label alone for an anonymous individual with no id', () => {
+			const {container} = renderTimeline({
+				items: [
+					{
+						individual: true,
+						individualName: 'Anonymous User',
+						isAnonymous: true
+					}
+				]
+			});
+
+			expect(
+				container.querySelector('.individual-title')
+			).toHaveTextContent('Anonymous User');
+			expect(
+				container.querySelector('.individual-subtitle')
+			).not.toBeInTheDocument();
+		});
+
+		it('links an anonymous individual by their id, not by the generic label', () => {
+			renderTimeline({
+				items: [
+					{
+						...INDIVIDUAL_ITEM,
+						individualId: 'e484348e-anon',
+						individualName: 'Anonymous User',
+						isAnonymous: true
+					}
+				]
+			});
+
+			expect(screen.getByText('Anonymous User').closest('a')).toBeNull();
+			expect(screen.getByText('e484348e-anon').closest('a')).toHaveAttribute(
+				'href',
+				INDIVIDUAL_ITEM.individualUrl
+			);
+		});
+
+		it('shows the job title on its own line when the session carries one', () => {
+			renderTimeline({
+				items: [{...INDIVIDUAL_ITEM, jobTitle: 'Plant Manager'}]
+			});
+
+			expect(screen.getByText('Plant Manager')).toBeInTheDocument();
+			expect(screen.queryByText('ind-1')).toBeNull();
+		});
+
+		it('is not expandable', () => {
+			const {container} = renderTimeline({items: [INDIVIDUAL_ITEM]});
+
+			expect(
+				container.querySelector('.individual-row .row-main')
+			).not.toBeInTheDocument();
+			expect(
+				container.querySelector('.individual-row .angle-icon')
+			).not.toBeInTheDocument();
 		});
 	});
 
-	it('should display the application ID label for the HubSpot webhook data source', () => {
-		const {getByText, queryByText} = render(
-			<DefaultComponent
-				items={[
-					createDataSourceItem({
-						applicationId: 'Hubspot',
+	describe('session row', () => {
+		const SESSION_ITEM = {
+			applicationId: 'Page',
+			attributes: {
+				header: 'Session Attributes',
+				userAgent: 'Mozilla/5.0'
+			},
+			browserName: 'Firefox',
+			device: 'Desktop',
+			endTime: '2026-07-16T11:00:00.000Z',
+			nestedItems: [],
+			session: true,
+			time: '2026-07-16T10:00:00.000Z',
+			totalEvents: 2,
+			userAgent: 'Mozilla/5.0'
+		};
+
+		it('shows the session time range', () => {
+			renderTimeline({items: [SESSION_ITEM]});
+
+			expect(
+				screen.getByText('Session: 10:00 AM - 11:00 AM')
+			).toBeInTheDocument();
+		});
+
+		it('reads device, data source, then event count across its details', () => {
+			const {container} = renderTimeline({items: [SESSION_ITEM]});
+
+			const details = Array.from(
+				container.querySelector('.session-row .row-details').children
+			);
+
+			expect(details.map((detail) => detail.className)).toEqual([
+				expect.stringContaining('device-icon'),
+				expect.stringContaining('data-source-label'),
+				expect.stringContaining('event-count-pill')
+			]);
+			expect(details[2]).toHaveTextContent('2');
+		});
+
+		it('shows "in progress" when the session has no end time', () => {
+			renderTimeline({items: [{...SESSION_ITEM, endTime: undefined}]});
+
+			expect(
+				screen.getByText('Session: 10:00 AM - in progress')
+			).toBeInTheDocument();
+		});
+
+		it('shows "no timestamps" for a webhook session', () => {
+			renderTimeline({items: [{...SESSION_ITEM, noTimestamps: true}]});
+
+			expect(
+				screen.getByText('Session: 10:00 AM - no timestamps')
+			).toBeInTheDocument();
+		});
+
+		it('reveals its own raw attributes when expanded', () => {
+			const {container} = renderTimeline({items: [SESSION_ITEM]});
+
+			expect(
+				container.querySelector('.attributes-payload')
+			).not.toBeInTheDocument();
+
+			fireEvent.click(
+				container.querySelector('.session-row .payload-button')
+			);
+
+			expect(
+				container.querySelector('.attributes-payload')
+			).toHaveTextContent('Session Attributes');
+		});
+
+		it('titles the attributes table with the header, instead of listing it as an attribute', () => {
+			const {container} = renderTimeline({items: [SESSION_ITEM]});
+
+			fireEvent.click(
+				container.querySelector('.session-row .payload-button')
+			);
+
+			expect(
+				container.querySelector('.payload-table-title')
+			).toHaveTextContent('Session Attributes');
+			expect(screen.queryByText('header')).not.toBeInTheDocument();
+		});
+
+		it('does not expand when the row itself is clicked', () => {
+			const {container} = renderTimeline({items: [SESSION_ITEM]});
+
+			fireEvent.click(container.querySelector('.session-row .row-main'));
+
+			expect(
+				container.querySelector('.attributes-payload')
+			).not.toBeInTheDocument();
+		});
+
+		it('always shows its pages, without needing to expand', () => {
+			renderTimeline({
+				items: [
+					{
+						...SESSION_ITEM,
+						nestedItems: [
+							{
+								descriptionUrl: undefined,
+								nestedItems: [],
+								pageGroup: true,
+								subtitle: 'https://liferay.com/home',
+								time: '2026-07-16T10:05:00.000Z',
+								title: 'Home',
+								totalEvents: 1
+							}
+						]
+					}
+				]
+			});
+
+			expect(screen.getByText('Home')).toBeInTheDocument();
+		});
+
+		it('should display the "DXP" label for a Liferay DXP data source', () => {
+			renderTimeline({
+				items: [{...SESSION_ITEM, applicationId: 'WebContent'}]
+			});
+
+			expect(screen.getByText('DXP')).toBeInTheDocument();
+		});
+
+		it('should display the application id label for a webhook data source', () => {
+			renderTimeline({
+				items: [
+					{
+						...SESSION_ITEM,
+						applicationId: 'HubSpot',
 						userAgent: 'HubSpot Webhook'
-					})
-				]}
-			/>
-		);
+					}
+				]
+			});
 
-		expect(getByText('HUBSPOT')).toBeInTheDocument();
-		expect(queryByText('DXP')).not.toBeInTheDocument();
+			expect(screen.getByText('HUBSPOT')).toBeInTheDocument();
+			expect(screen.queryByText('DXP')).not.toBeInTheDocument();
+		});
+
+		it('shows the became known label for the session the individual was identified in', () => {
+			renderTimeline({items: [{...SESSION_ITEM, becameKnown: true}]});
+
+			expect(screen.getByText('Became Known')).toBeInTheDocument();
+		});
+
+		it('hides the became known label for every other session', () => {
+			renderTimeline({items: [SESSION_ITEM]});
+
+			expect(screen.queryByText('Became Known')).not.toBeInTheDocument();
+		});
+
+		it('lays the became known icon out beside its text', () => {
+			renderTimeline({items: [{...SESSION_ITEM, becameKnown: true}]});
+
+			const label = screen.getByText('Became Known').closest('.label');
+
+			expect(
+				label.querySelector('.label-item-before .lexicon-icon')
+			).toBeInTheDocument();
+		});
+
+		it('hides the data source label when the workspace is not on the LDP plan', () => {
+			renderTimeline({
+				items: [{...SESSION_ITEM, applicationId: 'WebContent'}],
+				LDPEnabled: false
+			});
+
+			expect(screen.queryByText('DXP')).not.toBeInTheDocument();
+		});
 	});
 
-	it('should display the application ID label for the Marketo webhook data source', () => {
-		const {getByText, queryByText} = render(
-			<DefaultComponent
-				items={[
-					createDataSourceItem({
-						applicationId: 'Marketo',
-						userAgent: 'Marketo Webhook'
-					})
-				]}
-			/>
-		);
+	describe('page group row', () => {
+		const PAGE_ITEM = {
+			descriptionUrl: '/workspace/liferay.com/1/sites/touchpoints',
+			nestedItems: [],
+			pageGroup: true,
+			subtitle: 'https://liferay.com/home',
+			time: '2026-07-16T10:00:00.000Z',
+			title: 'Home',
+			totalEvents: 2
+		};
 
-		expect(getByText('MARKETO')).toBeInTheDocument();
-		expect(queryByText('DXP')).not.toBeInTheDocument();
+		it('renders the page title as a link to its dashboard when a descriptionUrl is provided', () => {
+			renderTimeline({items: [PAGE_ITEM]});
+
+			expect(screen.getByText('Home').closest('a')).toHaveAttribute(
+				'href',
+				PAGE_ITEM.descriptionUrl
+			);
+		});
+
+		it('renders the page title as plain text when there is no descriptionUrl', () => {
+			renderTimeline({items: [{...PAGE_ITEM, descriptionUrl: undefined}]});
+
+			expect(screen.getByText('Home').closest('a')).toBeNull();
+		});
+
+		it('renders the page url as an external link', () => {
+			renderTimeline({items: [PAGE_ITEM]});
+
+			expect(screen.getByText(PAGE_ITEM.subtitle).closest('a')).toHaveAttribute(
+				'href',
+				PAGE_ITEM.subtitle
+			);
+		});
+
+		it('shows the event count for the page', () => {
+			renderTimeline({items: [PAGE_ITEM]});
+
+			expect(screen.getByText('2')).toBeInTheDocument();
+		});
+
+		it('reveals its own events when expanded', () => {
+			const {container} = renderTimeline({
+				items: [
+					{
+						...PAGE_ITEM,
+						nestedItems: [
+							{
+								attributes: {},
+								description: undefined,
+								descriptionUrl: undefined,
+								subtitle: undefined,
+								time: '2026-07-16T10:01:00.000Z',
+								title: 'pageViewed'
+							}
+						]
+					}
+				]
+			});
+
+			expect(screen.queryByText('pageViewed')).not.toBeInTheDocument();
+
+			fireEvent.click(container.querySelector('.page-row .row-main'));
+
+			expect(screen.getByText('pageViewed')).toBeInTheDocument();
+		});
+
+		it('does not show the experience label when the page carries no experience data', () => {
+			renderTimeline({items: [PAGE_ITEM]});
+
+			expect(screen.queryByText('Experience')).not.toBeInTheDocument();
+		});
+
+		it('does not show the experience label when experienceNames is empty', () => {
+			renderTimeline({items: [{...PAGE_ITEM, experienceNames: []}]});
+
+			expect(screen.queryByText('Experience')).not.toBeInTheDocument();
+		});
+
+		it('shows the experience label when the page was served by a non-default experience', () => {
+			renderTimeline({
+				items: [
+					{...PAGE_ITEM, experienceNames: ['Q3 Promo Experience']}
+				]
+			});
+
+			expect(screen.getByText('Experience')).toBeInTheDocument();
+		});
+
+		it('names the experience in the label\'s tooltip', () => {
+			renderTimeline({
+				items: [
+					{...PAGE_ITEM, experienceNames: ['Q3 Promo Experience']}
+				]
+			});
+
+			expect(
+				screen.getByText('Experience').closest('.experience-label-root')
+			).toHaveAttribute('title', 'Q3 Promo Experience');
+		});
+
+		it('lists every distinct experience in the tooltip, one per line', () => {
+			renderTimeline({
+				items: [
+					{
+						...PAGE_ITEM,
+						experienceNames: [
+							'Q3 Promo Experience',
+							'Winter Sale Experience'
+						]
+					}
+				]
+			});
+
+			expect(
+				screen.getByText('Experience').closest('.experience-label-root')
+			).toHaveAttribute(
+				'title',
+				'Q3 Promo Experience\nWinter Sale Experience'
+			);
+		});
+
+		it('shows the experience label alongside the event count, not on a nested event', () => {
+			const {container} = renderTimeline({
+				items: [
+					{...PAGE_ITEM, experienceNames: ['Q3 Promo Experience']}
+				]
+			});
+
+			expect(
+				container.querySelector('.row-metrics .event-count-pill')
+			).toBeInTheDocument();
+			expect(
+				container.querySelector('.row-metrics .experience-label')
+			).toBeInTheDocument();
+		});
 	});
 
-	it('hides the data source label when the workspace is not on the LDP plan', () => {
-		const {queryByText} = render(
-			<DefaultComponent
-				items={[
-					createDataSourceItem({
-						applicationId: 'WebContent',
-						userAgent:
-							'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
-					})
-				]}
-				LDPEnabled={false}
-			/>
-		);
+	describe('event row', () => {
+		const EVENT_ITEM = {
+			attributes: {applicationId: 'HubSpot', eventId: 'emailViewed'},
+			description: 'Liferay: Digital experience software',
+			descriptionUrl: '/workspace/liferay.com/1/assets/blogs/1',
+			subtitle: 'https://hubspot.com',
+			time: '2026-07-16T10:00:00.000Z',
+			title: 'emailViewed'
+		};
 
-		expect(queryByText('DXP')).not.toBeInTheDocument();
-	});
+		it('shows the event name and time', () => {
+			renderTimeline({items: [EVENT_ITEM]});
 
-	it('shows the data source label when the workspace is on the LDP plan', () => {
-		const {getByText} = render(
-			<DefaultComponent
-				items={[
-					createDataSourceItem({
-						applicationId: 'WebContent',
-						userAgent:
-							'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
-					})
-				]}
-				LDPEnabled
-			/>
-		);
+			expect(screen.getByText('emailViewed')).toBeInTheDocument();
+			expect(screen.getByText('10:00 AM')).toBeInTheDocument();
+		});
 
-		expect(getByText('DXP')).toBeInTheDocument();
+		it('renders the description as a link when a descriptionUrl is provided', () => {
+			renderTimeline({items: [EVENT_ITEM]});
+
+			expect(
+				screen.getByText(EVENT_ITEM.description).closest('a')
+			).toHaveAttribute('href', EVENT_ITEM.descriptionUrl);
+		});
+
+		it('renders the event\'s own subtitle as an external link', () => {
+			renderTimeline({items: [EVENT_ITEM]});
+
+			expect(screen.getByText(EVENT_ITEM.subtitle).closest('a')).toHaveAttribute(
+				'href',
+				EVENT_ITEM.subtitle
+			);
+		});
+
+		it('shows its icon on a sticker', () => {
+			const {container} = renderTimeline({items: [EVENT_ITEM]});
+
+			expect(
+				container.querySelector('.event-row .event-sticker .row-icon')
+			).toBeInTheDocument();
+		});
+
+		it('does not expand when the row itself is clicked', () => {
+			const {container} = renderTimeline({items: [EVENT_ITEM]});
+
+			fireEvent.click(container.querySelector('.event-row .row-main'));
+
+			expect(
+				container.querySelector('.attributes-payload')
+			).not.toBeInTheDocument();
+		});
+
+		it('reveals its own raw attributes when expanded', () => {
+			const {container} = renderTimeline({items: [EVENT_ITEM]});
+
+			expect(
+				container.querySelector('.attributes-payload')
+			).not.toBeInTheDocument();
+
+			fireEvent.click(
+				container.querySelector('.event-row .payload-button')
+			);
+
+			expect(
+				container.querySelector('.attributes-payload')
+			).toHaveTextContent('HubSpot');
+		});
+
+		it('lays the attributes out as a property and value table', () => {
+			const {container} = renderTimeline({items: [EVENT_ITEM]});
+
+			fireEvent.click(
+				container.querySelector('.event-row .payload-button')
+			);
+
+			expect(screen.getByText('Property')).toBeInTheDocument();
+			expect(screen.getByText('Value')).toBeInTheDocument();
+
+			expect(
+				screen.getByText('applicationId').closest('tr')
+			).toHaveTextContent('HubSpot');
+		});
+
+		it('shows the acquisition parameters in a table of their own', () => {
+			const {container} = renderTimeline({
+				items: [
+					{
+						...EVENT_ITEM,
+						attributes: {
+							...EVENT_ITEM.attributes,
+							acquisitionProperties: {utm_medium: 'email'}
+						}
+					}
+				]
+			});
+
+			fireEvent.click(
+				container.querySelector('.event-row .payload-button')
+			);
+
+			const [attributesTable, utmTable] =
+				container.querySelectorAll('.payload-table');
+
+			expect(attributesTable).toHaveTextContent('Event Attributes');
+			expect(attributesTable).not.toHaveTextContent('utm_medium');
+
+			expect(utmTable).toHaveTextContent('UTM Parameters');
+			expect(
+				screen.getByText('utm_medium').closest('tr')
+			).toHaveTextContent('email');
+		});
+
+		const expandFirstEvent = () => {
+			const {container} = renderTimeline({items: [EVENT_ITEM]});
+
+			fireEvent.click(
+				container.querySelector('.event-row .payload-button')
+			);
+
+			return container;
+		};
+
+		it('leaves the value column in the default text color', () => {
+			expandFirstEvent();
+
+			expect(
+				screen.getByText('applicationId').closest('tr').querySelector('td')
+			).not.toHaveClass('text-secondary');
+		});
+
+		describe('payload views', () => {
+			it('titles the payload and offers a table and a code view', () => {
+				expandFirstEvent();
+
+				expect(screen.getByText('Details')).toBeInTheDocument();
+				expect(screen.getByText('Table')).toBeInTheDocument();
+				expect(screen.getByText('Code')).toBeInTheDocument();
+			});
+
+			it('shows the tables first', () => {
+				const container = expandFirstEvent();
+
+				expect(container.querySelector('.payload-table')).toBeInTheDocument();
+				expect(container.querySelector('.payload-code')).not.toBeInTheDocument();
+			});
+
+			it('shows the raw payload once code is chosen', () => {
+				const container = expandFirstEvent();
+
+				fireEvent.click(screen.getByText('Code'));
+
+				expect(container.querySelector('.payload-code')).toHaveTextContent(
+					'"applicationId": "HubSpot"'
+				);
+				expect(container.querySelector('.payload-table')).not.toBeInTheDocument();
+			});
+
+			it('returns to the tables once table is chosen again', () => {
+				const container = expandFirstEvent();
+
+				fireEvent.click(screen.getByText('Code'));
+				fireEvent.click(screen.getByText('Table'));
+
+				expect(container.querySelector('.payload-table')).toBeInTheDocument();
+				expect(container.querySelector('.payload-code')).not.toBeInTheDocument();
+			});
+
+			it('offers no copy button while the tables are showing', () => {
+				const container = expandFirstEvent();
+
+				expect(
+					container.querySelector('.payload-copy')
+				).not.toBeInTheDocument();
+			});
+
+			it('offers a copy button carrying the raw payload in the code view', () => {
+				const container = expandFirstEvent();
+
+				fireEvent.click(screen.getByText('Code'));
+
+				expect(container.querySelector('.payload-copy')).toHaveAttribute(
+					'data-clipboard-text',
+					JSON.stringify(EVENT_ITEM.attributes, null, 2)
+				);
+			});
+
+			it('names the copy button after what it copies', () => {
+				const container = expandFirstEvent();
+
+				fireEvent.click(screen.getByText('Code'));
+
+				const copy = container.querySelector('.payload-copy');
+
+				expect(copy).toHaveAttribute('aria-label', 'Copy Details');
+				expect(copy).toHaveAttribute('title', 'Copy Details');
+			});
+
+			it('keeps the chosen view to the row it was chosen on', () => {
+				const {container} = renderTimeline({
+					items: [EVENT_ITEM, {...EVENT_ITEM, title: 'emailClicked'}]
+				});
+
+				const [firstRow, secondRow] = container.querySelectorAll('.event-row');
+
+				fireEvent.click(firstRow.querySelector('.payload-button'));
+				fireEvent.click(secondRow.querySelector('.payload-button'));
+
+				fireEvent.click(within(firstRow).getByText('Code'));
+
+				expect(firstRow.querySelector('.payload-code')).toBeInTheDocument();
+				expect(secondRow.querySelector('.payload-code')).not.toBeInTheDocument();
+				expect(secondRow.querySelector('.payload-table')).toBeInTheDocument();
+			});
+		});
 	});
 });

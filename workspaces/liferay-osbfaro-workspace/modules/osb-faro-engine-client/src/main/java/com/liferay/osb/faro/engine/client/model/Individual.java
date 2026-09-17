@@ -34,6 +34,10 @@ public class Individual {
 		return _activityStatus;
 	}
 
+	public Long getAverageSessionDuration() {
+		return _averageSessionDuration;
+	}
+
 	public Map<String, String> getContext() {
 		return _context;
 	}
@@ -83,6 +87,14 @@ public class Individual {
 		return _id;
 	}
 
+	public Date getKnownSinceDate() {
+		if (_knownSinceDate == null) {
+			return null;
+		}
+
+		return new Date(_knownSinceDate.getTime());
+	}
+
 	public Date getLastActivityDate() {
 		if (_lastActivityDate == null) {
 			return null;
@@ -99,6 +111,10 @@ public class Individual {
 		return _profileType;
 	}
 
+	public Long getSessionsCount() {
+		return _sessionsCount;
+	}
+
 	public void setAccountName(String accountName) {
 		_accountName = accountName;
 	}
@@ -113,6 +129,10 @@ public class Individual {
 
 	public void setActivityStatus(String activityStatus) {
 		_activityStatus = activityStatus;
+	}
+
+	public void setAverageSessionDuration(Long averageSessionDuration) {
+		_averageSessionDuration = averageSessionDuration;
 	}
 
 	public void setContext(Map<String, String> context) {
@@ -159,6 +179,12 @@ public class Individual {
 		_id = id;
 	}
 
+	public void setKnownSinceDate(Date knownSinceDate) {
+		if (knownSinceDate != null) {
+			_knownSinceDate = new Date(knownSinceDate.getTime());
+		}
+	}
+
 	public void setLastActivityDate(Date lastActivityDate) {
 		if (lastActivityDate != null) {
 			_lastActivityDate = new Date(lastActivityDate.getTime());
@@ -171,6 +197,10 @@ public class Individual {
 
 	public void setProfileType(String profileType) {
 		_profileType = profileType;
+	}
+
+	public void setSessionsCount(Long sessionsCount) {
+		_sessionsCount = sessionsCount;
 	}
 
 	public static class Account {
@@ -335,6 +365,7 @@ public class Individual {
 	private List<Account> _accounts;
 	private Long _activitiesCount;
 	private String _activityStatus;
+	private Long _averageSessionDuration;
 	private Map<String, String> _context = new HashMap<>();
 	private Map<String, List<Field>> _custom = new HashMap<>();
 	private List<DataSourceIndividualPK> _dataSourceIndividualPKs =
@@ -345,8 +376,10 @@ public class Individual {
 	private Map<String, Object> _embeddedResources = new HashMap<>();
 	private Date _firstActivityDate;
 	private String _id;
+	private Date _knownSinceDate;
 	private Date _lastActivityDate;
 	private String _lastSessionCountry;
 	private String _profileType;
+	private Long _sessionsCount;
 
 }

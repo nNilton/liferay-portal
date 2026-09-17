@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
@@ -27,6 +28,8 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 
 import java.io.Serializable;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -107,6 +110,51 @@ public class GeneralConfig implements Serializable {
 
 	@JsonIgnore
 	private Supplier<ApplicationDecorator> _applicationDecoratorSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema
+	public String getCustomApplicationDecorator() {
+		if (_customApplicationDecoratorSupplier != null) {
+			customApplicationDecorator =
+				_customApplicationDecoratorSupplier.get();
+
+			_customApplicationDecoratorSupplier = null;
+		}
+
+		return customApplicationDecorator;
+	}
+
+	public void setCustomApplicationDecorator(
+		String customApplicationDecorator) {
+
+		this.customApplicationDecorator = customApplicationDecorator;
+
+		_customApplicationDecoratorSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setCustomApplicationDecorator(
+		UnsafeSupplier<String, Exception>
+			customApplicationDecoratorUnsafeSupplier) {
+
+		_customApplicationDecoratorSupplier = () -> {
+			try {
+				return customApplicationDecoratorUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String customApplicationDecorator;
+
+	@JsonIgnore
+	private Supplier<String> _customApplicationDecoratorSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "The localized custom titles."
@@ -234,6 +282,22 @@ public class GeneralConfig implements Serializable {
 
 			sb.append("\"");
 			sb.append(applicationDecorator);
+			sb.append("\"");
+		}
+
+		String customApplicationDecorator = getCustomApplicationDecorator();
+
+		if (customApplicationDecorator != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"customApplicationDecorator\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(customApplicationDecorator));
+
 			sb.append("\"");
 		}
 
@@ -392,6 +456,27 @@ public class GeneralConfig implements Serializable {
 		return sb.toString();
 	}
 
+	private static String _toJSON(Object value) {
+		if (value instanceof Collection) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray((Collection<?>)value));
+		}
+		else if (value instanceof Map) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONObject((Map<?, ?>)value));
+		}
+		else if (value instanceof Object[]) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray(
+					Arrays.asList((Object[])value)));
+		}
+		else if (value instanceof String) {
+			return StringBundler.concat("\"", _escape(value), "\"");
+		}
+
+		return String.valueOf(value);
+	}
+
 	private static final String[][] _JSON_ESCAPE_STRINGS = {
 		{"\\", "\"", "\b", "\f", "\n", "\r", "\t"},
 		{"\\\\", "\\\"", "\\b", "\\f", "\\n", "\\r", "\\t"}
@@ -400,4 +485,4 @@ public class GeneralConfig implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:709702621
+// LIFERAY-REST-BUILDER-HASH:-1801353718

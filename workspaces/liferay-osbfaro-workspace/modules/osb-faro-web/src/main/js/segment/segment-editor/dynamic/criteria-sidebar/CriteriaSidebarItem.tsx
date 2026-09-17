@@ -9,15 +9,16 @@ import {Property} from 'shared/util/records';
 import {PropertyTypes} from '../utils/constants';
 
 const TYPE_ICON_MAP = {
-	[PropertyTypes.Behavior]: 'ac_event_analysis',
+	[PropertyTypes.Behavior]: 'click',
 	[PropertyTypes.Boolean]: 'check',
 	[PropertyTypes.AccountDate]: 'date',
+	[PropertyTypes.AccountSelectText]: 'text',
 	[PropertyTypes.AccountNumber]: 'integer',
 	[PropertyTypes.AccountText]: 'text',
 	[PropertyTypes.Date]: 'date',
 	[PropertyTypes.DateTime]: 'date',
 	[PropertyTypes.Duration]: 'time',
-	[PropertyTypes.Event]: 'ac_event_analysis',
+	[PropertyTypes.Event]: 'click',
 	[PropertyTypes.Number]: 'integer',
 	[PropertyTypes.OrganizationBoolean]: 'check',
 	[PropertyTypes.OrganizationDate]: 'date',
@@ -25,11 +26,14 @@ const TYPE_ICON_MAP = {
 	[PropertyTypes.OrganizationNumber]: 'integer',
 	[PropertyTypes.OrganizationSelectText]: 'text',
 	[PropertyTypes.OrganizationText]: 'text',
+	[PropertyTypes.SessionChannel]: 'check',
 	[PropertyTypes.SessionDateTime]: 'date',
 	[PropertyTypes.SessionNumber]: 'integer',
 	[PropertyTypes.SessionText]: 'text',
+	[PropertyTypes.SessionUtmParameter]: 'text',
 	[PropertyTypes.Vocabulary]: 'text',
 	[PropertyTypes.Interest]: 'check',
+	[PropertyTypes.SearchTerm]: 'check',
 	[PropertyTypes.Tag]: 'text',
 	[PropertyTypes.Text]: 'text',
 };
@@ -40,7 +44,7 @@ const TYPE_ICON_MAP = {
  * @param {Object} props Component's current props
  * @returns {Object} The props to be passed to the drop target.
  */
-const beginDrag = ({
+export const beginDrag = ({
 	defaultValue,
 	name,
 	property,
@@ -59,21 +63,32 @@ const beginDrag = ({
 
 	if (type === PropertyTypes.Behavior) {
 		touched = {asset: false, dateFilter: false, occurenceCount: false};
-		valid = {asset: true, dateFilter: true, occurenceCount: true};
+
+		// asset starts invalid: a behavior criterion requires the user to select
+		// an asset type (or Page) before the segment can be saved.
+
+		valid = {asset: false, dateFilter: true, occurenceCount: true};
 	}
 	else if (type === PropertyTypes.Event) {
-		touched = {
-			attributeValue: false,
-			occurenceCount: false,
-		};
-		valid = {
-			attributeValue: false,
-			occurenceCount: true,
-		};
+		touched = {occurenceCount: false};
+		valid = {occurenceCount: true};
 	}
 	else if (type === PropertyTypes.SessionGeolocation) {
 		touched = {country: false, dateFilter: false};
 		valid = {country: false, dateFilter: true};
+	}
+	else if (type === PropertyTypes.SessionChannel) {
+
+		// Unlike UTM Parameter, Channel's default value is already a
+		// concrete option (the first CHANNEL_OPTIONS entry), so it starts
+		// valid without requiring the user to touch the picker first.
+
+		touched = {customInput: false};
+		valid = {customInput: true};
+	}
+	else if (type === PropertyTypes.SessionUtmParameter) {
+		touched = {customInput: false};
+		valid = {customInput: false};
 	}
 	else if (
 		[PropertyTypes.SessionNumber, PropertyTypes.SessionText].includes(type)
@@ -83,6 +98,7 @@ const beginDrag = ({
 	}
 	else if (
 		[
+			PropertyTypes.AccountSelectText,
 			PropertyTypes.AccountNumber,
 			PropertyTypes.AccountText,
 			PropertyTypes.Duration,

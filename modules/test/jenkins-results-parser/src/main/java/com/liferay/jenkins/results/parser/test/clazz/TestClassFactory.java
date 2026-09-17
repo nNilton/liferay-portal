@@ -22,6 +22,8 @@ import com.liferay.jenkins.results.parser.test.clazz.group.SemVerModulesBatchTes
 import com.liferay.jenkins.results.parser.test.clazz.group.ServiceBuilderModulesBatchTestClassGroup;
 import com.liferay.jenkins.results.parser.test.clazz.group.TCKJunitBatchTestClassGroup;
 import com.liferay.jenkins.results.parser.test.clazz.group.WorkspacesCompileBatchTestClassGroup;
+import com.liferay.jenkins.results.parser.test.clazz.group.WorkspacesJSUnitModulesBatchTestClassGroup;
+import com.liferay.jenkins.results.parser.test.clazz.group.WorkspacesModulesJUnitBatchTestClassGroup;
 
 import java.io.File;
 
@@ -38,6 +40,13 @@ import org.json.JSONObject;
  * @author Michael Hashimoto
  */
 public class TestClassFactory {
+
+	public static void clear() {
+		_jUnitTestClasses.clear();
+		_modulesJUnitTestClasses.clear();
+		_npmTestClasses.clear();
+		_playwrightJUnitTestClasses.clear();
+	}
 
 	public static List<JUnitTestClass> getJUnitTestClasses() {
 		List<JUnitTestClass> jUnitTestClasses = new ArrayList<>(
@@ -99,6 +108,14 @@ public class TestClassFactory {
 		if (batchTestClassGroup instanceof JUnitBatchTestClassGroup) {
 			if (batchTestClassGroup instanceof
 					ModulesJUnitBatchTestClassGroup) {
+
+				if (batchTestClassGroup instanceof
+						WorkspacesModulesJUnitBatchTestClassGroup) {
+
+					return new WorkspacesModulesJUnitTestClass(
+						batchTestClassGroup, testClassFile,
+						testClassMethodNames);
+				}
 
 				return new ModulesJUnitTestClass(
 					batchTestClassGroup, testClassFile, testClassMethodNames);
@@ -215,6 +232,18 @@ public class TestClassFactory {
 			else if (batchTestClassGroup instanceof
 						JSUnitModulesBatchTestClassGroup) {
 
+				if (batchTestClassGroup instanceof
+						WorkspacesJSUnitModulesBatchTestClassGroup) {
+
+					if (jsonObject != null) {
+						return new WorkspacesJSUnitModulesTestClass(
+							batchTestClassGroup, jsonObject);
+					}
+
+					return new WorkspacesJSUnitModulesTestClass(
+						batchTestClassGroup, testClassFile);
+				}
+
 				if (jsonObject != null) {
 					return new JSUnitModulesTestClass(
 						batchTestClassGroup, jsonObject);
@@ -229,19 +258,36 @@ public class TestClassFactory {
 				File canonicalFile = _getCanonicalFile(
 					testClassFile, jsonObject);
 
-				if (_modulesJUnitTestClasses.containsKey(canonicalFile)) {
-					return _modulesJUnitTestClasses.get(canonicalFile);
+				ModulesJUnitTestClass modulesJUnitTestClass =
+					_modulesJUnitTestClasses.get(canonicalFile);
+
+				if (modulesJUnitTestClass != null) {
+					return modulesJUnitTestClass;
 				}
 
-				ModulesJUnitTestClass modulesJUnitTestClass = null;
+				if (batchTestClassGroup instanceof
+						WorkspacesModulesJUnitBatchTestClassGroup) {
 
-				if (jsonObject != null) {
-					modulesJUnitTestClass = new ModulesJUnitTestClass(
-						batchTestClassGroup, jsonObject);
+					if (jsonObject != null) {
+						modulesJUnitTestClass =
+							new WorkspacesModulesJUnitTestClass(
+								batchTestClassGroup, jsonObject);
+					}
+					else {
+						modulesJUnitTestClass =
+							new WorkspacesModulesJUnitTestClass(
+								batchTestClassGroup, testClassFile);
+					}
 				}
 				else {
-					modulesJUnitTestClass = new ModulesJUnitTestClass(
-						batchTestClassGroup, testClassFile);
+					if (jsonObject != null) {
+						modulesJUnitTestClass = new ModulesJUnitTestClass(
+							batchTestClassGroup, jsonObject);
+					}
+					else {
+						modulesJUnitTestClass = new ModulesJUnitTestClass(
+							batchTestClassGroup, testClassFile);
+					}
 				}
 
 				_modulesJUnitTestClasses.put(
@@ -253,11 +299,12 @@ public class TestClassFactory {
 				File canonicalFile = _getCanonicalFile(
 					testClassFile, jsonObject);
 
-				if (_jUnitTestClasses.containsKey(canonicalFile)) {
-					return _jUnitTestClasses.get(canonicalFile);
-				}
+				JUnitTestClass jUnitTestClass = _jUnitTestClasses.get(
+					canonicalFile);
 
-				JUnitTestClass jUnitTestClass = null;
+				if (jUnitTestClass != null) {
+					return jUnitTestClass;
+				}
 
 				if (jsonObject != null) {
 					jUnitTestClass = new JUnitTestClass(
@@ -278,11 +325,11 @@ public class TestClassFactory {
 				File canonicalFile = _getCanonicalFile(
 					testClassFile, jsonObject);
 
-				if (_npmTestClasses.containsKey(canonicalFile)) {
-					return _npmTestClasses.get(canonicalFile);
-				}
+				NPMTestClass npmTestClass = _npmTestClasses.get(canonicalFile);
 
-				NPMTestClass npmTestClass = null;
+				if (npmTestClass != null) {
+					return npmTestClass;
+				}
 
 				if (jsonObject != null) {
 					npmTestClass = new NPMTestClass(
@@ -303,11 +350,12 @@ public class TestClassFactory {
 				File canonicalFile = _getCanonicalFile(
 					testClassFile, jsonObject);
 
-				if (_playwrightJUnitTestClasses.containsKey(canonicalFile)) {
-					return _playwrightJUnitTestClasses.get(canonicalFile);
-				}
+				PlaywrightJUnitTestClass playwrightJUnitTestClass =
+					_playwrightJUnitTestClasses.get(canonicalFile);
 
-				PlaywrightJUnitTestClass playwrightJUnitTestClass = null;
+				if (playwrightJUnitTestClass != null) {
+					return playwrightJUnitTestClass;
+				}
 
 				if (jsonObject != null) {
 					playwrightJUnitTestClass = new PlaywrightJUnitTestClass(

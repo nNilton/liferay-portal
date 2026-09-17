@@ -411,12 +411,12 @@ public class ObjectEntryLocalServiceWrapper
 	public java.util.Map<Object, Long> getAggregationCounts(
 			long groupId, long objectDefinitionId, String aggregationTerm,
 			com.liferay.petra.sql.dsl.expression.Predicate predicate,
-			boolean preferApproved, int start, int end)
+			boolean preferApproved)
 		throws com.liferay.portal.kernel.exception.PortalException {
 
 		return _objectEntryLocalService.getAggregationCounts(
 			groupId, objectDefinitionId, aggregationTerm, predicate,
-			preferApproved, start, end);
+			preferApproved);
 	}
 
 	@Override
@@ -585,6 +585,14 @@ public class ObjectEntryLocalServiceWrapper
 	}
 
 	@Override
+	public int getObjectEntriesCount(
+		long groupId, long objectDefinitionId, int status) {
+
+		return _objectEntryLocalService.getObjectEntriesCount(
+			groupId, objectDefinitionId, status);
+	}
+
+	@Override
 	public long getObjectEntriesCount(
 			long groupId, String languageId,
 			com.liferay.object.model.ObjectDefinition objectDefinition,
@@ -658,12 +666,12 @@ public class ObjectEntryLocalServiceWrapper
 			long groupId, long objectDefinitionId, long objectEntryId,
 			long objectRelationshipId, String aggregationTerm,
 			com.liferay.petra.sql.dsl.expression.Predicate predicate,
-			boolean related, String search, int start, int end)
+			boolean related, String search)
 		throws com.liferay.portal.kernel.exception.PortalException {
 
 		return _objectEntryLocalService.getOneToManyAggregationCounts(
 			groupId, objectDefinitionId, objectEntryId, objectRelationshipId,
-			aggregationTerm, predicate, related, search, start, end);
+			aggregationTerm, predicate, related, search);
 	}
 
 	@Override
@@ -826,6 +834,15 @@ public class ObjectEntryLocalServiceWrapper
 
 		_objectEntryLocalService.insertIntoOrUpdateExtensionTable(
 			userId, objectDefinitionId, primaryKey, values);
+	}
+
+	@Override
+	public void loadValues(
+			com.liferay.object.model.ObjectDefinition objectDefinition,
+			java.util.List<com.liferay.object.model.ObjectEntry> objectEntries)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		_objectEntryLocalService.loadValues(objectDefinition, objectEntries);
 	}
 
 	@Override
@@ -1042,4 +1059,4 @@ public class ObjectEntryLocalServiceWrapper
 	private ObjectEntryLocalService _objectEntryLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:428269909
+// LIFERAY-SERVICE-BUILDER-HASH:-262356575

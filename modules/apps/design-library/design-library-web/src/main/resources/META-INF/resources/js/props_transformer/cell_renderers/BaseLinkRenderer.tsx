@@ -6,7 +6,7 @@
 import ClayIcon from '@clayui/icon';
 import ClayLink from '@clayui/link';
 import ClaySticker from '@clayui/sticker';
-import {IItemsActions, replaceTokens} from '@liferay/frontend-data-set-web';
+import {IItemsActions, formatActionURL} from '@liferay/frontend-data-set-web';
 import classNames from 'classnames';
 import React from 'react';
 
@@ -22,14 +22,19 @@ export function BaseLinkRenderer({
 	action,
 	itemData,
 	stickerClassName,
+	stickerStyle,
 	symbol,
 	value,
-}: BaseLinkRendererProps & {stickerClassName: string; symbol: string}) {
+}: BaseLinkRendererProps & {
+	stickerClassName: string;
+	stickerStyle?: React.CSSProperties;
+	symbol: string;
+}) {
 	if (!action || !action?.href) {
 		return <>{value}</>;
 	}
 
-	const formattedHref = replaceTokens(action.href, itemData);
+	const formattedHref = formatActionURL(action.href, itemData, action.target);
 
 	return (
 		<div className="align-items-center d-flex table-list-title">
@@ -41,6 +46,7 @@ export function BaseLinkRenderer({
 					'inline-item-before',
 					stickerClassName
 				)}
+				style={stickerStyle}
 			>
 				<ClayIcon symbol={symbol} />
 			</ClaySticker>

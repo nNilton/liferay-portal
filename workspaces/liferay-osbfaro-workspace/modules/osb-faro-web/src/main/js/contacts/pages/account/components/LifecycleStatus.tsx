@@ -7,7 +7,7 @@ import ClaySticker from '@clayui/sticker';
 import MultiStepNav from '@clayui/multi-step-nav';
 import React from 'react';
 import StatesRenderer from 'shared/components/states-renderer/StatesRenderer';
-import {CUSTOM_DATE_FORMAT, formatUTCDate} from 'shared/util/date';
+import {formatUTCDate, getCustomDateFormat} from 'shared/util/date';
 import {
 	IAccountLifecycleStageStatus,
 	IAccountLifecycleStatus,
@@ -32,7 +32,7 @@ const getStageLabel = (stage: IAccountLifecycleStageStatus) => {
 };
 
 const LifecycleStatus: React.FC<LifecycleStatusProps> = ({className}) => {
-	const {groupId, id: accountId} = useParams<{
+	const {groupId = '', id: accountId = ''} = useParams<{
 		groupId: string;
 		id: string;
 	}>();
@@ -139,7 +139,7 @@ const LifecycleStatus: React.FC<LifecycleStatusProps> = ({className}) => {
 												stage.startDate
 													? formatUTCDate(
 															stage.startDate,
-															CUSTOM_DATE_FORMAT
+															getCustomDateFormat()
 														)
 													: undefined
 											}
@@ -206,7 +206,7 @@ const LifecycleStatus: React.FC<LifecycleStatusProps> = ({className}) => {
 											<Text color="secondary" size={3}>
 												{formatUTCDate(
 													activeStage.startDate,
-													CUSTOM_DATE_FORMAT
+													getCustomDateFormat()
 												)}
 											</Text>
 										)}

@@ -4,9 +4,51 @@ const {audiences} = await import(`${BASE_URL}o/frontend-js-audiences-web/__lifer
 
 audiences.setLogEnabled([$ENABLE_LOG$]);
 
-audiences.clear();
-await audiences.runDetection(`${BASE_URL}o/audiences/definition.([$AUDIENCES_DEFINITION_HASH$]).json`);
+const DEFINITION_URL = `${BASE_URL}o/audiences/definition.([$AUDIENCES_DEFINITION_HASH$]).json`;
 
-await import(`${BASE_URL}o/audiences/[$PLID$]/variations.([$ELEMENT_VARIATIONS_HASH$]).js`);
+let currentNavigationId = 0;
 
-await audiences.runHandlers();
+async function runAudiences() {
+
+	// A rapid sequence of SPA navigations can start several runAudiences() in
+	// parallel, since the endNavigate listener is not awaited. Tag each run and
+	// bail after every await once a newer navigation has started, so only the
+	// latest navigation registers handlers and applies variations.
+
+	const navigationId = ++currentNavigationId;
+
+	const meta = document.head.querySelector(
+		'meta[name="audiences-variations"]'
+	);
+
+	if (!meta) {
+		return;
+	}
+
+	const [plid, segmentsExperienceId, elementVariationsHash] =
+		meta.content.split(':');
+
+	const variations = await import(
+		`${BASE_URL}o/audiences/${plid}/${segmentsExperienceId}/variations.(${elementVariationsHash}).js`
+	);
+
+	if (navigationId !== currentNavigationId) {
+		return;
+	}
+
+	variations.register();
+
+	await audiences.runDetection(DEFINITION_URL, {
+		timeout: [$DETECTION_TIMEOUT$],
+	});
+
+	if (navigationId !== currentNavigationId) {
+		return;
+	}
+
+	await audiences.runHandlers();
+}
+
+await runAudiences();
+
+Liferay.on('endNavigate', runAudiences);

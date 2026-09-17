@@ -49,7 +49,6 @@ import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -171,7 +170,7 @@ public class AccountGroupLocalServiceImpl
 		throws PortalException {
 
 		return accountGroupLocalService.deleteAccountGroup(
-			accountGroupLocalService.getAccountGroup(accountGroupId));
+			accountGroupPersistence.findByPrimaryKey(accountGroupId));
 	}
 
 	@Override
@@ -264,8 +263,10 @@ public class AccountGroupLocalServiceImpl
 	}
 
 	@Override
-	public AccountGroup getDefaultAccountGroup(long companyId) {
-		return accountGroupPersistence.fetchByC_D_First(companyId, true, null);
+	public AccountGroup getDefaultAccountGroup(long companyId)
+		throws PortalException {
+
+		return accountGroupPersistence.findByC_D_First(companyId, true, null);
 	}
 
 	@Indexable(type = IndexableType.REINDEX)
@@ -349,7 +350,7 @@ public class AccountGroupLocalServiceImpl
 
 		_validateName(name);
 
-		AccountGroup accountGroup = accountGroupPersistence.fetchByPrimaryKey(
+		AccountGroup accountGroup = accountGroupPersistence.findByPrimaryKey(
 			accountGroupId);
 
 		accountGroup.setExternalReferenceCode(externalReferenceCode);
@@ -370,13 +371,6 @@ public class AccountGroupLocalServiceImpl
 	public AccountGroup updateExternalReferenceCode(
 			AccountGroup accountGroup, String externalReferenceCode)
 		throws PortalException {
-
-		if (Objects.equals(
-				accountGroup.getExternalReferenceCode(),
-				externalReferenceCode)) {
-
-			return accountGroup;
-		}
 
 		accountGroup.setExternalReferenceCode(externalReferenceCode);
 

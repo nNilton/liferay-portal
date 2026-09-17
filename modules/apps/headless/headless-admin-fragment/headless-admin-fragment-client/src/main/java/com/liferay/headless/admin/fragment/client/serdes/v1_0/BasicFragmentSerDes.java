@@ -14,6 +14,7 @@ import jakarta.annotation.Generated;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -126,6 +127,21 @@ public class BasicFragmentSerDes {
 			sb.append("\"fragmentSet\": ");
 
 			sb.append(String.valueOf(basicFragment.getFragmentSet()));
+		}
+
+		if (basicFragment.getFragmentSetExternalReferenceCode() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"fragmentSetExternalReferenceCode\": ");
+
+			sb.append("\"");
+
+			sb.append(
+				_escape(basicFragment.getFragmentSetExternalReferenceCode()));
+
+			sb.append("\"");
 		}
 
 		if (basicFragment.getFragmentVersions() != null) {
@@ -307,6 +323,16 @@ public class BasicFragmentSerDes {
 				"fragmentSet", String.valueOf(basicFragment.getFragmentSet()));
 		}
 
+		if (basicFragment.getFragmentSetExternalReferenceCode() == null) {
+			map.put("fragmentSetExternalReferenceCode", null);
+		}
+		else {
+			map.put(
+				"fragmentSetExternalReferenceCode",
+				String.valueOf(
+					basicFragment.getFragmentSetExternalReferenceCode()));
+		}
+
 		if (basicFragment.getFragmentVersions() == null) {
 			map.put("fragmentVersions", null);
 		}
@@ -406,6 +432,12 @@ public class BasicFragmentSerDes {
 			else if (Objects.equals(jsonParserFieldName, "fragmentSet")) {
 				return false;
 			}
+			else if (Objects.equals(
+						jsonParserFieldName,
+						"fragmentSetExternalReferenceCode")) {
+
+				return false;
+			}
 			else if (Objects.equals(jsonParserFieldName, "fragmentVersions")) {
 				return false;
 			}
@@ -476,6 +508,15 @@ public class BasicFragmentSerDes {
 				if (jsonParserFieldValue != null) {
 					basicFragment.setFragmentSet(
 						FragmentSetSerDes.toDTO((String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(
+						jsonParserFieldName,
+						"fragmentSetExternalReferenceCode")) {
+
+				if (jsonParserFieldValue != null) {
+					basicFragment.setFragmentSetExternalReferenceCode(
+						(String)jsonParserFieldValue);
 				}
 			}
 			else if (Objects.equals(jsonParserFieldName, "fragmentVersions")) {
@@ -584,6 +625,12 @@ public class BasicFragmentSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -616,4 +663,4 @@ public class BasicFragmentSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:951801515
+// LIFERAY-REST-BUILDER-HASH:40981949

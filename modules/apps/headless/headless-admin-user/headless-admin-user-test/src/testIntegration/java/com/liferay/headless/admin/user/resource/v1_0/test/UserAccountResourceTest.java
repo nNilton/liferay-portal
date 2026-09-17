@@ -50,10 +50,17 @@ import com.liferay.headless.admin.user.client.pagination.Pagination;
 import com.liferay.headless.admin.user.client.problem.Problem;
 import com.liferay.headless.admin.user.client.resource.v1_0.UserAccountResource;
 import com.liferay.headless.admin.user.client.serdes.v1_0.UserAccountSerDes;
+import com.liferay.list.type.entry.util.ListTypeEntryUtil;
+import com.liferay.list.type.model.ListTypeDefinition;
+import com.liferay.list.type.service.ListTypeDefinitionLocalService;
 import com.liferay.object.constants.ObjectValidationRuleConstants;
+import com.liferay.object.field.builder.MultiselectPicklistObjectFieldBuilder;
+import com.liferay.object.field.util.ObjectFieldUtil;
 import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectField;
 import com.liferay.object.model.ObjectValidationRule;
 import com.liferay.object.service.ObjectDefinitionLocalService;
+import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectValidationRuleLocalService;
 import com.liferay.petra.function.UnsafeRunnable;
 import com.liferay.petra.function.UnsafeSupplier;
@@ -64,6 +71,7 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.test.util.ConfigurationTemporarySwapper;
 import com.liferay.portal.kernel.captcha.CaptchaException;
 import com.liferay.portal.kernel.encryptor.EncryptorUtil;
+import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
@@ -96,6 +104,7 @@ import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.OrganizationLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
+import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserGroupLocalService;
 import com.liferay.portal.kernel.service.UserGroupRoleLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
@@ -577,6 +586,7 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 				originalPermissionChecker);
 		}
 
+		_testGetUserAccountWithCustomObjectField();
 		_testGetUserAccountWithGender();
 		_testGetUserAccountWithLoginDate();
 		_testGetUserAccountWithMoreExternalReferenceCodes();
@@ -715,6 +725,7 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 		_testGetUserAccountsPageWithCustomFields();
 		_testGetUserAccountsPageWithSortCustomField();
 		_testGetUserAccountsPageWithSortFullName();
+		_testGetUserAccountsPageWithSortId();
 	}
 
 	@Ignore
@@ -1964,6 +1975,21 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 				new HashMap<>()));
 	}
 
+	private void _assertListEntries(
+		JSONArray jsonArray, String... listTypeEntryKeys) {
+
+		Assert.assertEquals(listTypeEntryKeys.length, jsonArray.length());
+
+		for (int i = 0; i < listTypeEntryKeys.length; i++) {
+			JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+			Assert.assertEquals(
+				listTypeEntryKeys[i], jsonObject.getString("key"));
+			Assert.assertEquals(
+				listTypeEntryKeys[i], jsonObject.getString("name"));
+		}
+	}
+
 	private <T extends Exception> void _assertProblem(
 			String errorMessage,
 			UnsafeSupplier<HttpInvoker.HttpResponse, Exception>
@@ -2372,6 +2398,214 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 			domainName, null, Pagination.of(1, 10), "name:desc");
 
 		assertEquals(userAccounts, (List<UserAccount>)page.getItems());
+	}
+
+	private void _testGetUserAccountsPageWithSortId() throws Exception {
+		List<UserAccount> userAccounts = new ArrayList<>();
+
+		String domainName = StringUtil.randomString() + ".com";
+
+		userAccounts.add(
+			userAccountResource.postUserAccount(
+				null, null,
+				_randomUserAccount(
+					userAccount -> userAccount.setEmailAddress(
+						"aaa@" + domainName))));
+		userAccounts.add(
+			userAccountResource.postUserAccount(
+				null, null,
+				_randomUserAccount(
+					userAccount -> userAccount.setEmailAddress(
+						"bbb@" + domainName))));
+
+		Page<UserAccount> page = userAccountResource.getUserAccountsPage(
+			domainName, null, Pagination.of(1, 10), "id:asc");
+
+		assertEquals(userAccounts, (List<UserAccount>)page.getItems());
+
+		Collections.reverse(userAccounts);
+
+		page = userAccountResource.getUserAccountsPage(
+			domainName, null, Pagination.of(1, 10), "id:desc");
+
+		assertEquals(userAccounts, (List<UserAccount>)page.getItems());
+	}
+
+	private void _testGetUserAccountWithCustomObjectField() throws Exception {
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.
+				getObjectDefinitionByExternalReferenceCode(
+					"L_USER", testCompany.getCompanyId());
+
+		String listTypeEntryKey1 = RandomTestUtil.randomString();
+		String listTypeEntryKey2 = RandomTestUtil.randomString();
+
+		ListTypeDefinition listTypeDefinition =
+			_listTypeDefinitionLocalService.addListTypeDefinition(
+				null, _testUser.getUserId(),
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
+				false,
+				Arrays.asList(
+					ListTypeEntryUtil.createListTypeEntry(listTypeEntryKey1),
+					ListTypeEntryUtil.createListTypeEntry(listTypeEntryKey2)),
+				new ServiceContext());
+
+		String objectFieldName = "a" + RandomTestUtil.randomString();
+
+		ObjectField objectField = ObjectFieldUtil.addCustomObjectField(
+			new MultiselectPicklistObjectFieldBuilder(
+			).userId(
+				_testUser.getUserId()
+			).objectDefinitionId(
+				objectDefinition.getObjectDefinitionId()
+			).labelMap(
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
+			).listTypeDefinitionId(
+				listTypeDefinition.getListTypeDefinitionId()
+			).name(
+				objectFieldName
+			).build());
+
+		String localizedObjectFieldName = "a" + RandomTestUtil.randomString();
+
+		ObjectField localizedObjectField = ObjectFieldUtil.addCustomObjectField(
+			new MultiselectPicklistObjectFieldBuilder(
+			).userId(
+				_testUser.getUserId()
+			).objectDefinitionId(
+				objectDefinition.getObjectDefinitionId()
+			).labelMap(
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
+			).listTypeDefinitionId(
+				listTypeDefinition.getListTypeDefinitionId()
+			).localized(
+				true
+			).name(
+				localizedObjectFieldName
+			).build());
+
+		User user = UserTestUtil.addUser();
+
+		JSONObject jsonObject = HTTPTestUtil.invokeToJSONObject(
+			null, "headless-admin-user/v1.0/user-accounts/" + user.getUserId(),
+			Http.Method.GET);
+
+		_assertListEntries(jsonObject.getJSONArray(objectFieldName));
+
+		JSONArray jsonArray = JSONUtil.putAll(
+			JSONUtil.put("key", listTypeEntryKey1),
+			JSONUtil.put("key", listTypeEntryKey2));
+
+		HTTPTestUtil.invokeToJSONObject(
+			JSONUtil.put(
+				objectFieldName, jsonArray
+			).toString(),
+			"headless-admin-user/v1.0/user-accounts/" + user.getUserId(),
+			Http.Method.PATCH);
+
+		jsonObject = HTTPTestUtil.invokeToJSONObject(
+			null, "headless-admin-user/v1.0/user-accounts/" + user.getUserId(),
+			Http.Method.GET);
+
+		_assertListEntries(
+			jsonObject.getJSONArray(objectFieldName), listTypeEntryKey1,
+			listTypeEntryKey2);
+
+		HTTPTestUtil.invokeToJSONObject(
+			JSONUtil.put(
+				objectFieldName, JSONUtil.putAll(listTypeEntryKey1)
+			).toString(),
+			"headless-admin-user/v1.0/user-accounts/" + user.getUserId(),
+			Http.Method.PATCH);
+
+		jsonObject = HTTPTestUtil.invokeToJSONObject(
+			null, "headless-admin-user/v1.0/user-accounts/" + user.getUserId(),
+			Http.Method.GET);
+
+		_assertListEntries(
+			jsonObject.getJSONArray(objectFieldName), listTypeEntryKey1);
+
+		JSONObject openAPIJSONObject = HTTPTestUtil.invokeToJSONObject(
+			null, "headless-admin-user/v1.0/openapi.json", Http.Method.GET);
+
+		JSONObject propertyJSONObject = JSONUtil.getValueAsJSONObject(
+			openAPIJSONObject, "JSONObject/components", "JSONObject/schemas",
+			"JSONObject/UserAccount", "JSONObject/properties",
+			"JSONObject/" + objectFieldName);
+
+		Assert.assertEquals("array", propertyJSONObject.getString("type"));
+		Assert.assertEquals(
+			"#/components/schemas/ListEntry",
+			JSONUtil.getValueAsString(
+				propertyJSONObject, "JSONObject/items", "Object/$ref"));
+
+		Assert.assertNotNull(
+			JSONUtil.getValueAsJSONObject(
+				openAPIJSONObject, "JSONObject/components",
+				"JSONObject/schemas", "JSONObject/ListEntry"));
+
+		String languageId = LocaleUtil.toLanguageId(
+			LocaleUtil.getSiteDefault());
+
+		HTTPTestUtil.invokeToJSONObject(
+			JSONUtil.put(
+				localizedObjectFieldName + "_i18n",
+				JSONUtil.put(
+					languageId,
+					JSONUtil.putAll(listTypeEntryKey1, listTypeEntryKey2))
+			).toString(),
+			"headless-admin-user/v1.0/user-accounts/" + user.getUserId(),
+			Http.Method.PATCH);
+
+		jsonObject = HTTPTestUtil.invokeToJSONObject(
+			null, "headless-admin-user/v1.0/user-accounts/" + user.getUserId(),
+			Http.Method.GET);
+
+		_assertListEntries(
+			jsonObject.getJSONArray(localizedObjectFieldName),
+			listTypeEntryKey1, listTypeEntryKey2);
+
+		_assertListEntries(
+			JSONUtil.getValueAsJSONArray(
+				jsonObject, "JSONObject/" + localizedObjectFieldName + "_i18n",
+				"JSONArray/" + languageId),
+			listTypeEntryKey1, listTypeEntryKey2);
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				BaseExceptionMapper.class.getName(), LoggerTestUtil.OFF)) {
+
+			Assert.assertEquals(
+				Response.Status.BAD_REQUEST.getStatusCode(),
+				HTTPTestUtil.invokeToHttpCode(
+					JSONUtil.put(
+						objectFieldName,
+						listTypeEntryKey1 + ", " + listTypeEntryKey2
+					).toString(),
+					"headless-admin-user/v1.0/user-accounts/" +
+						user.getUserId(),
+					Http.Method.PATCH));
+
+			Assert.assertEquals(
+				Response.Status.BAD_REQUEST.getStatusCode(),
+				HTTPTestUtil.invokeToHttpCode(
+					JSONUtil.put(
+						objectFieldName,
+						JSONUtil.putAll(
+							RandomTestUtil.randomInt(),
+							RandomTestUtil.randomInt())
+					).toString(),
+					"headless-admin-user/v1.0/user-accounts/" +
+						user.getUserId(),
+					Http.Method.PATCH));
+		}
+
+		_objectFieldLocalService.deleteObjectField(localizedObjectField);
+		_objectFieldLocalService.deleteObjectField(objectField);
+
+		_listTypeDefinitionLocalService.deleteListTypeDefinition(
+			listTypeDefinition);
+
+		_userLocalService.deleteUser(user);
 	}
 
 	private void _testGetUserAccountWithGender() throws Exception {
@@ -2820,7 +3054,10 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 
 			UserAccountResource.Builder builder = UserAccountResource.builder();
 
-			UserAccountResource userAccountResourceGuestUser = builder.locale(
+			UserAccountResource userAccountResourceGuestUser = builder.endpoint(
+				testCompany.getVirtualHostname(),
+				PortalUtil.getPortalServerPort(false), "http"
+			).locale(
 				LocaleUtil.getDefault()
 			).build();
 
@@ -2843,7 +3080,7 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 			captcha = captchaResource.getCaptchaChallenge();
 
 			JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
-				EncryptorUtil.decrypt(
+				EncryptorUtil.decryptAuthenticated(
 					testCompany.getKeyObj(), captcha.getToken()));
 
 			userAccountResourceGuestUser.postUserAccount(
@@ -3081,7 +3318,13 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 	private JSONFactory _jsonFactory;
 
 	@Inject
+	private ListTypeDefinitionLocalService _listTypeDefinitionLocalService;
+
+	@Inject
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;
+
+	@Inject
+	private ObjectFieldLocalService _objectFieldLocalService;
 
 	@Inject
 	private ObjectValidationRuleLocalService _objectValidationRuleLocalService;

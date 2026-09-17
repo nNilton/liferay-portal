@@ -16,6 +16,7 @@ import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.test.AssertUtils;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 import com.liferay.portal.vulcan.http.VulcanRequestForwarder;
@@ -100,10 +101,17 @@ public class OpenAPIUtilTest {
 			JSONFactoryUtil.createJSONObject(), "getItems");
 		_testGetRequest(
 			null, null, "GET", "/v1.0/items?restrictFields=actions",
+			JSONFactoryUtil.createJSONObject(), StringPool.BLANK, "getItems");
+		_testGetRequest(
+			null, null, "GET", "/v1.0/items?restrictFields=actions",
 			JSONUtil.put("fields", ""), "getItems");
 		_testGetRequest(
 			null, null, "GET", "/v1.0/items?restrictFields=actions",
 			JSONUtil.put("restrictFields", "name"), "getItems");
+		_testGetRequest(
+			null, null, "GET",
+			"/v1.0/items?restrictFields=actions%2Cname%2Cparent.name",
+			JSONFactoryUtil.createJSONObject(), "name,parent.name", "getItems");
 		_testGetRequest(
 			JSONUtil.put(
 				"name", "Test"
@@ -116,16 +124,42 @@ public class OpenAPIUtilTest {
 			),
 			"patchItem");
 		_testGetRequest(
+			JSONUtil.put(
+				"name", "Test"
+			).toString(),
+			"application/json", "PATCH", "/v1.0/items/123?restrictFields=name",
+			JSONUtil.put(
+				"body", JSONUtil.put("name", "Test")
+			).put(
+				"itemId", "123"
+			),
+			"name", "patchItem");
+		_testGetRequest(
 			"{}", "application/json", "POST", "/v1.0/items",
 			JSONUtil.put("body", JSONFactoryUtil.createJSONObject()),
 			"postItem");
+		_testGetRequest(
+			"{}", "application/json", "POST", "/v1.0/items?restrictFields=name",
+			JSONUtil.put("body", JSONFactoryUtil.createJSONObject()), "name",
+			"postItem");
+		_testGetRequest(
+			JSONUtil.put(
+				"name", "Test"
+			).toString(),
+			"application/json", "PUT", "/v1.0/items/123?restrictFields=name",
+			JSONUtil.put(
+				"body", JSONUtil.put("name", "Test")
+			).put(
+				"itemId", "123"
+			),
+			"name", "putItem");
 
 		String fileContent = RandomTestUtil.randomString();
 		String fileName = RandomTestUtil.randomString();
 		String name = RandomTestUtil.randomString();
 
 		VulcanRequestForwarder.Request request = OpenAPIUtil.getRequest(
-			StringPool.BLANK,
+			StringPool.BLANK, null,
 			JSONUtil.put(
 				"data",
 				JSONUtil.put(
@@ -143,7 +177,7 @@ public class OpenAPIUtilTest {
 			).put(
 				"name", name
 			),
-			_openAPIJSONObject, "postBinary", null);
+			_openAPIJSONObject, null, "postBinary", null);
 
 		Assert.assertEquals("POST", request.getMethod());
 		Assert.assertEquals("/v1.0/binaries", request.getPath());
@@ -166,7 +200,7 @@ public class OpenAPIUtilTest {
 		Assert.assertEquals(name, fileItem.getString());
 
 		request = OpenAPIUtil.getRequest(
-			StringPool.BLANK,
+			StringPool.BLANK, null,
 			JSONUtil.put(
 				"boolean", true
 			).put(
@@ -174,7 +208,7 @@ public class OpenAPIUtilTest {
 			).put(
 				"string", fileContent
 			),
-			_openAPIJSONObject, "postUpload", null);
+			_openAPIJSONObject, null, "postUpload", null);
 
 		Assert.assertEquals("POST", request.getMethod());
 		Assert.assertEquals("/v1.0/uploads", request.getPath());
@@ -189,6 +223,16 @@ public class OpenAPIUtilTest {
 		Assert.assertEquals(
 			fileContent, _getFileItemValue(fileItems, "string"));
 
+		Map<String, String> headers = HashMapBuilder.put(
+			RandomTestUtil.randomString(), RandomTestUtil.randomString()
+		).build();
+
+		request = OpenAPIUtil.getRequest(
+			StringPool.BLANK, headers, JSONUtil.put("itemId", "123"),
+			_openAPIJSONObject, null, "getItem", null);
+
+		Assert.assertEquals(headers, request.getHeaders());
+
 		AssertUtils.assertFailure(
 			IllegalArgumentException.class,
 			StringBundler.concat(
@@ -197,11 +241,11 @@ public class OpenAPIUtilTest {
 				"as siblings of \"body\" rather than flattening the payload ",
 				"into the input map."),
 			() -> OpenAPIUtil.getRequest(
-				StringPool.BLANK,
+				StringPool.BLANK, null,
 				JSONUtil.put(
 					RandomTestUtil.randomString(),
 					RandomTestUtil.randomString()),
-				_openAPIJSONObject, "postItem", null));
+				_openAPIJSONObject, null, "postItem", null));
 	}
 
 	@Test
@@ -209,12 +253,13 @@ public class OpenAPIUtilTest {
 		AssertUtils.assertFailure(
 			IllegalArgumentException.class,
 			"OpenAPI document has no tool with name \"missing\"",
-			() -> OpenAPIUtil.getTool(true, _openAPIJSONObject, "missing"));
+			() -> OpenAPIUtil.getTool(
+				true, _openAPIJSONObject, null, "missing"));
 		AssertUtils.assertFailure(
 			IllegalArgumentException.class,
 			"OpenAPI document has no \"paths\" object",
 			() -> OpenAPIUtil.getTool(
-				true, JSONFactoryUtil.createJSONObject(),
+				true, JSONFactoryUtil.createJSONObject(), null,
 				RandomTestUtil.randomString()));
 		AssertUtils.assertFailure(
 			IllegalArgumentException.class, "Request body has no content",
@@ -260,6 +305,58 @@ public class OpenAPIUtilTest {
 		_testGetTool(
 			"PUT /v1.0/items/{itemId}", "put_test_v1.0_items_itemId.json",
 			"putItem");
+
+		Tool tool = OpenAPIUtil.getTool(
+			true, _openAPIJSONObject, "boolean,object1.name", "getItems");
+
+		Map<String, ?> inputSchemaMap = tool.getInputSchema();
+
+		Map<String, ?> propertiesMap = (Map<String, ?>)inputSchemaMap.get(
+			"properties");
+
+		Map<String, ?> fieldsMap = (Map<String, ?>)propertiesMap.get("fields");
+
+		Map<String, ?> itemsMap = (Map<String, ?>)fieldsMap.get("items");
+
+		List<String> enumValues = (List<String>)itemsMap.get("enum");
+
+		Assert.assertFalse(enumValues.contains("boolean"));
+		Assert.assertTrue(enumValues.contains("object1"));
+
+		JSONObject itemJSONObject = JSONFactoryUtil.createJSONObject(
+			_read("get_test_v1.0_items_itemId_output.json"));
+
+		_testGetToolOutputSchema(itemJSONObject, "getItem");
+		_testGetToolOutputSchema(
+			JSONUtil.put(
+				"items", itemJSONObject
+			).put(
+				"type", "array"
+			),
+			"getItems");
+		_testGetToolOutputSchema(
+			JSONUtil.put(
+				"properties",
+				JSONUtil.put(
+					"items",
+					JSONUtil.put(
+						"items", itemJSONObject
+					).put(
+						"type", "array"
+					)
+				).put(
+					"page", JSONUtil.put("type", "integer")
+				).put(
+					"totalCount", JSONUtil.put("type", "integer")
+				)
+			).put(
+				"type", "object"
+			),
+			"getItemsPage");
+
+		Assert.assertNull(_getOutputSchema("patchItem"));
+		Assert.assertNull(_getOutputSchema("postItem"));
+		Assert.assertNull(_getOutputSchema("putItem"));
 	}
 
 	@Test
@@ -386,9 +483,14 @@ public class OpenAPIUtilTest {
 	private Map<String, ?> _getInputSchema(
 		JSONObject openAPIJSONObject, String toolName) {
 
-		Tool tool = OpenAPIUtil.getTool(true, openAPIJSONObject, toolName);
+		Tool tool = OpenAPIUtil.getTool(
+			true, openAPIJSONObject, null, toolName);
 
 		return tool.getInputSchema();
+	}
+
+	private Map<String, ?> _getOutputSchema(String toolName) {
+		return OpenAPIUtil.getOutputSchema(_openAPIJSONObject, toolName);
 	}
 
 	private String _read(String fileName) throws Exception {
@@ -402,9 +504,20 @@ public class OpenAPIUtilTest {
 			JSONObject inputJSONObject, String toolName)
 		throws Exception {
 
+		_testGetRequest(
+			expectedBody, expectedContentType, expectedMethod,
+			expectedPathWithQuery, inputJSONObject, null, toolName);
+	}
+
+	private void _testGetRequest(
+			String expectedBody, String expectedContentType,
+			String expectedMethod, String expectedPathWithQuery,
+			JSONObject inputJSONObject, String restrictFields, String toolName)
+		throws Exception {
+
 		VulcanRequestForwarder.Request request = OpenAPIUtil.getRequest(
-			StringPool.BLANK, inputJSONObject, _openAPIJSONObject, toolName,
-			null);
+			StringPool.BLANK, null, inputJSONObject, _openAPIJSONObject,
+			restrictFields, toolName, null);
 
 		if (expectedBody == null) {
 			Assert.assertNull(request.getBody());
@@ -427,7 +540,7 @@ public class OpenAPIUtilTest {
 		throws Exception {
 
 		Tool tool = OpenAPIUtil.getTool(
-			injectVulcanParameters, _openAPIJSONObject, toolName);
+			injectVulcanParameters, _openAPIJSONObject, null, toolName);
 
 		Assert.assertEquals(expectedDescription, tool.getDescription());
 		Assert.assertEquals(toolName, tool.getName());
@@ -448,6 +561,19 @@ public class OpenAPIUtilTest {
 
 		_testGetTool(
 			expectedDescription, expectedSchemaFileName, true, toolName);
+	}
+
+	private void _testGetToolOutputSchema(
+			JSONObject expectedJSONObject, String toolName)
+		throws Exception {
+
+		JSONAssert.assertEquals(
+			expectedJSONObject.toString(),
+			new ObjectMapper(
+			).writeValueAsString(
+				_getOutputSchema(toolName)
+			),
+			true);
 	}
 
 	private JSONObject _openAPIJSONObject;

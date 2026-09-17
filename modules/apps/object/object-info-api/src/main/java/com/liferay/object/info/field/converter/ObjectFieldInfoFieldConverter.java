@@ -50,6 +50,8 @@ import com.liferay.object.service.ObjectFieldSettingLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
 import com.liferay.object.service.ObjectStateFlowLocalService;
 import com.liferay.object.service.ObjectStateLocalService;
+import com.liferay.object.system.SystemObjectDefinitionManager;
+import com.liferay.object.system.SystemObjectDefinitionManagerRegistry;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -67,6 +69,7 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -74,6 +77,7 @@ import java.math.BigDecimal;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -93,6 +97,8 @@ public class ObjectFieldInfoFieldConverter {
 		ObjectStateFlowLocalService objectStateFlowLocalService,
 		ObjectStateLocalService objectStateLocalService, Portal portal,
 		RESTContextPathResolverRegistry restContextPathResolverRegistry,
+		SystemObjectDefinitionManagerRegistry
+			systemObjectDefinitionManagerRegistry,
 		UserLocalService userLocalService) {
 
 		_ddmExpressionFactory = ddmExpressionFactory;
@@ -107,6 +113,8 @@ public class ObjectFieldInfoFieldConverter {
 		_objectStateLocalService = objectStateLocalService;
 		_portal = portal;
 		_restContextPathResolverRegistry = restContextPathResolverRegistry;
+		_systemObjectDefinitionManagerRegistry =
+			systemObjectDefinitionManagerRegistry;
 		_userLocalService = userLocalService;
 	}
 
@@ -144,13 +152,7 @@ public class ObjectFieldInfoFieldConverter {
 			).editable(
 				editable
 			).labelInfoLocalizedValue(
-				InfoLocalizedValue.<String>builder(
-				).defaultLocale(
-					LocaleUtil.fromLanguageId(
-						objectField.getDefaultLanguageId())
-				).values(
-					objectField.getLabelMap()
-				).build()
+				_getLabelInfoLocalizedValue(objectField)
 			).localizable(
 				objectField.isLocalized()
 			).readOnly(
@@ -396,6 +398,23 @@ public class ObjectFieldInfoFieldConverter {
 
 			return 0L;
 		}
+	}
+
+	private InfoLocalizedValue<String> _getLabelInfoLocalizedValue(
+		ObjectField objectField) {
+
+		Locale defaultLocale = LocaleUtil.fromLanguageId(
+			objectField.getDefaultLanguageId());
+
+		return InfoLocalizedValue.<String>builder(
+		).defaultLocale(
+			defaultLocale
+		).values(
+			objectField.getLabelMap()
+		).value(
+			defaultLocale,
+			objectField.getLabel(objectField.getDefaultLanguageId())
+		).build();
 	}
 
 	private long _getMaximumFileSize(ObjectField objectField) {
@@ -650,8 +669,29 @@ public class ObjectFieldInfoFieldConverter {
 					serviceContext.getRequest(), relatedObjectDefinition));
 		}
 
-		return _portal.getPortalURL(serviceContext.getRequest()) +
-			_portal.getPathContext() + restContextPath;
+		String portalURL =
+			_portal.getPortalURL(serviceContext.getRequest()) +
+				_portal.getPathContext() + restContextPath;
+
+		if (_systemObjectDefinitionManagerRegistry != null) {
+			SystemObjectDefinitionManager systemObjectDefinitionManager =
+				_systemObjectDefinitionManagerRegistry.
+					getSystemObjectDefinitionManager(
+						relatedObjectDefinition.getName());
+
+			if (systemObjectDefinitionManager != null) {
+				String additionalAPIURLParameters =
+					systemObjectDefinitionManager.
+						getAdditionalAPIURLParameters();
+
+				if (Validator.isNotNull(additionalAPIURLParameters)) {
+					return portalURL + StringPool.QUESTION +
+						additionalAPIURLParameters;
+				}
+			}
+		}
+
+		return portalURL;
 	}
 
 	private boolean _isGuestUser() {
@@ -713,6 +753,8 @@ public class ObjectFieldInfoFieldConverter {
 	private final Portal _portal;
 	private final RESTContextPathResolverRegistry
 		_restContextPathResolverRegistry;
+	private final SystemObjectDefinitionManagerRegistry
+		_systemObjectDefinitionManagerRegistry;
 	private final UserLocalService _userLocalService;
 
 }

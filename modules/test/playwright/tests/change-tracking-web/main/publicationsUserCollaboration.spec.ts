@@ -10,6 +10,7 @@ import {changeTrackingPagesTest} from '../../../fixtures/changeTrackingPagesTest
 import {isolatedSiteTest} from '../../../fixtures/isolatedSiteTest';
 import {productMenuPageTest} from '../../../fixtures/productMenuPageTest';
 import {clickAndExpectToBeHidden} from '../../../utils/clickAndExpectToBeHidden';
+import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisible';
 import getRandomString from '../../../utils/getRandomString';
 import {performLoginViaApi, performLogout} from '../../../utils/performLogin';
 import {waitForAlert} from '../../../utils/waitForAlert';
@@ -172,6 +173,44 @@ test('LPD-89418 Paste email address to automatically add user in Invite Users mo
 	}
 });
 
+test(
+	'LPD-98937 Open the invite users autocomplete only after typing',
+	{tag: '@LPD-98937'},
+	async ({apiHelpers, changeTrackingPage, ctCollection, page}) => {
+		try {
+			const user =
+				await changeTrackingPage.addUserWithPublicationsUserRole();
+
+			await changeTrackingPage.workOnPublication(ctCollection);
+
+			await changeTrackingPage.goToReviewChanges(ctCollection.body.name);
+
+			await page.getByLabel('View Collaborators').click();
+
+			const input = page.getByPlaceholder('Enter name or email address.');
+
+			await input.click();
+
+			await expect(page.locator('.dropdown-menu-select')).toBeHidden();
+
+			await input.fill(user.emailAddress);
+
+			await expect(
+				page.getByRole('option', {name: user.name})
+			).toBeVisible();
+
+			await apiHelpers.headlessAdminUser.deleteUserAccount(
+				Number(user.id)
+			);
+		}
+		finally {
+			await apiHelpers.headlessChangeTracking.deleteCTCollection(
+				ctCollection.body.id
+			);
+		}
+	}
+);
+
 test('LPD-65173 Assert that the Share Link tab is hidden for Publication Templates', async ({
 	changeTrackingTemplatesPage,
 	page,
@@ -184,6 +223,58 @@ test('LPD-65173 Assert that the Share Link tab is hidden for Publication Templat
 
 	await expect(page.getByRole('button', {name: 'Share Link'})).toBeHidden();
 });
+
+test(
+	'LPD-103662 Hide the share link tab and button from a viewer',
+	{tag: '@LPD-103662'},
+	async ({apiHelpers, changeTrackingPage, ctCollection, page}) => {
+		const user = await changeTrackingPage.addUserWithPublicationsUserRole();
+
+		try {
+			await changeTrackingPage.addUserToPublication(
+				ctCollection.body.name,
+				'Viewer',
+				user
+			);
+
+			await performLogout(page);
+
+			await performLoginViaApi({page, screenName: user.alternateName});
+
+			await changeTrackingPage.goToReviewChanges(ctCollection.body.name);
+
+			const collaboratorsButton = page.getByLabel('View Collaborators');
+			const modal = page.locator('.publications-invite-users-modal');
+			const modalTitle = modal.locator('.modal-title').first();
+
+			await expect(collaboratorsButton).toBeVisible();
+
+			await expect(
+				page.getByRole('button', {name: /Publication Sharing/})
+			).toBeHidden();
+
+			await clickAndExpectToBeVisible({
+				target: modalTitle,
+				trigger: collaboratorsButton,
+			});
+
+			await expect(
+				modal.getByRole('tab', {name: 'Share Link'})
+			).toBeHidden();
+
+			await expect(modalTitle).toHaveText('View Collaborators');
+		}
+		finally {
+			await performLogout(page);
+
+			await performLoginViaApi({page, screenName: 'test'});
+
+			await apiHelpers.headlessAdminUser.deleteUserAccount(
+				Number(user.id)
+			);
+		}
+	}
+);
 
 test(
 	'LPD-60917 Cancel closes the collaborators modal without a discard prompt when nothing changed',

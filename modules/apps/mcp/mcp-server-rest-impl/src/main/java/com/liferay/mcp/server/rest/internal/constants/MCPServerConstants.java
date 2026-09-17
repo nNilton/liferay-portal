@@ -10,8 +10,8 @@ package com.liferay.mcp.server.rest.internal.constants;
  */
 public class MCPServerConstants {
 
-	public static final String EXTERNAL_REFERENCE_CODE_MCP_SERVER_DATA_MASK =
-		"L_MCP_SERVER_DATA_MASK";
+	public static final String EXTERNAL_REFERENCE_CODE_DATA_MASK =
+		"L_DATA_MASK";
 
 	public static final String EXTERNAL_REFERENCE_CODE_MCP_SERVER_PROFILE =
 		"L_MCP_SERVER_PROFILE";
@@ -19,6 +19,9 @@ public class MCPServerConstants {
 	public static final String
 		EXTERNAL_REFERENCE_CODE_MCP_SERVER_PROFILE_DATA_MASK =
 			"L_MCP_SERVER_PROFILE_DATA_MASK";
+
+	public static final String EXTERNAL_REFERENCE_CODE_MCP_SERVER_PROFILE_TOOL =
+		"L_MCP_SERVER_PROFILE_TOOL";
 
 	public static final String EXTERNAL_REFERENCE_CODE_MCP_SERVER_PROMPT =
 		"L_MCP_SERVER_PROMPT";

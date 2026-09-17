@@ -4,6 +4,7 @@
  */
 
 import ClayLoadingIndicator from '@clayui/loading-indicator';
+import {preventIframeNavigation} from '@liferay/layout-js-components-web';
 import React, {
 	forwardRef,
 	useCallback,
@@ -31,6 +32,7 @@ interface Props {
 	itemNames: Record<string, string>;
 	languageId: string;
 	previewURL: string;
+	segmentsExperienceId: number;
 }
 
 const ElementVariationsPreview = forwardRef<ElementVariationsPreviewRef, Props>(
@@ -43,6 +45,7 @@ const ElementVariationsPreview = forwardRef<ElementVariationsPreviewRef, Props>(
 			itemNames,
 			languageId,
 			previewURL: initialPreviewURL,
+			segmentsExperienceId,
 		},
 		ref
 	) {
@@ -54,9 +57,16 @@ const ElementVariationsPreview = forwardRef<ElementVariationsPreviewRef, Props>(
 		} | null>(null);
 
 		const [previewReady, setPreviewReady] = useState(false);
-		const [previewURL, setPreviewURL] = useState(
-			() => `${initialPreviewURL}&languageId=${languageId}`
+
+		const url = new URL(initialPreviewURL, window.location.origin);
+
+		url.searchParams.set('languageId', languageId);
+		url.searchParams.set(
+			'segmentsExperienceId',
+			String(segmentsExperienceId)
 		);
+
+		const previewURL = url.toString();
 
 		useImperativeHandle(
 			ref,
@@ -105,9 +115,6 @@ const ElementVariationsPreview = forwardRef<ElementVariationsPreviewRef, Props>(
 				return;
 			}
 
-			const hideValue = Boolean(
-				hide[languageId] ?? hide[defaultLanguageId]
-			);
 			const htmlValue = html[languageId] ?? html[defaultLanguageId] ?? '';
 			const jsValue = js[languageId] ?? js[defaultLanguageId] ?? '';
 
@@ -133,7 +140,7 @@ const ElementVariationsPreview = forwardRef<ElementVariationsPreviewRef, Props>(
 				iframeDocument.body.removeChild(scriptElement);
 			}
 
-			if (hideValue) {
+			if (hide) {
 				styleElement = iframeDocument.createElement('style');
 
 				styleElement.textContent = `${targetElement} { display: none !important; }`;
@@ -200,9 +207,7 @@ const ElementVariationsPreview = forwardRef<ElementVariationsPreviewRef, Props>(
 
 		useEffect(() => {
 			setPreviewReady(false);
-
-			setPreviewURL(`${initialPreviewURL}&languageId=${languageId}`);
-		}, [initialPreviewURL, languageId]);
+		}, [previewURL]);
 
 		return (
 			<div className="d-flex flex-column flex-grow-1 position-relative">
@@ -212,7 +217,7 @@ const ElementVariationsPreview = forwardRef<ElementVariationsPreviewRef, Props>(
 
 				<iframe
 					className="border-0 flex-grow-1 w-100"
-					onLoad={() => {
+					onLoad={(event) => {
 						const iframeDocument =
 							iframeRef.current?.contentDocument;
 
@@ -226,6 +231,8 @@ const ElementVariationsPreview = forwardRef<ElementVariationsPreviewRef, Props>(
 								type: 'SET_EDITABLE_ELEMENT_OPTIONS',
 							});
 						}
+
+						preventIframeNavigation(event);
 
 						applyDraftElementVariation();
 

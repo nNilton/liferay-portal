@@ -148,11 +148,22 @@ public class
 	@Override
 	public void
 		deleteLayoutPageTemplateStructureRelElementVariationAudienceEntryRels(
+			long groupId,
 			String layoutPageTemplateStructureRelElementVariationERC) {
 
 		_layoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalService.
 			deleteLayoutPageTemplateStructureRelElementVariationAudienceEntryRels(
-				layoutPageTemplateStructureRelElementVariationERC);
+				groupId, layoutPageTemplateStructureRelElementVariationERC);
+	}
+
+	@Override
+	public void
+		deleteLayoutPageTemplateStructureRelElementVariationAudienceEntryRelsByAudienceEntryERC(
+			long companyId, String audienceEntryERC) {
+
+		_layoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalService.
+			deleteLayoutPageTemplateStructureRelElementVariationAudienceEntryRelsByAudienceEntryERC(
+				companyId, audienceEntryERC);
 	}
 
 	/**
@@ -414,11 +425,12 @@ public class
 	public java.util.List
 		<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel>
 			getLayoutPageTemplateStructureRelElementVariationAudienceEntryRels(
+				long groupId,
 				String layoutPageTemplateStructureRelElementVariationERC) {
 
 		return _layoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalService.
 			getLayoutPageTemplateStructureRelElementVariationAudienceEntryRels(
-				layoutPageTemplateStructureRelElementVariationERC);
+				groupId, layoutPageTemplateStructureRelElementVariationERC);
 	}
 
 	/**
@@ -577,4 +589,4 @@ public class
 			_layoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1708431927
+// LIFERAY-SERVICE-BUILDER-HASH:-1938393786

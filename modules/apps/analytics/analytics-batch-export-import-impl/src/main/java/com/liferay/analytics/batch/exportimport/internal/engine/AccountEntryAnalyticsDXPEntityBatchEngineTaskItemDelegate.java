@@ -51,14 +51,7 @@ public class AccountEntryAnalyticsDXPEntityBatchEngineTaskItemDelegate
 	extends BaseAnalyticsDXPEntityBatchEngineTaskItemDelegate<DXPEntity> {
 
 	@Override
-	public EntityModel getEntityModel(Map<String, List<String>> multivaluedMap)
-		throws Exception {
-
-		return _entityModel;
-	}
-
-	@Override
-	public Page<DXPEntity> read(
+	public Page<DXPEntity> doRead(
 			Filter filter, Pagination pagination, Sort[] sorts,
 			Map<String, Serializable> parameters, String search)
 		throws Exception {
@@ -82,6 +75,13 @@ public class AccountEntryAnalyticsDXPEntityBatchEngineTaskItemDelegate
 			_accountEntryLocalService.dslQuery(
 				_createCountDSLQuery(
 					contextCompany.getCompanyId(), parameters)));
+	}
+
+	@Override
+	public EntityModel getEntityModel(Map<String, List<String>> multivaluedMap)
+		throws Exception {
+
+		return _entityModel;
 	}
 
 	private DSLQuery _buildAccountEntryIdsDSLQuery(long companyId)

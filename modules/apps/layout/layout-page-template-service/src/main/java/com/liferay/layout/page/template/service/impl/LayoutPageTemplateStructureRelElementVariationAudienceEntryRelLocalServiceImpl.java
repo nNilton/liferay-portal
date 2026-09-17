@@ -29,6 +29,7 @@ public class
 	LayoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalServiceImpl
 		extends LayoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalServiceBaseImpl {
 
+	@Override
 	public LayoutPageTemplateStructureRelElementVariationAudienceEntryRel
 			addLayoutPageTemplateStructureRelElementVariationAudienceEntryRel(
 				long userId, long groupId, String audienceEntryERC,
@@ -66,22 +67,35 @@ public class
 				layoutPageTemplateStructureRelElementVariationAudienceEntryRel);
 	}
 
+	@Override
 	public void
 		deleteLayoutPageTemplateStructureRelElementVariationAudienceEntryRels(
+			long groupId,
 			String layoutPageTemplateStructureRelElementVariationERC) {
 
 		layoutPageTemplateStructureRelElementVariationAudienceEntryRelPersistence.
-			removeByLayoutPageTemplateStructureRelElementVariationERC(
-				layoutPageTemplateStructureRelElementVariationERC);
+			removeByG_LPTSREVERC(
+				groupId, layoutPageTemplateStructureRelElementVariationERC);
 	}
 
+	@Override
+	public void
+		deleteLayoutPageTemplateStructureRelElementVariationAudienceEntryRelsByAudienceEntryERC(
+			long companyId, String audienceEntryERC) {
+
+		layoutPageTemplateStructureRelElementVariationAudienceEntryRelPersistence.
+			removeByC_AEERC(companyId, audienceEntryERC);
+	}
+
+	@Override
 	public List<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel>
 		getLayoutPageTemplateStructureRelElementVariationAudienceEntryRels(
+			long groupId,
 			String layoutPageTemplateStructureRelElementVariationERC) {
 
 		return layoutPageTemplateStructureRelElementVariationAudienceEntryRelPersistence.
-			findByLayoutPageTemplateStructureRelElementVariationERC(
-				layoutPageTemplateStructureRelElementVariationERC);
+			findByG_LPTSREVERC(
+				groupId, layoutPageTemplateStructureRelElementVariationERC);
 	}
 
 	@Reference

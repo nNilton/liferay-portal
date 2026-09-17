@@ -23,8 +23,8 @@ import org.osgi.service.component.annotations.Reference;
  */
 @Component(
 	property = {
-		"panel.app.order:Integer=100",
-		"panel.category.key=" + PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_PERSONALIZATION
+		"panel.app.order:Integer=1500",
+		"panel.category.key=" + PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS
 	},
 	service = PanelApp.class
 )
@@ -50,7 +50,7 @@ public class AudiencesPanelApp extends BasePanelApp {
 		throws PortalException {
 
 		if (!FeatureFlagManagerUtil.isEnabled(
-				group.getCompanyId(), "LPD-93951")) {
+				group.getCompanyId(), "LPD-85746")) {
 
 			return false;
 		}

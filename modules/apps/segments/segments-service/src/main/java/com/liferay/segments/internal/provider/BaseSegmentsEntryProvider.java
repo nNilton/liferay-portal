@@ -86,11 +86,9 @@ public abstract class BaseSegmentsEntryProvider
 				SegmentsEntryRel::getClassPK);
 		}
 
-		return TransformUtil.transformToLongArray(
-			userODataRetriever.getResults(
-				segmentsEntry.getCompanyId(), filterString,
-				LocaleUtil.getDefault(), start, end),
-			baseModel -> (Long)baseModel.getPrimaryKeyObj());
+		return userODataRetriever.getResultPrimaryKeys(
+			segmentsEntry.getCompanyId(), filterString, LocaleUtil.getDefault(),
+			start, end);
 	}
 
 	@Override
@@ -424,7 +422,7 @@ public abstract class BaseSegmentsEntryProvider
 				expandoColumnLocalService.getColumns(expandoTable.getTableId());
 
 			for (ExpandoColumn expandoColumn : expandoColumns) {
-				ExpandoValue expandoValue = expandoValueLocalService.getValue(
+				ExpandoValue expandoValue = expandoValueLocalService.fetchValue(
 					expandoTable.getTableId(), expandoColumn.getColumnId(),
 					user.getUserId());
 

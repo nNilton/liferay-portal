@@ -8,6 +8,7 @@ package com.liferay.headless.dsr.internal.resource.v1_0;
 import com.liferay.account.service.AccountEntryUserRelLocalService;
 import com.liferay.headless.dsr.dto.v1_0.UserAccount;
 import com.liferay.headless.dsr.internal.dto.v1_0.converter.UserAccountDTOConverterContext;
+import com.liferay.headless.dsr.internal.security.permission.util.DSRRoleAssignmentPermissionUtil;
 import com.liferay.headless.dsr.internal.util.TicketUtil;
 import com.liferay.headless.dsr.resource.v1_0.UserAccountResource;
 import com.liferay.login.web.constants.LoginPortletKeys;
@@ -16,6 +17,7 @@ import com.liferay.notification.model.NotificationTemplate;
 import com.liferay.notification.service.NotificationTemplateLocalService;
 import com.liferay.notification.type.NotificationType;
 import com.liferay.notification.type.NotificationTypeServiceTracker;
+import com.liferay.object.exception.ObjectEntryExpirationDateException;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectEntryService;
@@ -23,7 +25,6 @@ import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.events.ServicePreAction;
 import com.liferay.portal.events.ThemeServicePreAction;
 import com.liferay.portal.kernel.exception.RoleAssignmentException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Group;
@@ -33,6 +34,7 @@ import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
@@ -59,7 +61,6 @@ import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.site.dsr.site.initializer.constants.DSRPortletKeys;
-import com.liferay.site.dsr.site.initializer.constants.DSRRoleConstants;
 import com.liferay.site.dsr.site.initializer.constants.DSRTicketConstants;
 import com.liferay.site.dsr.site.initializer.util.DSRRoomUtil;
 
@@ -75,7 +76,6 @@ import java.io.Serializable;
 
 import java.util.Date;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import org.osgi.service.component.annotations.Component;
@@ -95,13 +95,9 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 	public void deleteRoomUserAccount(Long roomId, Long userAccountId)
 		throws Exception {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-66359")) {
-
-			throw new UnsupportedOperationException();
-		}
-
 		Group group = _getGroup(roomId);
+
+		_checkAssignMembersPermission(group, userAccountId);
 
 		LiveUsers.leaveGroup(
 			contextCompany.getCompanyId(), group.getGroupId(), userAccountId);
@@ -118,12 +114,6 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 	public Page<UserAccount> getRoomUserAccountsPage(
 			Long roomId, Pagination pagination)
 		throws Exception {
-
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-66359")) {
-
-			throw new UnsupportedOperationException();
-		}
 
 		ObjectEntry objectEntry = _getObjectEntry(true, roomId);
 
@@ -146,20 +136,15 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 			Long roomId, Long userAccountId, UserAccount userAccount)
 		throws Exception {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-66359")) {
-
-			throw new UnsupportedOperationException();
-		}
-
 		Group group = _getGroup(roomId);
 
 		_checkPermission(group, userAccount.getRoleKey());
 
+		_validate(userAccount.getMembershipExpirationDate());
+
 		User user = _userLocalService.getUser(userAccountId);
 
-		_userGroupRoleLocalService.deleteUserGroupRoles(
-			new long[] {user.getUserId()}, group.getGroupId());
+		_checkAssignMembersPermission(group, user.getUserId());
 
 		if (Validator.isNotNull(userAccount.getRoleKey())) {
 			Role role = _roleLocalService.getRole(
@@ -172,6 +157,9 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 						RoleConstants.getTypeLabel(role.getType()), " is not ",
 						RoleConstants.getTypeLabel(RoleConstants.TYPE_SITE)));
 			}
+
+			_userGroupRoleLocalService.deleteUserGroupRoles(
+				new long[] {user.getUserId()}, group.getGroupId());
 
 			_userGroupRoleLocalService.addUserGroupRoles(
 				user.getUserId(), group.getGroupId(),
@@ -188,21 +176,17 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 	public UserAccount postRoomUserAccount(Long roomId, UserAccount userAccount)
 		throws Exception {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-66359")) {
-
-			throw new UnsupportedOperationException();
-		}
-
 		if (Validator.isNull(userAccount.getEmailAddress())) {
 			throw new ValidationException("Email Address is null");
 		}
 
+		_validate(userAccount.getMembershipExpirationDate());
+
 		ObjectEntry objectEntry = _getObjectEntry(true, roomId);
 
-		DSRRoomUtil.checkPermission(
-			objectEntry, PermissionThreadLocal.getPermissionChecker(),
-			ActionKeys.UPDATE);
+		if (DSRRoomUtil.isArchived(objectEntry)) {
+			throw new UnsupportedOperationException();
+		}
 
 		Map<String, Serializable> values = objectEntry.getValues();
 
@@ -390,23 +374,35 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 			membershipExpirationDate, new ServiceContext());
 	}
 
-	private void _checkPermission(Group group, String roleKey)
+	private void _checkAssignMembersPermission(Group group, long userId)
 		throws Exception {
-
-		if (!Objects.equals(
-				roleKey, DSRRoleConstants.NAME_DSR_ROOM_COLLABORATOR)) {
-
-			return;
-		}
 
 		PermissionChecker permissionChecker =
 			PermissionThreadLocal.getPermissionChecker();
 
-		if (!permissionChecker.isGroupAdmin(group.getGroupId()) &&
-			!permissionChecker.isGroupOwner(group.getGroupId())) {
+		if (permissionChecker.isGroupAdmin(group.getGroupId()) ||
+			permissionChecker.isGroupOwner(group.getGroupId())) {
 
-			throw new RoleAssignmentException();
+			return;
 		}
+
+		int rolePriority = DSRRoleAssignmentPermissionUtil.getRolePriority(
+			group.getGroupId(), contextUser.getUserId());
+
+		if (rolePriority <= DSRRoleAssignmentPermissionUtil.getRolePriority(
+				group.getGroupId(), userId)) {
+
+			throw new PrincipalException.MustHavePermission(
+				permissionChecker, Group.class.getName(), group.getGroupId(),
+				ActionKeys.ASSIGN_MEMBERS);
+		}
+	}
+
+	private void _checkPermission(Group group, String roleKey)
+		throws Exception {
+
+		DSRRoleAssignmentPermissionUtil.checkPermission(
+			group, roleKey, contextUser.getUserId());
 	}
 
 	private Group _getGroup(long roomId) throws Exception {
@@ -491,6 +487,14 @@ public class UserAccountResourceImpl extends BaseUserAccountResourceImpl {
 				contextAcceptLanguage.getPreferredLocale(), contextUriInfo,
 				contextUser),
 			user);
+	}
+
+	private void _validate(Date expirationDate) throws Exception {
+		if ((expirationDate != null) && expirationDate.before(new Date())) {
+			throw new ObjectEntryExpirationDateException(
+				"Expiration date must be a future date",
+				"expiration-date-must-be-a-future-date");
+		}
 	}
 
 	@Reference

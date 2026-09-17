@@ -45,12 +45,11 @@ public class LayoutPageTemplateStructureRelElementVariationServiceHttp {
 		LayoutPageTemplateStructureRelElementVariation
 				addOrUpdateLayoutPageTemplateStructureRelElementVariation(
 					HttpPrincipal httpPrincipal, String externalReferenceCode,
-					long groupId, String[] audienceEntryERCs,
-					java.util.Map<java.util.Locale, String> hideMap,
+					long groupId, boolean active, String hide,
 					java.util.Map<java.util.Locale, String> htmlMap,
 					java.util.Map<java.util.Locale, String> jsMap, String name,
 					long plid, String segmentsExperienceERC,
-					String targetElement,
+					String targetElement, String[] audienceEntryERCs,
 					com.liferay.portal.kernel.service.ServiceContext
 						serviceContext)
 			throws com.liferay.portal.kernel.exception.PortalException {
@@ -62,9 +61,9 @@ public class LayoutPageTemplateStructureRelElementVariationServiceHttp {
 				_addOrUpdateLayoutPageTemplateStructureRelElementVariationParameterTypes0);
 
 			MethodHandler methodHandler = new MethodHandler(
-				methodKey, externalReferenceCode, groupId, audienceEntryERCs,
-				hideMap, htmlMap, jsMap, name, plid, segmentsExperienceERC,
-				targetElement, serviceContext);
+				methodKey, externalReferenceCode, groupId, active, hide,
+				htmlMap, jsMap, name, plid, segmentsExperienceERC,
+				targetElement, audienceEntryERCs, serviceContext);
 
 			Object returnObj = null;
 
@@ -97,7 +96,7 @@ public class LayoutPageTemplateStructureRelElementVariationServiceHttp {
 
 	public static void deleteLayoutPageTemplateStructureRelElementVariation(
 			HttpPrincipal httpPrincipal, String externalReferenceCode,
-			long groupId, long plid)
+			long groupId)
 		throws com.liferay.portal.kernel.exception.PortalException {
 
 		try {
@@ -107,7 +106,7 @@ public class LayoutPageTemplateStructureRelElementVariationServiceHttp {
 				_deleteLayoutPageTemplateStructureRelElementVariationParameterTypes1);
 
 			MethodHandler methodHandler = new MethodHandler(
-				methodKey, externalReferenceCode, groupId, plid);
+				methodKey, externalReferenceCode, groupId);
 
 			try {
 				TunnelUtil.invoke(httpPrincipal, methodHandler);
@@ -178,23 +177,71 @@ public class LayoutPageTemplateStructureRelElementVariationServiceHttp {
 		}
 	}
 
+	public static com.liferay.layout.page.template.model.
+		LayoutPageTemplateStructureRelElementVariation
+				updateLayoutPageTemplateStructureRelElementVariation(
+					HttpPrincipal httpPrincipal, String externalReferenceCode,
+					long groupId, boolean active)
+			throws com.liferay.portal.kernel.exception.PortalException {
+
+		try {
+			MethodKey methodKey = new MethodKey(
+				LayoutPageTemplateStructureRelElementVariationServiceUtil.class,
+				"updateLayoutPageTemplateStructureRelElementVariation",
+				_updateLayoutPageTemplateStructureRelElementVariationParameterTypes3);
+
+			MethodHandler methodHandler = new MethodHandler(
+				methodKey, externalReferenceCode, groupId, active);
+
+			Object returnObj = null;
+
+			try {
+				returnObj = TunnelUtil.invoke(httpPrincipal, methodHandler);
+			}
+			catch (Exception exception) {
+				if (exception instanceof
+						com.liferay.portal.kernel.exception.PortalException) {
+
+					throw (com.liferay.portal.kernel.exception.PortalException)
+						exception;
+				}
+
+				throw new com.liferay.portal.kernel.exception.SystemException(
+					exception);
+			}
+
+			return (com.liferay.layout.page.template.model.
+				LayoutPageTemplateStructureRelElementVariation)returnObj;
+		}
+		catch (com.liferay.portal.kernel.exception.SystemException
+					systemException) {
+
+			_log.error(systemException, systemException);
+
+			throw systemException;
+		}
+	}
+
 	private static Log _log = LogFactoryUtil.getLog(
 		LayoutPageTemplateStructureRelElementVariationServiceHttp.class);
 
 	private static final Class<?>[]
 		_addOrUpdateLayoutPageTemplateStructureRelElementVariationParameterTypes0 =
 			new Class[] {
-				String.class, long.class, String[].class, java.util.Map.class,
+				String.class, long.class, boolean.class, String.class,
 				java.util.Map.class, java.util.Map.class, String.class,
-				long.class, String.class, String.class,
+				long.class, String.class, String.class, String[].class,
 				com.liferay.portal.kernel.service.ServiceContext.class
 			};
 	private static final Class<?>[]
 		_deleteLayoutPageTemplateStructureRelElementVariationParameterTypes1 =
-			new Class[] {String.class, long.class, long.class};
+			new Class[] {String.class, long.class};
 	private static final Class<?>[]
 		_getLayoutPageTemplateStructureRelElementVariationsParameterTypes2 =
 			new Class[] {long.class};
+	private static final Class<?>[]
+		_updateLayoutPageTemplateStructureRelElementVariationParameterTypes3 =
+			new Class[] {String.class, long.class, boolean.class};
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1984029539
+// LIFERAY-SERVICE-BUILDER-HASH:1886985713

@@ -140,6 +140,9 @@ public class StyleBookEntryPersistenceTest {
 		newStyleBookEntry.setDefaultStyleBookEntry(
 			RandomTestUtil.randomBoolean());
 
+		newStyleBookEntry.setFrontendTokenDefinition(
+			RandomTestUtil.randomString());
+
 		newStyleBookEntry.setFrontendTokensValues(
 			RandomTestUtil.randomString());
 
@@ -195,6 +198,9 @@ public class StyleBookEntryPersistenceTest {
 			existingStyleBookEntry.isDefaultStyleBookEntry(),
 			newStyleBookEntry.isDefaultStyleBookEntry());
 		Assert.assertEquals(
+			existingStyleBookEntry.getFrontendTokenDefinition(),
+			newStyleBookEntry.getFrontendTokenDefinition());
+		Assert.assertEquals(
 			existingStyleBookEntry.getFrontendTokensValues(),
 			newStyleBookEntry.getFrontendTokensValues());
 		Assert.assertEquals(
@@ -232,6 +238,8 @@ public class StyleBookEntryPersistenceTest {
 		draftStyleBookEntry.setModifiedDate(styleBookEntry.getModifiedDate());
 		draftStyleBookEntry.setDefaultStyleBookEntry(
 			styleBookEntry.getDefaultStyleBookEntry());
+		draftStyleBookEntry.setFrontendTokenDefinition(
+			styleBookEntry.getFrontendTokenDefinition());
 		draftStyleBookEntry.setFrontendTokensValues(
 			styleBookEntry.getFrontendTokensValues());
 		draftStyleBookEntry.setName(styleBookEntry.getName());
@@ -273,6 +281,9 @@ public class StyleBookEntryPersistenceTest {
 		Assert.assertEquals(
 			styleBookEntry.isDefaultStyleBookEntry(),
 			draftStyleBookEntry.isDefaultStyleBookEntry());
+		Assert.assertEquals(
+			styleBookEntry.getFrontendTokenDefinition(),
+			draftStyleBookEntry.getFrontendTokenDefinition());
 		Assert.assertEquals(
 			styleBookEntry.getFrontendTokensValues(),
 			draftStyleBookEntry.getFrontendTokensValues());
@@ -323,6 +334,9 @@ public class StyleBookEntryPersistenceTest {
 
 		styleBookEntry2.setDefaultStyleBookEntry(
 			RandomTestUtil.randomBoolean());
+
+		styleBookEntry2.setFrontendTokenDefinition(
+			RandomTestUtil.randomString());
 
 		styleBookEntry2.setFrontendTokensValues(RandomTestUtil.randomString());
 
@@ -586,6 +600,42 @@ public class StyleBookEntryPersistenceTest {
 
 		_persistence.countByG_D_T_Head(
 			0L, RandomTestUtil.randomBoolean(), (String)null,
+			RandomTestUtil.randomBoolean());
+	}
+
+	@Test
+	public void testCountByG_LikeN_T() throws Exception {
+		_persistence.countByG_LikeN_T(RandomTestUtil.nextLong(), "", "");
+
+		_persistence.countByG_LikeN_T(0L, "null", "null");
+
+		_persistence.countByG_LikeN_T(0L, (String)null, (String)null);
+	}
+
+	@Test
+	public void testCountByG_LikeN_TArrayable() throws Exception {
+		_persistence.countByG_LikeN_T(
+			new long[] {RandomTestUtil.nextLong(), 0L},
+			RandomTestUtil.randomString(), RandomTestUtil.randomString());
+	}
+
+	@Test
+	public void testCountByG_LikeN_T_Head() throws Exception {
+		_persistence.countByG_LikeN_T_Head(
+			RandomTestUtil.nextLong(), "", "", RandomTestUtil.randomBoolean());
+
+		_persistence.countByG_LikeN_T_Head(
+			0L, "null", "null", RandomTestUtil.randomBoolean());
+
+		_persistence.countByG_LikeN_T_Head(
+			0L, (String)null, (String)null, RandomTestUtil.randomBoolean());
+	}
+
+	@Test
+	public void testCountByG_LikeN_T_HeadArrayable() throws Exception {
+		_persistence.countByG_LikeN_T_Head(
+			new long[] {RandomTestUtil.nextLong(), 0L},
+			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
 			RandomTestUtil.randomBoolean());
 	}
 
@@ -983,6 +1033,9 @@ public class StyleBookEntryPersistenceTest {
 
 		styleBookEntry.setDefaultStyleBookEntry(RandomTestUtil.randomBoolean());
 
+		styleBookEntry.setFrontendTokenDefinition(
+			RandomTestUtil.randomString());
+
 		styleBookEntry.setFrontendTokensValues(RandomTestUtil.randomString());
 
 		styleBookEntry.setName(RandomTestUtil.randomString());
@@ -1004,4 +1057,4 @@ public class StyleBookEntryPersistenceTest {
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1918586398
+// LIFERAY-SERVICE-BUILDER-HASH:-357568069

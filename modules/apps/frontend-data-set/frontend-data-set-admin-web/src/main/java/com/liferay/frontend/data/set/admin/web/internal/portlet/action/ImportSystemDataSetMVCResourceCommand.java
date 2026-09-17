@@ -13,7 +13,7 @@ import com.liferay.frontend.data.set.action.FDSCreationMenuRegistry;
 import com.liferay.frontend.data.set.action.FDSItemsActions;
 import com.liferay.frontend.data.set.action.FDSItemsActionsRegistry;
 import com.liferay.frontend.data.set.action.util.FDSActionUtil;
-import com.liferay.frontend.data.set.admin.web.internal.constants.FDSAdminPortletKeys;
+import com.liferay.frontend.data.set.constants.FDSAdminPortletKeys;
 import com.liferay.frontend.data.set.filter.BaseClientExtensionFDSFilter;
 import com.liferay.frontend.data.set.filter.BaseDateRangeFDSFilter;
 import com.liferay.frontend.data.set.filter.BaseDateTimeRangeFDSFilter;
@@ -131,6 +131,11 @@ public class ImportSystemDataSetMVCResourceCommand
 				"restEndpoint", systemFDSEntry.getRESTEndpoint()
 			).put(
 				"restSchema", systemFDSEntry.getRESTSchema()
+			).put(
+				"searchAsYouType", systemFDSEntry.getSearchAsYouType()
+			).put(
+				"searchSuggestionsEnabled",
+				systemFDSEntry.getSearchSuggestionsEnabled()
 			).put(
 				"showSearch", systemFDSEntry.getShowSearch()
 			).put(

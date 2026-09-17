@@ -20,7 +20,6 @@ import RoomInitializer from '../RoomInitializer';
 import RoomShare from '../RoomShare';
 import RoomNameRenderer from './cell_renderers/RoomNameRenderer';
 import RoomStatusFieldRenderer from './cell_renderers/RoomStatusFieldRenderer';
-import RoomStatusRenderer from './cell_renderers/RoomStatusRenderer';
 import RoomTrendRenderer from './cell_renderers/RoomTrendRenderer';
 
 export default function RoomsFDSPropsTransformer({
@@ -94,11 +93,6 @@ export default function RoomsFDSPropsTransformer({
 					type: 'internal',
 				} as IInternalRenderer,
 				{
-					component: RoomStatusRenderer,
-					name: 'roomStatusTableCellRenderer',
-					type: 'internal',
-				} as IInternalRenderer,
-				{
 					component: RoomStatusFieldRenderer,
 					name: 'roomStatusFieldTableCellRenderer',
 					type: 'internal',
@@ -141,12 +135,7 @@ export default function RoomsFDSPropsTransformer({
 		itemsActions: itemsActions.map((action) => {
 			const id = action?.data?.id;
 
-			if (
-				id === 'archive' ||
-				id === 'duplicate' ||
-				id === 'edit' ||
-				id === 'settings'
-			) {
+			if (id === 'archive' || id === 'edit' || id === 'settings') {
 				return {
 					...action,
 					isVisible: (item: IRoomObjectEntry) =>
@@ -158,8 +147,6 @@ export default function RoomsFDSPropsTransformer({
 				return {
 					...action,
 					className: 'text-danger',
-					isVisible: (item: IRoomObjectEntry) =>
-						item?.roomStatus === ROOM_STATUS.INACTIVE,
 				};
 			}
 
@@ -211,7 +198,7 @@ export default function RoomsFDSPropsTransformer({
 							type: 'cancel',
 						},
 						{
-							displayType: 'primary',
+							displayType: 'warning',
 							label: Liferay.Language.get('archive'),
 							onClick: ({
 								processClose,
@@ -307,8 +294,7 @@ export default function RoomsFDSPropsTransformer({
 						RoomShare({
 							closeModal,
 							readOnly:
-								itemData.roomStatus === ROOM_STATUS.INACTIVE &&
-								!additionalProps.companyAdmin,
+								itemData.roomStatus === ROOM_STATUS.INACTIVE,
 							roomId: itemData.id,
 						}),
 					size: 'lg',

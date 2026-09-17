@@ -1,4 +1,4 @@
-import sendRequest from 'shared/util/request';
+import sendRequest, {getFormData, getRequestData} from 'shared/util/request';
 import {
 	buildOrderByFields,
 	createOrderIOMap,
@@ -244,6 +244,70 @@ export function createLiferay({
 	});
 }
 
+export function createMarketoCampaign({
+	channelsConfiguration,
+	contactsConfiguration,
+	credentials,
+	groupId,
+	name,
+	status,
+	url,
+}) {
+	const data = pickBy(
+		{
+			channelsConfiguration,
+			contactsConfiguration,
+			credentials,
+			status,
+			url,
+		},
+		Boolean
+	);
+
+	return sendMarketoCampaignRequest({
+		data: {
+			...data,
+			name,
+		},
+		method: 'POST',
+		path: `contacts/${groupId}/data_source/marketo-campaign`,
+	});
+}
+
+/**
+ * @param {{[key: string]: any}} params
+ */
+export function updateMarketoCampaign({
+	channelsConfiguration,
+	contactsConfiguration,
+	credentials,
+	groupId,
+	id,
+	name,
+	status,
+	url,
+}) {
+	const data = pickBy(
+		{
+			channelsConfiguration,
+			contactsConfiguration,
+			credentials,
+			status,
+			url,
+		},
+		Boolean
+	);
+
+	return sendMarketoCampaignRequest({
+		data: {
+			...data,
+			name,
+		},
+		method: 'PATCH',
+		path: `contacts/${groupId}/data_source/${id}/marketo-campaign`,
+	});
+}
+
 export function createSalesforce({
 	accountsConfiguration,
 	contactsConfiguration,
@@ -269,6 +333,9 @@ export function createSalesforce({
 	return sendRequest({
 		data: {
 			...data,
+			campaignsConfiguration: {
+				enableAllCampaigns: true,
+			},
 			name,
 		},
 		method: 'POST',
@@ -293,6 +360,37 @@ export function updateCSV({fieldMappingMaps, groupId, id, name, status}) {
 		method: 'PATCH',
 		path: `contacts/${groupId}/data_source/${id}/csv`,
 	});
+}
+
+/**
+ * Dedicated request wrapper for Marketo Campaign connector calls. Unlike the
+ * shared `sendRequest`, it preserves the numeric HTTP status on the thrown
+ * error (`error.status`) and does not reload the page on 401, so the connect
+ * form can map each status to a user-facing message.
+ */
+function sendMarketoCampaignRequest({data, method, path}) {
+
+	// Use `window.fetch` explicitly: this module exports its own `fetch`
+	// function, which would otherwise shadow the global one here.
+
+	return window
+		.fetch(`/o/faro/${path}`, {
+			body: data ? getFormData(getRequestData(data)) : undefined,
+			method,
+		})
+		.then(async (response) => {
+			const {status} = response;
+
+			if (status >= 200 && status < 300) {
+				return status === 204 ? {} : response.json();
+			}
+
+			const error = new Error('Request error');
+
+			error.status = status;
+
+			throw error;
+		});
 }
 
 export function updateLiferay({
@@ -364,6 +462,9 @@ export function updateSalesforce({
 	return sendRequest({
 		data: {
 			...data,
+			campaignsConfiguration: {
+				enableAllCampaigns: true,
+			},
 			name,
 		},
 		method: 'PATCH',

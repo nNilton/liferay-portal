@@ -96,7 +96,7 @@ public class ResourceOpenAPIParser {
 
 							List<JavaMethodParameter> javaMethodParameters =
 								_getJavaMethodParameters(
-									javaDataTypeMap, operation,
+									configYAML, javaDataTypeMap, operation,
 									requestBodyMediaTypes);
 
 							JavaMethodSignature javaMethodSignature =
@@ -440,7 +440,7 @@ public class ResourceOpenAPIParser {
 	}
 
 	public static boolean hasReadVulcanBatchImplementation(
-		List<JavaMethodSignature> javaMethodSignatures) {
+		ConfigYAML configYAML, List<JavaMethodSignature> javaMethodSignatures) {
 
 		for (JavaMethodSignature javaMethodSignature : javaMethodSignatures) {
 			String methodName = javaMethodSignature.getMethodName();
@@ -454,7 +454,8 @@ public class ResourceOpenAPIParser {
 			if (methodName.equals(
 					StringBundler.concat(
 						"get", parentSchemaName,
-						TextFormatter.formatPlural(schemaName), "Page"))) {
+						OpenAPIUtil.formatPlural(configYAML, schemaName),
+						"Page"))) {
 
 				return true;
 			}
@@ -553,7 +554,8 @@ public class ResourceOpenAPIParser {
 			methodName.equals(
 				StringBundler.concat(
 					"get", parentSchemaName,
-					TextFormatter.formatPlural(schemaName), "Page"))) {
+					OpenAPIUtil.formatPlural(configYAML, schemaName),
+					"Page"))) {
 
 			batchOperationType = BatchOperationType.EXPORT;
 		}
@@ -637,7 +639,7 @@ public class ResourceOpenAPIParser {
 			return "";
 		}
 
-		StringBundler sb = new StringBundler(5);
+		StringBundler sb = new StringBundler(6);
 
 		sb.append(
 			StringBundler.concat(
@@ -661,6 +663,10 @@ public class ResourceOpenAPIParser {
 		if (parameter.getExample() != null) {
 			sb.append(
 				String.format(", example = \"%s\"", parameter.getExample()));
+		}
+
+		if (parameter.isRequired()) {
+			sb.append(String.format(", required = %s", parameter.isRequired()));
 		}
 
 		sb.append("),");
@@ -840,8 +846,8 @@ public class ResourceOpenAPIParser {
 	}
 
 	private static List<JavaMethodParameter> _getJavaMethodParameters(
-		Map<String, String> javaDataTypeMap, Operation operation,
-		Set<String> requestBodyMediaTypes) {
+		ConfigYAML configYAML, Map<String, String> javaDataTypeMap,
+		Operation operation, Set<String> requestBodyMediaTypes) {
 
 		if ((operation == null) || (operation.getParameters() == null)) {
 			return Collections.emptyList();
@@ -865,6 +871,7 @@ public class ResourceOpenAPIParser {
 				StringUtil.equals(parameterName, "fields") ||
 				StringUtil.equals(parameterName, "filter") ||
 				StringUtil.equals(parameterName, "nestedFields") ||
+				StringUtil.equals(parameterName, "nestedFieldsDepth") ||
 				StringUtil.equals(parameterName, "restrictFields") ||
 				StringUtil.equals(parameterName, "sort")) {
 
@@ -965,7 +972,8 @@ public class ResourceOpenAPIParser {
 					simpleClassName = elementClassName.substring(
 						elementClassName.lastIndexOf(".") + 1);
 
-					parameterName = TextFormatter.formatPlural(
+					parameterName = OpenAPIUtil.formatPlural(
+						configYAML,
 						TextFormatter.format(simpleClassName, TextFormatter.I));
 				}
 
@@ -1095,7 +1103,8 @@ public class ResourceOpenAPIParser {
 		operationIdSegments.add(OpenAPIParserUtil.getHTTPMethod(operation));
 
 		String[] pathSegments = path.split("/");
-		String pluralSchemaName = TextFormatter.formatPlural(schemaName);
+		String pluralSchemaName = OpenAPIUtil.formatPlural(
+			configYAML, schemaName);
 
 		for (int i = 0; i < pathSegments.length; i++) {
 			String pathSegment = pathSegments[i];
@@ -1741,6 +1750,7 @@ public class ResourceOpenAPIParser {
 			StringUtil.equals(name, "flatten") ||
 			StringUtil.equals(name, "id") ||
 			StringUtil.equals(name, "nestedFields") ||
+			StringUtil.equals(name, "nestedFieldsDepth") ||
 			StringUtil.equals(name, "page") ||
 			StringUtil.equals(name, "pageSize") ||
 			StringUtil.equals(name, "pagination") ||

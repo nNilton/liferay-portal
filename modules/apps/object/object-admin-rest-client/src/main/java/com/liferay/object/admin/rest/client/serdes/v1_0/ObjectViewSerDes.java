@@ -16,6 +16,7 @@ import jakarta.annotation.Generated;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -101,6 +102,20 @@ public class ObjectViewSerDes {
 			sb.append("\"defaultObjectView\": ");
 
 			sb.append(objectView.getDefaultObjectView());
+		}
+
+		if (objectView.getExternalReferenceCode() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"externalReferenceCode\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(objectView.getExternalReferenceCode()));
+
+			sb.append("\"");
 		}
 
 		if (objectView.getId() != null) {
@@ -269,6 +284,15 @@ public class ObjectViewSerDes {
 				String.valueOf(objectView.getDefaultObjectView()));
 		}
 
+		if (objectView.getExternalReferenceCode() == null) {
+			map.put("externalReferenceCode", null);
+		}
+		else {
+			map.put(
+				"externalReferenceCode",
+				String.valueOf(objectView.getExternalReferenceCode()));
+		}
+
 		if (objectView.getId() == null) {
 			map.put("id", null);
 		}
@@ -359,6 +383,11 @@ public class ObjectViewSerDes {
 			else if (Objects.equals(jsonParserFieldName, "defaultObjectView")) {
 				return false;
 			}
+			else if (Objects.equals(
+						jsonParserFieldName, "externalReferenceCode")) {
+
+				return false;
+			}
 			else if (Objects.equals(jsonParserFieldName, "id")) {
 				return false;
 			}
@@ -420,6 +449,14 @@ public class ObjectViewSerDes {
 				if (jsonParserFieldValue != null) {
 					objectView.setDefaultObjectView(
 						(Boolean)jsonParserFieldValue);
+				}
+			}
+			else if (Objects.equals(
+						jsonParserFieldName, "externalReferenceCode")) {
+
+				if (jsonParserFieldValue != null) {
+					objectView.setExternalReferenceCode(
+						(String)jsonParserFieldValue);
 				}
 			}
 			else if (Objects.equals(jsonParserFieldName, "id")) {
@@ -562,6 +599,12 @@ public class ObjectViewSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -594,4 +637,4 @@ public class ObjectViewSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:1520058187
+// LIFERAY-REST-BUILDER-HASH:312109603

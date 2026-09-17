@@ -27,7 +27,6 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.bean.BeanReference;
 import com.liferay.portal.kernel.cache.thread.local.ThreadLocalCachable;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.model.ModelHintsUtil;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.SystemEventConstants;
@@ -50,8 +49,8 @@ import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.ResourceLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
-import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.permission.ModelPermissions;
+import com.liferay.portal.kernel.service.persistence.UserPersistence;
 import com.liferay.portal.kernel.systemevent.SystemEvent;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -121,7 +120,7 @@ public class AssetCategoryLocalServiceImpl
 
 		// Category
 
-		User user = _userLocalService.getUser(userId);
+		User user = _userPersistence.findByPrimaryKey(userId);
 
 		Map<Locale, String> trimmedTitleMap = _getTrimmedTitleMap(titleMap);
 
@@ -134,6 +133,8 @@ public class AssetCategoryLocalServiceImpl
 		String name = trimmedTitleMap.get(defaultLocale);
 
 		validate(0, groupId, parentCategoryId, name, vocabularyId);
+
+		_checkSystemParentCategory(parentCategoryId);
 
 		AssetCategory parentCategory = null;
 
@@ -261,9 +262,7 @@ public class AssetCategoryLocalServiceImpl
 			AssetCategory category, boolean skipRebuildTree)
 		throws PortalException {
 
-		if (FeatureFlagManagerUtil.isEnabled(
-				category.getCompanyId(), "LPD-86291") &&
-			category.isSystem() &&
+		if (category.isSystem() &&
 			!ExportImportThreadLocal.isImportInProcess() &&
 			!GroupThreadLocal.isDeleteInProcess()) {
 
@@ -438,6 +437,11 @@ public class AssetCategoryLocalServiceImpl
 	public int getChildCategoriesCount(long parentCategoryId) {
 		return assetCategoryPersistence.countByParentCategoryId(
 			parentCategoryId);
+	}
+
+	@Override
+	public int getCompanyCategoriesCount(long companyId) {
+		return assetCategoryPersistence.countByCompanyId(companyId);
 	}
 
 	@Override
@@ -910,9 +914,7 @@ public class AssetCategoryLocalServiceImpl
 			long vocabularyId, AssetCategory category)
 		throws PortalException {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				category.getCompanyId(), "LPD-86291") ||
-			!category.isSystem() ||
+		if (!category.isSystem() ||
 			ExportImportThreadLocal.isImportInProcess()) {
 
 			return;
@@ -934,6 +936,25 @@ public class AssetCategoryLocalServiceImpl
 			throw new SystemCategoryException.MustNotModify(
 				category.getCategoryId());
 		}
+	}
+
+	private void _checkSystemParentCategory(long parentCategoryId)
+		throws PortalException {
+
+		if (parentCategoryId <= 0) {
+			return;
+		}
+
+		AssetCategory parentCategory =
+			assetCategoryPersistence.findByPrimaryKey(parentCategoryId);
+
+		if (!parentCategory.isSystem() ||
+			ExportImportThreadLocal.isImportInProcess()) {
+
+			return;
+		}
+
+		throw new SystemCategoryException.MustNotAddChild(parentCategoryId);
 	}
 
 	private boolean _equals(
@@ -964,6 +985,8 @@ public class AssetCategoryLocalServiceImpl
 	private AssetCategory _moveCategory(
 			AssetCategory category, long parentCategoryId, long vocabularyId)
 		throws PortalException {
+
+		_checkSystemParentCategory(parentCategoryId);
 
 		validate(
 			category.getCategoryId(), category.getGroupId(), parentCategoryId,
@@ -1086,7 +1109,7 @@ public class AssetCategoryLocalServiceImpl
 	@BeanReference(type = ResourceLocalService.class)
 	private ResourceLocalService _resourceLocalService;
 
-	@BeanReference(type = UserLocalService.class)
-	private UserLocalService _userLocalService;
+	@BeanReference(type = UserPersistence.class)
+	private UserPersistence _userPersistence;
 
 }

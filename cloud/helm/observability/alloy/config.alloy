@@ -1,11 +1,24 @@
+{{- $azureRemoteWrite := .Values.azure.remoteWrite -}}
 {{- $cloud := include "observability.cloudProvider" . -}}
 {{- $interval := .Values.alloy.scrapeInterval -}}
 {{- $remoteWrite := .Values.alloy.remoteWrite -}}
-{{- if and (ne $cloud "aws") (ne $cloud "gcp") (not $remoteWrite.url) -}}
-{{- fail "alloy.remoteWrite.url is required when cloudProvider is not aws or gcp" -}}
+{{- if and (ne $cloud "aws") (ne $cloud "azure") (ne $cloud "gcp") (not $remoteWrite.url) -}}
+{{- fail "alloy.remoteWrite.url is required when cloud provider is not AWS, Azure, or GCP" -}}
 {{- end -}}
 {{- if and (eq $cloud "aws") (not .Values.aws.ampWorkspaceURL) -}}
 {{- fail "aws.ampWorkspaceURL is required when cloudProvider is aws" -}}
+{{- end -}}
+{{- if and (eq $cloud "azure") (not $azureRemoteWrite.dataCollectionRuleId) -}}
+{{- fail "azure.remoteWrite.dataCollectionRuleId is required when cloudProvider is azure" -}}
+{{- end -}}
+{{- if and (eq $cloud "azure") (not $azureRemoteWrite.metricsIngestionEndpoint) -}}
+{{- fail "azure.remoteWrite.metricsIngestionEndpoint is required when cloudProvider is azure" -}}
+{{- end -}}
+{{- if and (eq $cloud "azure") (not $azureRemoteWrite.tenantId) -}}
+{{- fail "azure.remoteWrite.tenantId is required when cloudProvider is azure" -}}
+{{- end -}}
+{{- if and (eq $cloud "azure") (not .Values.azure.subscriptionId) -}}
+{{- fail "azure.subscriptionId is required when cloudProvider is azure" -}}
 {{- end -}}
 {{- if and (eq $cloud "gcp") (not .Values.gcp.projectId) -}}
 {{- fail "gcp.projectId is required when cloudProvider is gcp" -}}
@@ -31,6 +44,18 @@ prometheus.remote_write "default" {
         url = "{{ trimSuffix "/" .Values.aws.ampWorkspaceURL }}/api/v1/remote_write"
     }
 }
+{{- else if eq $cloud "azure" }}
+prometheus.remote_write "default" {
+    endpoint {
+        azuread {
+            cloud = "AzurePublic"
+            sdk {
+                tenant_id = {{ $azureRemoteWrite.tenantId | quote }}
+            }
+        }
+        url = "{{ trimSuffix "/" $azureRemoteWrite.metricsIngestionEndpoint }}/dataCollectionRules/{{ $azureRemoteWrite.dataCollectionRuleId }}/streams/Microsoft-PrometheusMetrics/api/v1/write?api-version=2023-04-24"
+    }
+}
 {{- else if eq $cloud "gcp" }}
 prometheus.remote_write "default" {
     endpoint {
@@ -51,6 +76,34 @@ prometheus.remote_write "default" {
         {{- end }}
         url = {{ $remoteWrite.url | quote }}
     }
+}
+{{- end }}
+
+{{- if eq $cloud "azure" }}
+{{- $azurePostgreSQL := .Values.alloy.scrape.azurePostgreSQL }}
+prometheus.exporter.azure "postgresql" {
+    included_resource_tags = ["environment-id", "project-id"]
+    metric_aggregations = ["average"]
+    metrics = {{ $azurePostgreSQL.metrics | toJson }}
+    resource_type = "Microsoft.DBforPostgreSQL/flexibleServers"
+    subscriptions = [{{ .Values.azure.subscriptionId | quote }}]
+}
+
+discovery.relabel "azure_postgresql" {
+    rule {
+        replacement = "azure-postgresql"
+        target_label = "job"
+    }
+    targets = prometheus.exporter.azure.postgresql.targets
+}
+
+prometheus.scrape "azure_postgresql" {
+    clustering {
+        enabled = true
+    }
+    forward_to = [prometheus.remote_write.default.receiver]
+    scrape_interval = {{ $azurePostgreSQL.scrapeInterval | quote }}
+    targets = discovery.relabel.azure_postgresql.output
 }
 {{- end }}
 

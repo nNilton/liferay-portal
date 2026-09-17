@@ -35,6 +35,10 @@ public interface Rels {
 
 	public static final String ACCOUNT_LIFECYCLES = "account-lifecycles";
 
+	public static final String ACCOUNT_NAMES = "account-names";
+
+	public static final String ACCOUNT_OVERVIEW = "account-overview";
+
 	public static final String ACCOUNTS = "accounts";
 
 	public static final String ACCOUNTS_DISTRIBUTION = "accounts-distribution";
@@ -63,12 +67,17 @@ public interface Rels {
 
 	public static final String ADMIN_NANITES = "admin-nanites";
 
+	public static final String API_USAGE_METRICS = "api-usage-metrics";
+
 	public static final String ASSET = "asset";
 
 	public static final String ASSET_SUMMARIES = "asset-summaries";
 
 	public static final String ASSET_SUMMARY_CATEGORIES =
 		"asset-summary-categories";
+
+	public static final String ASSET_SUMMARY_CMP_PROJECTS =
+		"asset-summary-cmp-projects";
 
 	public static final String ASSET_SUMMARY_MIME_TYPES =
 		"asset-summary-mime-types";
@@ -87,6 +96,16 @@ public interface Rels {
 	public static final String BLOCKED_KEYWORDS = "blocked-keywords";
 
 	public static final String BULK = "bulk";
+
+	public static final String CAMPAIGN = "campaign";
+
+	public static final String CAMPAIGN_ACCOUNTS = "campaign-accounts";
+
+	public static final String CAMPAIGNS = "campaigns";
+
+	public static final String CAMPAIGNS_METRICS = "campaigns-metrics";
+
+	public static final String CATALOG_FIELDS = "catalog-fields";
 
 	public static final String CHANNEL = "channel";
 
@@ -124,6 +143,8 @@ public interface Rels {
 	public static final String DATA_SOURCE_DXP_USERS_TOTAL =
 		"data-source-dxp-users-total";
 
+	public static final String DATA_SOURCE_FIELDS = "data-source-fields";
+
 	public static final String DATA_SOURCE_METRICS_ACCOUNTS_COUNT =
 		"data-source-metrics-accounts-count";
 
@@ -146,7 +167,12 @@ public interface Rels {
 	public static final String DATA_SOURCE_SALESFORCE_USERS_FIELDS =
 		"data-source-salesforce-users-fields";
 
+	public static final String DATA_SOURCE_USAGE_METRICS =
+		"data-source-usage-metrics";
+
 	public static final String DATA_SOURCES = "data-sources";
+
+	public static final String DATA_SOURCES_FIELDS = "data-sources-fields";
 
 	public static final String DEFINITIONS_INDIVIDUAL_ATTRIBUTES =
 		"definitions-individual-attributes";
@@ -190,12 +216,6 @@ public interface Rels {
 
 	public static final String INDIVIDUAL_SEGMENT_MEMBERSHIPS =
 		"individual-segment-memberships";
-
-	public static final String INDIVIDUAL_SEGMENT_REAL_TIME_MEMBERSHIP_METRIC =
-		"individual-segment-real-time-membership-metric";
-
-	public static final String INDIVIDUAL_SEGMENT_REAL_TIME_MEMBERSHIPS =
-		"individual-segment-real-time-memberships";
 
 	public static final String INDIVIDUAL_SEGMENTS = "individual-segments";
 
@@ -265,8 +285,13 @@ public interface Rels {
 	public static final String PROJECTS_LAST_SEEN_DATE =
 		"projects-last-seen-date";
 
+	public static final String PROJECTS_METRICS = "projects-metrics";
+
 	public static final String REPORTS_EXPORT_CSV_COUNT =
 		"reports-export-csv-count";
+
+	public static final String SESSION_ACQUISITION_PARAMETERS =
+		"session-acquisition-parameters";
 
 	public static final String SESSION_VALUES = "session-values";
 

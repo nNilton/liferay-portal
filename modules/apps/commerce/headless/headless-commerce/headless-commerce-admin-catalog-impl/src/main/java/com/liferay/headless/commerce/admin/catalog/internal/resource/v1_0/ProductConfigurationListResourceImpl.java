@@ -25,6 +25,7 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.DateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.odata.entity.EntityModel;
 import com.liferay.portal.vulcan.custom.field.CustomField;
 import com.liferay.portal.vulcan.custom.field.CustomFieldsUtil;
@@ -275,9 +276,8 @@ public class ProductConfigurationListResourceImpl
 				GetterUtil.getString(
 					productConfigurationList.getExternalReferenceCode()),
 				contextCompany.getCompanyId(), commerceCatalog.getGroupId(),
-				GetterUtil.getLong(
-					productConfigurationList.
-						getParentProductConfigurationListId()),
+				_getParentCPConfigurationListId(
+					productConfigurationList, commerceCatalog.getGroupId()),
 				GetterUtil.getBoolean(productConfigurationList.getMaster()),
 				GetterUtil.getString(productConfigurationList.getName()),
 				GetterUtil.getDouble(productConfigurationList.getPriority()),
@@ -358,6 +358,26 @@ public class ProductConfigurationListResourceImpl
 		}
 
 		return expandoBridgeAttributes;
+	}
+
+	private long _getParentCPConfigurationListId(
+			ProductConfigurationList productConfigurationList, long groupId)
+		throws Exception {
+
+		String externalReferenceCode =
+			productConfigurationList.
+				getParentProductConfigurationListExternalReferenceCode();
+
+		if (Validator.isNull(externalReferenceCode)) {
+			return GetterUtil.getLong(
+				productConfigurationList.getParentProductConfigurationListId());
+		}
+
+		CPConfigurationList cpConfigurationList =
+			_cpConfigurationListService.getOrAddEmptyCPConfigurationList(
+				externalReferenceCode, groupId);
+
+		return cpConfigurationList.getCPConfigurationListId();
 	}
 
 	private ProductConfigurationList _toProductConfigurationList(

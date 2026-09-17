@@ -22,22 +22,33 @@ import com.liferay.commerce.product.service.CPInstanceUnitOfMeasureLocalService;
 import com.liferay.commerce.product.service.CPOptionLocalService;
 import com.liferay.commerce.product.service.CPOptionValueLocalService;
 import com.liferay.commerce.product.test.util.CPTestUtil;
+import com.liferay.exportimport.test.util.LazyReferencingTestUtil;
 import com.liferay.headless.commerce.admin.catalog.client.dto.v1_0.Sku;
 import com.liferay.headless.commerce.admin.catalog.client.dto.v1_0.SkuOption;
 import com.liferay.headless.commerce.admin.catalog.client.dto.v1_0.SkuUnitOfMeasure;
 import com.liferay.headless.commerce.admin.catalog.client.dto.v1_0.SkuVirtualSettings;
 import com.liferay.headless.commerce.admin.catalog.client.resource.v1_0.SkuResource;
 import com.liferay.headless.commerce.core.util.LanguageUtils;
+import com.liferay.journal.constants.JournalFolderConstants;
+import com.liferay.journal.model.JournalArticle;
+import com.liferay.journal.service.JournalArticleLocalService;
+import com.liferay.journal.test.util.JournalTestUtil;
+import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
+import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.rule.Inject;
 
 import java.math.BigDecimal;
@@ -154,10 +165,15 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 	public void testPostProductIdSku() throws Exception {
 		super.testPostProductIdSku();
 
+		_testPostProductIdSkuWithLazyReferencedOptionExternalReferenceCode();
+		_testPostProductIdSkuWithNonexistentOptionExternalReferenceCode();
+		_testPostProductIdSkuWithOptionExternalReferenceCode();
 		_testPostProductIdSkuWithOptionId();
 		_testPostProductIdSkuWithOptionIdKey();
 		_testPostProductIdSkuWithOptionKey();
 		_testPostProductIdSkuWithSkuVirtualSettings();
+		_testPostProductIdSkuWithTermsOfUseJournalArticleExternalReferenceCode();
+		_testPostProductIdSkuWithTermsOfUseJournalArticleGroupExternalReferenceCode();
 	}
 
 	@Override
@@ -267,6 +283,13 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 	}
 
 	@Override
+	protected Sku testGetUnitOfMeasureSkusPage_addSku(Sku sku)
+		throws Exception {
+
+		return skuResource.postProductIdSku(_cProduct.getCProductId(), sku);
+	}
+
+	@Override
 	protected Sku testGraphQLSku_addSku() throws Exception {
 		return skuResource.postProductIdSku(
 			_cProduct.getCProductId(), randomSku());
@@ -315,9 +338,49 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 				cpInstance.getCPInstanceUuid(), priceListType, uomKey);
 	}
 
+	private SkuVirtualSettings _postSkuWithTermsOfUse(
+			String groupExternalReferenceCode, JournalArticle journalArticle)
+		throws Exception {
+
+		User adminUser = UserTestUtil.getAdminUser(testCompany.getCompanyId());
+
+		SkuResource skuResource = SkuResource.builder(
+		).authentication(
+			adminUser.getEmailAddress(), PropsValues.DEFAULT_ADMIN_PASSWORD
+		).locale(
+			LocaleUtil.getDefault()
+		).parameters(
+			"nestedFields", "skuVirtualSettings"
+		).build();
+
+		Sku randomSku = randomSku();
+
+		randomSku.setSkuVirtualSettings(
+			new SkuVirtualSettings() {
+				{
+					activationStatus = 0;
+					duration = RandomTestUtil.nextLong();
+					maxUsages = RandomTestUtil.nextInt();
+					override = true;
+					termsOfUseJournalArticleExternalReferenceCode =
+						journalArticle.getExternalReferenceCode();
+					termsOfUseJournalArticleGroupExternalReferenceCode =
+						groupExternalReferenceCode;
+					termsOfUseRequired = true;
+					url = "https://liferay.com";
+				}
+			});
+
+		Sku postSku = skuResource.postProductIdSku(
+			_cpDefinition.getCProductId(), randomSku);
+
+		return postSku.getSkuVirtualSettings();
+	}
+
 	private Sku _randomSkuWithSkuOptions(
-			String optionKey, Long optionKeyId, Long optionValueKeyId,
-			String optionValue)
+			String optionKey, String optionKeyExternalReferenceCode,
+			Long optionKeyId, String optionValueKeyExternalReferenceCode,
+			Long optionValueKeyId, String optionValue)
 		throws Exception {
 
 		Sku sku = randomSku();
@@ -327,7 +390,11 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 				new SkuOption() {
 					{
 						key = optionKey;
+						optionExternalReferenceCode =
+							optionKeyExternalReferenceCode;
 						optionId = optionKeyId;
+						optionValueExternalReferenceCode =
+							optionValueKeyExternalReferenceCode;
 						optionValueId = optionValueKeyId;
 						value = optionValue;
 					}
@@ -498,6 +565,92 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 		assertValid(patchSku);
 	}
 
+	private void _testPostProductIdSkuWithLazyReferencedOptionExternalReferenceCode()
+		throws Exception {
+
+		CPOption cpOption = _cpOptionLocalService.addCPOption(
+			RandomTestUtil.randomString(), _user.getUserId(),
+			RandomTestUtil.randomLocaleStringMap(),
+			RandomTestUtil.randomLocaleStringMap(), "select", false, false,
+			false, RandomTestUtil.randomString(),
+			ServiceContextTestUtil.getServiceContext(
+				testCompany.getCompanyId(), testGroup.getGroupId(),
+				_user.getUserId()));
+
+		String externalReferenceCode = RandomTestUtil.randomString();
+
+		try (SafeCloseable safeCloseable =
+				LazyReferencingTestUtil.setLazyReferencingWithSafeCloseable(
+					true)) {
+
+			skuResource.postProductIdSku(
+				_cpDefinition.getCProductId(),
+				_randomSkuWithSkuOptions(
+					cpOption.getKey(), externalReferenceCode, null, null, null,
+					null));
+		}
+
+		CPDefinitionOptionRel cpDefinitionOptionRel =
+			_cpDefinitionOptionRelLocalService.
+				getCPDefinitionOptionRelByExternalReferenceCode(
+					externalReferenceCode, testCompany.getCompanyId());
+
+		Assert.assertEquals(
+			WorkflowConstants.STATUS_EMPTY, cpDefinitionOptionRel.getStatus());
+		Assert.assertEquals(
+			_cpDefinition.getCPDefinitionId(),
+			cpDefinitionOptionRel.getCPDefinitionId());
+		Assert.assertEquals(
+			cpOption.getCPOptionId(), cpDefinitionOptionRel.getCPOptionId());
+	}
+
+	private void _testPostProductIdSkuWithNonexistentOptionExternalReferenceCode()
+		throws Exception {
+
+		assertHttpResponseStatusCode(
+			404,
+			skuResource.postProductIdSkuHttpResponse(
+				_cpDefinition.getCProductId(),
+				_randomSkuWithSkuOptions(
+					null, RandomTestUtil.randomString(), null, null, null,
+					null)));
+	}
+
+	private void _testPostProductIdSkuWithOptionExternalReferenceCode()
+		throws Exception {
+
+		CPDefinitionOptionValueRel cpDefinitionOptionValueRel =
+			_cpDefinitionOptionValueRels.get(0);
+
+		Sku postSku = skuResource.postProductIdSku(
+			_cpDefinition.getCProductId(),
+			_randomSkuWithSkuOptions(
+				null, _cpDefinitionOptionRel.getExternalReferenceCode(), null,
+				cpDefinitionOptionValueRel.getExternalReferenceCode(), null,
+				null));
+
+		SkuOption[] skuOptions = postSku.getSkuOptions();
+
+		Assert.assertTrue((skuOptions != null) && (skuOptions.length == 1));
+
+		SkuOption skuOption = skuOptions[0];
+
+		Assert.assertEquals(skuOption.getKey(), _cpOption.getKey());
+		Assert.assertEquals(
+			skuOption.getOptionExternalReferenceCode(),
+			_cpDefinitionOptionRel.getExternalReferenceCode());
+		Assert.assertEquals(
+			(long)skuOption.getOptionId(),
+			_cpDefinitionOptionRel.getCPDefinitionOptionRelId());
+		Assert.assertEquals(
+			skuOption.getOptionValueExternalReferenceCode(),
+			cpDefinitionOptionValueRel.getExternalReferenceCode());
+		Assert.assertEquals(
+			(long)skuOption.getOptionValueId(),
+			cpDefinitionOptionValueRel.getCPDefinitionOptionValueRelId());
+		Assert.assertEquals(skuOption.getValue(), _cpOptionValue.getKey());
+	}
+
 	private void _testPostProductIdSkuWithOptionId() throws Exception {
 		CPDefinitionOptionValueRel cpDefinitionOptionValueRel =
 			_cpDefinitionOptionValueRels.get(0);
@@ -505,7 +658,8 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 		Sku postSku = skuResource.postProductIdSku(
 			_cpDefinition.getCProductId(),
 			_randomSkuWithSkuOptions(
-				null, _cpDefinitionOptionRel.getCPDefinitionOptionRelId(),
+				null, null, _cpDefinitionOptionRel.getCPDefinitionOptionRelId(),
+				null,
 				cpDefinitionOptionValueRel.getCPDefinitionOptionValueRelId(),
 				null));
 
@@ -534,7 +688,7 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 			_randomSkuWithSkuOptions(
 				String.valueOf(
 					_cpDefinitionOptionRel.getCPDefinitionOptionRelId()),
-				null, null,
+				null, null, null, null,
 				String.valueOf(
 					cpDefinitionOptionValueRel.
 						getCPDefinitionOptionValueRelId())));
@@ -562,7 +716,8 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 		Sku postSku = skuResource.postProductIdSku(
 			_cpDefinition.getCProductId(),
 			_randomSkuWithSkuOptions(
-				_cpOption.getKey(), null, null, _cpOptionValue.getKey()));
+				_cpOption.getKey(), null, null, null, null,
+				_cpOptionValue.getKey()));
 
 		SkuOption[] skuOptions = postSku.getSkuOptions();
 
@@ -583,16 +738,11 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 	private void _testPostProductIdSkuWithSkuVirtualSettings()
 		throws Exception {
 
-		User omniadminUser = UserTestUtil.addOmniadminUser();
-
-		String password = RandomTestUtil.randomString();
-
-		_userLocalService.updatePassword(
-			omniadminUser.getUserId(), password, password, false, true);
+		User adminUser = UserTestUtil.getAdminUser(testCompany.getCompanyId());
 
 		SkuResource skuResource = SkuResource.builder(
 		).authentication(
-			omniadminUser.getEmailAddress(), password
+			adminUser.getEmailAddress(), PropsValues.DEFAULT_ADMIN_PASSWORD
 		).locale(
 			LocaleUtil.getDefault()
 		).parameters(
@@ -648,6 +798,64 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 			randomSkuVirtualSettings.getUseSample());
 	}
 
+	private void _testPostProductIdSkuWithTermsOfUseJournalArticleExternalReferenceCode()
+		throws Exception {
+
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_cpDefinition.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		SkuVirtualSettings postSkuVirtualSettings = _postSkuWithTermsOfUse(
+			null, journalArticle);
+
+		Assert.assertEquals(
+			(Long)journalArticle.getResourcePrimKey(),
+			postSkuVirtualSettings.getTermsOfUseJournalArticleId());
+		Assert.assertEquals(
+			journalArticle.getExternalReferenceCode(),
+			postSkuVirtualSettings.
+				getTermsOfUseJournalArticleExternalReferenceCode());
+	}
+
+	private void _testPostProductIdSkuWithTermsOfUseJournalArticleGroupExternalReferenceCode()
+		throws Exception {
+
+		_group = GroupTestUtil.addGroup();
+
+		_group.setExternalReferenceCode(RandomTestUtil.randomString());
+
+		_group = _groupLocalService.updateGroup(_group);
+
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		JournalArticle catalogJournalArticle = JournalTestUtil.addArticle(
+			_cpDefinition.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		catalogJournalArticle.setExternalReferenceCode(
+			journalArticle.getExternalReferenceCode());
+
+		catalogJournalArticle =
+			_journalArticleLocalService.updateJournalArticle(
+				catalogJournalArticle);
+
+		SkuVirtualSettings postSkuVirtualSettings = _postSkuWithTermsOfUse(
+			_group.getExternalReferenceCode(), journalArticle);
+
+		Assert.assertEquals(
+			_group.getExternalReferenceCode(),
+			postSkuVirtualSettings.
+				getTermsOfUseJournalArticleGroupExternalReferenceCode());
+		Assert.assertNotEquals(
+			(Long)catalogJournalArticle.getResourcePrimKey(),
+			postSkuVirtualSettings.getTermsOfUseJournalArticleId());
+		Assert.assertEquals(
+			(Long)journalArticle.getResourcePrimKey(),
+			postSkuVirtualSettings.getTermsOfUseJournalArticleId());
+	}
+
 	@Inject
 	private CommercePriceEntryLocalService _commercePriceEntryLocalService;
 
@@ -686,6 +894,15 @@ public class SkuResourceTest extends BaseSkuResourceTestCase {
 
 	@DeleteAfterTestRun
 	private CProduct _cProduct;
+
+	@DeleteAfterTestRun
+	private Group _group;
+
+	@Inject
+	private GroupLocalService _groupLocalService;
+
+	@Inject
+	private JournalArticleLocalService _journalArticleLocalService;
 
 	@DeleteAfterTestRun
 	private User _user;

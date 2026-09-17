@@ -260,6 +260,7 @@ import com.liferay.portal.kernel.model.AddressModel;
 import com.liferay.portal.kernel.model.BaseModel;
 import com.liferay.portal.kernel.model.ClassNameModel;
 import com.liferay.portal.kernel.model.Company;
+import com.liferay.portal.kernel.model.CompanyInfoModel;
 import com.liferay.portal.kernel.model.CompanyModel;
 import com.liferay.portal.kernel.model.ContactConstants;
 import com.liferay.portal.kernel.model.ContactModel;
@@ -326,6 +327,7 @@ import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.model.impl.AddressModelImpl;
 import com.liferay.portal.model.impl.ClassNameModelImpl;
+import com.liferay.portal.model.impl.CompanyInfoModelImpl;
 import com.liferay.portal.model.impl.CompanyModelImpl;
 import com.liferay.portal.model.impl.ContactModelImpl;
 import com.liferay.portal.model.impl.CountryModelImpl;
@@ -1258,8 +1260,14 @@ public class DataFactory {
 	public AssetEntryModel newAssetEntryModel(
 		ObjectEntryModel objectEntryModel) {
 
+		long groupId = objectEntryModel.getGroupId();
+
+		if (groupId == 0) {
+			groupId = _globalGroupId;
+		}
+
 		return newAssetEntryModel(
-			objectEntryModel.getGroupId(), objectEntryModel.getCreateDate(),
+			groupId, objectEntryModel.getCreateDate(),
 			objectEntryModel.getModifiedDate(),
 			getClassNameId(
 				ObjectDefinitionConstants.
@@ -2633,6 +2641,17 @@ public class DataFactory {
 				StringUtil.read(
 					getResourceInputStream(
 						"commerce/commerce_theme_portlet_settings.json"))));
+	}
+
+	public CompanyInfoModel newCompanyInfoModel(long companyId) {
+		CompanyInfoModel companyInfoModel = new CompanyInfoModelImpl();
+
+		companyInfoModel.setCompanyInfoId(_counter.get());
+		companyInfoModel.setCompanyId(companyId);
+		companyInfoModel.setName(_webId);
+		companyInfoModel.setLegalName("Liferay, Inc.");
+
+		return companyInfoModel;
 	}
 
 	public List<CompanyModel> newCompanyModels() {
@@ -4650,6 +4669,16 @@ public class DataFactory {
 		return friendlyURLEntryModel;
 	}
 
+	public FriendlyURLEntryModel newFriendlyURLEntryModel(
+		ObjectDefinitionModel objectDefinitionModel,
+		ObjectEntryModel objectEntryModel) {
+
+		return newFriendlyURLEntryModel(
+			_globalGroupId,
+			getClassNameId(objectDefinitionModel.getClassName()),
+			objectEntryModel.getObjectEntryId());
+	}
+
 	public GroupModel newGlobalGroupModel() {
 		_globalGroupId = _counter.get();
 
@@ -5583,7 +5612,7 @@ public class DataFactory {
 
 		notificationTemplateModel.setUuid(SequentialUUID.generate());
 		notificationTemplateModel.setExternalReferenceCode(
-			"L_COMMERCE_ORDER_TEMPLATE");
+			"COMMERCE_ORDER_TEMPLATE");
 
 		return notificationTemplateModel;
 	}
@@ -5740,14 +5769,19 @@ public class DataFactory {
 
 		String uuid = SequentialUUID.generate();
 
-		return newObjectDefinitionModel(
+		ObjectDefinitionModel objectDefinitionModel = newObjectDefinitionModel(
 			objectDefinitionId, objectFolderId, 0, className,
 			StringBundler.concat("O_", _companyId, StringPool.UNDERLINE, name),
 			true, false, true, label, true, name,
-			PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_CUSTOM_APPS,
+			PanelCategoryKeys.CONTROL_PANEL_OBJECT,
 			"c_" + StringUtil.toLowerCase(name) + "_",
 			"c_" + StringUtil.toLowerCase(name), label, true, false, uuid,
 			uuid);
+
+		objectDefinitionModel.setFriendlyURLSeparator(
+			_friendlyURLNormalizer.normalizeWithPeriodsAndSlashes(name));
+
+		return objectDefinitionModel;
 	}
 
 	public List<ObjectDefinitionModel> newObjectDefinitionModels(
@@ -7333,14 +7367,10 @@ public class DataFactory {
 
 			String key = jsonObject.getString("layoutColumnId");
 
-			if (portletNames.containsKey(key)) {
-				portletNames.put(
-					key,
-					portletNames.get(key) + StringPool.COMMA + portletName);
-			}
-			else {
-				portletNames.put(key, portletName);
-			}
+			portletNames.merge(
+				key, portletName,
+				(currentPortletName, newPortletName) ->
+					currentPortletName + StringPool.COMMA + newPortletName);
 		}
 
 		return ArrayUtil.toStringArray(portletNames.values());
@@ -8510,6 +8540,7 @@ public class DataFactory {
 		objectEntryModel.setHeadObjectEntryId(
 			objectEntryModel.getObjectEntryId());
 		objectEntryModel.setObjectDefinitionId(objectDefinitionId);
+		objectEntryModel.setDefaultLanguageId("en_US");
 		objectEntryModel.setStatus(WorkflowConstants.STATUS_APPROVED);
 		objectEntryModel.setStatusByUserId(_sampleUserId);
 		objectEntryModel.setStatusByUserName(_SAMPLE_USER_NAME);
@@ -8959,6 +8990,7 @@ public class DataFactory {
 		userModel.setScreenName(screenName);
 		userModel.setEmailAddress(emailAddress);
 		userModel.setLanguageId("en_US");
+		userModel.setTimeZoneId("UTC");
 		userModel.setGreeting("Welcome " + screenName + StringPool.EXCLAMATION);
 		userModel.setFirstName(firstName);
 		userModel.setLastName(lastName);
@@ -9559,8 +9591,6 @@ public class DataFactory {
 		companyModel.setWebId(webId);
 		companyModel.setMx("liferay.com");
 		companyModel.setActive(true);
-		companyModel.setName(webId);
-		companyModel.setLegalName("Liferay, Inc.");
 
 		return companyModel;
 	}

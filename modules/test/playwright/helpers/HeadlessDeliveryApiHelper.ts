@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 
 import getRandomString from '../utils/getRandomString';
-import {ApiHelpers} from './ApiHelpers';
+import {ApiHelpers, DataApiHelpers} from './ApiHelpers';
 
 interface createSitePageProps {
 	pageDefinition?: PageDefinition;
@@ -117,17 +117,21 @@ export class HeadlessDeliveryApiHelper {
 		);
 	}
 
-	async deleteMessageBoardSection(messageBoardSectionId: string) {
+	async deleteDocumentDataDefinitionType(id: string) {
 		return this.apiHelpers.delete(
-			`${this.apiHelpers.baseUrl}${this.basePath}/message-board-sections/${messageBoardSectionId}`
+			`${this.apiHelpers.baseUrl}${this.basePath}/document-data-definition-types/${id}`
 		);
 	}
 
-	async deleteSiteDocumentsFolderByExternalReferenceCode(
-		externalReferenceCode: string
-	) {
+	async deleteDocumentFolder(documentFolderId: string) {
 		return this.apiHelpers.delete(
-			`${this.apiHelpers.baseUrl}${this.basePath}/sites/Guest/documents-folder/by-external-reference-code/${externalReferenceCode}`
+			`${this.apiHelpers.baseUrl}${this.basePath}/document-folders/${documentFolderId}`
+		);
+	}
+
+	async deleteMessageBoardSection(messageBoardSectionId: string) {
+		return this.apiHelpers.delete(
+			`${this.apiHelpers.baseUrl}${this.basePath}/message-board-sections/${messageBoardSectionId}`
 		);
 	}
 
@@ -143,12 +147,31 @@ export class HeadlessDeliveryApiHelper {
 		);
 	}
 
+	async getDocumentFolderDocuments(documentFolderId: string) {
+		return this.apiHelpers.get(
+			`${this.apiHelpers.baseUrl}${this.basePath}/document-folders/${documentFolderId}/documents`
+		);
+	}
+
 	async getMessageBoardThread(
 		messageBoardThreadId: string
 	): Promise<MessageBoardThread> {
 		return this.apiHelpers.get(
 			`${this.apiHelpers.baseUrl}${this.basePath}/message-board-threads/${messageBoardThreadId}`
 		);
+	}
+
+	async getSiteDocumentFolderByName(
+		siteId: number | string,
+		name: string
+	): Promise<TDocumentFolder | undefined> {
+		const documentFolders = await this.apiHelpers.get(
+			`${this.apiHelpers.baseUrl}${this.basePath}/sites/${siteId}/document-folders?filter=${encodeURIComponent(
+				`name eq '${name}'`
+			)}`
+		);
+
+		return documentFolders.items[0];
 	}
 
 	async getSiteDocumentsPage(siteId: string, sort: string = 'id') {
@@ -177,6 +200,18 @@ export class HeadlessDeliveryApiHelper {
 		);
 	}
 
+	async postAssetLibraryDocument(
+		assetLibraryId: number | string,
+		file: fs.ReadStream,
+		document?: TDocument
+	) {
+		return this._postDocument(
+			`asset-libraries/${assetLibraryId}`,
+			file,
+			document
+		);
+	}
+
 	async postBlog(
 		siteId: number | string,
 		blog?: {
@@ -200,6 +235,29 @@ export class HeadlessDeliveryApiHelper {
 		);
 	}
 
+	async postSiteDocumentDataDefinitionType(siteId: string, name: string) {
+		const documentDataDefinitionType = await this.apiHelpers.post(
+			`${this.apiHelpers.baseUrl}${this.basePath}/sites/${siteId}/document-data-definition-types`,
+			{
+				data: {
+					availableLanguages: ['en-US'],
+					dataDefinitionFields: [],
+					dataLayout: {},
+					name,
+				},
+			}
+		);
+
+		if (this.apiHelpers instanceof DataApiHelpers) {
+			this.apiHelpers.data.push({
+				id: documentDataDefinitionType.id,
+				type: 'documentDataDefinitionType',
+			});
+		}
+
+		return documentDataDefinitionType;
+	}
+
 	async postSiteKnowledgeBaseArticle({
 		articleBody,
 		siteId,
@@ -218,6 +276,27 @@ export class HeadlessDeliveryApiHelper {
 					articleBody,
 					title,
 					viewableBy,
+				},
+				failOnStatusCode: true,
+			}
+		);
+	}
+
+	async postKnowledgeBaseArticleKnowledgeBaseArticle({
+		articleBody,
+		parentKnowledgeBaseArticleId,
+		title,
+	}: {
+		articleBody: string;
+		parentKnowledgeBaseArticleId: string;
+		title: string;
+	}): Promise<KnowledgeBaseArticle> {
+		return this.apiHelpers.post(
+			`${this.apiHelpers.baseUrl}${this.basePath}/knowledge-base-articles/${parentKnowledgeBaseArticleId}/knowledge-base-articles`,
+			{
+				data: {
+					articleBody,
+					title,
 				},
 				failOnStatusCode: true,
 			}
@@ -392,6 +471,30 @@ export class HeadlessDeliveryApiHelper {
 		);
 	}
 
+	async postStructuredContentFolderStructuredContent({
+		contentStructureId,
+		datePublished,
+		structuredContentFolderId,
+		title,
+	}: {
+		contentStructureId: number;
+		datePublished: string;
+		structuredContentFolderId: number;
+		title: string;
+	}): Promise<StructuredContent> {
+		return this.apiHelpers.post(
+			`${this.apiHelpers.baseUrl}${this.basePath}/structured-content-folders/${structuredContentFolderId}/structured-contents`,
+			{
+				data: {
+					contentStructureId,
+					datePublished,
+					title,
+				},
+				failOnStatusCode: true,
+			}
+		);
+	}
+
 	async getStructuredContentByKey(
 		siteId: string,
 		key: string
@@ -451,28 +554,7 @@ export class HeadlessDeliveryApiHelper {
 		file: fs.ReadStream,
 		document?: TDocument
 	) {
-		document = {
-			description: getRandomString(),
-			externalReferenceCode: getRandomString(),
-			fileName: getRandomString(),
-			title: getRandomString(),
-			viewableBy: 'Anyone',
-			...(document || {}),
-		};
-
-		return this.apiHelpers.post(
-			`${this.apiHelpers.baseUrl}${this.basePath}/sites/${siteId}/documents`,
-			{
-				failOnStatusCode: true,
-				headers: {
-					...(await this.apiHelpers.getCSRFTokenHeader()),
-				},
-				multipart: {
-					document: JSON.stringify(document),
-					file,
-				},
-			}
-		);
+		return this._postDocument(`sites/${siteId}`, file, document);
 	}
 
 	async postDocumentFolder(
@@ -496,6 +578,18 @@ export class HeadlessDeliveryApiHelper {
 					...(await this.apiHelpers.getCSRFTokenHeader()),
 				},
 			}
+		);
+	}
+
+	async postDocumentFolderDocument(
+		documentFolderId: number | string,
+		file: fs.ReadStream,
+		document?: TDocument
+	) {
+		return this._postDocument(
+			`document-folders/${documentFolderId}`,
+			file,
+			document
 		);
 	}
 
@@ -586,6 +680,35 @@ export class HeadlessDeliveryApiHelper {
 			{
 				data: blog,
 				failOnStatusCode: true,
+			}
+		);
+	}
+
+	private async _postDocument(
+		scopePath: string,
+		file: fs.ReadStream,
+		document?: TDocument
+	) {
+		document = {
+			description: getRandomString(),
+			externalReferenceCode: getRandomString(),
+			fileName: getRandomString(),
+			title: getRandomString(),
+			viewableBy: 'Anyone',
+			...(document || {}),
+		};
+
+		return this.apiHelpers.post(
+			`${this.apiHelpers.baseUrl}${this.basePath}/${scopePath}/documents`,
+			{
+				failOnStatusCode: true,
+				headers: {
+					...(await this.apiHelpers.getCSRFTokenHeader()),
+				},
+				multipart: {
+					document: JSON.stringify(document),
+					file,
+				},
 			}
 		);
 	}

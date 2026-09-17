@@ -18,6 +18,7 @@ import com.liferay.commerce.price.list.service.CommercePriceListLocalService;
 import com.liferay.commerce.product.configuration.CProductVersionConfiguration;
 import com.liferay.commerce.product.constants.CPInstanceConstants;
 import com.liferay.commerce.product.constants.CommerceChannelAccountEntryRelConstants;
+import com.liferay.commerce.product.exception.NoSuchCProductException;
 import com.liferay.commerce.product.model.CPConfigurationList;
 import com.liferay.commerce.product.model.CPDefinition;
 import com.liferay.commerce.product.model.CPDefinitionLocalization;
@@ -41,6 +42,7 @@ import com.liferay.commerce.product.service.CPDefinitionSpecificationOptionValue
 import com.liferay.commerce.product.service.CPInstanceLocalService;
 import com.liferay.commerce.product.service.CPInstanceOptionValueRelLocalService;
 import com.liferay.commerce.product.service.CPOptionLocalService;
+import com.liferay.commerce.product.service.CProductLocalService;
 import com.liferay.commerce.product.service.CommerceCatalogLocalServiceUtil;
 import com.liferay.commerce.product.service.CommerceChannelAccountEntryRelLocalService;
 import com.liferay.commerce.product.service.CommerceChannelRelLocalService;
@@ -50,11 +52,14 @@ import com.liferay.commerce.product.util.comparator.CPDefinitionModifiedDateComp
 import com.liferay.commerce.service.CPDefinitionInventoryLocalService;
 import com.liferay.commerce.test.util.CommerceTestUtil;
 import com.liferay.friendly.url.service.FriendlyURLEntryLocalService;
+import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.test.util.CompanyConfigurationTemporarySwapper;
 import com.liferay.portal.kernel.dao.orm.QueryDefinition;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.WorkflowDefinitionLink;
@@ -72,8 +77,10 @@ import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.CalendarFactoryUtil;
 import com.liferay.portal.kernel.util.Constants;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.kernel.workflow.WorkflowTask;
@@ -512,6 +519,38 @@ public class CPDefinitionLocalServiceTest {
 	}
 
 	@Test
+	public void testCloneCPDefinitionOptionRelExternalReferenceCodes()
+		throws Exception {
+
+		frutillaRule.scenario(
+			"Duplicate a product that carries options"
+		).given(
+			"A product with one option and two option values"
+		).when(
+			"The product is duplicated"
+		).then(
+			"The duplicated option and option values carry their own " +
+				"external reference codes"
+		);
+
+		CPInstance cpInstance = CPTestUtil.addCPInstanceWithRandomSku(
+			_commerceCatalog.getGroupId());
+
+		CPDefinitionOptionRel cpDefinitionOptionRel =
+			CPTestUtil.addCPDefinitionOptionRel(
+				_commerceCatalog.getGroupId(), cpInstance.getCPDefinitionId(),
+				true, 2);
+
+		CPDefinition duplicateCPDefinition =
+			_cpDefinitionLocalService.cloneCPDefinition(
+				TestPropsValues.getUserId(), cpInstance.getCPDefinitionId(),
+				_commerceCatalog.getGroupId(), _serviceContext);
+
+		_assertUniqueExternalReferenceCodes(
+			cpDefinitionOptionRel, duplicateCPDefinition);
+	}
+
+	@Test
 	public void testClonedProductPriceChangeDoesNotAffectParent()
 		throws PortalException {
 
@@ -572,6 +611,7 @@ public class CPDefinitionLocalServiceTest {
 	public void testCopyCPDefinition() throws Exception {
 		_testCopyCPDefinition();
 		_testCopyCPDefinitionDoesNotCopyDraftCPDefinition();
+		_testCopyCPDefinitionOptionRelExternalReferenceCodes();
 		_testCopyCPDefinitionSetsExistingDraftToIncomplete();
 		_testCopyCPDefinitionWithSKUCombinations();
 	}
@@ -767,6 +807,122 @@ public class CPDefinitionLocalServiceTest {
 	}
 
 	@Test
+	public void testGetOrAddEmptyCPDefinition() throws Exception {
+		frutillaRule.scenario(
+			"Get or add an empty product definition"
+		).given(
+			"A catalog and an external reference code"
+		).when(
+			"An empty product definition is requested"
+		).then(
+			"A NoSuchCProductException is thrown while lazy referencing is " +
+				"disabled"
+		).and(
+			"An empty stub paired with a product carrying the given external " +
+				"reference code is returned while lazy referencing is enabled"
+		).and(
+			"The same product definition is resolved on subsequent requests"
+		).and(
+			"The stub is hidden from the store front"
+		).and(
+			"The empty status is cleared once the stub is updated"
+		);
+
+		String externalReferenceCode = RandomTestUtil.randomString();
+
+		try {
+			_cpDefinitionLocalService.getOrAddEmptyCPDefinition(
+				externalReferenceCode, SimpleCPTypeConstants.NAME,
+				TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
+				_commerceCatalog.getGroupId());
+
+			Assert.fail();
+		}
+		catch (NoSuchCProductException noSuchCProductException) {
+			Assert.assertNotNull(noSuchCProductException);
+		}
+
+		CPDefinition cpDefinition = null;
+
+		try (SafeCloseable safeCloseable =
+				LazyReferencingThreadLocal.setEnabledWithSafeCloseable(true)) {
+
+			cpDefinition = _cpDefinitionLocalService.getOrAddEmptyCPDefinition(
+				externalReferenceCode, SimpleCPTypeConstants.NAME,
+				TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
+				_commerceCatalog.getGroupId());
+
+			Assert.assertEquals(
+				WorkflowConstants.STATUS_EMPTY, cpDefinition.getStatus());
+			Assert.assertEquals(
+				externalReferenceCode,
+				cpDefinition.getCProductExternalReferenceCode());
+			Assert.assertEquals(
+				SimpleCPTypeConstants.NAME, cpDefinition.getProductTypeName());
+			Assert.assertEquals(1, cpDefinition.getVersion());
+			Assert.assertFalse(cpDefinition.isPublished());
+
+			CProduct cProduct = _cProductLocalService.getCProduct(
+				cpDefinition.getCProductId());
+
+			Assert.assertEquals(
+				externalReferenceCode, cProduct.getExternalReferenceCode());
+			Assert.assertEquals(
+				cpDefinition.getCPDefinitionId(),
+				cProduct.getPublishedCPDefinitionId());
+
+			CPDefinition resolvedCPDefinition =
+				_cpDefinitionLocalService.getOrAddEmptyCPDefinition(
+					externalReferenceCode, SimpleCPTypeConstants.NAME,
+					TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
+					_commerceCatalog.getGroupId());
+
+			Assert.assertEquals(
+				cpDefinition.getCPDefinitionId(),
+				resolvedCPDefinition.getCPDefinitionId());
+		}
+
+		CPDefinition existingCPDefinition =
+			_cpDefinitionLocalService.
+				fetchCPDefinitionByCProductExternalReferenceCode(
+					externalReferenceCode, TestPropsValues.getCompanyId(),
+					false);
+
+		Assert.assertEquals(
+			cpDefinition.getCPDefinitionId(),
+			existingCPDefinition.getCPDefinitionId());
+
+		Assert.assertNull(
+			_cpDefinitionLocalService.
+				fetchCPDefinitionByCProductExternalReferenceCode(
+					externalReferenceCode, TestPropsValues.getCompanyId(),
+					true));
+
+		long cpDefinitionId = cpDefinition.getCPDefinitionId();
+		long cpTaxCategoryId = cpDefinition.getCPTaxCategoryId();
+
+		Date displayDate = cpDefinition.getDisplayDate();
+
+		cpDefinition = _cpDefinitionLocalService.updateCPDefinition(
+			cpDefinitionId, cpTaxCategoryId, false, false, null, 0,
+			Collections.emptyMap(), displayDate.getDate(),
+			displayDate.getHours(), displayDate.getMinutes(),
+			displayDate.getMonth(), displayDate.getYear(), 0, 0, 0, 0, 0, true,
+			0, false, Collections.emptyMap(), Collections.emptyMap(),
+			Collections.emptyMap(),
+			RandomTestUtil.randomLocaleStringMap(LocaleUtil.US), true, true,
+			false, false, 0, Collections.emptyMap(), false, false,
+			Collections.emptyMap(), 0, 0,
+			ServiceContextTestUtil.getServiceContext(
+				_commerceCatalog.getGroupId()));
+
+		Assert.assertEquals(cpDefinitionId, cpDefinition.getCPDefinitionId());
+		Assert.assertNotEquals(
+			WorkflowConstants.STATUS_EMPTY, cpDefinition.getStatus());
+		Assert.assertEquals(1, cpDefinition.getVersion());
+	}
+
+	@Test
 	public void testUpdateCPDefinitionExternalReferenceCode() throws Exception {
 		frutillaRule.scenario(
 			"Update product definition external reference code"
@@ -785,7 +941,7 @@ public class CPDefinitionLocalServiceTest {
 		long cpDefinitionId = cpDefinition.getCPDefinitionId();
 
 		_cpDefinitionLocalService.updateExternalReferenceCode(
-			"ERC", cpDefinitionId);
+			cpDefinitionId, "ERC");
 
 		cpDefinition = _cpDefinitionLocalService.getCPDefinition(
 			cpDefinitionId);
@@ -1262,6 +1418,47 @@ public class CPDefinitionLocalServiceTest {
 	@Rule
 	public final FrutillaRule frutillaRule = new FrutillaRule();
 
+	private void _assertUniqueExternalReferenceCodes(
+		CPDefinitionOptionRel sourceCPDefinitionOptionRel,
+		CPDefinition targetCPDefinition) {
+
+		List<CPDefinitionOptionRel> cpDefinitionOptionRels =
+			targetCPDefinition.getCPDefinitionOptionRels();
+
+		Assert.assertEquals(
+			cpDefinitionOptionRels.toString(), 1,
+			cpDefinitionOptionRels.size());
+
+		CPDefinitionOptionRel targetCPDefinitionOptionRel =
+			cpDefinitionOptionRels.get(0);
+
+		Assert.assertNotEquals(
+			sourceCPDefinitionOptionRel.getExternalReferenceCode(),
+			targetCPDefinitionOptionRel.getExternalReferenceCode());
+
+		List<CPDefinitionOptionValueRel> sourceCPDefinitionOptionValueRels =
+			sourceCPDefinitionOptionRel.getCPDefinitionOptionValueRels();
+		List<CPDefinitionOptionValueRel> targetCPDefinitionOptionValueRels =
+			targetCPDefinitionOptionRel.getCPDefinitionOptionValueRels();
+
+		Assert.assertEquals(
+			targetCPDefinitionOptionValueRels.toString(),
+			sourceCPDefinitionOptionValueRels.size(),
+			targetCPDefinitionOptionValueRels.size());
+
+		List<String> externalReferenceCodes = TransformUtil.transform(
+			ListUtil.concat(
+				sourceCPDefinitionOptionValueRels,
+				targetCPDefinitionOptionValueRels),
+			CPDefinitionOptionValueRel::getExternalReferenceCode);
+
+		Assert.assertEquals(
+			externalReferenceCodes.toString(), externalReferenceCodes.size(),
+			SetUtil.fromCollection(
+				externalReferenceCodes
+			).size());
+	}
+
 	private void _testCopyCPDefinition() throws Exception {
 		frutillaRule.scenario(
 			"Copy a product"
@@ -1409,6 +1606,53 @@ public class CPDefinitionLocalServiceTest {
 			Assert.assertEquals(
 				cpDefinition2.getCPDefinitionId(),
 				cpDefinition3.getCPDefinitionId());
+		}
+	}
+
+	private void _testCopyCPDefinitionOptionRelExternalReferenceCodes()
+		throws Exception {
+
+		frutillaRule.scenario(
+			"Version a product that carries options"
+		).given(
+			"A published product with one option and two option values"
+		).when(
+			"A new version of the product is created"
+		).then(
+			"The copied option and option values carry their own external " +
+				"reference codes"
+		);
+
+		CPDefinition cpDefinition1 = CPTestUtil.addCPDefinitionFromCatalog(
+			_commerceCatalog.getGroupId(), SimpleCPTypeConstants.NAME, true,
+			true);
+
+		CPDefinitionOptionRel cpDefinitionOptionRel1 =
+			CPTestUtil.addCPDefinitionOptionRel(
+				_commerceCatalog.getGroupId(),
+				cpDefinition1.getCPDefinitionId(), true, 2);
+
+		try (CompanyConfigurationTemporarySwapper
+				companyConfigurationTemporarySwapper =
+					new CompanyConfigurationTemporarySwapper(
+						TestPropsValues.getCompanyId(),
+						CProductVersionConfiguration.class.getName(),
+						HashMapDictionaryBuilder.<String, Object>put(
+							"enabled", true
+						).put(
+							"versionThreshold", 2
+						).build())) {
+
+			CPDefinition cpDefinition2 =
+				_cpDefinitionLocalService.copyCPDefinition(
+					cpDefinition1.getCPDefinitionId());
+
+			Assert.assertNotEquals(
+				cpDefinition1.getCPDefinitionId(),
+				cpDefinition2.getCPDefinitionId());
+
+			_assertUniqueExternalReferenceCodes(
+				cpDefinitionOptionRel1, cpDefinition2);
 		}
 	}
 
@@ -2113,6 +2357,9 @@ public class CPDefinitionLocalServiceTest {
 
 	@DeleteAfterTestRun
 	private final List<CPOption> _cpOptions = new ArrayList<>();
+
+	@Inject
+	private CProductLocalService _cProductLocalService;
 
 	@Inject
 	private FriendlyURLEntryLocalService _friendlyURLEntryLocalService;

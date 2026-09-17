@@ -9,6 +9,7 @@ import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.batch.engine.BatchEngineImportTaskExecutor;
 import com.liferay.batch.engine.BatchEngineTaskExecuteStatus;
 import com.liferay.batch.engine.BatchEngineTaskOperation;
+import com.liferay.batch.engine.configuration.BatchEngineTaskCompanyConfiguration;
 import com.liferay.batch.engine.constants.BatchEngineImportTaskConstants;
 import com.liferay.batch.engine.exception.BatchEngineImportTaskParametersException;
 import com.liferay.batch.engine.model.BatchEngineImportTask;
@@ -27,15 +28,24 @@ import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.configuration.test.util.CompanyConfigurationTemporarySwapper;
 import com.liferay.portal.kernel.dao.orm.QueryDefinition;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.spring.orm.LastSessionRecorderHelper;
+import com.liferay.portal.kernel.spring.orm.LastSessionRecorderHelperUtil;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.DataGuard;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.transaction.Propagation;
+import com.liferay.portal.kernel.transaction.TransactionConfig;
+import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Time;
@@ -44,6 +54,12 @@ import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LogEntry;
 import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.Inject;
+
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.core.Application;
+import jakarta.ws.rs.core.MediaType;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
@@ -58,6 +74,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -70,6 +88,11 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceRegistration;
 
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONCompareMode;
@@ -334,6 +357,37 @@ public class BatchEngineImportTaskExecutorTest
 	}
 
 	@Test
+	public void testCreateBlogPostingsLastSessionRecorderCount()
+		throws Exception {
+
+		CountingLastSessionRecorderHelper countingLastSessionRecorderHelper =
+			new CountingLastSessionRecorderHelper();
+
+		LastSessionRecorderHelper originalLastSessionRecorderHelper =
+			ReflectionTestUtil.getAndSetFieldValue(
+				LastSessionRecorderHelperUtil.class,
+				"_lastSessionRecorderHelper",
+				countingLastSessionRecorderHelper);
+
+		try {
+			_importBlogPostings(
+				BatchEngineTaskOperation.CREATE,
+				_getBlogPostingsCSVCreateContent(
+					TestPropsValues.getGroupId(), FIELD_NAMES),
+				"CSV", null);
+
+			Assert.assertEquals(
+				ROWS_COUNT, countingLastSessionRecorderHelper.getCount());
+		}
+		finally {
+			ReflectionTestUtil.setFieldValue(
+				LastSessionRecorderHelperUtil.class,
+				"_lastSessionRecorderHelper",
+				originalLastSessionRecorderHelper);
+		}
+	}
+
+	@Test
 	public void testCreateBlogPostingsWithInvalidCSVFileAndOnErrorContinue()
 		throws Exception {
 
@@ -407,6 +461,105 @@ public class BatchEngineImportTaskExecutorTest
 				blogPostingItemWithUnknownColumnRowNumber,
 				blogPostingItemWithInvalidValueRowNumber),
 			3);
+	}
+
+	@Test
+	public void testCreateBlogPostingsWithInvalidCSVFileAndOnErrorContinueInEnclosingTransaction()
+		throws Throwable {
+
+		// Run the import inside an enclosing transaction, the way portal
+		// instance registration and staging invoke it. Two items share an
+		// externalReferenceCode, so the second item's INSERT fails against the
+		// unique index on BlogsEntry. On PostgreSQL that statement error aborts
+		// the whole database transaction, so the third valid item imports, and
+		// the enclosing transaction commits, only because each item ran in its
+		// own nested savepoint that rolled back and restored the shared
+		// connection. Without the savepoint the poisoned connection would fail
+		// every later statement.
+
+		ExportImportThreadLocal.setPortletImportInProcess(true);
+
+		try {
+			String[] fieldNames = {
+				"alternativeHeadline", "articleBody", "datePublished",
+				"friendlyUrlPath", "headline", "siteId"
+			};
+
+			StringBundler sb = new StringBundler();
+
+			_createCSVRow(sb, fieldNames);
+
+			String friendlyUrlPath = RandomTestUtil.randomString();
+
+			String[] blogPostingItem = {
+				"alternativeHeadline", "articleBody",
+				dateFormat.format(new Date(baseDate.getTime())),
+				friendlyUrlPath, "headline1",
+				String.valueOf(TestPropsValues.getGroupId())
+			};
+
+			_createCSVRow(sb, blogPostingItem);
+
+			String[] blogPostingItemWithDuplicateFriendlyUrlPath = {
+				"alternativeHeadline", "articleBody",
+				dateFormat.format(new Date(baseDate.getTime())),
+				friendlyUrlPath, "headline2",
+				String.valueOf(TestPropsValues.getGroupId())
+			};
+
+			int blogPostingItemWithDuplicateFriendlyUrlPathRowNumber = 2;
+
+			_createCSVRow(sb, blogPostingItemWithDuplicateFriendlyUrlPath);
+
+			String[] blogPostingItemAfterFailure = {
+				"alternativeHeadline", "articleBody",
+				dateFormat.format(new Date(baseDate.getTime())),
+				RandomTestUtil.randomString(), "headline3",
+				String.valueOf(TestPropsValues.getGroupId())
+			};
+
+			_createCSVRow(sb, blogPostingItemAfterFailure);
+
+			byte[] content = _compressContent(
+				sb.toString(
+				).getBytes(
+					StandardCharsets.UTF_8
+				),
+				"CSV");
+
+			TransactionConfig transactionConfig =
+				TransactionConfig.Factory.create(
+					Propagation.REQUIRED, new Class<?>[] {Exception.class});
+
+			try (LogCapture logCapture1 = LoggerTestUtil.configureLog4JLogger(
+					"com.liferay.batch.engine.internal." +
+						"BatchEngineImportTaskExecutorImpl",
+					LoggerTestUtil.ERROR);
+				LogCapture logCapture2 = LoggerTestUtil.configureLog4JLogger(
+					_CLASS_NAME_BATCH_ENGINE_IMPORT_TASK_EXECUTOR_IMPL,
+					LoggerTestUtil.ERROR)) {
+
+				TransactionInvokerUtil.invoke(
+					transactionConfig,
+					() -> {
+						_importBlogPostings(
+							BatchEngineTaskOperation.CREATE, content, "CSV",
+							null,
+							BatchEngineImportTaskConstants.
+								IMPORT_STRATEGY_ON_ERROR_CONTINUE);
+
+						return null;
+					});
+			}
+
+			_assertInvalidFileImportWithOnErrorContinueStrategy(
+				Arrays.asList(
+					blogPostingItemWithDuplicateFriendlyUrlPathRowNumber),
+				3);
+		}
+		finally {
+			ExportImportThreadLocal.setPortletImportInProcess(false);
+		}
 	}
 
 	@Test
@@ -734,6 +887,88 @@ public class BatchEngineImportTaskExecutorTest
 	}
 
 	@Test
+	public void testImportBlogPostingsWithCallbackURL() throws Exception {
+		Bundle bundle = FrameworkUtil.getBundle(
+			BatchEngineImportTaskExecutorTest.class);
+
+		BundleContext bundleContext = bundle.getBundleContext();
+
+		TestApplication testApplication = new TestApplication();
+
+		ServiceRegistration<Application> serviceRegistration =
+			bundleContext.registerService(
+				Application.class, testApplication,
+				HashMapDictionaryBuilder.<String, Object>put(
+					"liferay.access.control.disable", true
+				).put(
+					"liferay.auth.verifier", false
+				).put(
+					"liferay.oauth2", false
+				).put(
+					"osgi.jaxrs.application.base", "/test"
+				).put(
+					"osgi.jaxrs.name", "Liferay.Batch.Engine.Test"
+				).build());
+
+		try {
+			_assertAllowedAndFailedCallbackURL(
+				"255.255.255.255", testApplication);
+			_assertSkippedCallbackURL("localhost", testApplication);
+			_assertSkippedCallbackURL("www.able.com", testApplication);
+
+			try (CompanyConfigurationTemporarySwapper
+					companyConfigurationTemporarySwapper =
+						new CompanyConfigurationTemporarySwapper(
+							TestPropsValues.getCompanyId(),
+							BatchEngineTaskCompanyConfiguration.class.getName(),
+							HashMapDictionaryBuilder.<String, Object>put(
+								"callbackURLLocalNetworkAccessEnabled", true
+							).build())) {
+
+				_assertAllowedAndFailedCallbackURL(
+					"255.255.255.255", testApplication);
+				_assertAllowedCallbackURL("localhost", testApplication);
+				_assertAllowedCallbackURL("www.able.com", testApplication);
+			}
+
+			try (CompanyConfigurationTemporarySwapper
+					companyConfigurationTemporarySwapper =
+						new CompanyConfigurationTemporarySwapper(
+							TestPropsValues.getCompanyId(),
+							BatchEngineTaskCompanyConfiguration.class.getName(),
+							HashMapDictionaryBuilder.<String, Object>put(
+								"callbackURLHostsAllowed",
+								new String[] {"localhost"}
+							).build())) {
+
+				_assertSkippedCallbackURL("255.255.255.255", testApplication);
+				_assertSkippedCallbackURL("localhost", testApplication);
+				_assertSkippedCallbackURL("www.able.com", testApplication);
+			}
+
+			try (CompanyConfigurationTemporarySwapper
+					companyConfigurationTemporarySwapper =
+						new CompanyConfigurationTemporarySwapper(
+							TestPropsValues.getCompanyId(),
+							BatchEngineTaskCompanyConfiguration.class.getName(),
+							HashMapDictionaryBuilder.<String, Object>put(
+								"callbackURLHostsAllowed",
+								new String[] {"www.able.com"}
+							).put(
+								"callbackURLLocalNetworkAccessEnabled", true
+							).build())) {
+
+				_assertAllowedCallbackURL("www.able.com", testApplication);
+				_assertSkippedCallbackURL("255.255.255.255", testApplication);
+				_assertSkippedCallbackURL("localhost", testApplication);
+			}
+		}
+		finally {
+			serviceRegistration.unregister();
+		}
+	}
+
+	@Test
 	public void testImportTaskInvalidCreateAndUpdateStrategies() {
 		BatchEngineTaskOperation batchEngineTaskOperation =
 			BatchEngineTaskOperation.CREATE;
@@ -847,6 +1082,56 @@ public class BatchEngineImportTaskExecutorTest
 		_assertUpdatedBlogPostings();
 	}
 
+	public static class TestApplication extends Application {
+
+		public int getCount() {
+			return _count.get();
+		}
+
+		@Override
+		public Set<Object> getSingletons() {
+			return Collections.singleton(this);
+		}
+
+		@Consumes(MediaType.APPLICATION_JSON)
+		@Path("/callback")
+		@POST
+		public void postCallback() {
+			_count.incrementAndGet();
+		}
+
+		private final AtomicInteger _count = new AtomicInteger();
+
+	}
+
+	private void _assertAllowedAndFailedCallbackURL(
+			String host, TestApplication testApplication)
+		throws Exception {
+
+		int count = testApplication.getCount();
+
+		List<LogEntry> logEntries = _importBlogPostings(_getCallbackURL(host));
+
+		Assert.assertEquals(count, testApplication.getCount());
+		Assert.assertEquals(logEntries.toString(), 1, logEntries.size());
+
+		LogEntry logEntry = logEntries.get(0);
+
+		Assert.assertEquals(LoggerTestUtil.ERROR, logEntry.getPriority());
+	}
+
+	private void _assertAllowedCallbackURL(
+			String host, TestApplication testApplication)
+		throws Exception {
+
+		int count = testApplication.getCount();
+
+		List<LogEntry> logEntries = _importBlogPostings(_getCallbackURL(host));
+
+		Assert.assertEquals(count + 1, testApplication.getCount());
+		Assert.assertEquals(logEntries.toString(), 0, logEntries.size());
+	}
+
 	private void _assertCreatedBlogPostings() throws Exception {
 		Assert.assertEquals(
 			ROWS_COUNT, _batchEngineImportTask.getProcessedItemsCount());
@@ -955,6 +1240,27 @@ public class BatchEngineImportTaskExecutorTest
 
 		Assert.assertTrue(
 			message.startsWith("Unable to update batch engine import task"));
+	}
+
+	private void _assertSkippedCallbackURL(
+			String host, TestApplication testApplication)
+		throws Exception {
+
+		int count = testApplication.getCount();
+
+		String callbackURL = _getCallbackURL(host);
+
+		List<LogEntry> logEntries = _importBlogPostings(callbackURL);
+
+		Assert.assertEquals(count, testApplication.getCount());
+		Assert.assertEquals(logEntries.toString(), 1, logEntries.size());
+
+		LogEntry logEntry = logEntries.get(0);
+
+		Assert.assertEquals(LoggerTestUtil.WARN, logEntry.getPriority());
+		Assert.assertEquals(
+			"Skipping callback to disallowed URL " + callbackURL,
+			logEntry.getMessage());
 	}
 
 	private void _assertUpdatedBlogPostings() throws Exception {
@@ -1337,6 +1643,12 @@ public class BatchEngineImportTaskExecutorTest
 		return _toContent(xssfWorkbook);
 	}
 
+	private String _getCallbackURL(String host) {
+		return StringBundler.concat(
+			"http://", host, ":", PortalUtil.getPortalServerPort(false),
+			"/o/test/callback");
+	}
+
 	private void _importBlogPostings(
 			BatchEngineTaskOperation batchEngineTaskOperation, byte[] content,
 			String contentType, Map<String, String> fieldNameMappingMap)
@@ -1353,6 +1665,17 @@ public class BatchEngineImportTaskExecutorTest
 			int importStrategy)
 		throws Exception {
 
+		_importBlogPostings(
+			batchEngineTaskOperation, null, content, contentType,
+			fieldNameMappingMap, importStrategy);
+	}
+
+	private void _importBlogPostings(
+			BatchEngineTaskOperation batchEngineTaskOperation,
+			String callbackURL, byte[] content, String contentType,
+			Map<String, String> fieldNameMappingMap, int importStrategy)
+		throws Exception {
+
 		Map<String, Serializable> parameters = new HashMap<>();
 
 		if (batchEngineTaskOperation == BatchEngineTaskOperation.CREATE) {
@@ -1365,7 +1688,7 @@ public class BatchEngineImportTaskExecutorTest
 		_batchEngineImportTask =
 			_batchEngineImportTaskLocalService.addBatchEngineImportTask(
 				null, TestPropsValues.getCompanyId(), user.getUserId(),
-				_BATCH_SIZE, null, BlogPosting.class.getName(), content,
+				_BATCH_SIZE, callbackURL, BlogPosting.class.getName(), content,
 				contentType, BatchEngineTaskExecuteStatus.INITIAL.name(),
 				fieldNameMappingMap, importStrategy,
 				batchEngineTaskOperation.name(), parameters, null);
@@ -1375,6 +1698,28 @@ public class BatchEngineImportTaskExecutorTest
 		_batchEngineImportTask =
 			_batchEngineImportTaskLocalService.getBatchEngineImportTask(
 				_batchEngineImportTask.getBatchEngineImportTaskId());
+	}
+
+	private List<LogEntry> _importBlogPostings(String callbackURL)
+		throws Exception {
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.batch.engine.internal.BatchEngineTaskCallbackUtil",
+				LoggerTestUtil.WARN)) {
+
+			_importBlogPostings(
+				BatchEngineTaskOperation.CREATE, callbackURL,
+				_getBlogPostingsCSVCreateContent(
+					TestPropsValues.getGroupId(), FIELD_NAMES),
+				"CSV", null,
+				BatchEngineImportTaskConstants.IMPORT_STRATEGY_ON_ERROR_FAIL);
+
+			Assert.assertEquals(
+				BatchEngineTaskExecuteStatus.COMPLETED.toString(),
+				_batchEngineImportTask.getExecuteStatus());
+
+			return logCapture.getLogEntries();
+		}
 	}
 
 	private byte[] _toContent(String contentType, StringBundler sb)
@@ -1450,5 +1795,26 @@ public class BatchEngineImportTaskExecutorTest
 
 	@Inject
 	private ObjectFieldLocalService _objectFieldLocalService;
+
+	private static class CountingLastSessionRecorderHelper
+		implements LastSessionRecorderHelper {
+
+		public int getCount() {
+			return _count.get();
+		}
+
+		@Override
+		public void syncLastSessionState() {
+			_count.incrementAndGet();
+		}
+
+		@Override
+		public void syncLastSessionState(boolean portalSessionOnly) {
+			_count.incrementAndGet();
+		}
+
+		private final AtomicInteger _count = new AtomicInteger();
+
+	}
 
 }

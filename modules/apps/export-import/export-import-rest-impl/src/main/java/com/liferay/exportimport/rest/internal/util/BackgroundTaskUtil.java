@@ -11,17 +11,99 @@ import com.liferay.exportimport.kernel.service.ExportImportConfigurationLocalSer
 import com.liferay.portal.background.task.model.BackgroundTask;
 import com.liferay.portal.kernel.backgroundtask.BackgroundTaskStatus;
 import com.liferay.portal.kernel.backgroundtask.BackgroundTaskStatusRegistryUtil;
+import com.liferay.portal.kernel.backgroundtask.constants.BackgroundTaskConstants;
+import com.liferay.portal.kernel.dao.orm.DynamicQuery;
+import com.liferay.portal.kernel.dao.orm.OrderFactoryUtil;
+import com.liferay.portal.kernel.exception.NoSuchBackgroundTaskException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.model.Portlet;
+import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.service.PortletLocalServiceUtil;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
+import java.util.Locale;
+
 /**
  * @author Daniel Raposo
  */
 public class BackgroundTaskUtil {
+
+	public static void addOrders(DynamicQuery dynamicQuery, Sort[] sorts) {
+		if (sorts == null) {
+			dynamicQuery.addOrder(OrderFactoryUtil.desc("createDate"));
+
+			return;
+		}
+
+		for (Sort sort : sorts) {
+			String fieldName = sort.getFieldName();
+
+			fieldName = StringUtil.removeSubstring(fieldName, "_sortable");
+
+			if (fieldName.equals("creator")) {
+				fieldName = "userName";
+			}
+			else if (fieldName.equals("dateCompleted")) {
+				fieldName = "completionDate";
+			}
+			else if (fieldName.equals("dateCreated")) {
+				fieldName = "createDate";
+			}
+			else if (fieldName.equals("dateModified")) {
+				fieldName = "modifiedDate";
+			}
+			else if (fieldName.equals("id")) {
+				fieldName = "backgroundTaskId";
+			}
+
+			if (sort.isReverse()) {
+				dynamicQuery.addOrder(OrderFactoryUtil.desc(fieldName));
+			}
+			else {
+				dynamicQuery.addOrder(OrderFactoryUtil.asc(fieldName));
+			}
+		}
+	}
+
+	public static void checkTaskExecutorClassName(
+			BackgroundTask backgroundTask, String... taskExecutorClassNames)
+		throws NoSuchBackgroundTaskException {
+
+		if (!ArrayUtil.contains(
+				taskExecutorClassNames,
+				backgroundTask.getTaskExecutorClassName())) {
+
+			throw new NoSuchBackgroundTaskException();
+		}
+	}
+
+	public static String getErrorMessage(
+		BackgroundTask backgroundTask, Locale locale) {
+
+		if (backgroundTask.getStatus() !=
+				BackgroundTaskConstants.STATUS_FAILED) {
+
+			return null;
+		}
+
+		String defaultErrorMessage = LanguageUtil.get(
+			locale, "an-unexpected-error-occurred");
+
+		JSONObject jsonObject = JSONFactoryUtil.safeCreateJSONObject(
+			backgroundTask.getStatusMessage(), true);
+
+		if (jsonObject == null) {
+			return defaultErrorMessage;
+		}
+
+		return jsonObject.getString("message", defaultErrorMessage);
+	}
 
 	public static String getName(BackgroundTask backgroundTask) {
 		String name = backgroundTask.getName();

@@ -29,19 +29,21 @@ import './../AssigneeTrigger.scss';
 
 type CreateTaskModalProps = {
 	closeModal: () => void;
+	cmpProjectObjectDefinitionId: number;
+	cmpProjectObjectEntryId?: string;
 	dueDate?: string;
 	loadData: Function;
-	projectId?: string;
-	projectObjectDefinitionId: number;
+	onItemsChange?: Function;
 	state: string;
 };
 
 export default function CreateTaskModal({
 	closeModal,
+	cmpProjectObjectDefinitionId,
+	cmpProjectObjectEntryId,
 	dueDate = '',
 	loadData,
-	projectId,
-	projectObjectDefinitionId,
+	onItemsChange,
 	state,
 }: CreateTaskModalProps) {
 	const [states, setStates] = useState([]);
@@ -66,26 +68,29 @@ export default function CreateTaskModal({
 		initialValues: {
 			assignTo: {},
 			dueDate,
-			r_cmpProjectToCMPTasks_c_cmpProjectId: Number(projectId) ?? 0,
+			r_cmpProjectToCMPTasks_c_cmpProjectId:
+				Number(cmpProjectObjectEntryId) ?? 0,
 			state,
 			title: '',
 		},
 		onSubmit: async (values) => {
-			const {error} = await postTaskByScope({
-				body: {
-					...values,
-					keywords: [
-						'L_CMP_TASK_' +
-							Math.floor(Math.random() * 100000000).toString(),
-					],
-				},
+			const {data, error} = await postTaskByScope({
+				body: values,
 				scopeKey,
 			});
 
 			if (!error) {
 				closeModal();
 
-				loadData();
+				if (onItemsChange && data) {
+					onItemsChange({
+						itemKey: 'embedded.id',
+						items: [{embedded: data}],
+					});
+				}
+				else {
+					loadData();
+				}
 
 				displayCreateSuccessToast(values.title);
 			}
@@ -115,7 +120,7 @@ export default function CreateTaskModal({
 
 			const {
 				data: {items},
-			} = (await getAllProjects(projectObjectDefinitionId)) as {
+			} = (await getAllProjects(cmpProjectObjectDefinitionId)) as {
 				data: {
 					items: {
 						embedded: IProjectObjectEntry;
@@ -133,9 +138,9 @@ export default function CreateTaskModal({
 				})
 			);
 
-			if (projectId) {
+			if (cmpProjectObjectEntryId) {
 				const scopeKey = items.find(
-					({embedded: {id}}) => String(id) === projectId
+					({embedded: {id}}) => String(id) === cmpProjectObjectEntryId
 				)?.embedded.scopeKey;
 
 				if (scopeKey) {
@@ -145,7 +150,7 @@ export default function CreateTaskModal({
 		};
 
 		makeFetch();
-	}, [projectId, projectObjectDefinitionId]);
+	}, [cmpProjectObjectEntryId, cmpProjectObjectDefinitionId]);
 
 	return (
 		<ClayForm
@@ -171,7 +176,7 @@ export default function CreateTaskModal({
 				/>
 
 				<FieldPicker
-					disabled={!!projectId}
+					disabled={!!cmpProjectObjectEntryId}
 					errorMessage={
 						touched.r_cmpProjectToCMPTasks_c_cmpProjectId
 							? errors.r_cmpProjectToCMPTasks_c_cmpProjectId
@@ -186,6 +191,8 @@ export default function CreateTaskModal({
 							'r_cmpProjectToCMPTasks_c_cmpProjectId',
 							Number(key)
 						);
+
+						setFieldValue('assignTo', {});
 
 						const scopeKey = projects.find(
 							(project) => String(project.value) === key
@@ -217,10 +224,15 @@ export default function CreateTaskModal({
 				</FieldWrapper>
 
 				<CustomAssignee
+					cmpProjectObjectEntryId={
+						values.r_cmpProjectToCMPTasks_c_cmpProjectId
+					}
+					key={values.r_cmpProjectToCMPTasks_c_cmpProjectId}
 					name="assignTo"
 					onChange={(assigneeValue: AssigneeValue | {}) => {
 						setFieldValue('assignTo', assigneeValue);
 					}}
+					readOnly={!values.r_cmpProjectToCMPTasks_c_cmpProjectId}
 					triggerClassName="form-control"
 					value={values.assignTo}
 				/>

@@ -16,6 +16,7 @@ import com.liferay.portal.tools.rest.builder.test.dto.v1_0.ERCScopedTestEntity;
 import com.liferay.portal.tools.rest.builder.test.dto.v1_0.ERCSiteTestEntity;
 import com.liferay.portal.tools.rest.builder.test.dto.v1_0.Filter;
 import com.liferay.portal.tools.rest.builder.test.dto.v1_0.MultipartTestEntity;
+import com.liferay.portal.tools.rest.builder.test.dto.v1_0.ReferencingTestEntity;
 import com.liferay.portal.tools.rest.builder.test.dto.v1_0.ScopedTestEntity;
 import com.liferay.portal.tools.rest.builder.test.dto.v1_0.SharedInternalModelBatchTestEntity;
 import com.liferay.portal.tools.rest.builder.test.dto.v1_0.SiteTestEntity;
@@ -27,8 +28,10 @@ import com.liferay.portal.tools.rest.builder.test.resource.v1_0.CompanyTestEntit
 import com.liferay.portal.tools.rest.builder.test.resource.v1_0.ERCAssetLibraryTestEntityResource;
 import com.liferay.portal.tools.rest.builder.test.resource.v1_0.ERCScopedTestEntityResource;
 import com.liferay.portal.tools.rest.builder.test.resource.v1_0.ERCSiteTestEntityResource;
+import com.liferay.portal.tools.rest.builder.test.resource.v1_0.EntityModelResourceTestEntity1Resource;
 import com.liferay.portal.tools.rest.builder.test.resource.v1_0.FilterResource;
 import com.liferay.portal.tools.rest.builder.test.resource.v1_0.MultipartTestEntityResource;
+import com.liferay.portal.tools.rest.builder.test.resource.v1_0.ReferencingTestEntityResource;
 import com.liferay.portal.tools.rest.builder.test.resource.v1_0.SchemaResource;
 import com.liferay.portal.tools.rest.builder.test.resource.v1_0.ScopedTestEntityResource;
 import com.liferay.portal.tools.rest.builder.test.resource.v1_0.SharedInternalModelBatchTestEntityResource;
@@ -113,6 +116,15 @@ public class Mutation {
 			ercSiteTestEntityResourceComponentServiceObjects;
 	}
 
+	public static void
+		setEntityModelResourceTestEntity1ResourceComponentServiceObjects(
+			ComponentServiceObjects<EntityModelResourceTestEntity1Resource>
+				entityModelResourceTestEntity1ResourceComponentServiceObjects) {
+
+		_entityModelResourceTestEntity1ResourceComponentServiceObjects =
+			entityModelResourceTestEntity1ResourceComponentServiceObjects;
+	}
+
 	public static void setFilterResourceComponentServiceObjects(
 		ComponentServiceObjects<FilterResource>
 			filterResourceComponentServiceObjects) {
@@ -127,6 +139,14 @@ public class Mutation {
 
 		_multipartTestEntityResourceComponentServiceObjects =
 			multipartTestEntityResourceComponentServiceObjects;
+	}
+
+	public static void setReferencingTestEntityResourceComponentServiceObjects(
+		ComponentServiceObjects<ReferencingTestEntityResource>
+			referencingTestEntityResourceComponentServiceObjects) {
+
+		_referencingTestEntityResourceComponentServiceObjects =
+			referencingTestEntityResourceComponentServiceObjects;
 	}
 
 	public static void setSchemaResourceComponentServiceObjects(
@@ -980,6 +1000,22 @@ public class Mutation {
 	}
 
 	@GraphQLField
+	public Response createEntityModelResourceTestEntities1PageExportBatch(
+			@GraphQLName("callbackURL") String callbackURL,
+			@GraphQLName("contentType") String contentType,
+			@GraphQLName("fieldNames") String fieldNames)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_entityModelResourceTestEntity1ResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			entityModelResourceTestEntity1Resource ->
+				entityModelResourceTestEntity1Resource.
+					postEntityModelResourceTestEntities1PageExportBatch(
+						callbackURL, contentType, fieldNames));
+	}
+
+	@GraphQLField
 	public Response createFiltersPageExportBatch(
 			@GraphQLName("callbackURL") String callbackURL,
 			@GraphQLName("contentType") String contentType,
@@ -1102,6 +1138,34 @@ public class Mutation {
 			multipartTestEntityResource ->
 				multipartTestEntityResource.putSiteMultipartTestEntity(
 					siteExternalReferenceCode, multipartBody));
+	}
+
+	@GraphQLField
+	public ReferencingTestEntity createReferencingTestEntity(
+			@GraphQLName("referencingTestEntity") ReferencingTestEntity
+				referencingTestEntity)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_referencingTestEntityResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			referencingTestEntityResource ->
+				referencingTestEntityResource.postReferencingTestEntity(
+					referencingTestEntity));
+	}
+
+	@GraphQLField
+	public Response createReferencingTestEntityBatch(
+			@GraphQLName("callbackURL") String callbackURL,
+			@GraphQLName("object") Object object)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_referencingTestEntityResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			referencingTestEntityResource ->
+				referencingTestEntityResource.postReferencingTestEntityBatch(
+					callbackURL, object));
 	}
 
 	@GraphQLField
@@ -1907,6 +1971,34 @@ public class Mutation {
 			_vulcanBatchEngineImportTaskResource);
 	}
 
+	private void _populateResourceContext(
+			EntityModelResourceTestEntity1Resource
+				entityModelResourceTestEntity1Resource)
+		throws Exception {
+
+		entityModelResourceTestEntity1Resource.setContextAcceptLanguage(
+			_acceptLanguage);
+		entityModelResourceTestEntity1Resource.setContextCompany(_company);
+		entityModelResourceTestEntity1Resource.setContextHttpServletRequest(
+			_httpServletRequest);
+		entityModelResourceTestEntity1Resource.setContextHttpServletResponse(
+			_httpServletResponse);
+		entityModelResourceTestEntity1Resource.setContextUriInfo(_uriInfo);
+		entityModelResourceTestEntity1Resource.setContextUser(_user);
+		entityModelResourceTestEntity1Resource.setGroupLocalService(
+			_groupLocalService);
+		entityModelResourceTestEntity1Resource.setRoleLocalService(
+			_roleLocalService);
+
+		entityModelResourceTestEntity1Resource.
+			setVulcanBatchEngineExportTaskResource(
+				_vulcanBatchEngineExportTaskResource);
+
+		entityModelResourceTestEntity1Resource.
+			setVulcanBatchEngineImportTaskResource(
+				_vulcanBatchEngineImportTaskResource);
+	}
+
 	private void _populateResourceContext(FilterResource filterResource)
 		throws Exception {
 
@@ -1945,6 +2037,28 @@ public class Mutation {
 			_vulcanBatchEngineExportTaskResource);
 
 		multipartTestEntityResource.setVulcanBatchEngineImportTaskResource(
+			_vulcanBatchEngineImportTaskResource);
+	}
+
+	private void _populateResourceContext(
+			ReferencingTestEntityResource referencingTestEntityResource)
+		throws Exception {
+
+		referencingTestEntityResource.setContextAcceptLanguage(_acceptLanguage);
+		referencingTestEntityResource.setContextCompany(_company);
+		referencingTestEntityResource.setContextHttpServletRequest(
+			_httpServletRequest);
+		referencingTestEntityResource.setContextHttpServletResponse(
+			_httpServletResponse);
+		referencingTestEntityResource.setContextUriInfo(_uriInfo);
+		referencingTestEntityResource.setContextUser(_user);
+		referencingTestEntityResource.setGroupLocalService(_groupLocalService);
+		referencingTestEntityResource.setRoleLocalService(_roleLocalService);
+
+		referencingTestEntityResource.setVulcanBatchEngineExportTaskResource(
+			_vulcanBatchEngineExportTaskResource);
+
+		referencingTestEntityResource.setVulcanBatchEngineImportTaskResource(
 			_vulcanBatchEngineImportTaskResource);
 	}
 
@@ -2089,10 +2203,15 @@ public class Mutation {
 		_ercScopedTestEntityResourceComponentServiceObjects;
 	private static ComponentServiceObjects<ERCSiteTestEntityResource>
 		_ercSiteTestEntityResourceComponentServiceObjects;
+	private static ComponentServiceObjects
+		<EntityModelResourceTestEntity1Resource>
+			_entityModelResourceTestEntity1ResourceComponentServiceObjects;
 	private static ComponentServiceObjects<FilterResource>
 		_filterResourceComponentServiceObjects;
 	private static ComponentServiceObjects<MultipartTestEntityResource>
 		_multipartTestEntityResourceComponentServiceObjects;
+	private static ComponentServiceObjects<ReferencingTestEntityResource>
+		_referencingTestEntityResourceComponentServiceObjects;
 	private static ComponentServiceObjects<SchemaResource>
 		_schemaResourceComponentServiceObjects;
 	private static ComponentServiceObjects<ScopedTestEntityResource>
@@ -2126,4 +2245,4 @@ public class Mutation {
 		_vulcanBatchEngineImportTaskResource;
 
 }
-// LIFERAY-REST-BUILDER-HASH:2074290579
+// LIFERAY-REST-BUILDER-HASH:-311735118

@@ -27,6 +27,8 @@ components:
                     items:
                         type: customField
                     type: array
+                embeddedNestedField:
+                    type: object
                 externalReferenceCode:
                     type: string
                 id:
@@ -35,7 +37,9 @@ components:
                     type: integer
                 name:
                     type: string
-                nestedField:
+                nestedField1:
+                    type: string
+                nestedField2:
                     type: string
                 relatedCompanyTestEntity:
                     $ref: "#/components/schemas/CompanyTestEntity"
@@ -241,6 +245,35 @@ components:
                     type: string
                 testEntity:
                     $ref: "#/components/schemas/TestEntity"
+            type: object
+        ObjectArrayPropertyTestEntity:
+            properties:
+                name:
+                    type: string
+                objectArrayProperty:
+                    items:
+                        type: object
+                    type: array
+            title: ObjectArrayPropertyTestEntity
+            type: object
+        OneOfPropertyTestEntity:
+            properties:
+                name:
+                    type: string
+                oneOfProperty:
+                    oneOf:
+                        -   type: array
+                        -   type: boolean
+                        -   type: integer
+                        -   type: number
+                        -   type: object
+                        -   type: string
+            title: OneOfPropertyTestEntity
+            type: object
+        ReferencingTestEntity:
+            properties:
+                externalScopedTestEntity:
+                    $ref: ../portal-tools-rest-builder-test-external-impl/rest-openapi.yaml#ExternalScopedTestEntity
             type: object
         Schema:
             properties:
@@ -992,6 +1025,11 @@ paths:
     "/batch-test-entities":
         get:
             operationId: getBatchTestEntitiesPage
+            parameters:
+                -   in: query
+                    name: nestedFieldsDepth
+                    schema:
+                        type: integer
             responses:
                 200:
                     content:
@@ -1367,7 +1405,7 @@ paths:
         get:
             description:
                 "Retrieve a EntityModelResourceTestEntity2 item. (EntityModelResource and VulcanBatchEngineTaskItemDelegate interfaces will not be implemented automatically)"
-            operationId: getEntityModelResourceTestEntities2EntityModelResourceTestEntity2
+            operationId: getEntityModelResourceTestEntity2
             parameters:
                 -   in: path
                     name: entityModelResourceTestEntity2Id
@@ -1598,6 +1636,27 @@ paths:
                     description:
                         "OK"
             tags: ["MultipartTestEntity"]
+    "/referencing-test-entities":
+        post:
+            operationId: postReferencingTestEntity
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/ReferencingTestEntity"
+                    application/xml:
+                        schema:
+                            $ref: "#/components/schemas/ReferencingTestEntity"
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ReferencingTestEntity"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/ReferencingTestEntity"
+            tags: ["ReferencingTestEntity"]
     "/reserved-word":
         post:
             operationId: postReservedWord
@@ -2645,6 +2704,12 @@ paths:
             description:
                 Retrieves the count.
             operationId: getTestEntityCount
+            parameters:
+                -   in: query
+                    name: requiredQueryParameter
+                    required: true
+                    schema:
+                        type: string
             responses:
                 200:
                     content:

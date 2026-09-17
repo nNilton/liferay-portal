@@ -8,9 +8,10 @@ import {v4 as uuidv4} from 'uuid';
 import {EditableElementOption} from './getEditableElementOptions';
 
 export interface ElementVariation {
+	active: boolean;
 	audienceEntryERCs: string[];
 	externalReferenceCode: string;
-	hide: Record<string, boolean>;
+	hide: boolean;
 	html: Record<string, string>;
 	js: Record<string, string>;
 	key: string;
@@ -22,7 +23,7 @@ export interface ElementVariation {
 export interface State {
 	defaultLanguageId: string;
 	draftElementVariation: ElementVariation | null;
-	editableElementOptions: EditableElementOption[];
+	editableElementOptions: EditableElementOption[] | null;
 	elementVariations: ElementVariation[];
 	experienceKey: string;
 	highlightedTargetElement: string | null;
@@ -46,6 +47,7 @@ export type Action =
 			type: 'SET_HIGHLIGHTED_TARGET_ELEMENT';
 	  }
 	| {languageId: string; type: 'SET_LANGUAGE_ID'}
+	| {active: boolean; key: string; type: 'UPDATE_ELEMENT_VARIATION'}
 	| {
 			properties: Partial<ElementVariation>;
 			type: 'UPDATE_ELEMENT_VARIATION_DRAFT';
@@ -56,9 +58,10 @@ export function createElementVariation(
 	segmentsExperienceERC: string
 ): ElementVariation {
 	return {
+		active: true,
 		audienceEntryERCs: [],
 		externalReferenceCode: uuidv4(),
-		hide: {},
+		hide: false,
 		html: {},
 		js: {},
 		key: uuidv4(),
@@ -69,7 +72,7 @@ export function createElementVariation(
 }
 
 export type LoadedElementVariation = Omit<ElementVariation, 'hide' | 'key'> & {
-	hide: Record<string, string>;
+	hide: string;
 };
 
 export function createInitialState({
@@ -95,17 +98,10 @@ export function createInitialState({
 	return {
 		defaultLanguageId,
 		draftElementVariation: null,
-		editableElementOptions: [],
+		editableElementOptions: null,
 		elementVariations: elementVariations.map((elementVariation) => ({
 			...elementVariation,
-			hide: Object.fromEntries(
-				Object.entries(elementVariation.hide).map(
-					([languageId, value]): [string, boolean] => [
-						languageId,
-						value === 'true',
-					]
-				)
-			),
+			hide: elementVariation.hide === 'true',
 			key: uuidv4(),
 		})),
 		experienceKey:
@@ -123,6 +119,7 @@ export function reducer(state: State, action: Action): State {
 			return {
 				...state,
 				draftElementVariation: null,
+				highlightedTargetElement: null,
 				languageId: state.defaultLanguageId,
 			};
 
@@ -168,6 +165,7 @@ export function reducer(state: State, action: Action): State {
 								: elementVariation
 						)
 					: [...elementVariations, draftElementVariation],
+				highlightedTargetElement: null,
 				languageId: state.defaultLanguageId,
 			};
 		}
@@ -195,6 +193,17 @@ export function reducer(state: State, action: Action): State {
 
 		case 'SET_LANGUAGE_ID':
 			return {...state, languageId: action.languageId};
+
+		case 'UPDATE_ELEMENT_VARIATION':
+			return {
+				...state,
+				elementVariations: state.elementVariations.map(
+					(elementVariation) =>
+						elementVariation.key === action.key
+							? {...elementVariation, active: action.active}
+							: elementVariation
+				),
+			};
 
 		case 'UPDATE_ELEMENT_VARIATION_DRAFT':
 			return {

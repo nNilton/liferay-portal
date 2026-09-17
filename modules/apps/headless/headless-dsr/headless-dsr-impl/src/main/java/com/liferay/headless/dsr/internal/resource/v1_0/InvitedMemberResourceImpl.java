@@ -6,13 +6,13 @@
 package com.liferay.headless.dsr.internal.resource.v1_0;
 
 import com.liferay.headless.dsr.dto.v1_0.InvitedMember;
+import com.liferay.headless.dsr.internal.security.permission.util.DSRRoleAssignmentPermissionUtil;
 import com.liferay.headless.dsr.resource.v1_0.InvitedMemberResource;
+import com.liferay.object.exception.ObjectEntryExpirationDateException;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectEntryService;
 import com.liferay.portal.kernel.exception.NoSuchModelException;
-import com.liferay.portal.kernel.exception.RoleAssignmentException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.model.Group;
@@ -31,7 +31,6 @@ import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 import com.liferay.portal.vulcan.dto.converter.DefaultDTOConverterContext;
 import com.liferay.portal.vulcan.pagination.Page;
-import com.liferay.site.dsr.site.initializer.constants.DSRRoleConstants;
 import com.liferay.site.dsr.site.initializer.constants.DSRTicketConstants;
 import com.liferay.site.dsr.site.initializer.util.DSRRoomUtil;
 
@@ -55,12 +54,6 @@ public class InvitedMemberResourceImpl extends BaseInvitedMemberResourceImpl {
 	public void deleteRoomInvitedMember(Long roomId, Long invitedMemberId)
 		throws Exception {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-66359")) {
-
-			throw new UnsupportedOperationException();
-		}
-
 		ObjectEntry objectEntry = _getObjectEntry(roomId);
 
 		DSRRoomUtil.checkPermission(
@@ -78,12 +71,6 @@ public class InvitedMemberResourceImpl extends BaseInvitedMemberResourceImpl {
 	@Override
 	public Page<InvitedMember> getRoomInvitedMembersPage(Long roomId)
 		throws Exception {
-
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-66359")) {
-
-			throw new UnsupportedOperationException();
-		}
 
 		ObjectEntry objectEntry = _getObjectEntry(roomId);
 
@@ -103,12 +90,6 @@ public class InvitedMemberResourceImpl extends BaseInvitedMemberResourceImpl {
 			Long roomId, Long invitedMemberId, InvitedMember invitedMember)
 		throws Exception {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-66359")) {
-
-			throw new UnsupportedOperationException();
-		}
-
 		ObjectEntry objectEntry = _getObjectEntry(roomId);
 
 		DSRRoomUtil.checkPermission(
@@ -126,17 +107,23 @@ public class InvitedMemberResourceImpl extends BaseInvitedMemberResourceImpl {
 			return _toInvitedMember(ticket);
 		}
 
-		_checkPermission(group, invitedMember.getRoleKey());
+		DSRRoleAssignmentPermissionUtil.checkPermission(
+			group, invitedMember.getRoleKey(), contextUser.getUserId());
+
+		Date expirationDate = invitedMember.getMembershipExpirationDate();
+
+		if ((expirationDate != null) && expirationDate.before(new Date())) {
+			throw new ObjectEntryExpirationDateException(
+				"Expiration date must be a future date",
+				"expiration-date-must-be-a-future-date");
+		}
 
 		JSONObject jsonObject = _jsonFactory.createJSONObject(
 			ticket.getExtraInfo());
 
-		if (invitedMember.getMembershipExpirationDate() != null) {
-			Date membershipExpirationDate =
-				invitedMember.getMembershipExpirationDate();
-
+		if (expirationDate != null) {
 			jsonObject.put(
-				"membershipExpirationDate", membershipExpirationDate.getTime());
+				"membershipExpirationDate", expirationDate.getTime());
 		}
 		else {
 			jsonObject.remove("membershipExpirationDate");
@@ -151,25 +138,6 @@ public class InvitedMemberResourceImpl extends BaseInvitedMemberResourceImpl {
 		ticket = _ticketLocalService.updateTicket(ticket);
 
 		return _toInvitedMember(ticket);
-	}
-
-	private void _checkPermission(Group group, String roleKey)
-		throws Exception {
-
-		if (!Objects.equals(
-				roleKey, DSRRoleConstants.NAME_DSR_ROOM_COLLABORATOR)) {
-
-			return;
-		}
-
-		PermissionChecker permissionChecker =
-			PermissionThreadLocal.getPermissionChecker();
-
-		if (!permissionChecker.isGroupAdmin(group.getGroupId()) &&
-			!permissionChecker.isGroupOwner(group.getGroupId())) {
-
-			throw new RoleAssignmentException();
-		}
 	}
 
 	private ObjectEntry _getObjectEntry(long roomId) throws Exception {

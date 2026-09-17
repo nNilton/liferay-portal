@@ -10,14 +10,18 @@ import com.liferay.account.model.AccountEntry;
 import com.liferay.account.service.AccountEntryLocalService;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.commerce.currency.model.CommerceCurrency;
+import com.liferay.commerce.currency.service.CommerceCurrencyLocalService;
 import com.liferay.commerce.currency.test.util.CommerceCurrencyTestUtil;
 import com.liferay.commerce.product.model.CPDefinition;
 import com.liferay.commerce.product.model.CProduct;
 import com.liferay.commerce.product.model.CommerceCatalog;
 import com.liferay.commerce.product.service.CommerceCatalogLocalService;
 import com.liferay.commerce.product.test.util.CPTestUtil;
+import com.liferay.exportimport.test.util.LazyReferencingTestUtil;
 import com.liferay.headless.commerce.admin.catalog.client.dto.v1_0.Catalog;
 import com.liferay.headless.commerce.admin.catalog.client.pagination.Pagination;
+import com.liferay.headless.commerce.admin.catalog.client.problem.Problem;
+import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.ServiceContext;
@@ -25,6 +29,7 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.rule.Inject;
 
 import org.junit.Assert;
@@ -191,6 +196,8 @@ public class CatalogResourceTest extends BaseCatalogResourceTestCase {
 		Assert.assertNotEquals(randomCatalog.getName(), patchCatalog.getName());
 
 		assertValid(postCatalog);
+
+		_testPatchCatalogWithAccountExternalReferenceCode();
 	}
 
 	@Override
@@ -212,6 +219,16 @@ public class CatalogResourceTest extends BaseCatalogResourceTestCase {
 		Assert.assertNotEquals(randomCatalog.getName(), patchCatalog.getName());
 
 		assertValid(postCatalog);
+	}
+
+	@Override
+	@Test
+	public void testPostCatalog() throws Exception {
+		super.testPostCatalog();
+
+		_testPostCatalogWithAccountExternalReferenceCode();
+		_testPostCatalogWithLazyReferencingDisabled();
+		_testPostCatalogWithLazyReferencingEnabled();
 	}
 
 	@Override
@@ -295,6 +312,137 @@ public class CatalogResourceTest extends BaseCatalogResourceTestCase {
 		return catalogResource.postCatalog(randomCatalog());
 	}
 
+	private Catalog _randomCatalogWithEmptyReferences() throws Exception {
+		Catalog catalog = randomCatalog();
+
+		catalog.setAccountExternalReferenceCode(
+			StringUtil.toLowerCase(RandomTestUtil.randomString()));
+		catalog.setAccountId((Long)null);
+		catalog.setAccountType(Catalog.AccountType.SUPPLIER);
+		catalog.setCurrencyCode(RandomTestUtil.randomString(3));
+		catalog.setCurrencyExternalReferenceCode(
+			StringUtil.toLowerCase(RandomTestUtil.randomString()));
+		catalog.setCurrencyId((Long)null);
+
+		return catalog;
+	}
+
+	private void _testPatchCatalogWithAccountExternalReferenceCode()
+		throws Exception {
+
+		AccountEntry accountEntry1 = _accountEntryLocalService.addAccountEntry(
+			StringUtil.toLowerCase(RandomTestUtil.randomString()),
+			_user.getUserId(), 0, RandomTestUtil.randomString(),
+			RandomTestUtil.randomString(), null,
+			RandomTestUtil.randomString() + "@liferay.com", null, null,
+			AccountConstants.ACCOUNT_ENTRY_TYPE_SUPPLIER, 0, _serviceContext);
+		AccountEntry accountEntry2 = _accountEntryLocalService.addAccountEntry(
+			StringUtil.toLowerCase(RandomTestUtil.randomString()),
+			_user.getUserId(), 0, RandomTestUtil.randomString(),
+			RandomTestUtil.randomString(), null,
+			RandomTestUtil.randomString() + "@liferay.com", null, null,
+			AccountConstants.ACCOUNT_ENTRY_TYPE_SUPPLIER, 0, _serviceContext);
+
+		Catalog postCatalog = catalogResource.postCatalog(randomCatalog());
+
+		catalogResource.patchCatalog(
+			postCatalog.getId(),
+			new Catalog() {
+				{
+					accountExternalReferenceCode =
+						accountEntry2.getExternalReferenceCode();
+					accountId = accountEntry1.getAccountEntryId();
+					accountType = Catalog.AccountType.SUPPLIER;
+				}
+			});
+
+		Catalog getCatalog = catalogResource.getCatalog(postCatalog.getId());
+
+		Assert.assertEquals(
+			(Long)accountEntry2.getAccountEntryId(), getCatalog.getAccountId());
+	}
+
+	private void _testPostCatalogWithAccountExternalReferenceCode()
+		throws Exception {
+
+		AccountEntry accountEntry = _accountEntryLocalService.addAccountEntry(
+			StringUtil.toLowerCase(RandomTestUtil.randomString()),
+			_user.getUserId(), 0, RandomTestUtil.randomString(),
+			RandomTestUtil.randomString(), null,
+			RandomTestUtil.randomString() + "@liferay.com", null, null,
+			AccountConstants.ACCOUNT_ENTRY_TYPE_SUPPLIER, 0, _serviceContext);
+
+		Catalog catalog = randomCatalog();
+
+		catalog.setAccountExternalReferenceCode(
+			accountEntry.getExternalReferenceCode());
+		catalog.setAccountId((Long)null);
+		catalog.setAccountType(Catalog.AccountType.SUPPLIER);
+
+		Catalog postCatalog = catalogResource.postCatalog(catalog);
+
+		Assert.assertEquals(
+			(Long)accountEntry.getAccountEntryId(), postCatalog.getAccountId());
+		Assert.assertEquals(
+			accountEntry.getExternalReferenceCode(),
+			postCatalog.getAccountExternalReferenceCode());
+	}
+
+	private void _testPostCatalogWithLazyReferencingDisabled()
+		throws Exception {
+
+		try {
+			catalogResource.postCatalog(_randomCatalogWithEmptyReferences());
+
+			Assert.fail();
+		}
+		catch (Problem.ProblemException problemException) {
+			Problem problem = problemException.getProblem();
+
+			Assert.assertEquals("NOT_FOUND", problem.getStatus());
+		}
+	}
+
+	private void _testPostCatalogWithLazyReferencingEnabled() throws Exception {
+		Catalog catalog = _randomCatalogWithEmptyReferences();
+
+		Catalog postCatalog = null;
+
+		try (SafeCloseable safeCloseable =
+				LazyReferencingTestUtil.setLazyReferencingWithSafeCloseable(
+					true)) {
+
+			postCatalog = catalogResource.postCatalog(catalog);
+		}
+
+		AccountEntry accountEntry =
+			_accountEntryLocalService.getAccountEntryByExternalReferenceCode(
+				catalog.getAccountExternalReferenceCode(),
+				testCompany.getCompanyId());
+
+		Assert.assertEquals(
+			WorkflowConstants.STATUS_EMPTY, accountEntry.getStatus());
+		Assert.assertEquals(
+			AccountConstants.ACCOUNT_ENTRY_TYPE_SUPPLIER,
+			accountEntry.getType());
+
+		CommerceCurrency commerceCurrency =
+			_commerceCurrencyLocalService.
+				getCommerceCurrencyByExternalReferenceCode(
+					catalog.getCurrencyExternalReferenceCode(),
+					testCompany.getCompanyId());
+
+		Assert.assertEquals(
+			WorkflowConstants.STATUS_EMPTY, commerceCurrency.getStatus());
+		Assert.assertEquals(
+			catalog.getCurrencyCode(), commerceCurrency.getCode());
+
+		Assert.assertEquals(
+			(Long)accountEntry.getAccountEntryId(), postCatalog.getAccountId());
+		Assert.assertEquals(
+			catalog.getCurrencyCode(), postCatalog.getCurrencyCode());
+	}
+
 	private AccountEntry _accountEntry;
 
 	@Inject
@@ -304,6 +452,10 @@ public class CatalogResourceTest extends BaseCatalogResourceTestCase {
 	private CommerceCatalogLocalService _commerceCatalogLocalService;
 
 	private CommerceCurrency _commerceCurrency;
+
+	@Inject
+	private CommerceCurrencyLocalService _commerceCurrencyLocalService;
+
 	private ServiceContext _serviceContext;
 	private User _user;
 

@@ -18,12 +18,11 @@ import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
-import com.liferay.portal.test.rule.LiferayUnitTestRule;
+
+import java.util.Date;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Rule;
 import org.junit.Test;
 
 import org.mockito.Mockito;
@@ -32,11 +31,6 @@ import org.mockito.Mockito;
  * @author Eudaldo Alonso
  */
 public class OAuth2FaroControllerTest {
-
-	@ClassRule
-	@Rule
-	public static final LiferayUnitTestRule liferayUnitTestRule =
-		LiferayUnitTestRule.INSTANCE;
 
 	@Before
 	public void setUp() {
@@ -62,17 +56,86 @@ public class OAuth2FaroControllerTest {
 			"{\"access_token\": \"abc\"}"
 		);
 
+		OAuth2Authorization oAuth2Authorization = _mockOAuth2Authorization(
+			"abc");
+
 		Mockito.when(
 			_oAuth2AuthorizationLocalService.
 				fetchOAuth2AuthorizationByAccessTokenContent("abc")
 		).thenReturn(
-			_mockOAuth2Authorization("abc")
+			oAuth2Authorization
 		);
 
 		TokenDisplay tokenDisplay = _oAuth2FaroController.newToken(
 			1, null, "demandbase", null);
 
 		Assert.assertEquals("abc", tokenDisplay.getToken());
+	}
+
+	@Test
+	public void testNewTokenSetsAccessTokenExpirationDate() throws Exception {
+		OAuth2Authorization oAuth2Authorization = _mockOAuth2Authorization(
+			"abc");
+
+		Mockito.when(
+			_localOAuthClient.requestTokens(_mockOAuth2Application(), 100L)
+		).thenReturn(
+			"{\"access_token\": \"abc\"}"
+		);
+
+		Mockito.when(
+			_oAuth2AuthorizationLocalService.
+				fetchOAuth2AuthorizationByAccessTokenContent("abc")
+		).thenReturn(
+			oAuth2Authorization
+		);
+
+		_oAuth2FaroController.newToken(1, 2592000L, "demandbase", null);
+
+		Mockito.verify(
+			oAuth2Authorization
+		).setAccessTokenExpirationDate(
+			new Date(_ACCESS_TOKEN_CREATE_TIME + (2592000L * 1000))
+		);
+
+		Mockito.verify(
+			_oAuth2AuthorizationLocalService
+		).updateOAuth2Authorization(
+			oAuth2Authorization
+		);
+	}
+
+	@Test
+	public void testNewTokenSetsRefreshTokenExpirationDate() throws Exception {
+		OAuth2Authorization oAuth2Authorization = _mockOAuth2Authorization(
+			"abc");
+
+		Mockito.when(
+			oAuth2Authorization.getRefreshTokenCreateDate()
+		).thenReturn(
+			new Date(_ACCESS_TOKEN_CREATE_TIME)
+		);
+
+		Mockito.when(
+			_localOAuthClient.requestTokens(_mockOAuth2Application(), 100L)
+		).thenReturn(
+			"{\"access_token\": \"abc\"}"
+		);
+
+		Mockito.when(
+			_oAuth2AuthorizationLocalService.
+				fetchOAuth2AuthorizationByAccessTokenContent("abc")
+		).thenReturn(
+			oAuth2Authorization
+		);
+
+		_oAuth2FaroController.newToken(1, 2592000L, "demandbase", null);
+
+		Mockito.verify(
+			oAuth2Authorization
+		).setRefreshTokenExpirationDate(
+			new Date(_ACCESS_TOKEN_CREATE_TIME + (2592000L * 1000))
+		);
 	}
 
 	@Test(expected = PortalException.class)
@@ -163,9 +226,34 @@ public class OAuth2FaroControllerTest {
 		);
 
 		Mockito.when(
+			oAuth2Authorization.getAccessTokenCreateDate()
+		).thenReturn(
+			new Date(_ACCESS_TOKEN_CREATE_TIME)
+		);
+
+		Mockito.when(
+			oAuth2Authorization.getAccessTokenExpirationDate()
+		).thenReturn(
+			new Date(_ACCESS_TOKEN_CREATE_TIME)
+		);
+
+		Mockito.when(
+			oAuth2Authorization.getCreateDate()
+		).thenReturn(
+			new Date(_ACCESS_TOKEN_CREATE_TIME)
+		);
+
+		Mockito.when(
 			oAuth2Authorization.getExpandoBridge()
 		).thenReturn(
 			Mockito.mock(ExpandoBridge.class)
+		);
+
+		Mockito.when(
+			_oAuth2AuthorizationLocalService.updateOAuth2Authorization(
+				oAuth2Authorization)
+		).thenReturn(
+			oAuth2Authorization
 		);
 
 		return oAuth2Authorization;
@@ -183,6 +271,8 @@ public class OAuth2FaroControllerTest {
 
 		PermissionThreadLocal.setPermissionChecker(permissionChecker);
 	}
+
+	private static final long _ACCESS_TOKEN_CREATE_TIME = 1000000000000L;
 
 	private final LocalOAuthClient _localOAuthClient = Mockito.mock(
 		LocalOAuthClient.class);

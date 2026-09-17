@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import UAParser from 'ua-parser-js';
-
+import {Cache} from '../src/main/resources/META-INF/resources/main/cache';
 import {getBrowserName} from '../src/main/resources/META-INF/resources/main/detection/attributes/browser_name';
 import {getBrowserVersion} from '../src/main/resources/META-INF/resources/main/detection/attributes/browser_version';
 import {getCookies} from '../src/main/resources/META-INF/resources/main/detection/attributes/cookies';
 import {getCustom} from '../src/main/resources/META-INF/resources/main/detection/attributes/custom';
+import {getDeviceType} from '../src/main/resources/META-INF/resources/main/detection/attributes/device_type';
 import {getHostname} from '../src/main/resources/META-INF/resources/main/detection/attributes/hostname';
 import {getLanguage} from '../src/main/resources/META-INF/resources/main/detection/attributes/language';
 import {getLocalDate} from '../src/main/resources/META-INF/resources/main/detection/attributes/local_date';
@@ -31,6 +31,8 @@ describe('attributes', () => {
 
 		delete (document as any).cookie;
 		delete (document as any).referrer;
+
+		delete (global as any).Analytics;
 
 		delete (navigator as any).userAgent;
 
@@ -65,6 +67,18 @@ describe('attributes', () => {
 			value: 'https://www.wikipedia.org/',
 		});
 
+		Object.defineProperty(global, 'Analytics', {
+			configurable: true,
+			value: {
+				segment: {
+					getBatchSegmentExternalReferenceCodes: () =>
+						Promise.resolve(['SEGMENT_BATCH']),
+					getRealTimeSegmentExternalReferenceCodes: () =>
+						Promise.resolve(['SEGMENT_REAL_TIME']),
+				},
+			},
+		});
+
 		Object.defineProperty(navigator, 'userAgent', {
 			configurable: true,
 			value: 'Mozilla/5.0 (X11; Linux x86_64; rv:151.0) Gecko/20100101 Firefox/151.0',
@@ -79,7 +93,9 @@ describe('attributes', () => {
 
 	describe('attribute browser_name', () => {
 		it('works and returns a string', async () => {
-			const value = getBrowserName(new UAParser(navigator.userAgent));
+			const value = getBrowserName(
+				new Cache(new AbortController().signal)
+			);
 
 			expect(typeof value).toBe('string');
 			expect(value).toBe('Firefox');
@@ -88,7 +104,9 @@ describe('attributes', () => {
 
 	describe('attribute browser_version', () => {
 		it('works and returns a string', async () => {
-			const value = getBrowserVersion(new UAParser(navigator.userAgent));
+			const value = getBrowserVersion(
+				new Cache(new AbortController().signal)
+			);
 
 			expect(typeof value).toBe('string');
 			expect(value).toBe('151.0');
@@ -166,6 +184,33 @@ describe('attributes', () => {
 		});
 	});
 
+	describe('attribute device_type', () => {
+		it('works and returns a string', async () => {
+			Object.defineProperty(navigator, 'userAgent', {
+				configurable: true,
+				value:
+					'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) ' +
+					'AppleWebKit/605.1.15 (KHTML, like Gecko) ' +
+					'Version/17.0 Mobile/15E148 Safari/604.1',
+			});
+
+			const value = getDeviceType(
+				new Cache(new AbortController().signal)
+			);
+
+			expect(typeof value).toBe('string');
+			expect(value).toBe('mobile');
+		});
+
+		it('falls back to desktop when the user agent has no device type', async () => {
+			const value = getDeviceType(
+				new Cache(new AbortController().signal)
+			);
+
+			expect(value).toBe('desktop');
+		});
+	});
+
 	describe('attribute hostname', () => {
 		it('works and returns a string', async () => {
 			const value = getHostname();
@@ -233,8 +278,8 @@ describe('attributes', () => {
 
 	describe('attribute segments', () => {
 		it('works and returns a Set<string>', async () => {
-			const value = getSegments(
-				new Set(['SEGMENT_BATCH', 'SEGMENT_REAL_TIME'])
+			const value = await getSegments(
+				new Cache(new AbortController().signal)
 			);
 
 			expect(value).toBeInstanceOf(Set);

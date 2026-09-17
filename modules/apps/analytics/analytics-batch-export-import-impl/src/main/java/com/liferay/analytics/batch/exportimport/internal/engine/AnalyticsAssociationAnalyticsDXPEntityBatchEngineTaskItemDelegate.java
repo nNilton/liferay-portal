@@ -7,14 +7,12 @@ package com.liferay.analytics.batch.exportimport.internal.engine;
 
 import com.liferay.analytics.batch.exportimport.internal.dto.v1_0.converter.constants.DTOConverterConstants;
 import com.liferay.analytics.batch.exportimport.internal.engine.util.DTOConverterUtil;
-import com.liferay.analytics.batch.exportimport.internal.odata.entity.AnalyticsDXPEntityEntityModel;
 import com.liferay.analytics.dxp.entity.rest.dto.v1_0.DXPEntity;
 import com.liferay.analytics.message.storage.model.AnalyticsAssociationTable;
 import com.liferay.analytics.settings.configuration.AnalyticsConfiguration;
 import com.liferay.analytics.settings.configuration.AnalyticsConfigurationRegistry;
 import com.liferay.analytics.settings.rest.manager.AnalyticsSettingsManager;
 import com.liferay.analytics.settings.security.constants.AnalyticsSecurityConstants;
-import com.liferay.batch.engine.BaseBatchEngineTaskItemDelegate;
 import com.liferay.batch.engine.BatchEngineTaskItemDelegate;
 import com.liferay.batch.engine.pagination.Page;
 import com.liferay.batch.engine.pagination.Pagination;
@@ -36,11 +34,9 @@ import com.liferay.portal.kernel.model.Users_UserGroupsTable;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.service.ContactLocalService;
-import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
-import com.liferay.portal.odata.entity.EntityModel;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 
 import java.io.Serializable;
@@ -65,17 +61,10 @@ import org.osgi.service.component.annotations.Reference;
 	service = BatchEngineTaskItemDelegate.class
 )
 public class AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate
-	extends BaseBatchEngineTaskItemDelegate<DXPEntity> {
+	extends BaseAnalyticsDXPEntityBatchEngineTaskItemDelegate<DXPEntity> {
 
 	@Override
-	public EntityModel getEntityModel(Map<String, List<String>> multivaluedMap)
-		throws Exception {
-
-		return _entityModel;
-	}
-
-	@Override
-	public Page<DXPEntity> read(
+	public Page<DXPEntity> doRead(
 			Filter filter, Pagination pagination, Sort[] sorts,
 			Map<String, Serializable> parameters, String search)
 		throws Exception {
@@ -93,7 +82,7 @@ public class AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate
 			_lastSeenUserId.set(0L);
 		}
 
-		List<User> users = _userLocalService.dslQuery(
+		List<User> users = userLocalService.dslQuery(
 			_createSelectDSLQuery(
 				contextCompany.getCompanyId(), pagination, parameters));
 
@@ -145,7 +134,7 @@ public class AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate
 		return Page.of(
 			DTOConverterUtil.toDTOs(users, _dxpEntityDTOConverter),
 			Pagination.of(pagination.getPage(), pagination.getPageSize()),
-			_userLocalService.dslQuery(
+			userLocalService.dslQuery(
 				_createCountDSLQuery(
 					contextCompany.getCompanyId(), parameters)));
 	}
@@ -321,7 +310,7 @@ public class AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate
 		}
 
 		for (Object[] array :
-				_userLocalService.<List<Object[]>>dslQuery(
+				userLocalService.<List<Object[]>>dslQuery(
 					DSLQueryFactoryUtil.select(
 						Users_GroupsTable.INSTANCE.userId,
 						Users_GroupsTable.INSTANCE.groupId
@@ -348,7 +337,7 @@ public class AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate
 		}
 
 		for (Object[] array :
-				_userLocalService.<List<Object[]>>dslQuery(
+				userLocalService.<List<Object[]>>dslQuery(
 					DSLQueryFactoryUtil.select(
 						Users_OrgsTable.INSTANCE.userId,
 						Users_OrgsTable.INSTANCE.organizationId
@@ -375,7 +364,7 @@ public class AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate
 		}
 
 		for (Object[] array :
-				_userLocalService.<List<Object[]>>dslQuery(
+				userLocalService.<List<Object[]>>dslQuery(
 					DSLQueryFactoryUtil.select(
 						Users_RolesTable.INSTANCE.userId,
 						Users_RolesTable.INSTANCE.roleId
@@ -402,7 +391,7 @@ public class AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate
 		}
 
 		for (Object[] array :
-				_userLocalService.<List<Object[]>>dslQuery(
+				userLocalService.<List<Object[]>>dslQuery(
 					DSLQueryFactoryUtil.select(
 						Users_TeamsTable.INSTANCE.userId,
 						Users_TeamsTable.INSTANCE.teamId
@@ -429,7 +418,7 @@ public class AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate
 		}
 
 		for (Object[] array :
-				_userLocalService.<List<Object[]>>dslQuery(
+				userLocalService.<List<Object[]>>dslQuery(
 					DSLQueryFactoryUtil.select(
 						Users_UserGroupsTable.INSTANCE.userId,
 						Users_UserGroupsTable.INSTANCE.userGroupId
@@ -448,8 +437,6 @@ public class AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate
 		return idsMap;
 	}
 
-	private static final EntityModel _entityModel =
-		new AnalyticsDXPEntityEntityModel();
 	private static final ThreadLocal<Long> _lastSeenUserId =
 		new CentralizedThreadLocal<>(
 			AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate.
@@ -466,8 +453,5 @@ public class AnalyticsAssociationAnalyticsDXPEntityBatchEngineTaskItemDelegate
 
 	@Reference(target = DTOConverterConstants.DXP_ENTITY_DTO_CONVERTER)
 	private DTOConverter<BaseModel<?>, DXPEntity> _dxpEntityDTOConverter;
-
-	@Reference
-	private UserLocalService _userLocalService;
 
 }

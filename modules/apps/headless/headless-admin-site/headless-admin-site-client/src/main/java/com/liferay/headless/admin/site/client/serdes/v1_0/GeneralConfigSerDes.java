@@ -10,6 +10,7 @@ import com.liferay.headless.admin.site.client.json.BaseJSONParser;
 
 import jakarta.annotation.Generated;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -55,6 +56,20 @@ public class GeneralConfigSerDes {
 
 			sb.append("\"");
 			sb.append(generalConfig.getApplicationDecorator());
+			sb.append("\"");
+		}
+
+		if (generalConfig.getCustomApplicationDecorator() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"customApplicationDecorator\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(generalConfig.getCustomApplicationDecorator()));
+
 			sb.append("\"");
 		}
 
@@ -106,6 +121,15 @@ public class GeneralConfigSerDes {
 				String.valueOf(generalConfig.getApplicationDecorator()));
 		}
 
+		if (generalConfig.getCustomApplicationDecorator() == null) {
+			map.put("customApplicationDecorator", null);
+		}
+		else {
+			map.put(
+				"customApplicationDecorator",
+				String.valueOf(generalConfig.getCustomApplicationDecorator()));
+		}
+
 		if (generalConfig.getCustomTitle_i18n() == null) {
 			map.put("customTitle_i18n", null);
 		}
@@ -145,6 +169,11 @@ public class GeneralConfigSerDes {
 			if (Objects.equals(jsonParserFieldName, "applicationDecorator")) {
 				return false;
 			}
+			else if (Objects.equals(
+						jsonParserFieldName, "customApplicationDecorator")) {
+
+				return false;
+			}
 			else if (Objects.equals(jsonParserFieldName, "customTitle_i18n")) {
 				return true;
 			}
@@ -165,6 +194,14 @@ public class GeneralConfigSerDes {
 					generalConfig.setApplicationDecorator(
 						GeneralConfig.ApplicationDecorator.create(
 							(String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(
+						jsonParserFieldName, "customApplicationDecorator")) {
+
+				if (jsonParserFieldValue != null) {
+					generalConfig.setCustomApplicationDecorator(
+						(String)jsonParserFieldValue);
 				}
 			}
 			else if (Objects.equals(jsonParserFieldName, "customTitle_i18n")) {
@@ -228,6 +265,12 @@ public class GeneralConfigSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -260,4 +303,4 @@ public class GeneralConfigSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:1886678178
+// LIFERAY-REST-BUILDER-HASH:-2143914182

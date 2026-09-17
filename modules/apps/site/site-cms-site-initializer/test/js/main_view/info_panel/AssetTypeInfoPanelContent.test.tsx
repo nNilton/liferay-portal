@@ -53,6 +53,7 @@ const testAdditionalProps = {
 		size: 'sm',
 	},
 	candidateAssetLibraries: [testSpace.id],
+	cmpEnabled: true,
 	fileMimeTypeIcons: {
 		default: 'document-default',
 		image: 'document-image',
@@ -80,6 +81,45 @@ describe('CMS Asset Type Info Panel', () => {
 		cleanup();
 	});
 
+	it('renders the tabs with the icon only and the label on hover', () => {
+		render(
+			<SidePanel containerRef={{current: null}}>
+				<AssetTypeInfoPanelContent
+					additionalProps={testAdditionalProps}
+					items={[CONTENT_OBJECT_ENTRY] as any}
+				/>
+			</SidePanel>
+		);
+
+		const tab = screen.getByRole('tab', {name: 'comments'});
+
+		expect(tab).toHaveAttribute('title', 'comments');
+
+		expect(tab.querySelector('.lexicon-icon-comments')).toBeInTheDocument();
+
+		expect(tab.querySelector('.sr-only')).toHaveTextContent('comments');
+	});
+
+	it('renders no Projects tab when CMP is disabled', () => {
+		render(
+			<SidePanel containerRef={{current: null}}>
+				<AssetTypeInfoPanelContent
+					additionalProps={{
+						...testAdditionalProps,
+						cmpEnabled: false,
+					}}
+					items={[CONTENT_OBJECT_ENTRY] as any}
+				/>
+			</SidePanel>
+		);
+
+		expect(screen.getByRole('tab', {name: 'versions'})).toBeInTheDocument();
+
+		expect(
+			screen.queryByRole('tab', {name: 'projects'})
+		).not.toBeInTheDocument();
+	});
+
 	it('renders the component for a Web Content asset type', async () => {
 		const {container} = render(
 			<SidePanel containerRef={{current: null}}>
@@ -104,7 +144,7 @@ describe('CMS Asset Type Info Panel', () => {
 
 		expect(screen.queryByRole('img')).not.toBeInTheDocument();
 
-		expect(screen.getAllByRole('tab')).toHaveLength(4);
+		expect(screen.getAllByRole('tab')).toHaveLength(6);
 
 		expect(screen.getByRole('tab', {name: 'details'})).toBeInTheDocument();
 		expect(
@@ -113,7 +153,9 @@ describe('CMS Asset Type Info Panel', () => {
 		expect(
 			screen.getByRole('tab', {name: 'performance'})
 		).toBeInTheDocument();
-		expect(screen.getByRole('tab', {name: 'more'})).toBeInTheDocument();
+		expect(screen.getByRole('tab', {name: 'versions'})).toBeInTheDocument();
+		expect(screen.getByRole('tab', {name: 'comments'})).toBeInTheDocument();
+		expect(screen.getByRole('tab', {name: 'projects'})).toBeInTheDocument();
 
 		expect(screen.getByText('metadata')).toBeInTheDocument();
 
@@ -193,7 +235,7 @@ describe('CMS Asset Type Info Panel', () => {
 			DOCUMENT_OBJECT_ENTRY.embedded.file.thumbnailURL
 		);
 
-		expect(screen.getAllByRole('tab')).toHaveLength(4);
+		expect(screen.getAllByRole('tab')).toHaveLength(6);
 
 		expect(screen.getByRole('tab', {name: 'details'})).toBeInTheDocument();
 		expect(
@@ -202,7 +244,9 @@ describe('CMS Asset Type Info Panel', () => {
 		expect(
 			screen.getByRole('tab', {name: 'performance'})
 		).toBeInTheDocument();
-		expect(screen.getByRole('tab', {name: 'more'})).toBeInTheDocument();
+		expect(screen.getByRole('tab', {name: 'versions'})).toBeInTheDocument();
+		expect(screen.getByRole('tab', {name: 'comments'})).toBeInTheDocument();
+		expect(screen.getByRole('tab', {name: 'projects'})).toBeInTheDocument();
 
 		expect(screen.getByText('metadata')).toBeInTheDocument();
 
@@ -320,5 +364,48 @@ describe('CMS Asset Type Info Panel', () => {
 		expect(
 			within(breadcrumb).getByRole('button', {name: 'content-folder'})
 		).toBeInTheDocument();
+	});
+
+	describe('user time zone', () => {
+		const originalGetTimeZone = global.Liferay.ThemeDisplay.getTimeZone;
+
+		beforeEach(() => {
+			global.Liferay.ThemeDisplay.getTimeZone = jest
+				.fn()
+				.mockReturnValue('America/Los_Angeles');
+		});
+
+		afterEach(() => {
+			global.Liferay.ThemeDisplay.getTimeZone = originalGetTimeZone;
+		});
+
+		it('shows the metadata dates in the user time zone', () => {
+			render(
+				<SidePanel containerRef={{current: null}}>
+					<AssetTypeInfoPanelContent
+						additionalProps={testAdditionalProps}
+						items={
+							[
+								{
+									...CONTENT_OBJECT_ENTRY,
+									embedded: {
+										...CONTENT_OBJECT_ENTRY.embedded,
+										expirationDate: '2026-03-01T02:30:00Z',
+										reviewDate: '2026-03-02T01:15:00Z',
+									},
+								},
+							] as any
+						}
+					/>
+				</SidePanel>
+			);
+
+			expect(
+				screen.getByText('02/28/2026, 06:30 PM')
+			).toBeInTheDocument();
+			expect(
+				screen.getByText('03/01/2026, 05:15 PM')
+			).toBeInTheDocument();
+		});
 	});
 });

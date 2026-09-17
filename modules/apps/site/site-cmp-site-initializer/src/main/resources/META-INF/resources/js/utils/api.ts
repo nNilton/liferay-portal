@@ -5,7 +5,7 @@
 
 import {ApiHelper} from '@liferay/site-cms-site-initializer';
 
-import {ITask} from './types';
+import {ChangeTransition, ITaskObjectEntry} from './types';
 
 type WorkflowTaskAssignee = {
 	assignableUsers: Array<{id: number; name: string}>;
@@ -18,6 +18,15 @@ export async function bulkAssignWorkflowTasks(
 	return ApiHelper.patch(
 		assignments,
 		'/o/headless-admin-workflow/v1.0/workflow-tasks/assign-to-user'
+	);
+}
+
+export async function bulkChangeWorkflowTaskTransitions(
+	changeTransitions: ChangeTransition[]
+) {
+	return ApiHelper.patch(
+		changeTransitions,
+		'/o/headless-admin-workflow/v1.0/workflow-tasks/change-transition'
 	);
 }
 
@@ -34,9 +43,9 @@ export async function deleteTaskById({taskId}: {taskId: string}) {
 	return await ApiHelper.delete(`/o/cmp/tasks/${taskId}`);
 }
 
-export async function getAllProjects(projectObjectDefinitionId: number) {
+export async function getAllProjects(cmpProjectObjectDefinitionId: number) {
 	return await ApiHelper.get(
-		`/o/search/v1.0/search?emptySearch=true&filter=objectDefinitionId eq ${projectObjectDefinitionId}&nestedFields=embedded`
+		`/o/search/v1.0/search?emptySearch=true&filter=objectDefinitionId eq ${cmpProjectObjectDefinitionId}&nestedFields=embedded`
 	);
 }
 
@@ -60,6 +69,10 @@ export async function getStateObjectField() {
 	return await ApiHelper.get(
 		'/o/object-admin/v1.0/object-definitions/by-external-reference-code/L_CMP_TASK/object-fields?search=state'
 	);
+}
+
+export async function getTaskById({taskId}: {taskId: string}) {
+	return await ApiHelper.get<ITaskObjectEntry>(`/o/cmp/tasks/${taskId}`);
 }
 
 export async function getUserAccount(id: string) {
@@ -101,7 +114,10 @@ export async function patchTaskById({
 	body: {[key: string]: any};
 	taskId: string;
 }) {
-	return await ApiHelper.patch<ITask>(body, `/o/cmp/tasks/${taskId}`);
+	return await ApiHelper.patch<ITaskObjectEntry>(
+		body,
+		`/o/cmp/tasks/${taskId}`
+	);
 }
 
 export async function postSubscribeTaskByExternalReferenceCode({

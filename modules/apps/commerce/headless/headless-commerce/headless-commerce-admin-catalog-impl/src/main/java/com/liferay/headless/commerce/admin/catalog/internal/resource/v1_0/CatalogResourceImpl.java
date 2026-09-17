@@ -6,15 +6,21 @@
 package com.liferay.headless.commerce.admin.catalog.internal.resource.v1_0;
 
 import com.liferay.account.constants.AccountConstants;
+import com.liferay.account.model.AccountEntry;
+import com.liferay.account.service.AccountEntryService;
 import com.liferay.commerce.currency.exception.NoSuchCurrencyException;
 import com.liferay.commerce.currency.model.CommerceCurrency;
 import com.liferay.commerce.currency.service.CommerceCurrencyLocalService;
+import com.liferay.commerce.currency.service.CommerceCurrencyService;
+import com.liferay.commerce.product.constants.CPPortletKeys;
 import com.liferay.commerce.product.exception.NoSuchCPDefinitionException;
 import com.liferay.commerce.product.exception.NoSuchCatalogException;
 import com.liferay.commerce.product.model.CPDefinition;
 import com.liferay.commerce.product.model.CommerceCatalog;
 import com.liferay.commerce.product.service.CPDefinitionService;
 import com.liferay.commerce.product.service.CommerceCatalogService;
+import com.liferay.exportimport.constants.ExportImportConstants;
+import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
 import com.liferay.headless.commerce.admin.catalog.dto.v1_0.Catalog;
 import com.liferay.headless.commerce.admin.catalog.dto.v1_0.Product;
 import com.liferay.headless.commerce.admin.catalog.internal.odata.entity.v1_0.CatalogEntityModel;
@@ -29,6 +35,7 @@ import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.odata.entity.EntityModel;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
@@ -54,11 +61,16 @@ import org.osgi.service.component.annotations.ServiceScope;
  */
 @Component(
 	properties = "OSGI-INF/liferay/rest/v1_0/catalog.properties",
-	property = "nested.field.support=true", scope = ServiceScope.PROTOTYPE,
-	service = CatalogResource.class
+	property = {
+		"export.import.vulcan.batch.engine.task.item.delegate=true",
+		"nested.field.support=true"
+	},
+	scope = ServiceScope.PROTOTYPE, service = CatalogResource.class
 )
 @CTAware
-public class CatalogResourceImpl extends BaseCatalogResourceImpl {
+public class CatalogResourceImpl
+	extends BaseCatalogResourceImpl
+	implements ExportImportVulcanBatchEngineTaskItemDelegate<Catalog> {
 
 	@Override
 	public Response deleteCatalog(Long id) throws Exception {
@@ -142,6 +154,43 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 	}
 
 	@Override
+	public ExportImportDescriptor<CommerceCatalog> getExportImportDescriptor() {
+		return new ExportImportDescriptor<>() {
+
+			@Override
+			public String getKey() {
+				return CatalogResourceImpl.class.getName();
+			}
+
+			@Override
+			public String getLabelLanguageKey() {
+				return "catalogs";
+			}
+
+			@Override
+			public Class<CommerceCatalog> getModelClass() {
+				return CommerceCatalog.class;
+			}
+
+			@Override
+			public String getPortletId() {
+				return CPPortletKeys.COMMERCE_CATALOGS;
+			}
+
+			@Override
+			public Scope getScope() {
+				return Scope.COMPANY;
+			}
+
+			@Override
+			public String getSectionKey() {
+				return ExportImportConstants.SECTION_KEY_PRODUCT_MANAGEMENT;
+			}
+
+		};
+	}
+
+	@Override
 	public Catalog getProductByExternalReferenceCodeCatalog(
 			String externalReferenceCode, Pagination pagination)
 		throws Exception {
@@ -218,17 +267,12 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 				contextCompany.getCompanyId());
 
 		if (commerceCatalog == null) {
-			CommerceCurrency commerceCurrency =
-				CommerceCurrencyUtil.getCommerceCurrency(
-					contextCompany.getCompanyId(), catalog.getCurrencyCode(),
-					catalog.getCurrencyExternalReferenceCode(),
-					GetterUtil.getLong(catalog.getCurrencyId()));
+			CommerceCurrency commerceCurrency = _getCommerceCurrency(catalog);
 
 			commerceCatalog = _commerceCatalogService.addCommerceCatalog(
 				catalog.getExternalReferenceCode(),
-				GetterUtil.get(
-					catalog.getAccountId(),
-					AccountConstants.ACCOUNT_ENTRY_ID_DEFAULT),
+				_getAccountEntryId(
+					catalog, AccountConstants.ACCOUNT_ENTRY_ID_DEFAULT),
 				catalog.getName(), commerceCurrency.getCode(),
 				catalog.getDefaultLanguageId(),
 				_serviceContextHelper.getServiceContext());
@@ -240,10 +284,7 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 					commerceCatalog.getCommerceCurrencyCode());
 
 			try {
-				commerceCurrency = CommerceCurrencyUtil.getCommerceCurrency(
-					contextCompany.getCompanyId(), catalog.getCurrencyCode(),
-					catalog.getCurrencyExternalReferenceCode(),
-					GetterUtil.getLong(catalog.getCurrencyId()));
+				commerceCurrency = _getCommerceCurrency(catalog);
 			}
 			catch (NoSuchCurrencyException noSuchCurrencyException) {
 				if (_log.isDebugEnabled()) {
@@ -253,9 +294,8 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 
 			commerceCatalog = _commerceCatalogService.updateCommerceCatalog(
 				commerceCatalog.getCommerceCatalogId(),
-				GetterUtil.get(
-					catalog.getAccountId(),
-					commerceCatalog.getAccountEntryId()),
+				_getAccountEntryId(
+					catalog, commerceCatalog.getAccountEntryId()),
 				GetterUtil.get(catalog.getName(), commerceCatalog.getName()),
 				commerceCurrency.getCode(),
 				GetterUtil.get(
@@ -275,18 +315,13 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 			_commerceCatalogService.fetchCommerceCatalogByExternalReferenceCode(
 				externalReferenceCode, contextCompany.getCompanyId());
 
-		CommerceCurrency commerceCurrency =
-			CommerceCurrencyUtil.getCommerceCurrency(
-				contextCompany.getCompanyId(), catalog.getCurrencyCode(),
-				catalog.getCurrencyExternalReferenceCode(),
-				GetterUtil.getLong(catalog.getCurrencyId()));
+		CommerceCurrency commerceCurrency = _getCommerceCurrency(catalog);
 
 		if (commerceCatalog == null) {
 			commerceCatalog = _commerceCatalogService.addCommerceCatalog(
 				catalog.getExternalReferenceCode(),
-				GetterUtil.get(
-					catalog.getAccountId(),
-					AccountConstants.ACCOUNT_ENTRY_ID_DEFAULT),
+				_getAccountEntryId(
+					catalog, AccountConstants.ACCOUNT_ENTRY_ID_DEFAULT),
 				catalog.getName(), commerceCurrency.getCode(),
 				catalog.getDefaultLanguageId(),
 				_serviceContextHelper.getServiceContext());
@@ -294,13 +329,40 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 		else {
 			commerceCatalog = _commerceCatalogService.updateCommerceCatalog(
 				commerceCatalog.getCommerceCatalogId(),
-				GetterUtil.getLong(catalog.getAccountId()),
+				_getAccountEntryId(
+					catalog, AccountConstants.ACCOUNT_ENTRY_ID_DEFAULT),
 				GetterUtil.getString(catalog.getName()),
 				commerceCurrency.getCode(),
 				GetterUtil.getString(catalog.getDefaultLanguageId()));
 		}
 
 		return _toCatalog(commerceCatalog);
+	}
+
+	private long _getAccountEntryId(Catalog catalog, long defaultAccountEntryId)
+		throws Exception {
+
+		String externalReferenceCode =
+			catalog.getAccountExternalReferenceCode();
+
+		if (Validator.isNull(externalReferenceCode)) {
+			return GetterUtil.get(
+				catalog.getAccountId(), defaultAccountEntryId);
+		}
+
+		Catalog.AccountType accountType = catalog.getAccountType();
+
+		if (accountType == null) {
+			return GetterUtil.get(
+				catalog.getAccountId(), defaultAccountEntryId);
+		}
+
+		AccountEntry accountEntry =
+			_accountEntryService.getOrAddEmptyAccountEntry(
+				externalReferenceCode, externalReferenceCode,
+				accountType.getValue());
+
+		return accountEntry.getAccountEntryId();
 	}
 
 	private Map<String, Map<String, String>> _getActions(
@@ -330,6 +392,32 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 		).build();
 	}
 
+	private CommerceCurrency _getCommerceCurrency(Catalog catalog)
+		throws Exception {
+
+		String currencyExternalReferenceCode =
+			catalog.getCurrencyExternalReferenceCode();
+
+		CommerceCurrency commerceCurrency =
+			CommerceCurrencyUtil.fetchCommerceCurrency(
+				contextCompany.getCompanyId(), catalog.getCurrencyCode(),
+				currencyExternalReferenceCode,
+				GetterUtil.getLong(catalog.getCurrencyId()));
+
+		if (commerceCurrency != null) {
+			return commerceCurrency;
+		}
+
+		if (Validator.isNull(currencyExternalReferenceCode)) {
+			throw new NoSuchCurrencyException(
+				"Unable to find currency with external reference code " +
+					currencyExternalReferenceCode);
+		}
+
+		return _commerceCurrencyService.getOrAddEmptyCommerceCurrency(
+			currencyExternalReferenceCode, catalog.getCurrencyCode());
+	}
+
 	private Catalog _toCatalog(CommerceCatalog commerceCatalog)
 		throws Exception {
 
@@ -352,10 +440,7 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 				commerceCatalog.getCommerceCurrencyCode());
 
 		try {
-			commerceCurrency = CommerceCurrencyUtil.getCommerceCurrency(
-				contextCompany.getCompanyId(), catalog.getCurrencyCode(),
-				catalog.getCurrencyExternalReferenceCode(),
-				GetterUtil.getLong(catalog.getCurrencyId()));
+			commerceCurrency = _getCommerceCurrency(catalog);
 		}
 		catch (NoSuchCurrencyException noSuchCurrencyException) {
 			if (_log.isDebugEnabled()) {
@@ -365,8 +450,7 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 
 		_commerceCatalogService.updateCommerceCatalog(
 			commerceCatalog.getCommerceCatalogId(),
-			GetterUtil.get(
-				catalog.getAccountId(), commerceCatalog.getAccountEntryId()),
+			_getAccountEntryId(catalog, commerceCatalog.getAccountEntryId()),
 			GetterUtil.get(catalog.getName(), commerceCatalog.getName()),
 			commerceCurrency.getCode(),
 			GetterUtil.get(
@@ -379,6 +463,9 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 
 	private static final EntityModel _entityModel = new CatalogEntityModel();
 
+	@Reference
+	private AccountEntryService _accountEntryService;
+
 	@Reference(
 		target = "(component.name=com.liferay.headless.commerce.admin.catalog.internal.dto.v1_0.converter.CatalogDTOConverter)"
 	)
@@ -389,6 +476,9 @@ public class CatalogResourceImpl extends BaseCatalogResourceImpl {
 
 	@Reference
 	private CommerceCurrencyLocalService _commerceCurrencyLocalService;
+
+	@Reference
+	private CommerceCurrencyService _commerceCurrencyService;
 
 	@Reference
 	private CPDefinitionService _cpDefinitionService;

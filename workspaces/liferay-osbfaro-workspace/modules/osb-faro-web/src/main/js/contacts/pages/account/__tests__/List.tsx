@@ -3,10 +3,9 @@ import mockStore from 'test/mock-store';
 import React from 'react';
 import {ChannelContext} from 'shared/context/channel';
 import {cleanup, render, screen} from '@testing-library/react';
-import {createMemoryHistory} from 'history';
 import {mockChannelContext} from 'test/mock-channel-context';
+import {MemoryRouter, useNavigate} from 'react-router-dom';
 import {Provider} from 'react-redux';
-import {Router, useHistory} from 'react-router-dom';
 import {useRequest} from 'shared/hooks/useRequest';
 import {waitForLoadingToBeRemoved} from 'test/helpers';
 
@@ -44,32 +43,26 @@ jest.mock('shared/util/breadcrumbs', () => ({
 
 jest.mock('react-router-dom', () => ({
 	...jest.requireActual('react-router-dom'),
-	useHistory: jest.fn(),
+	useNavigate: jest.fn(),
 	useParams: () => ({
 		channelId: '123',
 		groupId: '23',
 	}),
 }));
 
-const mockedUseHistory = useHistory as jest.Mock;
+const mockedUseNavigate = useNavigate as jest.Mock;
 const mockedUseRequest = useRequest as jest.Mock;
 
 const mockHistoryPush = jest.fn();
 
-const buildHistory = (path = '/workspace/23/123/accounts') => {
-	const history = createMemoryHistory({initialEntries: [path]});
-
-	history.push = mockHistoryPush;
-
-	return history;
-};
+const buildInitialEntries = (path = '/workspace/23/123/accounts') => [path];
 
 const store = mockStore();
 
-// `useRequest` is consumed by both `List` (fetchChannels, expects an object
-// with `total`) and `TotalAccounts` (account metrics, expects an array of
-// `IAccountMetric`). Differentiate by `variables.channelIds`, which is only
-// present in the fetchChannels call.
+// `useRequest` is consumed by `List` twice (fetchChannels, expects an object
+// with `total`; fetchCatalogFields, expects `items`) and by `TotalAccounts`
+// (account metrics, expects an array of `IAccountMetric`). Differentiate by
+// `variables.channelIds` and `variables.tableName`, each unique to one call.
 
 const accountMetricsMock = [
 	{
@@ -89,23 +82,58 @@ const accountMetricsMock = [
 	},
 ];
 
-const useRequestImpl =
-	({total = 1}: {total?: number} = {}) =>
-	({variables}: {variables: {[key: string]: any}}) =>
-		variables?.channelIds !== undefined
-			? {data: {total}}
-			: {data: accountMetricsMock};
+const catalogFieldsMock = [
+	{
+		dataCategory: 'Text',
+		dataType: 'STRING',
+		description: null,
+		displayName: 'Account Type',
+		id: '1',
+		name: 'accountType',
+		parentField: null,
+		tableName: 'account',
+	},
+];
 
-const renderList = (
-	{queryString = ''}: {queryString?: string} = {},
-	history = buildHistory(`/workspace/23/123/accounts${queryString}`)
-) =>
+const useRequestImpl =
+	({
+		catalogError = false,
+		catalogLoading = false,
+		total = 1,
+	}: {
+		catalogError?: boolean;
+		catalogLoading?: boolean;
+		total?: number;
+	} = {}) =>
+	({variables}: {variables: {[key: string]: any}}) => {
+		if (variables?.channelIds !== undefined) {
+			return {data: {total}};
+		}
+
+		if (variables?.tableName !== undefined) {
+			if (catalogLoading) {
+				return {loading: true};
+			}
+
+			return catalogError
+				? {error: true}
+				: {data: {items: catalogFieldsMock}};
+		}
+
+		return {data: accountMetricsMock};
+	};
+
+const renderList = ({queryString = ''}: {queryString?: string} = {}) =>
 	render(
 		<Provider store={store}>
 			<ChannelContext.Provider value={mockChannelContext() as any}>
-				<Router history={history}>
+				<MemoryRouter
+					initialEntries={buildInitialEntries(
+						`/workspace/23/123/accounts${queryString}`
+					)}
+				>
 					<List channelId="123" groupId="23" />
-				</Router>
+				</MemoryRouter>
 			</ChannelContext.Provider>
 		</Provider>
 	);
@@ -115,7 +143,7 @@ describe('List', () => {
 		jest.clearAllMocks();
 		lastFilters = undefined;
 
-		mockedUseHistory.mockReturnValue({push: mockHistoryPush});
+		mockedUseNavigate.mockReturnValue(mockHistoryPush);
 		mockedUseRequest.mockImplementation(useRequestImpl());
 	});
 
@@ -141,6 +169,29 @@ describe('List', () => {
 		});
 
 		it('should render the FrontendDataSet component', () => {
+			renderList();
+
+			expect(screen.getByTestId('fds-component')).toBeInTheDocument();
+		});
+
+		it('should withhold the data set until the field catalog resolves, without blanking the page', async () => {
+			mockedUseRequest.mockImplementation(
+				useRequestImpl({catalogLoading: true})
+			);
+
+			renderList();
+
+			expect(
+				await screen.findByRole('heading', {name: 'Accounts'})
+			).toBeInTheDocument();
+			expect(screen.queryByTestId('fds-component')).toBeNull();
+		});
+
+		it('should still render the data set when the field catalog request fails', () => {
+			mockedUseRequest.mockImplementation(
+				useRequestImpl({catalogError: true})
+			);
+
 			renderList();
 
 			expect(screen.getByTestId('fds-component')).toBeInTheDocument();

@@ -51,6 +51,42 @@ configmap:
 customEnv: {}
 customEnvFrom: {}
 customInitContainers:
+    x-license-sync:
+        -   containerTemplate: |
+                {{- if .licensing.enabled }}
+                -   command:
+                        -   bash
+                        -   /liferay-init-scripts/deploy-sync.sh
+                    env:
+                        -   name: LIFERAY_SYNC_DEST
+                            value: /opt/liferay/deploy/license.xml
+                        -   name: LIFERAY_SYNC_INTERVAL
+                            value: {{ .licensing.syncInterval | quote }}
+                        -   name: LIFERAY_SYNC_MARKER
+                            value: /opt/liferay/.liferay-license-sync.sha
+                        -   name: LIFERAY_SYNC_SOURCE
+                            value: /secret/license.xml
+                    image: {{ printf "%s:%s" .image.repository (.image.tag | toString) }}
+                    imagePullPolicy: {{ .image.pullPolicy }}
+                    name: liferay-license-sync
+                    restartPolicy: Always
+                    securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                            drop:
+                                -   ALL
+                        seccompProfile:
+                            type: RuntimeDefault
+                    volumeMounts:
+                        -   mountPath: /liferay-init-scripts/deploy-sync.sh
+                            name: {{ .licensing.initScriptsVolumeName }}
+                            subPath: deploy-sync.sh
+                        -   mountPath: /secret
+                            name: liferay-license
+                        -   mountPath: /opt/liferay
+                            name: liferay-persistent-volume
+                            subPath: liferay
+                {{- end }}
     x-liferay-overlay:
         -   containerTemplate: |
                 {{- if and .overlay.enabled .overlay.copy }}
@@ -117,6 +153,13 @@ customInitContainers:
                                 cp --force --recursive --verbose /opt/liferay/glowroot/* /temp/liferay/glowroot
                             fi
 
+                            if [ ! -d /temp/osgi/marketplace ] || [ -z "$(ls --almost-all /temp/osgi/marketplace)" ]
+                            then
+                                mkdir --parents /temp/osgi/marketplace
+
+                                cp --force --recursive --verbose /opt/liferay/osgi/marketplace/. /temp/osgi/marketplace
+                            fi
+
                             if [ ! -f /temp/tomcat/conf/server.xml ]
                             then
                                 mkdir --parents /temp/tomcat/conf
@@ -150,11 +193,11 @@ customInitContainers:
 
                             if [ -d /opt/liferay/deploy ] && [ -z "$(ls --all /temp/liferay/deploy/*license* 2>/dev/null)" ]
                             then
-                                if [ ! -d /temp/liferay/data/license ] || [ -z "$(ls --all /temp/liferay/data/license/*.li)" ]
+                                if [ ! -d /temp/liferay/data/license ] || [ -z "$(ls --all /temp/liferay/data/license/*.li 2>/dev/null)" ]
                                 then
                                     mkdir --parents /temp/liferay/deploy
 
-                                    cp --force --verbose /opt/liferay/deploy/* /temp/liferay/deploy
+                                    cp --force --recursive --verbose /opt/liferay/deploy/. /temp/liferay/deploy
                                 fi
                             fi
                     image: {{ printf "%s:%s" .image.repository (.image.tag | toString) }}
@@ -199,6 +242,50 @@ customInitContainers:
                                 -   ALL
                         seccompProfile:
                             type: RuntimeDefault
+    x-marketplace-sync:
+        -   containerTemplate: |
+                {{- if .marketplace.enabled }}
+                -   command:
+                        -   bash
+                        -   /liferay-init-scripts/deploy-sync.sh
+                    env:
+                        -   name: LIFERAY_SYNC_DEST
+                            value: /opt/liferay/deploy
+                        -   name: LIFERAY_SYNC_INTERVAL
+                            value: {{ .marketplace.syncInterval | quote }}
+                        -   name: LIFERAY_SYNC_MARKER
+                            value: /opt/liferay/.liferay-marketplace-sync
+                        -   name: LIFERAY_SYNC_PATTERN
+                            value: "*.lpkg"
+                        -   name: LIFERAY_SYNC_SOURCE
+                            value: /marketplace
+                        -   name: POD_NAMESPACE
+                            valueFrom:
+                                fieldRef:
+                                    fieldPath: metadata.namespace
+                    image: {{ printf "%s:%s" .image.repository (.image.tag | toString) }}
+                    imagePullPolicy: {{ .image.pullPolicy }}
+                    name: liferay-marketplace-sync
+                    restartPolicy: Always
+                    securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                            drop:
+                                -   ALL
+                        seccompProfile:
+                            type: RuntimeDefault
+                    volumeMounts:
+                        -   mountPath: /liferay-init-scripts/deploy-sync.sh
+                            name: {{ .marketplace.initScriptsVolumeName }}
+                            subPath: deploy-sync.sh
+                        -   mountPath: /marketplace
+                            name: liferay-marketplace
+                            readOnly: true
+                            subPathExpr: $(POD_NAMESPACE)
+                        -   mountPath: /opt/liferay
+                            name: liferay-persistent-volume
+                            subPath: liferay
+                {{- end }}
 customLabels:
     origin: liferay-cloud
 customPorts: {}
@@ -281,6 +368,20 @@ image:
     repository: liferay/dxp
     tag: 2026.q1.8-lts
 initContainers: []
+licensing:
+    activationCodeSecretKey: activationCode
+    activationCodeSecretName: ""
+    dxpVersion: ""
+    enabled: false
+    initScriptsVolumeName: liferay-init-scripts-default
+    offline: false
+    offlineActivationBundle: ""
+    onlineActivationWorkflow:
+        clusterRoleName: online-activation-cluster-role
+        enabled: true
+        serviceAccountName: online-activation-service-account
+    secretName: ""
+    syncInterval: 60
 livenessProbe:
     failureThreshold: 3
     httpGet:
@@ -289,6 +390,15 @@ livenessProbe:
     initialDelaySeconds: 60
     periodSeconds: 30
     timeoutSeconds: 5
+marketplace:
+    csi:
+        driver: ""
+        volumeAttributes: {}
+        volumeHandle: ""
+    enabled: false
+    initScriptsVolumeName: liferay-init-scripts-default
+    size: 10Gi
+    syncInterval: 600
 nameOverride: ""
 network:
     annotations: {}
@@ -321,6 +431,8 @@ overlay:
         tag: "1.66"
     initScriptsVolumeName: liferay-init-scripts-default
     type: ""
+persistence:
+    defaultStorageClassName: ""
 podLabels: {}
 podSecurityContext: {}
 portalBundleDenyList: []
@@ -415,6 +527,9 @@ volumeMounts:
     -   mountPath: /opt/liferay/osgi/configs
         name: liferay-persistent-volume
         subPath: osgi/configs
+    -   mountPath: /opt/liferay/osgi/marketplace
+        name: liferay-persistent-volume
+        subPath: osgi/marketplace
     -   mountPath: /opt/liferay/osgi/modules
         name: liferay-persistent-volume
         subPath: osgi/modules

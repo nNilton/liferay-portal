@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
@@ -27,6 +28,8 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 
 import java.io.Serializable;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -287,6 +290,59 @@ public class Specification implements Serializable {
 
 	@JsonIgnore
 	private Supplier<String> _keySupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "External reference codes of the list type definitions that constrain the allowed values of this specification; they take precedence over `listTypeDefinitionIds`. A code that does not resolve fails the request, except during an import, where it creates an empty list type definition to be completed later.",
+		example = "[AB-34098-789-N, AB-34098-789-O]"
+	)
+	public String[] getListTypeDefinitionExternalReferenceCodes() {
+		if (_listTypeDefinitionExternalReferenceCodesSupplier != null) {
+			listTypeDefinitionExternalReferenceCodes =
+				_listTypeDefinitionExternalReferenceCodesSupplier.get();
+
+			_listTypeDefinitionExternalReferenceCodesSupplier = null;
+		}
+
+		return listTypeDefinitionExternalReferenceCodes;
+	}
+
+	public void setListTypeDefinitionExternalReferenceCodes(
+		String[] listTypeDefinitionExternalReferenceCodes) {
+
+		this.listTypeDefinitionExternalReferenceCodes =
+			listTypeDefinitionExternalReferenceCodes;
+
+		_listTypeDefinitionExternalReferenceCodesSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setListTypeDefinitionExternalReferenceCodes(
+		UnsafeSupplier<String[], Exception>
+			listTypeDefinitionExternalReferenceCodesUnsafeSupplier) {
+
+		_listTypeDefinitionExternalReferenceCodesSupplier = () -> {
+			try {
+				return listTypeDefinitionExternalReferenceCodesUnsafeSupplier.
+					get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "External reference codes of the list type definitions that constrain the allowed values of this specification; they take precedence over `listTypeDefinitionIds`. A code that does not resolve fails the request, except during an import, where it creates an empty list type definition to be completed later."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String[] listTypeDefinitionExternalReferenceCodes;
+
+	@JsonIgnore
+	private Supplier<String[]>
+		_listTypeDefinitionExternalReferenceCodesSupplier;
 
 	@DecimalMin("0")
 	@io.swagger.v3.oas.annotations.media.Schema(
@@ -661,6 +717,35 @@ public class Specification implements Serializable {
 			sb.append("\"");
 		}
 
+		String[] listTypeDefinitionExternalReferenceCodes =
+			getListTypeDefinitionExternalReferenceCodes();
+
+		if (listTypeDefinitionExternalReferenceCodes != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"listTypeDefinitionExternalReferenceCodes\": ");
+
+			sb.append("[");
+
+			for (int i = 0; i < listTypeDefinitionExternalReferenceCodes.length;
+				 i++) {
+
+				sb.append("\"");
+
+				sb.append(_escape(listTypeDefinitionExternalReferenceCodes[i]));
+
+				sb.append("\"");
+
+				if ((i + 1) < listTypeDefinitionExternalReferenceCodes.length) {
+					sb.append(", ");
+				}
+			}
+
+			sb.append("]");
+		}
+
 		Long listTypeDefinitionId = getListTypeDefinitionId();
 
 		if (listTypeDefinitionId != null) {
@@ -836,6 +921,27 @@ public class Specification implements Serializable {
 		return sb.toString();
 	}
 
+	private static String _toJSON(Object value) {
+		if (value instanceof Collection) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray((Collection<?>)value));
+		}
+		else if (value instanceof Map) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONObject((Map<?, ?>)value));
+		}
+		else if (value instanceof Object[]) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray(
+					Arrays.asList((Object[])value)));
+		}
+		else if (value instanceof String) {
+			return StringBundler.concat("\"", _escape(value), "\"");
+		}
+
+		return String.valueOf(value);
+	}
+
 	private static final String[][] _JSON_ESCAPE_STRINGS = {
 		{"\\", "\"", "\b", "\f", "\n", "\r", "\t"},
 		{"\\\\", "\\\"", "\\b", "\\f", "\\n", "\\r", "\\t"}
@@ -844,4 +950,4 @@ public class Specification implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1194495243
+// LIFERAY-REST-BUILDER-HASH:-586508835

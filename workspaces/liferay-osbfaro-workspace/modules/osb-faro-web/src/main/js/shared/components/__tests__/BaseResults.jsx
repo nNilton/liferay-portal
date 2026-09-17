@@ -4,7 +4,7 @@ import React from 'react';
 import {cleanup, fireEvent, render, waitFor} from '@testing-library/react';
 import {noop, times} from 'lodash';
 import {SelectionProvider} from 'shared/context/selection';
-import {StaticRouter} from 'react-router';
+import {MemoryRouter} from 'react-router';
 
 jest.unmock('react-dom');
 
@@ -14,9 +14,9 @@ const INDIVIDUALS = times(TOTAL, i => data.mockIndividual(i));
 
 const DefaultComponent = props => (
 	<SelectionProvider>
-		<StaticRouter>
+		<MemoryRouter>
 			<BaseResults {...props} />
-		</StaticRouter>
+		</MemoryRouter>
 	</SelectionProvider>
 );
 
@@ -76,7 +76,7 @@ describe('BaseResults', () => {
 		await waitFor(
 			() => {
 				expect(
-					getByText('There are no results found.')
+					getByText('No results were found.')
 				).toBeInTheDocument();
 			},
 			{timeout: 1000}

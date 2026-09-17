@@ -5,12 +5,16 @@
 
 package com.liferay.exportimport.rest.dto.v1_0;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFilter;
+import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
@@ -28,6 +32,8 @@ import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
@@ -95,6 +101,64 @@ public class ExportProcessRequest implements Serializable {
 
 	@JsonIgnore
 	private Supplier<Boolean> _commentsSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "The recipe used to resolve the export window at every run. ALL exports everything, DATE_RANGE exports the window between the start and end dates, resolving a missing end date as the run time, and LAST exports a window of whole hours ending at the run time, derived from the start date. When absent, the type is inferred from the given dates."
+	)
+	@JsonGetter("dateRangeType")
+	@Valid
+	public DateRangeType getDateRangeType() {
+		if (_dateRangeTypeSupplier != null) {
+			dateRangeType = _dateRangeTypeSupplier.get();
+
+			_dateRangeTypeSupplier = null;
+		}
+
+		return dateRangeType;
+	}
+
+	@JsonIgnore
+	public String getDateRangeTypeAsString() {
+		DateRangeType dateRangeType = getDateRangeType();
+
+		if (dateRangeType == null) {
+			return null;
+		}
+
+		return dateRangeType.toString();
+	}
+
+	public void setDateRangeType(DateRangeType dateRangeType) {
+		this.dateRangeType = dateRangeType;
+
+		_dateRangeTypeSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setDateRangeType(
+		UnsafeSupplier<DateRangeType, Exception> dateRangeTypeUnsafeSupplier) {
+
+		_dateRangeTypeSupplier = () -> {
+			try {
+				return dateRangeTypeUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "The recipe used to resolve the export window at every run. ALL exports everything, DATE_RANGE exports the window between the start and end dates, resolving a missing end date as the run time, and LAST exports a window of whole hours ending at the run time, derived from the start date. When absent, the type is inferred from the given dates."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected DateRangeType dateRangeType;
+
+	@JsonIgnore
+	private Supplier<DateRangeType> _dateRangeTypeSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema
 	public Boolean getDeletions() {
@@ -593,6 +657,20 @@ public class ExportProcessRequest implements Serializable {
 			sb.append(comments);
 		}
 
+		DateRangeType dateRangeType = getDateRangeType();
+
+		if (dateRangeType != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"dateRangeType\": ");
+
+			sb.append("\"");
+			sb.append(dateRangeType);
+			sb.append("\"");
+		}
+
 		Boolean deletions = getDeletions();
 
 		if (deletions != null) {
@@ -760,6 +838,44 @@ public class ExportProcessRequest implements Serializable {
 	)
 	public String xClassName;
 
+	@GraphQLName("DateRangeType")
+	public static enum DateRangeType {
+
+		ALL("ALL"), DATE_RANGE("DATE_RANGE"), LAST("LAST");
+
+		@JsonCreator
+		public static DateRangeType create(String value) {
+			if ((value == null) || value.equals("")) {
+				return null;
+			}
+
+			for (DateRangeType dateRangeType : values()) {
+				if (Objects.equals(dateRangeType.getValue(), value)) {
+					return dateRangeType;
+				}
+			}
+
+			throw new IllegalArgumentException("Invalid enum value: " + value);
+		}
+
+		@JsonValue
+		public String getValue() {
+			return _value;
+		}
+
+		@Override
+		public String toString() {
+			return _value;
+		}
+
+		private DateRangeType(String value) {
+			_value = value;
+		}
+
+		private final String _value;
+
+	}
+
 	private static String _escape(Object object) {
 		return StringUtil.replace(
 			String.valueOf(object), _JSON_ESCAPE_STRINGS[0],
@@ -841,6 +957,27 @@ public class ExportProcessRequest implements Serializable {
 		return sb.toString();
 	}
 
+	private static String _toJSON(Object value) {
+		if (value instanceof Collection) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray((Collection<?>)value));
+		}
+		else if (value instanceof Map) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONObject((Map<?, ?>)value));
+		}
+		else if (value instanceof Object[]) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray(
+					Arrays.asList((Object[])value)));
+		}
+		else if (value instanceof String) {
+			return StringBundler.concat("\"", _escape(value), "\"");
+		}
+
+		return String.valueOf(value);
+	}
+
 	private static final String[][] _JSON_ESCAPE_STRINGS = {
 		{"\\", "\"", "\b", "\f", "\n", "\r", "\t"},
 		{"\\\\", "\\\"", "\\b", "\\f", "\\n", "\\r", "\\t"}
@@ -849,4 +986,4 @@ public class ExportProcessRequest implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:866154181
+// LIFERAY-REST-BUILDER-HASH:1109215080
