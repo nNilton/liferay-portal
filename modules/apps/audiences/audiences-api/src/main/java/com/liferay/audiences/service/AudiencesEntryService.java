@@ -11,7 +11,6 @@ import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.jsonwebservice.JSONWebService;
 import com.liferay.portal.kernel.security.access.control.AccessControlled;
 import com.liferay.portal.kernel.service.BaseService;
-import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.transaction.Isolation;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.transaction.Transactional;
@@ -46,7 +45,7 @@ public interface AudiencesEntryService extends BaseService {
 	 */
 	public AudiencesEntry addAudiencesEntry(
 			String externalReferenceCode, String json, String name,
-			ServiceContext serviceContext)
+			String[] groupERCs)
 		throws PortalException;
 
 	public AudiencesEntry deleteAudiencesEntry(long audiencesEntryId)
@@ -83,8 +82,9 @@ public interface AudiencesEntryService extends BaseService {
 	public String getOSGiServiceIdentifier();
 
 	public AudiencesEntry updateAudiencesEntry(
-			long audiencesEntryId, String json, String name)
+			long audiencesEntryId, String externalReferenceCode, String json,
+			String name, String[] groupERCs)
 		throws PortalException;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-927578154
+// LIFERAY-SERVICE-BUILDER-HASH:-635259894

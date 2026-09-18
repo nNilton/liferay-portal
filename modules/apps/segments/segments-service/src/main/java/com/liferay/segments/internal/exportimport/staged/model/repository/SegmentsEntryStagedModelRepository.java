@@ -44,10 +44,11 @@ public class SegmentsEntryStagedModelRepository
 		}
 
 		return _segmentsEntryLocalService.addSegmentsEntry(
+			segmentsEntry.getExternalReferenceCode(),
 			segmentsEntry.getSegmentsEntryKey(), segmentsEntry.getNameMap(),
 			segmentsEntry.getDescriptionMap(), segmentsEntry.isActive(),
 			segmentsEntry.getCriteria(), segmentsEntry.getSource(),
-			serviceContext);
+			segmentsEntry.getType(), serviceContext);
 	}
 
 	@Override

@@ -43,6 +43,7 @@ import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalServiceUtil;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
@@ -64,12 +65,10 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.search.test.rule.SearchTestRule;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.portlet.asset.util.AssetVocabularySettingsHelper;
-import com.liferay.site.cms.site.initializer.test.util.CMSTestUtil;
 
 import java.util.List;
 import java.util.Locale;
@@ -197,11 +196,10 @@ public class AssetVocabularyServiceTest {
 			externalReferenceCode, vocabulary.getExternalReferenceCode());
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Test
 	public void testAddVocabularyWithoutAssetLibrary() throws Exception {
-		Group cmsGroup = CMSTestUtil.getOrAddGroup(
-			AssetVocabularyServiceTest.class);
+		Group cmsGroup = _groupLocalService.getGroup(
+			TestPropsValues.getCompanyId(), GroupConstants.CMS);
 
 		AssetVocabulary vocabulary = AssetTestUtil.addVocabulary(
 			cmsGroup.getGroupId(), RandomTestUtil.randomString());
@@ -359,6 +357,25 @@ public class AssetVocabularyServiceTest {
 	}
 
 	@Test
+	public void testGetGroupsVocabulariesWithNoGroupIds() throws Exception {
+		AssetTestUtil.addVocabulary(_group.getGroupId());
+
+		List<AssetVocabulary> assetVocabularies =
+			_assetVocabularyService.getGroupsVocabularies(new long[0]);
+
+		Assert.assertTrue(
+			assetVocabularies.toString(), assetVocabularies.isEmpty());
+	}
+
+	@Test
+	public void testGetGroupVocabulariesCountWithNoGroupIds() throws Exception {
+		AssetTestUtil.addVocabulary(_group.getGroupId());
+
+		Assert.assertEquals(
+			0, _assetVocabularyService.getGroupVocabulariesCount(new long[0]));
+	}
+
+	@Test
 	public void testGetGroupVocabulariesPaginatedWithNoViewableVocabularies()
 		throws Exception {
 
@@ -451,6 +468,24 @@ public class AssetVocabularyServiceTest {
 
 		Assert.assertEquals(
 			assetVocabularies.toString(), 1, assetVocabularies.size());
+	}
+
+	@Test
+	public void testGetGroupVocabulariesWithNoGroupIds() throws Exception {
+		AssetVocabulary assetVocabulary = AssetTestUtil.addVocabulary(
+			_group.getGroupId());
+
+		List<AssetVocabulary> assetVocabularies =
+			_assetVocabularyService.getGroupVocabularies(new long[0]);
+
+		Assert.assertTrue(
+			assetVocabularies.toString(), assetVocabularies.isEmpty());
+
+		assetVocabularies = _assetVocabularyService.getGroupVocabularies(
+			new long[0], new int[] {assetVocabulary.getVisibilityType()});
+
+		Assert.assertTrue(
+			assetVocabularies.toString(), assetVocabularies.isEmpty());
 	}
 
 	@Test
@@ -873,6 +908,9 @@ public class AssetVocabularyServiceTest {
 
 	@DeleteAfterTestRun
 	private Group _group;
+
+	@Inject
+	private GroupLocalService _groupLocalService;
 
 	private Locale _locale;
 

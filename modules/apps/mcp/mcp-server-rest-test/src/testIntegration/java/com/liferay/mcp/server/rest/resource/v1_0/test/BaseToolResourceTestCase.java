@@ -27,6 +27,7 @@ import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
+import com.liferay.portal.kernel.test.util.JAXRSWhiteboardTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -84,6 +85,8 @@ public abstract class BaseToolResourceTestCase {
 	public static void setUpClass() throws Exception {
 		_format = FastDateFormatFactoryUtil.getSimpleDateFormat(
 			"yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+		JAXRSWhiteboardTestUtil.ensureReady();
 	}
 
 	@Before
@@ -278,6 +281,14 @@ public abstract class BaseToolResourceTestCase {
 				continue;
 			}
 
+			if (Objects.equals("outputSchema", additionalAssertFieldName)) {
+				if (tool.getOutputSchema() == null) {
+					valid = false;
+				}
+
+				continue;
+			}
+
 			throw new IllegalArgumentException(
 				"Invalid additional assert field name " +
 					additionalAssertFieldName);
@@ -416,6 +427,17 @@ public abstract class BaseToolResourceTestCase {
 
 			if (Objects.equals("name", additionalAssertFieldName)) {
 				if (!Objects.deepEquals(tool1.getName(), tool2.getName())) {
+					return false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals("outputSchema", additionalAssertFieldName)) {
+				if (!equals(
+						(Map)tool1.getOutputSchema(),
+						(Map)tool2.getOutputSchema())) {
+
 					return false;
 				}
 
@@ -624,6 +646,11 @@ public abstract class BaseToolResourceTestCase {
 			}
 
 			return sb.toString();
+		}
+
+		if (entityFieldName.equals("outputSchema")) {
+			throw new IllegalArgumentException(
+				"Invalid entity field " + entityFieldName);
 		}
 
 		throw new IllegalArgumentException(
@@ -900,4 +927,4 @@ public abstract class BaseToolResourceTestCase {
 		_toolResource;
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1507640032
+// LIFERAY-REST-BUILDER-HASH:-2055338289

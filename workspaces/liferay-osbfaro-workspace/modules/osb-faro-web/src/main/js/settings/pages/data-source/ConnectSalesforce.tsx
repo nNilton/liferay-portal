@@ -3,6 +3,7 @@ import WizardPage, {Step} from 'settings/components/base-page/WizardPage';
 import {Alert} from 'shared/types';
 import {AssignIndividualsDataToPropertiesStep} from 'settings/components/salesforce/steps/AssignIndividualsDataToChannelsStep';
 import {ConnectSalesforceStep} from 'settings/components/salesforce/steps/ConnectSalesforceStep';
+import {sub} from 'shared/util/lang';
 import {SyncSalesforceDataStep} from 'settings/components/salesforce/steps/SyncSalesforceDataStep';
 import {updateSalesforce} from 'shared/api/data-source';
 
@@ -10,7 +11,7 @@ const steps: Step[] = [
 	{
 		content: (props: any) => <ConnectSalesforceStep {...props} />,
 		description: Liferay.Language.get(
-			'to-connect-your-salesforce-environment-with-liferay-analytics-cloud,-generate-a-token-and-paste-the-code-on-the-input-below'
+			'to-connect-your-data-source-with-liferay-data-platform-enter-their-url-the-client-id-and-secret'
 		),
 		title: Liferay.Language.get('connect-salesforce'),
 	},
@@ -19,7 +20,9 @@ const steps: Step[] = [
 		description: Liferay.Language.get(
 			'select-which-salesforce-data-you-would-like-to-sync-to-analytics-cloud'
 		),
-		title: Liferay.Language.get('sync-Salesforce-data'),
+		title: sub(Liferay.Language.get('sync-x-data'), [
+			Liferay.Language.get('salesforce'),
+		]) as string,
 	},
 	{
 		content: (props: any) => (
@@ -64,7 +67,7 @@ const steps: Step[] = [
 			/>
 		),
 		description: Liferay.Language.get(
-			'properties-allow-you-to-aggregate-data-on-your-users,-sites-and-dxp-commerce-channels.-individuals-data-will-be-available-in-any-property-they-are-assigned-to'
+			'properties-let-you-consolidate-data-from-individuals,-accounts,-campaigns,-and-sites-in-one-place.-an-individuals-data-is-available-in-every-property-they-are-assigned-to'
 		),
 		title: Liferay.Language.get('assign-individuals-data-to-properties'),
 	},

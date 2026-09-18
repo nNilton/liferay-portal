@@ -15,7 +15,6 @@ import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.util.LocaleUtil;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -36,7 +35,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 /**
  * @author Marco Galluzzi
  */
-@FeatureFlag("LPD-17564")
 @RunWith(Arquillian.class)
 public class ViewStructuresDisplayContextTest
 	extends BaseDisplayContextTestCase {
@@ -81,10 +79,10 @@ public class ViewStructuresDisplayContextTest
 			"list-ul", "viewUsages", "View Usages", "get",
 			fdsActionDropdownItems.get(1));
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
-			"export", "export", "Export as JSON", "get",
+			"export", "exportBoundObjectDefinitions", "Export as JSON", "get",
 			fdsActionDropdownItems.get(2));
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
-			"import", "import", "Import and Override", "get",
+			"export", "export", "Export as JSON", "get",
 			fdsActionDropdownItems.get(3));
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
 			"password-policies", "permissions", "Permissions", "get",
@@ -113,7 +111,8 @@ public class ViewStructuresDisplayContextTest
 		throws Exception {
 
 		_fragmentRenderer.render(
-			null, httpServletRequest, new MockHttpServletResponse());
+			fragmentRendererContext, httpServletRequest,
+			new MockHttpServletResponse());
 
 		Object viewStructuresDisplayContext = httpServletRequest.getAttribute(
 			"com.liferay.site.cms.site.initializer.internal.display.context." +

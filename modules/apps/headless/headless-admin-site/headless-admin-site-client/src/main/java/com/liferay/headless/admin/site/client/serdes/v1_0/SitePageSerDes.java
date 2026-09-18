@@ -6,6 +6,7 @@
 package com.liferay.headless.admin.site.client.serdes.v1_0;
 
 import com.liferay.headless.admin.site.client.dto.v1_0.PageSpecification;
+import com.liferay.headless.admin.site.client.dto.v1_0.PageSpecificationVersion;
 import com.liferay.headless.admin.site.client.dto.v1_0.SitePage;
 import com.liferay.headless.admin.site.client.dto.v1_0.TaxonomyCategoryBrief;
 import com.liferay.headless.admin.site.client.json.BaseJSONParser;
@@ -15,6 +16,7 @@ import jakarta.annotation.Generated;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -199,6 +201,29 @@ public class SitePageSerDes {
 			sb.append("\"pageSettings\": ");
 
 			sb.append(String.valueOf(sitePage.getPageSettings()));
+		}
+
+		if (sitePage.getPageSpecificationVersions() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"pageSpecificationVersions\": ");
+
+			sb.append("[");
+
+			for (int i = 0; i < sitePage.getPageSpecificationVersions().length;
+				 i++) {
+
+				sb.append(
+					String.valueOf(sitePage.getPageSpecificationVersions()[i]));
+
+				if ((i + 1) < sitePage.getPageSpecificationVersions().length) {
+					sb.append(", ");
+				}
+			}
+
+			sb.append("]");
 		}
 
 		if (sitePage.getPageSpecifications() != null) {
@@ -429,6 +454,15 @@ public class SitePageSerDes {
 			map.put("pageSettings", String.valueOf(sitePage.getPageSettings()));
 		}
 
+		if (sitePage.getPageSpecificationVersions() == null) {
+			map.put("pageSpecificationVersions", null);
+		}
+		else {
+			map.put(
+				"pageSpecificationVersions",
+				String.valueOf(sitePage.getPageSpecificationVersions()));
+		}
+
 		if (sitePage.getPageSpecifications() == null) {
 			map.put("pageSpecifications", null);
 		}
@@ -542,6 +576,11 @@ public class SitePageSerDes {
 				return false;
 			}
 			else if (Objects.equals(
+						jsonParserFieldName, "pageSpecificationVersions")) {
+
+				return false;
+			}
+			else if (Objects.equals(
 						jsonParserFieldName, "pageSpecifications")) {
 
 				return false;
@@ -649,6 +688,29 @@ public class SitePageSerDes {
 				if (jsonParserFieldValue != null) {
 					sitePage.setPageSettings(
 						PageSettingsSerDes.toDTO((String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(
+						jsonParserFieldName, "pageSpecificationVersions")) {
+
+				if (jsonParserFieldValue != null) {
+					Object[] jsonParserFieldValues =
+						(Object[])jsonParserFieldValue;
+
+					PageSpecificationVersion[] pageSpecificationVersionsArray =
+						new PageSpecificationVersion
+							[jsonParserFieldValues.length];
+
+					for (int i = 0; i < pageSpecificationVersionsArray.length;
+						 i++) {
+
+						pageSpecificationVersionsArray[i] =
+							PageSpecificationVersionSerDes.toDTO(
+								(String)jsonParserFieldValues[i]);
+					}
+
+					sitePage.setPageSpecificationVersions(
+						pageSpecificationVersionsArray);
 				}
 			}
 			else if (Objects.equals(
@@ -788,6 +850,12 @@ public class SitePageSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -820,4 +888,4 @@ public class SitePageSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1277116952
+// LIFERAY-REST-BUILDER-HASH:-613526252

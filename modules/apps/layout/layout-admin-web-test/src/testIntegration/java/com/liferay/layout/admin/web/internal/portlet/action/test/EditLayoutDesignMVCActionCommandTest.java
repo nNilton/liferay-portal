@@ -139,8 +139,7 @@ public class EditLayoutDesignMVCActionCommandTest {
 		MockActionRequest mockActionRequest = _getMockActionRequest(
 			draftLayout);
 
-		mockActionRequest.setParameter(
-			"regularThemeId", "dialect_WAR_dialecttheme");
+		mockActionRequest.setParameter("regularThemeId", "cms_WAR_cmstheme");
 
 		ReflectionTestUtil.invoke(
 			_mvcActionCommand, "_updateLayout",
@@ -158,8 +157,7 @@ public class EditLayoutDesignMVCActionCommandTest {
 
 		draftLayout = _layoutLocalService.getLayout(draftLayout.getPlid());
 
-		Assert.assertEquals(
-			"dialect_WAR_dialecttheme", draftLayout.getThemeId());
+		Assert.assertEquals("cms_WAR_cmstheme", draftLayout.getThemeId());
 
 		layout = _layoutLocalService.getLayout(layout.getPlid());
 
@@ -169,7 +167,7 @@ public class EditLayoutDesignMVCActionCommandTest {
 
 		layout = _layoutLocalService.getLayout(layout.getPlid());
 
-		Assert.assertEquals("dialect_WAR_dialecttheme", layout.getThemeId());
+		Assert.assertEquals("cms_WAR_cmstheme", layout.getThemeId());
 	}
 
 	@Test
@@ -194,9 +192,9 @@ public class EditLayoutDesignMVCActionCommandTest {
 		StyleBookEntry styleBookEntry =
 			_styleBookEntryLocalService.addStyleBookEntry(
 				null, TestPropsValues.getUserId(), _group.getGroupId(), false,
-				StringPool.BLANK, RandomTestUtil.randomString(),
-				StringPool.BLANK, RandomTestUtil.randomString(),
-				serviceContext);
+				StringPool.BLANK, StringPool.BLANK,
+				RandomTestUtil.randomString(), StringPool.BLANK,
+				RandomTestUtil.randomString(), serviceContext);
 
 		_testEditLayoutDesignDoesntChangeWithNotEditedValues(
 			draftLayout,

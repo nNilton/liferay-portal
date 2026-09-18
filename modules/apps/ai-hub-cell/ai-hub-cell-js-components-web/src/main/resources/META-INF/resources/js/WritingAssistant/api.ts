@@ -6,6 +6,8 @@
 import {EventSource} from 'eventsource';
 import {fetch} from 'frontend-js-web';
 
+import postAuthorizationToken from '../utils/postAuthorizationToken';
+import throwIfRequestTooLarge from '../utils/throwIfRequestTooLarge';
 import {EActionType} from './types';
 
 const AI_HUB_ENDPOINT = '/o/ai-hub/v1.0';
@@ -39,42 +41,6 @@ export async function createEventSource() {
 	);
 }
 
-async function postAuthorizationToken() {
-	try {
-		const response = await fetch(
-			'/o/ai-hub-cell/v1.0/authorization-tokens',
-			{
-				method: 'POST',
-			}
-		);
-
-		if (!response.ok) {
-			throw new Error(
-				`Unable to generate authorization token: ${response.statusText}`
-			);
-		}
-
-		const data = await response.json();
-
-		if (!data?.accessToken) {
-			throw new Error('Unable to generate authorization token.');
-		}
-
-		if (!data?.userToken) {
-			throw new Error('Unable to generate user token.');
-		}
-
-		if (!data?.serviceURL) {
-			throw new Error('Unable to find service URL.');
-		}
-
-		return data;
-	}
-	catch (error) {
-		console.warn((error as Error).message);
-	}
-}
-
 export async function postAgentInstance(
 	content: string,
 	eventSourceReference: string,
@@ -86,7 +52,7 @@ export async function postAgentInstance(
 		return;
 	}
 
-	await fetch(
+	const response = await fetch(
 		`${authorizationToken.serviceURL}${AI_HUB_ENDPOINT}/agent-instances`,
 		{
 			body: JSON.stringify({
@@ -106,4 +72,15 @@ export async function postAgentInstance(
 			method: 'POST',
 		}
 	);
+
+	throwIfRequestTooLarge(
+		response,
+		Liferay.Language.get(
+			'the-selected-content-is-too-long-shorten-it-and-try-again'
+		)
+	);
+
+	if (!response.ok) {
+		throw new Error(`Unable to invoke agent: ${response.statusText}`);
+	}
 }

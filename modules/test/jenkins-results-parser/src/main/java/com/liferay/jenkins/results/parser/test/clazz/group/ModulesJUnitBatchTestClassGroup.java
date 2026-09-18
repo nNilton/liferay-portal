@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -86,6 +87,23 @@ public class ModulesJUnitBatchTestClassGroup extends JUnitBatchTestClassGroup {
 		JUnitTestBatch jUnitTestBatch) {
 
 		super(batchName, portalTestClassJob, jUnitTestBatch);
+	}
+
+	@Override
+	protected void addTestClass(TestClass testClass) {
+		String testClassFilePath = JenkinsResultsParserUtil.getCanonicalPath(
+			testClass.getTestClassFile());
+
+		for (File testClassRootDir : getTestClassRootDirs()) {
+			String testClassRootDirPath =
+				JenkinsResultsParserUtil.getCanonicalPath(testClassRootDir);
+
+			if (testClassFilePath.startsWith(testClassRootDirPath + "/")) {
+				super.addTestClass(testClass);
+
+				return;
+			}
+		}
 	}
 
 	@Override
@@ -239,6 +257,12 @@ public class ModulesJUnitBatchTestClassGroup extends JUnitBatchTestClassGroup {
 		}
 
 		return new ArrayList<>(includesJobProperties);
+	}
+
+	protected List<File> getTestClassRootDirs() {
+		return Collections.singletonList(
+			new File(
+				portalGitWorkingDirectory.getWorkingDirectory(), "modules"));
 	}
 
 	private String _getAppTitle(File appBndFile) {

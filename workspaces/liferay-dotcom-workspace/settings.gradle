@@ -1,6 +1,6 @@
 buildscript {
 	dependencies {
-		classpath group: "com.liferay", name: "com.liferay.gradle.plugins.workspace", version: "17.1.8"
+		classpath group: "com.liferay", name: "com.liferay.gradle.plugins.workspace", version: "17.1.10"
 	}
 
 	repositories {
@@ -17,5 +17,10 @@ buildscript {
 }
 
 apply plugin: "com.liferay.workspace"
+
+if (providers.gradleProperty("liferay.workspace.use.test.boms").map(Boolean::parseBoolean).getOrElse(false)) {
+	apply from: "integration-tests.gradle"
+	apply from: "unit-tests.gradle"
+}
 
 include "poshi"

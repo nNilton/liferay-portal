@@ -9,10 +9,14 @@ import React from 'react';
 import AddMembersInput from '../components/members/AddMembersInput';
 
 const CONFIG: MembersConfig = {
-	defaultRoleExternalReferenceCode: 'L_ASSET_LIBRARY_MEMBER',
+	defaultRoleExternalReferenceCode: 'L_DESIGN_LIBRARY_MEMBER',
 	excludedRoleExternalReferenceCodes: [
+		'L_ASSET_LIBRARY_ADMINISTRATOR',
 		'L_ASSET_LIBRARY_CONNECTED_SITE_MEMBER',
+		'L_ASSET_LIBRARY_CONTENT_REVIEWER',
+		'L_ASSET_LIBRARY_MEMBER',
 		'L_ASSET_LIBRARY_OWNER',
+		'L_DESIGN_LIBRARY_OWNER',
 	],
 	messages: {
 		addGroupError: Liferay.Language.get(
@@ -48,23 +52,27 @@ const CONFIG: MembersConfig = {
 		),
 	},
 	roleNames: {
-		L_ASSET_LIBRARY_ADMINISTRATOR: Liferay.Language.get(
+		L_DESIGN_LIBRARY_ADMINISTRATOR: Liferay.Language.get(
 			'design-library-administrator'
 		),
-		L_ASSET_LIBRARY_CONTENT_REVIEWER: Liferay.Language.get(
+		L_DESIGN_LIBRARY_CONTENT_REVIEWER: Liferay.Language.get(
 			'design-library-content-reviewer'
 		),
-		L_ASSET_LIBRARY_MEMBER: Liferay.Language.get('design-library-member'),
+		L_DESIGN_LIBRARY_MEMBER: Liferay.Language.get('design-library-member'),
 	},
 };
 
 export default function DesignLibraryManageMembersModal({
 	externalReferenceCode,
 	hasAssignMembersPermission,
+	headerTitle,
+	onChange,
 	ownerId,
 }: {
 	externalReferenceCode: string;
 	hasAssignMembersPermission: boolean;
+	headerTitle: string;
+	onChange?: () => void;
 	ownerId: string;
 }) {
 	return (
@@ -75,7 +83,8 @@ export default function DesignLibraryManageMembersModal({
 			)}
 			externalReferenceCode={externalReferenceCode}
 			hasAssignMembersPermission={hasAssignMembersPermission}
-			headerTitle={Liferay.Language.get('manage-members')}
+			headerTitle={headerTitle}
+			onChange={onChange}
 			ownerId={ownerId}
 			renderAddMembersInput={(api) => <AddMembersInput {...api} />}
 		/>

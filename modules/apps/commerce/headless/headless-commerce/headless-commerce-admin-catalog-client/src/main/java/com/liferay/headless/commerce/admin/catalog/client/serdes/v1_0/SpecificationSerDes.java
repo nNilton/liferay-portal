@@ -10,6 +10,7 @@ import com.liferay.headless.commerce.admin.catalog.client.json.BaseJSONParser;
 
 import jakarta.annotation.Generated;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -102,6 +103,37 @@ public class SpecificationSerDes {
 			sb.append(_escape(specification.getKey()));
 
 			sb.append("\"");
+		}
+
+		if (specification.getListTypeDefinitionExternalReferenceCodes() !=
+				null) {
+
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"listTypeDefinitionExternalReferenceCodes\": ");
+
+			sb.append("[");
+
+			for (int i = 0;
+				 i < specification.
+					 getListTypeDefinitionExternalReferenceCodes().length;
+				 i++) {
+
+				sb.append(
+					_toJSON(
+						specification.
+							getListTypeDefinitionExternalReferenceCodes()[i]));
+
+				if ((i + 1) < specification.
+						getListTypeDefinitionExternalReferenceCodes().length) {
+
+					sb.append(", ");
+				}
+			}
+
+			sb.append("]");
 		}
 
 		if (specification.getListTypeDefinitionId() != null) {
@@ -233,6 +265,19 @@ public class SpecificationSerDes {
 			map.put("key", String.valueOf(specification.getKey()));
 		}
 
+		if (specification.getListTypeDefinitionExternalReferenceCodes() ==
+				null) {
+
+			map.put("listTypeDefinitionExternalReferenceCodes", null);
+		}
+		else {
+			map.put(
+				"listTypeDefinitionExternalReferenceCodes",
+				String.valueOf(
+					specification.
+						getListTypeDefinitionExternalReferenceCodes()));
+		}
+
 		if (specification.getListTypeDefinitionId() == null) {
 			map.put("listTypeDefinitionId", null);
 		}
@@ -317,6 +362,12 @@ public class SpecificationSerDes {
 				return false;
 			}
 			else if (Objects.equals(
+						jsonParserFieldName,
+						"listTypeDefinitionExternalReferenceCodes")) {
+
+				return false;
+			}
+			else if (Objects.equals(
 						jsonParserFieldName, "listTypeDefinitionId")) {
 
 				return false;
@@ -375,6 +426,15 @@ public class SpecificationSerDes {
 			else if (Objects.equals(jsonParserFieldName, "key")) {
 				if (jsonParserFieldValue != null) {
 					specification.setKey((String)jsonParserFieldValue);
+				}
+			}
+			else if (Objects.equals(
+						jsonParserFieldName,
+						"listTypeDefinitionExternalReferenceCodes")) {
+
+				if (jsonParserFieldValue != null) {
+					specification.setListTypeDefinitionExternalReferenceCodes(
+						toStrings((Object[])jsonParserFieldValue));
 				}
 			}
 			else if (Objects.equals(
@@ -466,6 +526,12 @@ public class SpecificationSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -498,4 +564,4 @@ public class SpecificationSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:271308499
+// LIFERAY-REST-BUILDER-HASH:1241858272

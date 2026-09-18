@@ -13,10 +13,10 @@ import ClayForm, {
 import ClayIcon from '@clayui/icon';
 import ClayLayout from '@clayui/layout';
 import ClayPanel from '@clayui/panel';
-import {ClayTooltipProvider} from '@clayui/tooltip';
 import {sub} from 'frontend-js-web';
 import React, {useState} from 'react';
 
+import HelpTooltipIcon from '../../../common/components/forms/HelpTooltipIcon';
 import {IPermissionItem} from '../../../common/components/forms/PermissionsTable';
 import {IVocabulary} from '../../../common/types/IVocabulary';
 import CategorizationProjects from '../components/CategorizationProjects';
@@ -36,6 +36,7 @@ const VISIBILITY_OPTIONS = [
 
 export default function EditGeneralInfo({
 	assetLibraries,
+	cmpEnabled,
 	defaultLanguageId,
 	externalReferenceCodeInputError,
 	externalReferenceCodeMaxLength,
@@ -56,6 +57,7 @@ export default function EditGeneralInfo({
 	vocabulary,
 }: {
 	assetLibraries: AssetLibraryType[];
+	cmpEnabled?: boolean;
 	defaultLanguageId: string;
 	externalReferenceCodeInputError: string;
 	externalReferenceCodeMaxLength: number;
@@ -76,8 +78,6 @@ export default function EditGeneralInfo({
 	vocabulary: IVocabulary;
 }) {
 	const [languageId, setLanguageId] = useState<string>(defaultLanguageId);
-
-	const featureFlagEnabled = !!Liferay.FeatureFlags['LPD-86291'];
 
 	const getLanguageLabel = (languageId: string) => {
 		return languageId.replace('_', '-');
@@ -313,32 +313,22 @@ export default function EditGeneralInfo({
 
 						{Liferay.Language.get('allow-multiple-categories')}
 
-						<ClayTooltipProvider>
-							<span
-								className="help-text-icon ml-2"
-								title={Liferay.Language.get(
-									'multi-valued-help'
-								)}
-							>
-								<ClayIcon symbol="question-circle-full" />
-							</span>
-						</ClayTooltipProvider>
+						<HelpTooltipIcon
+							className="ml-2"
+							message={Liferay.Language.get('multi-valued-help')}
+						/>
 					</label>
 
 					<div>
 						<label>
 							{Liferay.Language.get('visibility')}
 
-							<ClayTooltipProvider>
-								<span
-									className="help-text-icon ml-2"
-									title={Liferay.Language.get(
-										'visibility-help'
-									)}
-								>
-									<ClayIcon symbol="question-circle-full" />
-								</span>
-							</ClayTooltipProvider>
+							<HelpTooltipIcon
+								className="ml-2"
+								message={Liferay.Language.get(
+									'visibility-help'
+								)}
+							/>
 						</label>
 
 						<ClaySelectWithOption
@@ -370,9 +360,7 @@ export default function EditGeneralInfo({
 						className="mb-0 py-2 text-6 text-dark"
 						id="categorization-scope-title"
 					>
-						{featureFlagEnabled
-							? Liferay.Language.get('scope')
-							: Liferay.Language.get('space')}
+						{Liferay.Language.get('scope')}
 					</h2>
 
 					<CategorizationSpaces
@@ -384,7 +372,7 @@ export default function EditGeneralInfo({
 						setSpaceInputError={setSpaceInputError}
 					/>
 
-					{featureFlagEnabled && (
+					{cmpEnabled && (
 						<CategorizationProjects
 							checkboxText="vocabulary"
 							disabled={vocabulary.system}

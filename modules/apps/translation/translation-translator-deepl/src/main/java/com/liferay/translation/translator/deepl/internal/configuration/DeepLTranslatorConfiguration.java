@@ -23,7 +23,7 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
 )
 public interface DeepLTranslatorConfiguration {
 
-	@Meta.AD(name = "token", required = false)
+	@Meta.AD(name = "token", required = false, type = Meta.Type.Password)
 	public String authKey();
 
 	@Meta.AD(
@@ -37,6 +37,12 @@ public interface DeepLTranslatorConfiguration {
 		required = false
 	)
 	public String url();
+
+	@Meta.AD(
+		deflt = "", description = "user-agent-header-help",
+		name = "user-agent-header", required = false
+	)
+	public String userAgent();
 
 	@Meta.AD(
 		deflt = "https://api-free.deepl.com/v2/languages",

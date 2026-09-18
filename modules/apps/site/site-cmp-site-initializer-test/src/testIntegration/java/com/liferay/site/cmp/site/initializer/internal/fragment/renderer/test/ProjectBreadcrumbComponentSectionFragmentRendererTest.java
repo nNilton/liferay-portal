@@ -18,8 +18,6 @@ import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -37,9 +35,6 @@ import org.skyscreamer.jsonassert.JSONAssert;
 /**
  * @author Carolina Barbosa
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
 @RunWith(Arquillian.class)
 public class ProjectBreadcrumbComponentSectionFragmentRendererTest
 	extends BaseComponentSectionFragmentRendererTestCase {
@@ -66,8 +61,8 @@ public class ProjectBreadcrumbComponentSectionFragmentRendererTest
 					themeDisplay.getPathFriendlyURLPublic(),
 					GroupConstants.CMS_FRIENDLY_URL, "/e/edit-project/",
 					_portal.getClassNameId(
-						projectObjectDefinition.getClassName()),
-					StringPool.SLASH, projectObjectEntry.getObjectEntryId(),
+						cmpProjectObjectDefinition.getClassName()),
+					StringPool.SLASH, cmpProjectObjectEntry.getObjectEntryId(),
 					"?redirect=", themeDisplay.getURLCurrent())
 			).put(
 				"label", "Edit"
@@ -82,10 +77,11 @@ public class ProjectBreadcrumbComponentSectionFragmentRendererTest
 			JSONUtil.put(
 				"href",
 				StringBundler.concat(
-					"/o", projectObjectDefinition.getRESTContextPath(),
-					"/scopes/", projectObjectEntry.getGroupId(),
+					"/o", cmpProjectObjectDefinition.getRESTContextPath(),
+					"/scopes/", cmpProjectObjectEntry.getGroupId(),
 					"/by-external-reference-code/",
-					projectObjectEntry.getExternalReferenceCode(), "/subscribe")
+					cmpProjectObjectEntry.getExternalReferenceCode(),
+					"/subscribe")
 			).put(
 				"label", "Watch Project"
 			).put(
@@ -94,13 +90,14 @@ public class ProjectBreadcrumbComponentSectionFragmentRendererTest
 					themeDisplay.getPathFriendlyURLPublic(),
 					GroupConstants.CMS_FRIENDLY_URL, "/e/project/",
 					PortalUtil.getClassNameId(
-						projectObjectDefinition.getClassName()),
-					StringPool.SLASH, projectObjectEntry.getObjectEntryId())
+						cmpProjectObjectDefinition.getClassName()),
+					StringPool.SLASH, cmpProjectObjectEntry.getObjectEntryId())
 			).put(
 				"successMessage",
 				_language.format(
 					mockHttpServletRequest, "you-are-successfully-watching-x",
-					StringBundler.concat("<strong>", projectTitle, "</strong>"))
+					StringBundler.concat(
+						"<strong>", cmpProjectObjectEntryTitle, "</strong>"))
 			).put(
 				"symbolLeft", "bell-on"
 			).put(
@@ -117,17 +114,17 @@ public class ProjectBreadcrumbComponentSectionFragmentRendererTest
 				"confirmationMessage",
 				_language.format(
 					mockHttpServletRequest, "delete-project-confirmation-body",
-					projectTitle)
+					cmpProjectObjectEntryTitle)
 			).put(
 				"confirmationTitle",
 				_language.format(
 					mockHttpServletRequest, "delete-asset-confirmation-title",
-					projectTitle)
+					cmpProjectObjectEntryTitle)
 			).put(
 				"href",
 				StringBundler.concat(
-					"/o", projectObjectDefinition.getRESTContextPath(),
-					StringPool.SLASH, projectObjectEntry.getObjectEntryId())
+					"/o", cmpProjectObjectDefinition.getRESTContextPath(),
+					StringPool.SLASH, cmpProjectObjectEntry.getObjectEntryId())
 			).put(
 				"label", "Delete"
 			).put(
@@ -139,7 +136,8 @@ public class ProjectBreadcrumbComponentSectionFragmentRendererTest
 				"successMessage",
 				_language.format(
 					mockHttpServletRequest, "x-was-successfully-deleted",
-					StringBundler.concat("<strong>", projectTitle, "</strong>"))
+					StringBundler.concat(
+						"<strong>", cmpProjectObjectEntryTitle, "</strong>"))
 			).put(
 				"symbolLeft", "trash"
 			).put(
@@ -172,7 +170,7 @@ public class ProjectBreadcrumbComponentSectionFragmentRendererTest
 			).put(
 				"href", StringPool.BLANK
 			).put(
-				"label", projectTitle
+				"label", cmpProjectObjectEntryTitle
 			).toString(),
 			jsonObject.toString(), true);
 

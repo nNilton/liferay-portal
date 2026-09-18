@@ -21,6 +21,7 @@ import com.liferay.petra.sql.dsl.DSLQueryFactoryUtil;
 import com.liferay.petra.sql.dsl.Table;
 import com.liferay.petra.sql.dsl.expression.Predicate;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
@@ -37,6 +38,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * @author Carolina Barbosa
@@ -123,6 +125,62 @@ public class ObjectEntrySearchUtil {
 				(languageId == null) ? getLanguageId() : languageId
 			)
 		);
+	}
+
+	public static Predicate getLocalizedObjectFieldPredicate(
+		Column<?, ?> column, String defaultLanguageId,
+		DynamicObjectDefinitionLocalizationTable
+			dynamicObjectDefinitionLocalizationTable,
+		ObjectField objectField, Predicate objectFieldPredicate,
+		String preferredLanguageId) {
+
+		Column<DynamicObjectDefinitionLocalizationTable, String>
+			languageIdColumn =
+				dynamicObjectDefinitionLocalizationTable.getLanguageIdColumn();
+
+		Predicate preferredLanguageObjectFieldPredicate =
+			_getInLocalizationTablePredicate(
+				dynamicObjectDefinitionLocalizationTable,
+				languageIdColumn.eq(
+					preferredLanguageId
+				).and(
+					objectFieldPredicate
+				));
+
+		String dbType = objectField.getDBType();
+
+		if ((!Objects.equals(dbType, ObjectFieldConstants.DB_TYPE_CLOB) &&
+			 !Objects.equals(dbType, ObjectFieldConstants.DB_TYPE_STRING)) ||
+			Objects.equals(preferredLanguageId, defaultLanguageId)) {
+
+			return preferredLanguageObjectFieldPredicate;
+		}
+
+		Column<?, String> stringColumn = (Column<?, String>)column;
+
+		Predicate hasPreferredLanguageValuePredicate =
+			_getInLocalizationTablePredicate(
+				dynamicObjectDefinitionLocalizationTable,
+				languageIdColumn.eq(
+					preferredLanguageId
+				).and(
+					stringColumn.neq(StringPool.BLANK)
+				));
+
+		Predicate defaultLanguageObjectFieldPredicate =
+			_getInLocalizationTablePredicate(
+				dynamicObjectDefinitionLocalizationTable,
+				languageIdColumn.eq(
+					defaultLanguageId
+				).and(
+					objectFieldPredicate
+				));
+
+		return preferredLanguageObjectFieldPredicate.or(
+			hasPreferredLanguageValuePredicate.not(
+			).and(
+				defaultLanguageObjectFieldPredicate
+			));
 	}
 
 	public static Predicate getObjectEntryIndexPredicate(
@@ -282,14 +340,34 @@ public class ObjectEntrySearchUtil {
 			return column.eq(GetterUtil.getLong(value));
 		}
 		else if (dbType.equals(ObjectFieldConstants.DB_TYPE_STRING)) {
-			if (value == null) {
-				return column.isNull();
+			String valueString = GetterUtil.getString(value);
+
+			if (Validator.isNull(valueString)) {
+				return column.isNull(
+				).or(
+					column.eq(StringPool.BLANK)
+				).withParentheses();
 			}
 
-			return column.eq(String.valueOf(value));
+			return column.eq(valueString);
 		}
 
 		return null;
+	}
+
+	private static Predicate _getInLocalizationTablePredicate(
+		DynamicObjectDefinitionLocalizationTable
+			dynamicObjectDefinitionLocalizationTable,
+		Predicate wherePredicate) {
+
+		return ObjectEntryTable.INSTANCE.objectEntryId.in(
+			DSLQueryFactoryUtil.select(
+				dynamicObjectDefinitionLocalizationTable.getForeignKeyColumn()
+			).from(
+				dynamicObjectDefinitionLocalizationTable
+			).where(
+				wherePredicate
+			));
 	}
 
 }

@@ -42,13 +42,14 @@ public class SegmentsEntryExternalReferenceCodeUpgradeProcessTest
 
 		return new ExternalReferenceCodeModel[] {
 			_segmentsEntryLocalService.addSegmentsEntry(
-				RandomTestUtil.randomString(),
+				null, RandomTestUtil.randomString(),
 				Collections.singletonMap(
 					defaultLocale, RandomTestUtil.randomString()),
 				Collections.singletonMap(
 					defaultLocale, RandomTestUtil.randomString()),
 				true, CriteriaSerializer.serialize(new Criteria()),
 				SegmentsEntryConstants.SOURCE_DEFAULT,
+				SegmentsEntryConstants.TYPE_DEFAULT,
 				ServiceContextTestUtil.getServiceContext(group.getGroupId()))
 		};
 	}

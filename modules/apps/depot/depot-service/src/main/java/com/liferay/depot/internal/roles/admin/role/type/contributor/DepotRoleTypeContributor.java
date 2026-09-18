@@ -8,6 +8,8 @@ package com.liferay.depot.internal.roles.admin.role.type.contributor;
 import com.liferay.depot.constants.DepotRolesConstants;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.Language;
+import com.liferay.portal.kernel.license.util.App;
+import com.liferay.portal.kernel.license.util.LicenseManagerUtil;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
@@ -31,6 +33,17 @@ import org.osgi.service.component.annotations.Reference;
 public class DepotRoleTypeContributor implements RoleTypeContributor {
 
 	@Override
+	public String getDefaultSubtype() {
+		if (FeatureFlagManagerUtil.isEnabled(
+				CompanyThreadLocal.getCompanyId(), "LPD-96750")) {
+
+			return DepotRolesConstants.SUBTYPE_SPACE;
+		}
+
+		return RoleTypeContributor.super.getDefaultSubtype();
+	}
+
+	@Override
 	public String[] getExcludedRoleNames() {
 		return _EXCLUDED_ROLE_NAMES;
 	}
@@ -42,13 +55,7 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 
 	@Override
 	public String getName() {
-		if (FeatureFlagManagerUtil.isEnabled(
-				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
-
-			return "space";
-		}
-
-		return "asset-library";
+		return "space";
 	}
 
 	@Override
@@ -61,41 +68,23 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 			subtypes.add(DepotRolesConstants.SUBTYPE_DESIGN_LIBRARY);
 		}
 
-		if (FeatureFlagManagerUtil.isEnabled(
-				CompanyThreadLocal.getCompanyId(), "LPD-58677")) {
-
+		if (LicenseManagerUtil.isAppEnabled(App.CMP)) {
 			subtypes.add(DepotRolesConstants.SUBTYPE_PROJECT);
 		}
 
-		if (FeatureFlagManagerUtil.isEnabled(
-				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
-
-			subtypes.add(DepotRolesConstants.SUBTYPE_SPACE);
-		}
+		subtypes.add(DepotRolesConstants.SUBTYPE_SPACE);
 
 		return subtypes.toArray(new String[0]);
 	}
 
 	@Override
 	public String getTabTitle(Locale locale) {
-		if (FeatureFlagManagerUtil.isEnabled(
-				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
-
-			return _language.get(locale, "space-roles");
-		}
-
-		return _language.get(locale, "asset-library-roles");
+		return _language.get(locale, "space-roles");
 	}
 
 	@Override
 	public String getTitle(Locale locale) {
-		if (FeatureFlagManagerUtil.isEnabled(
-				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
-
-			return _language.get(locale, "space-role");
-		}
-
-		return _language.get(locale, "asset-library-role");
+		return _language.get(locale, "space-role");
 	}
 
 	@Override
@@ -120,7 +109,18 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 				role.getName(),
 				DepotRolesConstants.ASSET_LIBRARY_CONNECTED_SITE_MEMBER) ||
 			Objects.equals(
-				role.getName(), DepotRolesConstants.ASSET_LIBRARY_OWNER)) {
+				role.getName(), DepotRolesConstants.ASSET_LIBRARY_OWNER) ||
+			Objects.equals(
+				role.getName(),
+				DepotRolesConstants.DESIGN_LIBRARY_ADMINISTRATOR) ||
+			Objects.equals(
+				role.getName(), DepotRolesConstants.DESIGN_LIBRARY_MEMBER) ||
+			Objects.equals(
+				role.getName(), DepotRolesConstants.DESIGN_LIBRARY_OWNER) ||
+			Objects.equals(
+				role.getName(), DepotRolesConstants.PROJECT_MANAGER) ||
+			Objects.equals(
+				role.getName(), DepotRolesConstants.PROJECT_MEMBER)) {
 
 			return false;
 		}
@@ -134,7 +134,9 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 				role.getName(), DepotRolesConstants.ASSET_LIBRARY_MEMBER) ||
 			Objects.equals(
 				role.getName(),
-				DepotRolesConstants.ASSET_LIBRARY_CONNECTED_SITE_MEMBER)) {
+				DepotRolesConstants.ASSET_LIBRARY_CONNECTED_SITE_MEMBER) ||
+			Objects.equals(
+				role.getName(), DepotRolesConstants.DESIGN_LIBRARY_MEMBER)) {
 
 			return true;
 		}
@@ -143,7 +145,8 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 	}
 
 	private static final String[] _EXCLUDED_ROLE_NAMES = {
-		DepotRolesConstants.ASSET_LIBRARY_OWNER
+		DepotRolesConstants.ASSET_LIBRARY_OWNER,
+		DepotRolesConstants.DESIGN_LIBRARY_OWNER
 	};
 
 	@Reference

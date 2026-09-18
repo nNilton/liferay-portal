@@ -1,5 +1,6 @@
 @import 'atlas-variables';
 
+$separator: 0.5px solid var(--secondary-l0);
 $sidebar-width: 320px;
 $toolbar-height: 55px;
 
@@ -9,6 +10,7 @@ $toolbar-height: 55px;
 
 .audience-builder-attribute {
 	border: 2px solid transparent;
+	border-radius: 0.5rem;
 	cursor: grab;
 	height: 55px;
 
@@ -43,12 +45,6 @@ $toolbar-height: 55px;
 	}
 }
 
-.audience-builder-conjunction-menu {
-	.dropdown-item {
-		text-transform: uppercase;
-	}
-}
-
 .audience-builder-drop-zone {
 	background-color: $white;
 	border: 2px dashed transparent;
@@ -62,6 +58,37 @@ $toolbar-height: 55px;
 
 	&--over {
 		background-color: var(--primary-l3);
+	}
+}
+
+.audience-builder-group {
+	position: relative;
+
+	&--drop-bottom::after,
+	&--drop-top::before {
+		background-color: $primary;
+		content: '';
+		height: 4px;
+		left: 0;
+		position: absolute;
+		right: 0;
+		z-index: 1;
+	}
+
+	&--drop-bottom::after {
+		bottom: 0;
+	}
+
+	&--drop-top::before {
+		top: 0;
+	}
+}
+
+.audience-builder-general-settings {
+	.collapse-icon.collapse-icon-middle .collapse-icon-closed,
+	.collapse-icon.collapse-icon-middle .collapse-icon-open {
+		position: static;
+		transform: none;
 	}
 }
 
@@ -86,10 +113,17 @@ $toolbar-height: 55px;
 	}
 
 	&--drop-bottom {
+		background-color: var(--primary-l3);
 		box-shadow: inset 0 -4px 0 0 $primary;
 	}
 
+	&--drop-group {
+		background-color: var(--primary-l3);
+		box-shadow: inset 0 0 0 4px $primary;
+	}
+
 	&--drop-top {
+		background-color: var(--primary-l3);
 		box-shadow: inset 0 4px 0 0 $primary;
 	}
 
@@ -118,5 +152,14 @@ $toolbar-height: 55px;
 }
 
 .audience-builder-sidebar {
+	border-right: $separator;
 	width: $sidebar-width;
+}
+
+.audience-builder-sidebar-header {
+	border-bottom: 1px solid var(--secondary-l3);
+}
+
+.audience-builder-toolbar {
+	border-bottom: $separator;
 }

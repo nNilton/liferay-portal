@@ -12,11 +12,23 @@
 }
 
 .dropdown-header {
-	@include clay-css($dropdown-header);
+	$_breakpoint-down: map-get($dropdown-header, breakpoint-down);
+	$_mobile: map-get($dropdown-header, mobile);
 
-	@include media-breakpoint-down(map-get($dropdown-header, breakpoint-down)) {
-		@include clay-css(map-get($dropdown-header, mobile));
+	$dropdown-header: map-remove($dropdown-header, 'breakpoint-down', 'mobile');
+
+	@if ($_breakpoint-down) {
+		$dropdown-header: map-deep-merge(
+			$dropdown-header,
+			(
+				media-breakpoint-down: (
+					$_breakpoint-down: $_mobile,
+				),
+			)
+		);
 	}
+
+	@include clay-css($dropdown-header);
 
 	&:first-child {
 		@include clay-css(map-get($dropdown-header, first-child));
@@ -250,6 +262,21 @@
 		@include clay-button-variant(
 			map-get($dropdown-action, dropdown-toggle)
 		);
+	}
+}
+
+// Dropdown Menu Has Caption
+
+.dropdown-menu-has-caption {
+	padding-bottom: 0;
+
+	.dropdown-caption {
+		background-color: inherit;
+		border-top: 1px solid $dropdown-divider-bg;
+		bottom: 0;
+		padding: $dropdown-padding-y $dropdown-item-padding-x;
+		position: sticky;
+		z-index: 1;
 	}
 }
 

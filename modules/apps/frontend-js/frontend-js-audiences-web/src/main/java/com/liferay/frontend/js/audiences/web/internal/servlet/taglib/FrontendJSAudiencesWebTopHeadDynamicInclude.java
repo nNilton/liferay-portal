@@ -11,6 +11,7 @@ import com.liferay.frontend.js.audiences.ElementVariations;
 import com.liferay.frontend.js.audiences.ElementVariationsProvider;
 import com.liferay.frontend.js.audiences.web.internal.configuration.FrontendJSAudiencesConfiguration;
 import com.liferay.frontend.js.audiences.web.internal.util.BootstrapJavaScriptUtil;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.content.security.policy.ContentSecurityPolicyNonceProviderUtil;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
@@ -24,6 +25,8 @@ import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.url.builder.AbsolutePortalURLBuilder;
 import com.liferay.portal.url.builder.AbsolutePortalURLBuilderFactory;
 import com.liferay.portal.url.builder.ServletAbsolutePortalURLBuilder;
+import com.liferay.segments.manager.SegmentsExperienceManager;
+import com.liferay.segments.service.SegmentsExperienceLocalService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -51,7 +54,7 @@ public class FrontendJSAudiencesWebTopHeadDynamicInclude
 
 		long companyId = _portal.getCompanyId(httpServletRequest);
 
-		if (!FeatureFlagManagerUtil.isEnabled(companyId, "LPD-83647")) {
+		if (!FeatureFlagManagerUtil.isEnabled(companyId, "LPD-85746")) {
 			return;
 		}
 
@@ -69,21 +72,46 @@ public class FrontendJSAudiencesWebTopHeadDynamicInclude
 			return;
 		}
 
-		ThemeDisplay themeDisplay =
-			(ThemeDisplay)httpServletRequest.getAttribute(
-				WebKeys.THEME_DISPLAY);
+		FrontendJSAudiencesConfiguration frontendJSAudiencesConfiguration;
 
-		ElementVariations elementVariations =
-			_elementVariationsProvider.getElementVariations(
-				themeDisplay.getPlid());
-
-		if (elementVariations == null) {
-			return;
+		try {
+			frontendJSAudiencesConfiguration =
+				_configurationProvider.getCompanyConfiguration(
+					FrontendJSAudiencesConfiguration.class, companyId);
+		}
+		catch (ConfigurationException configurationException) {
+			throw new IOException(configurationException);
 		}
 
 		PrintWriter printWriter = httpServletResponse.getWriter();
 
-		printWriter.print("<script data-senna-track=\"temporary\"");
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
+		SegmentsExperienceManager segmentsExperienceManager =
+			new SegmentsExperienceManager(_segmentsExperienceLocalService);
+
+		long segmentsExperienceId =
+			segmentsExperienceManager.getSegmentsExperienceId(
+				httpServletRequest);
+
+		ElementVariations elementVariations =
+			_elementVariationsProvider.getElementVariations(
+				themeDisplay.getPlid(), segmentsExperienceId);
+
+		if (elementVariations != null) {
+			printWriter.print("<meta content=\"");
+			printWriter.print(themeDisplay.getPlid());
+			printWriter.print(StringPool.COLON);
+			printWriter.print(segmentsExperienceId);
+			printWriter.print(StringPool.COLON);
+			printWriter.print(elementVariations.getHash());
+			printWriter.print("\" name=\"audiences-variations\">");
+		}
+
+		printWriter.print(
+			"<script data-senna-track=\"permanent\" id=\"audiencesBootstrap\"");
 		printWriter.print(
 			ContentSecurityPolicyNonceProviderUtil.getNonceAttribute(
 				httpServletRequest));
@@ -102,25 +130,10 @@ public class FrontendJSAudiencesWebTopHeadDynamicInclude
 		printWriter.print(BootstrapJavaScriptUtil.getHash());
 		printWriter.print(").js?audiencesDefinitionHash=");
 		printWriter.print(audiencesDefinition.getHash());
-		printWriter.print("&elementVariationsHash=");
-		printWriter.print(elementVariations.getHash());
+		printWriter.print("&detectionTimeout=");
+		printWriter.print(frontendJSAudiencesConfiguration.detectionTimeout());
 		printWriter.print("&enableLog=");
-
-		FrontendJSAudiencesConfiguration frontendJSAudiencesConfiguration;
-
-		try {
-			frontendJSAudiencesConfiguration =
-				_configurationProvider.getCompanyConfiguration(
-					FrontendJSAudiencesConfiguration.class, companyId);
-		}
-		catch (ConfigurationException configurationException) {
-			throw new IOException(configurationException);
-		}
-
 		printWriter.print(frontendJSAudiencesConfiguration.enableLog());
-
-		printWriter.print("&plid=");
-		printWriter.print(themeDisplay.getPlid());
 		printWriter.print("\" type=\"module\"></script>");
 	}
 
@@ -144,5 +157,8 @@ public class FrontendJSAudiencesWebTopHeadDynamicInclude
 
 	@Reference
 	private Portal _portal;
+
+	@Reference
+	private SegmentsExperienceLocalService _segmentsExperienceLocalService;
 
 }

@@ -13,6 +13,7 @@ import jakarta.annotation.Generated;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -116,6 +117,21 @@ public class ResourceFolderSerDes {
 			sb.append("\"fragmentSet\": ");
 
 			sb.append(String.valueOf(resourceFolder.getFragmentSet()));
+		}
+
+		if (resourceFolder.getFragmentSetExternalReferenceCode() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"fragmentSetExternalReferenceCode\": ");
+
+			sb.append("\"");
+
+			sb.append(
+				_escape(resourceFolder.getFragmentSetExternalReferenceCode()));
+
+			sb.append("\"");
 		}
 
 		if (resourceFolder.getName() != null) {
@@ -227,6 +243,16 @@ public class ResourceFolderSerDes {
 				"fragmentSet", String.valueOf(resourceFolder.getFragmentSet()));
 		}
 
+		if (resourceFolder.getFragmentSetExternalReferenceCode() == null) {
+			map.put("fragmentSetExternalReferenceCode", null);
+		}
+		else {
+			map.put(
+				"fragmentSetExternalReferenceCode",
+				String.valueOf(
+					resourceFolder.getFragmentSetExternalReferenceCode()));
+		}
+
 		if (resourceFolder.getName() == null) {
 			map.put("name", null);
 		}
@@ -291,6 +317,12 @@ public class ResourceFolderSerDes {
 			else if (Objects.equals(jsonParserFieldName, "fragmentSet")) {
 				return false;
 			}
+			else if (Objects.equals(
+						jsonParserFieldName,
+						"fragmentSetExternalReferenceCode")) {
+
+				return false;
+			}
 			else if (Objects.equals(jsonParserFieldName, "name")) {
 				return false;
 			}
@@ -344,6 +376,15 @@ public class ResourceFolderSerDes {
 				if (jsonParserFieldValue != null) {
 					resourceFolder.setFragmentSet(
 						FragmentSetSerDes.toDTO((String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(
+						jsonParserFieldName,
+						"fragmentSetExternalReferenceCode")) {
+
+				if (jsonParserFieldValue != null) {
+					resourceFolder.setFragmentSetExternalReferenceCode(
+						(String)jsonParserFieldValue);
 				}
 			}
 			else if (Objects.equals(jsonParserFieldName, "name")) {
@@ -418,6 +459,12 @@ public class ResourceFolderSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -450,4 +497,4 @@ public class ResourceFolderSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:796276868
+// LIFERAY-REST-BUILDER-HASH:-263657552

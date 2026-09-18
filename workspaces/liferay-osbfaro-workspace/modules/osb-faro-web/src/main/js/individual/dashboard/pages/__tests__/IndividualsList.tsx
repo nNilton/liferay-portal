@@ -3,12 +3,12 @@ import * as useStatefulPaginationModule from 'shared/hooks/useStatefulPagination
 
 import IndividualsList from '../IndividualsList';
 import React from 'react';
-import {createMemoryHistory} from 'history';
+import {AccountTypes} from 'segment/segment-editor/dynamic/utils/constants';
 import {createOrderIOMap, NAME} from 'shared/util/pagination';
 import {Map, Set} from 'immutable';
 import {RangeKeyTimeRanges} from 'shared/util/constants';
 import {render} from '@testing-library/react';
-import {Router} from 'react-router';
+import {MemoryRouter} from 'react-router-dom';
 import {waitForLoadingToBeRemoved} from 'test/helpers';
 
 jest.unmock('react-dom');
@@ -79,12 +79,10 @@ describe('Individuals List', () => {
 			})
 		);
 
-		const history = createMemoryHistory();
-
 		const {getByText} = render(
-			<Router history={history}>
+			<MemoryRouter>
 				<IndividualsList />
-			</Router>
+			</MemoryRouter>
 		);
 
 		await waitForLoadingToBeRemoved(document.body);
@@ -100,12 +98,10 @@ describe('Individuals List', () => {
 			Promise.resolve({items: [], total: 0})
 		);
 
-		const history = createMemoryHistory();
-
 		render(
-			<Router history={history}>
+			<MemoryRouter>
 				<IndividualsList />
-			</Router>
+			</MemoryRouter>
 		);
 
 		await waitForLoadingToBeRemoved(document.body);
@@ -127,12 +123,10 @@ describe('Individuals List', () => {
 			Promise.resolve({items: [], total: 0})
 		);
 
-		const history = createMemoryHistory();
-
 		const {getByText} = render(
-			<Router history={history}>
+			<MemoryRouter>
 				<IndividualsList />
-			</Router>
+			</MemoryRouter>
 		);
 
 		await waitForLoadingToBeRemoved(document.body);
@@ -157,12 +151,10 @@ describe('Individuals List', () => {
 			Promise.resolve({items: [], total: 0})
 		);
 
-		const history = createMemoryHistory();
-
 		render(
-			<Router history={history}>
+			<MemoryRouter>
 				<IndividualsList />
-			</Router>
+			</MemoryRouter>
 		);
 
 		await waitForLoadingToBeRemoved(document.body);
@@ -200,12 +192,10 @@ describe('Individuals List', () => {
 				resetPage: jest.fn(),
 			});
 
-		const history = createMemoryHistory();
-
 		render(
-			<Router history={history}>
+			<MemoryRouter>
 				<IndividualsList />
-			</Router>
+			</MemoryRouter>
 		);
 
 		await waitForLoadingToBeRemoved(document.body);
@@ -242,12 +232,10 @@ describe('Individuals List', () => {
 				resetPage: jest.fn(),
 			});
 
-		const history = createMemoryHistory();
-
 		render(
-			<Router history={history}>
+			<MemoryRouter>
 				<IndividualsList />
-			</Router>
+			</MemoryRouter>
 		);
 
 		await waitForLoadingToBeRemoved(document.body);
@@ -259,5 +247,65 @@ describe('Individuals List', () => {
 		);
 
 		spy.mockRestore();
+	});
+
+	it('passes the selected account types to the search API', async () => {
+		(API.individuals.search as jest.Mock).mockReturnValue(
+			Promise.resolve({items: [], total: 0})
+		);
+
+		const spy = jest
+			.spyOn(useStatefulPaginationModule, 'useStatefulPagination')
+			.mockReturnValue({
+				delta: 20,
+				filterBy: Map({
+					accountTypes: Set([AccountTypes.UNKNOWN]),
+				}) as any,
+				onDeltaChange: jest.fn(),
+				onFilterByChange: jest.fn(),
+				onOrderIOMapChange: jest.fn(),
+				onPageChange: jest.fn(),
+				onQueryChange: jest.fn(),
+				orderIOMap: createOrderIOMap(NAME),
+				page: 1,
+				query: '',
+				resetPage: jest.fn(),
+			});
+
+		render(
+			<MemoryRouter>
+				<IndividualsList />
+			</MemoryRouter>
+		);
+
+		await waitForLoadingToBeRemoved(document.body);
+
+		expect(API.individuals.search as jest.Mock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				accountTypes: [AccountTypes.UNKNOWN],
+			})
+		);
+
+		spy.mockRestore();
+	});
+
+	it('does not pass accountTypes to the search API when no account type is selected', async () => {
+		(API.individuals.search as jest.Mock).mockReturnValue(
+			Promise.resolve({items: [], total: 0})
+		);
+
+		render(
+			<MemoryRouter>
+				<IndividualsList />
+			</MemoryRouter>
+		);
+
+		await waitForLoadingToBeRemoved(document.body);
+
+		expect(API.individuals.search as jest.Mock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				accountTypes: undefined,
+			})
+		);
 	});
 });

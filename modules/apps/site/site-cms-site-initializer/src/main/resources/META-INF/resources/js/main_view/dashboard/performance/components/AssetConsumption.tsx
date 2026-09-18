@@ -14,6 +14,12 @@ import React, {useContext, useEffect, useMemo, useState} from 'react';
 
 import {BaseCard} from '../../common/BaseCard';
 import PickerTrigger from '../../common/PickerTrigger';
+import {AllCategoriesDropdown} from '../../common/filters/AllCategoriesDropdown';
+import {AllStructureTypesDropdown} from '../../common/filters/AllStructureTypesDropdown';
+import {AllTagsDropdown} from '../../common/filters/AllTagsDropdown';
+import {AllVocabulariesDropdown} from '../../common/filters/AllVocabulariesDropdown';
+import {Item} from '../../common/filters/FilterDropdown';
+import {initialFilters} from '../../common/filters/filters';
 import {PerformanceContext} from '../PerformanceContext';
 import PerformanceService from '../PerformanceService';
 import {AssetConsumption as AssetConsumptionData} from '../types';
@@ -21,6 +27,10 @@ import {AssetConsumption as AssetConsumptionData} from '../types';
 type GroupBy = 'category' | 'structure' | 'tag' | 'vocabulary';
 
 type ViewType = 'chart' | 'table';
+
+function toFilterParam(value: string) {
+	return value === 'all' ? undefined : value;
+}
 
 const DELTAS = [20, 40, 60].map((label) => ({label}));
 
@@ -37,15 +47,26 @@ const VIEW_OPTIONS: {icon: string; label: string; value: ViewType}[] = [
 ];
 
 export function AssetConsumption() {
-	const {range, space} = useContext(PerformanceContext);
+	const {constants, project, range, space} = useContext(PerformanceContext);
 
 	const [assetConsumption, setAssetConsumption] =
 		useState<AssetConsumptionData>();
+	const [filters, setFilters] = useState<{
+		category: Item;
+		structure: Item;
+		tag: Item;
+		vocabulary: Item;
+	}>(initialFilters);
 	const [groupBy, setGroupBy] = useState<GroupBy>('structure');
 	const [loading, setLoading] = useState(true);
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState(20);
-	const [viewType, setViewType] = useState<ViewType>('table');
+	const [viewType, setViewType] = useState<ViewType>('chart');
+
+	const cmpProjectIds = useMemo(
+		() => (project.value === 'all' ? undefined : [project.value]),
+		[project.value]
+	);
 
 	const depotEntryIds = useMemo(
 		() => (space.value === 'all' ? undefined : [space.value]),
@@ -53,15 +74,25 @@ export function AssetConsumption() {
 	);
 
 	useEffect(() => {
+		setFilters(initialFilters);
+		setPage(1);
+	}, [project.value, space.value]);
+
+	useEffect(() => {
 		async function fetchData() {
 			setLoading(true);
 
 			const {data, error} = await PerformanceService.getAssetConsumption({
+				categoryId: toFilterParam(filters.category.value),
+				cmpProjectIds,
 				depotEntryIds,
 				groupBy,
 				page,
 				pageSize,
 				rangeKey: range.rangeKey,
+				structureId: toFilterParam(filters.structure.value),
+				tagId: toFilterParam(filters.tag.value),
+				vocabularyId: toFilterParam(filters.vocabulary.value),
 			});
 
 			if (data) {
@@ -76,7 +107,15 @@ export function AssetConsumption() {
 		}
 
 		fetchData();
-	}, [depotEntryIds, groupBy, page, pageSize, range.rangeKey]);
+	}, [
+		cmpProjectIds,
+		depotEntryIds,
+		filters,
+		groupBy,
+		page,
+		pageSize,
+		range.rangeKey,
+	]);
 
 	const groupByLabel =
 		GROUP_BY_OPTIONS.find(({value}) => value === groupBy)?.label ?? '';
@@ -108,26 +147,32 @@ export function AssetConsumption() {
 			);
 		}
 
-		if (viewType === 'chart') {
-			return null;
-		}
+		const isChart = viewType === 'chart';
+		const cellClassName = isChart ? 'border-0' : '';
 
 		return (
 			<>
-				<Table columnsVisibility={false} hover={false}>
+				<Table
+					borderless={isChart}
+					columnsVisibility={false}
+					hover={false}
+					striped={false}
+				>
 					<Head
 						items={[
 							{
 								align: 'left' as const,
 								id: 'title',
 								name: groupByLabel,
-								width: 'calc(100% - 340px)',
+								width: isChart ? '200px' : 'calc(100% - 340px)',
 							},
 							{
-								align: 'right' as const,
+								align: isChart
+									? ('left' as const)
+									: ('right' as const),
 								id: 'views',
 								name: Liferay.Language.get('views'),
-								width: '200px',
+								width: isChart ? 'calc(100% - 340px)' : '200px',
 							},
 							{
 								align: 'right' as const,
@@ -151,30 +196,63 @@ export function AssetConsumption() {
 					</Head>
 
 					<Body items={items}>
-						{({count, title}) => (
-							<Row>
-								<Cell>
-									<Text size={3} weight="semi-bold">
-										{title ||
-											sub(
-												Liferay.Language.get('no-x'),
-												groupByLabel
-											)}
-									</Text>
-								</Cell>
+						{({count, title}) => {
+							const percentage = totalCount
+								? (count / totalCount) * 100
+								: 0;
 
-								<Cell align="right">{toThousands(count)}</Cell>
+							return (
+								<Row>
+									<Cell className={cellClassName}>
+										<Text size={3} weight="semi-bold">
+											{title ||
+												sub(
+													Liferay.Language.get(
+														'no-x'
+													),
+													groupByLabel
+												)}
+										</Text>
+									</Cell>
 
-								<Cell align="right">
-									{totalCount
-										? ((count / totalCount) * 100).toFixed(
-												2
-											)
-										: '0.00'}
-									%
-								</Cell>
-							</Row>
-						)}
+									<Cell
+										align={isChart ? undefined : 'right'}
+										className={cellClassName}
+									>
+										{isChart ? (
+											<div className="cms-dashboard__volume-chart">
+												<div
+													className="cms-dashboard__volume-chart__bar"
+													style={{
+														width: `${percentage}%`,
+													}}
+												/>
+
+												<div className="cms-dashboard__volume-chart__value">
+													<Text
+														size={3}
+														weight="semi-bold"
+													>
+														{toThousands(count)}
+													</Text>
+												</div>
+											</div>
+										) : (
+											toThousands(count)
+										)}
+									</Cell>
+
+									<Cell
+										align="right"
+										className={cellClassName}
+									>
+										<Text size={3} weight="semi-bold">
+											{percentage.toFixed(2)}%
+										</Text>
+									</Cell>
+								</Row>
+							);
+						}}
 					</Body>
 				</Table>
 
@@ -224,30 +302,94 @@ export function AssetConsumption() {
 			title={Liferay.Language.get('asset-consumption')}
 			uppercaseTitle={false}
 		>
-			<div className="align-items-baseline d-flex mb-3">
-				<span className="mr-2">
-					<Text size={3} weight="semi-bold">
-						{Liferay.Language.get('group-by')}
-					</Text>
-				</span>
+			<div className="align-items-lg-center d-flex flex-column flex-lg-row mb-3">
+				<div className="align-items-center d-flex mb-2 mb-lg-0 mr-lg-4">
+					<span className="mr-2">
+						<Text size={3} weight="semi-bold">
+							{Liferay.Language.get('group-by')}
+						</Text>
+					</span>
 
-				<Picker
-					aria-label={Liferay.Language.get('group-by')}
-					as={PickerTrigger}
-					borderless
-					items={GROUP_BY_OPTIONS}
-					onSelectionChange={(key) => {
-						setGroupBy(key as GroupBy);
-						setPage(1);
-					}}
-					selectedKey={groupBy}
-				>
-					{({label, value}) => (
-						<Option key={value} textValue={label}>
-							{label}
-						</Option>
-					)}
-				</Picker>
+					<Picker
+						aria-label={Liferay.Language.get('group-by')}
+						as={PickerTrigger}
+						borderless
+						items={GROUP_BY_OPTIONS}
+						onSelectionChange={(key) => {
+							setGroupBy(key as GroupBy);
+							setPage(1);
+						}}
+						selectedKey={groupBy}
+					>
+						{({label, value}) => (
+							<Option key={value} textValue={label}>
+								{label}
+							</Option>
+						)}
+					</Picker>
+				</div>
+
+				<div className="d-flex flex-md-row flex-row flex-xs-column">
+					<div className="align-items-center d-flex mb-2 mb-lg-0 mr-lg-3">
+						<span className="align-self-lg-auto align-self-start mr-2">
+							<Text size={3} weight="semi-bold">
+								{Liferay.Language.get('filter-by')}
+							</Text>
+						</span>
+					</div>
+
+					<div className="d-flex flex-wrap">
+						<div className="mb-2 mb-lg-0 mr-2">
+							<AllStructureTypesDropdown
+								ercContentStructures={
+									constants.ercContentStructures
+								}
+								ercFileTypes={constants.ercFileTypes}
+								item={filters.structure}
+								onSelectItem={(structure) => {
+									setFilters({...filters, structure});
+									setPage(1);
+								}}
+							/>
+						</div>
+
+						<div className="mb-2 mb-lg-0 mr-2">
+							<AllVocabulariesDropdown
+								cmsGroupId={constants.cmsGroupId}
+								depotEntryId={space.value}
+								item={filters.vocabulary}
+								onSelectItem={(vocabulary) => {
+									setFilters({...filters, vocabulary});
+									setPage(1);
+								}}
+							/>
+						</div>
+
+						<div className="mb-2 mb-lg-0 mr-2">
+							<AllCategoriesDropdown
+								cmsGroupId={constants.cmsGroupId}
+								depotEntryId={space.value}
+								item={filters.category}
+								onSelectItem={(category) => {
+									setFilters({...filters, category});
+									setPage(1);
+								}}
+							/>
+						</div>
+
+						<div className="mb-2 mb-lg-0">
+							<AllTagsDropdown
+								cmsGroupId={constants.cmsGroupId}
+								depotEntryId={space.value}
+								item={filters.tag}
+								onSelectItem={(tag) => {
+									setFilters({...filters, tag});
+									setPage(1);
+								}}
+							/>
+						</div>
+					</div>
+				</div>
 			</div>
 
 			{renderBody()}

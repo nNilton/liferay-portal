@@ -11,12 +11,12 @@ import {
 	RelationalOperators,
 	TimeSpans,
 } from '../utils/constants';
-import {getEventId, getSupportedApplicationIds} from '../utils/activity-keys';
 import {createCustomValueMap} from '../utils/custom-inputs';
 import {FieldOwnerTypes} from 'shared/util/constants';
 import {jsDatetoYYYYMMDD} from '../utils/utils';
 import {List} from 'immutable';
 import {Property, PropertyGroup, PropertySubgroup} from 'shared/util/records';
+import {DEFAULT_UTM_PARAMETER_OPTIONS} from '../utils/properties/session-properties';
 import {Routes, toRoute} from 'shared/util/router';
 import {useCurrentUser} from 'shared/hooks/useCurrentUser';
 import {useParams} from 'react-router-dom';
@@ -80,6 +80,24 @@ export const getDefaultValue = (property: Property): any => {
 					],
 				},
 			]);
+		case PropertyTypes.SearchTerm:
+			return createCustomValueMap([
+				{
+					key: 'criterionGroup',
+					value: [
+						{
+							operatorName: RelationalOperators.EQ,
+							propertyName: 'name',
+							value: name,
+						},
+						{
+							operatorName: RelationalOperators.EQ,
+							propertyName: 'searching',
+							value: 'true',
+						},
+					],
+				},
+			]);
 		case PropertyTypes.AccountDate:
 			return createCustomValueMap([
 				{
@@ -93,6 +111,7 @@ export const getDefaultValue = (property: Property): any => {
 					],
 				},
 			]);
+		case PropertyTypes.AccountSelectText:
 		case PropertyTypes.AccountNumber:
 		case PropertyTypes.AccountText:
 		case PropertyTypes.OrganizationSelectText:
@@ -136,22 +155,20 @@ export const getDefaultValue = (property: Property): any => {
 				{key: 'operator', value: RelationalOperators.GE},
 				{key: 'value', value: 1},
 			]);
-		case PropertyTypes.Behavior: {
-			const applicationId = getSupportedApplicationIds(name)[0];
+		case PropertyTypes.Behavior:
+
+			// No asset type is seeded: the criterion starts without an asset
+			// filter so the picker shows the "Select a type" placeholder and the
+			// user must choose a type (or Page) before the segment can be saved.
 
 			return createCustomValueMap([
 				{
 					key: 'criterionGroup',
 					value: [
 						{
-							operatorName: RelationalOperators.EQ,
-							propertyName: 'applicationId',
-							value: applicationId,
-						},
-						{
-							operatorName: RelationalOperators.EQ,
-							propertyName: 'eventId',
-							value: getEventId(applicationId, name),
+							operatorName: FunctionalOperators.Contains,
+							propertyName: 'attribute/',
+							value: '',
 						},
 						{
 							operatorName: RelationalOperators.GT,
@@ -163,7 +180,6 @@ export const getDefaultValue = (property: Property): any => {
 				{key: 'operator', value: RelationalOperators.GE},
 				{key: 'value', value: 1},
 			]);
-		}
 		case PropertyTypes.Tag:
 		case PropertyTypes.Vocabulary:
 			return createCustomValueMap([
@@ -179,6 +195,19 @@ export const getDefaultValue = (property: Property): any => {
 							operatorName: RelationalOperators.EQ,
 							propertyName: name,
 							value: 'true',
+						},
+					],
+				},
+			]);
+		case PropertyTypes.SessionChannel:
+			return createCustomValueMap([
+				{
+					key: 'criterionGroup',
+					value: [
+						{
+							operatorName: RelationalOperators.EQ,
+							propertyName: name,
+							value: options?.length ? options[0].value : '',
 						},
 					],
 				},
@@ -199,6 +228,20 @@ export const getDefaultValue = (property: Property): any => {
 							operatorName: RelationalOperators.GT,
 							propertyName: 'completeDate',
 							value: TimeSpans.Last24Hours,
+						},
+					],
+				},
+			]);
+		case PropertyTypes.SessionUtmParameter:
+			return createCustomValueMap([
+				{
+					key: 'criterionGroup',
+					value: [
+						{
+							operatorName: RelationalOperators.EQ,
+							propertyName:
+								DEFAULT_UTM_PARAMETER_OPTIONS[0].fieldName,
+							value: '',
 						},
 					],
 				},

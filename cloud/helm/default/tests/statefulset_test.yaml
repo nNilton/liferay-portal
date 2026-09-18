@@ -2,8 +2,23 @@ suite: StatefulSet
 templates:
     -   templates/configmap.yaml
     -   templates/liferay-init-scripts-cm.yaml
+    -   templates/liferay-network-cm.yaml
     -   templates/workloads.yaml
 tests:
+    -   asserts:
+            -   equal:
+                    path: spec.template.metadata.labels["example.com/inject"]
+                    value: "true"
+            -   notExists:
+                    path: metadata.labels["example.com/inject"]
+        documentSelector:
+            path: kind
+            skipEmptyTemplates: true
+            value: StatefulSet
+        it: Adds pod labels onto the pod template only
+        set:
+            podLabels:
+                example.com/inject: "true"
     -   asserts:
             -   contains:
                     any: true
@@ -46,6 +61,60 @@ tests:
                 -   name: FOO
                     value: bar
     -   asserts:
+            -   matchRegex:
+                    path: spec.template.spec.initContainers[?(@.name=="liferay-prepopulate-data")].command[2]
+                    pattern: /temp/mnt/liferay/patching
+        documentSelector:
+            path: kind
+            skipEmptyTemplates: true
+            value: StatefulSet
+        it: Creates the patching directory on the persistent volume
+    -   asserts:
+            -   equal:
+                    path: spec.volumeClaimTemplates[0].spec.storageClassName
+                    value: hyperdisk-balanced-rwo
+        documentSelector:
+            path: kind
+            skipEmptyTemplates: true
+            value: StatefulSet
+        it: Fills the chart storage class into volume claim templates that omit it
+        set:
+            persistence.defaultStorageClassName: hyperdisk-balanced-rwo
+    -   asserts:
+            -   equal:
+                    path: spec.volumeClaimTemplates[0].spec.storageClassName
+                    value: premium-rwo
+        documentSelector:
+            path: kind
+            skipEmptyTemplates: true
+            value: StatefulSet
+        it: Keeps an explicit volume claim storage class over the chart value
+        set:
+            persistence.defaultStorageClassName: hyperdisk-balanced-rwo
+            volumeClaimTemplates:
+                -   metadata:
+                        name: liferay-persistent-volume
+                    spec:
+                        accessModes:
+                            -   ReadWriteOnce
+                        resources:
+                            requests:
+                                storage: 1Gi
+                        storageClassName: premium-rwo
+    -   asserts:
+            -   contains:
+                    any: true
+                    content:
+                        mountPath: /mnt/liferay/patching
+                        name: liferay-persistent-volume
+                        subPath: mnt/liferay/patching
+                    path: spec.template.spec.containers[0].volumeMounts
+        documentSelector:
+            path: kind
+            skipEmptyTemplates: true
+            value: StatefulSet
+        it: Mounts the patching directory into the Liferay container
+    -   asserts:
             -   equal:
                     path: metadata.name
                     value: my-portal
@@ -72,6 +141,14 @@ tests:
         it: Omits the replica count so the autoscaler owns it when autoscaling is enabled
         set:
             autoscaling.enabled: true
+    -   asserts:
+            -   notExists:
+                    path: spec.volumeClaimTemplates[0].spec.storageClassName
+        documentSelector:
+            path: kind
+            skipEmptyTemplates: true
+            value: StatefulSet
+        it: Omits the storage class from volume claim templates by default
     -   asserts:
             -   equal:
                     path: spec.replicas

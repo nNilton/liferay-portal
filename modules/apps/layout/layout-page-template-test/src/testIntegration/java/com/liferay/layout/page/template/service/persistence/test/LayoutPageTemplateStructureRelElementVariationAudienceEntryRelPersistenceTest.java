@@ -317,17 +317,21 @@ public class
 	}
 
 	@Test
-	public void testCountByLayoutPageTemplateStructureRelElementVariationERC()
-		throws Exception {
+	public void testCountByG_LPTSREVERC() throws Exception {
+		_persistence.countByG_LPTSREVERC(RandomTestUtil.nextLong(), "");
 
-		_persistence.countByLayoutPageTemplateStructureRelElementVariationERC(
-			"");
+		_persistence.countByG_LPTSREVERC(0L, "null");
 
-		_persistence.countByLayoutPageTemplateStructureRelElementVariationERC(
-			"null");
+		_persistence.countByG_LPTSREVERC(0L, (String)null);
+	}
 
-		_persistence.countByLayoutPageTemplateStructureRelElementVariationERC(
-			(String)null);
+	@Test
+	public void testCountByC_AEERC() throws Exception {
+		_persistence.countByC_AEERC(RandomTestUtil.nextLong(), "");
+
+		_persistence.countByC_AEERC(0L, "null");
+
+		_persistence.countByC_AEERC(0L, (String)null);
 	}
 
 	@Test
@@ -856,4 +860,4 @@ public class
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1649911216
+// LIFERAY-SERVICE-BUILDER-HASH:330975690

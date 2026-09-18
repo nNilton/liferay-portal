@@ -17,6 +17,7 @@ import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.segments.constants.SegmentsActionKeys;
 import com.liferay.segments.constants.SegmentsConstants;
+import com.liferay.segments.constants.SegmentsEntryConstants;
 import com.liferay.segments.model.SegmentsEntry;
 import com.liferay.segments.service.base.SegmentsEntryServiceBaseImpl;
 
@@ -42,8 +43,9 @@ public class SegmentsEntryServiceImpl extends SegmentsEntryServiceBaseImpl {
 
 	@Override
 	public SegmentsEntry addSegmentsEntry(
-			String segmentsEntryKey, Map<Locale, String> nameMap,
-			Map<Locale, String> descriptionMap, boolean active, String criteria,
+			String externalReferenceCode, String segmentsEntryKey,
+			Map<Locale, String> nameMap, Map<Locale, String> descriptionMap,
+			boolean active, String criteria, String source,
 			ServiceContext serviceContext)
 		throws PortalException {
 
@@ -52,23 +54,8 @@ public class SegmentsEntryServiceImpl extends SegmentsEntryServiceBaseImpl {
 			SegmentsActionKeys.MANAGE_SEGMENTS_ENTRIES);
 
 		return segmentsEntryLocalService.addSegmentsEntry(
-			segmentsEntryKey, nameMap, descriptionMap, active, criteria,
-			serviceContext);
-	}
-
-	@Override
-	public SegmentsEntry addSegmentsEntry(
-			String segmentsEntryKey, Map<Locale, String> nameMap,
-			Map<Locale, String> descriptionMap, boolean active, String criteria,
-			String source, ServiceContext serviceContext)
-		throws PortalException {
-
-		_portletResourcePermission.check(
-			getPermissionChecker(), serviceContext.getScopeGroupId(),
-			SegmentsActionKeys.MANAGE_SEGMENTS_ENTRIES);
-
-		return segmentsEntryLocalService.addSegmentsEntry(
-			segmentsEntryKey, nameMap, descriptionMap, active, criteria, source,
+			externalReferenceCode, segmentsEntryKey, nameMap, descriptionMap,
+			active, criteria, source, SegmentsEntryConstants.TYPE_DEFAULT,
 			serviceContext);
 	}
 
@@ -112,9 +99,12 @@ public class SegmentsEntryServiceImpl extends SegmentsEntryServiceBaseImpl {
 			String segmentsEntryERC, long groupId)
 		throws PortalException {
 
-		SegmentsEntry segmentsEntry =
-			segmentsEntryLocalService.fetchSegmentsEntryByExternalReferenceCode(
-				segmentsEntryERC, groupId);
+		SegmentsEntry segmentsEntry = segmentsEntryPersistence.fetchByERC_G(
+			segmentsEntryERC, groupId);
+
+		if (segmentsEntry == null) {
+			return null;
+		}
 
 		_segmentsEntryResourcePermission.check(
 			getPermissionChecker(), segmentsEntry.getSegmentsEntryId(),
@@ -141,11 +131,12 @@ public class SegmentsEntryServiceImpl extends SegmentsEntryServiceBaseImpl {
 
 	@Override
 	public List<SegmentsEntry> getSegmentsEntries(
-		long groupId, String[] sources, int start, int end,
+		long groupId, String[] sources, int[] types, int start, int end,
 		OrderByComparator<SegmentsEntry> orderByComparator) {
 
-		return segmentsEntryLocalService.getSegmentsEntries(
-			groupId, sources, start, end, orderByComparator);
+		return segmentsEntryPersistence.findByG_SRC_T(
+			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources, types,
+			start, end, orderByComparator);
 	}
 
 	@Override
@@ -155,17 +146,19 @@ public class SegmentsEntryServiceImpl extends SegmentsEntryServiceBaseImpl {
 	}
 
 	@Override
-	public int getSegmentsEntriesCount(long groupId, String[] sources) {
-		return segmentsEntryPersistence.filterCountByG_SRC(
-			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources);
+	public int getSegmentsEntriesCount(
+		long groupId, String[] sources, int[] types) {
+
+		return segmentsEntryPersistence.filterCountByG_SRC_T(
+			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources, types);
 	}
 
 	@Override
 	public SegmentsEntry getSegmentsEntry(long segmentsEntryId)
 		throws PortalException {
 
-		SegmentsEntry segmentsEntry =
-			segmentsEntryLocalService.getSegmentsEntry(segmentsEntryId);
+		SegmentsEntry segmentsEntry = segmentsEntryPersistence.findByPrimaryKey(
+			segmentsEntryId);
 
 		_segmentsEntryResourcePermission.check(
 			getPermissionChecker(), segmentsEntryId, ActionKeys.VIEW);
@@ -178,9 +171,8 @@ public class SegmentsEntryServiceImpl extends SegmentsEntryServiceBaseImpl {
 			String segmentsEntryERC, long groupId)
 		throws PortalException {
 
-		SegmentsEntry segmentsEntry =
-			segmentsEntryLocalService.getSegmentsEntryByExternalReferenceCode(
-				segmentsEntryERC, groupId);
+		SegmentsEntry segmentsEntry = segmentsEntryPersistence.findByERC_G(
+			segmentsEntryERC, groupId);
 
 		_segmentsEntryResourcePermission.check(
 			getPermissionChecker(), segmentsEntry.getSegmentsEntryId(),
@@ -204,17 +196,22 @@ public class SegmentsEntryServiceImpl extends SegmentsEntryServiceBaseImpl {
 
 	@Override
 	public SegmentsEntry updateSegmentsEntry(
-			long segmentsEntryId, String segmentsEntryKey,
-			Map<Locale, String> nameMap, Map<Locale, String> descriptionMap,
-			boolean active, String criteria, ServiceContext serviceContext)
+			String externalReferenceCode, long segmentsEntryId,
+			String segmentsEntryKey, Map<Locale, String> nameMap,
+			Map<Locale, String> descriptionMap, boolean active, String criteria,
+			ServiceContext serviceContext)
 		throws PortalException {
 
 		_segmentsEntryResourcePermission.check(
 			getPermissionChecker(), segmentsEntryId, ActionKeys.UPDATE);
 
+		SegmentsEntry segmentsEntry = segmentsEntryPersistence.findByPrimaryKey(
+			segmentsEntryId);
+
 		return segmentsEntryLocalService.updateSegmentsEntry(
-			segmentsEntryId, segmentsEntryKey, nameMap, descriptionMap, active,
-			criteria, serviceContext);
+			externalReferenceCode, segmentsEntryId, segmentsEntryKey, nameMap,
+			descriptionMap, active, criteria, segmentsEntry.getType(),
+			serviceContext);
 	}
 
 	@Reference

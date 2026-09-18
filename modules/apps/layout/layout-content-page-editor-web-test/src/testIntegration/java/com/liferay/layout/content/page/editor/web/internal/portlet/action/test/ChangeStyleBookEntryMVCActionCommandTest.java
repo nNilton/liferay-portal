@@ -24,6 +24,7 @@ import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionRequest;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionResponse;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
+import com.liferay.portal.kernel.test.util.FeatureFlagTestUtil;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
@@ -91,6 +92,9 @@ public class ChangeStyleBookEntryMVCActionCommandTest {
 	}
 
 	private Group _addConnectedDepotGroup() throws Exception {
+		FeatureFlagTestUtil.invokeFeatureFlagListeners(
+			TestPropsValues.getCompanyId(), true, "LPD-57283");
+
 		DepotEntry depotEntry = _depotEntryLocalService.addDepotEntry(
 			RandomTestUtil.randomLocaleStringMap(),
 			RandomTestUtil.randomLocaleStringMap(),
@@ -106,7 +110,7 @@ public class ChangeStyleBookEntryMVCActionCommandTest {
 	private StyleBookEntry _addStyleBookEntry(long groupId) throws Exception {
 		return _styleBookEntryLocalService.addStyleBookEntry(
 			RandomTestUtil.randomString(), TestPropsValues.getUserId(), groupId,
-			false, null, RandomTestUtil.randomString(), null,
+			false, null, null, RandomTestUtil.randomString(), null,
 			RandomTestUtil.randomString(), null);
 	}
 

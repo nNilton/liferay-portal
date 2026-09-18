@@ -4,9 +4,12 @@ backup:
         serviceAccountName: backup-cleanup-service-account
     enabled: false
     region: ""
+    restore:
+        sanitizationScripts: {}
     retentionDays: 30
     schedule: 0 5 * * *
     storageClass: NEARLINE
+    vaultTags: {}
 cmk:
     enabled: false
 database:
@@ -35,11 +38,15 @@ license:
     externalSecretName: ""
     targetSecretName: liferay-license
 orphanOnDelete: false
-overlay:
+overlayAccess:
+    enabled: false
+overlayBucket:
     commonTags: {}
     enabled: false
     forceDestroy: false
     orphanOnDelete: false
+persistence:
+    storageClassName: standard-rwo
 podMonitoring:
     instances:
         envoy:
@@ -97,3 +104,4 @@ secretStoreName: ""
 storage:
     enableVersioning: true
     region: ""
+    tags: {}

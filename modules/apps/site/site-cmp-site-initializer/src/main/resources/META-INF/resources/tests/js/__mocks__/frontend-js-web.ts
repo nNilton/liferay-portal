@@ -63,8 +63,26 @@ export function objectToFormData(object: object) {
 	return object;
 }
 
-export function sub(str: string) {
-	return str;
+export function sub(str: string, ...params: unknown[]) {
+	const paramList = params.flat();
+
+	const keyArray: unknown[] = str
+		.split(/({\d+})/g)
+		.filter((value) => value.length !== 0);
+
+	paramList.forEach((param, index) => {
+		let paramIndex = keyArray.indexOf(`{${index}}`);
+
+		while (paramIndex >= 0) {
+			keyArray.splice(paramIndex, 1, param);
+
+			paramIndex = keyArray.indexOf(`{${index}}`);
+		}
+	});
+
+	return keyArray.some((value) => value && typeof value === 'object')
+		? keyArray
+		: keyArray.join('');
 }
 
 export const mockFetch = jest.fn(() => {

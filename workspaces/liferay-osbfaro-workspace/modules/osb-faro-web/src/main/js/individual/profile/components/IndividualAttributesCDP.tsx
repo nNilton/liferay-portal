@@ -3,12 +3,13 @@ import {
 	DataDrivenConfig,
 	GeneralInfoSection,
 } from 'shared/components/GeneralInfoSection';
-import {formatUTCDate} from 'shared/util/date';
+import {formatUTCDate, getCustomDateFormat} from 'shared/util/date';
 import {SectionHeader} from 'shared/components/SectionHeader';
 
 interface IIndividualAttributesProps {
 	children?: React.ReactNode;
 	contactId?: string;
+	knownSinceDate?: string | null;
 	loading?: boolean;
 	propertiesData: Map<string, any>;
 	showEmptyState?: boolean;
@@ -23,6 +24,7 @@ const INFO_LANGUAGE_MAP: Record<string, string> = {
 	familyName: Liferay.Language.get('last-name'),
 	givenName: Liferay.Language.get('first-name'),
 	jobTitle: Liferay.Language.get('job-title'),
+	knownSinceDate: Liferay.Language.get('known-since-date'),
 	languageId: Liferay.Language.get('language'),
 	middleName: Liferay.Language.get('middle-name'),
 	prefix: Liferay.Language.get('prefix'),
@@ -53,6 +55,7 @@ const contextualInfoConfig: DataDrivenConfig = [
 			{className: 'col-12 col-md-4 col-sm-6', key: 'familyName'},
 			{className: 'col-12 col-md-4 col-sm-6', key: 'birthDate'},
 			{className: 'col-12 col-md-4 col-sm-6', key: 'suffix'},
+			{className: 'col-12 col-md-4 col-sm-6', key: 'knownSinceDate'},
 		],
 		title: Liferay.Language.get('personal-information'),
 	},
@@ -61,6 +64,7 @@ const contextualInfoConfig: DataDrivenConfig = [
 const IndividualAttributesCDP: React.FC<IIndividualAttributesProps> = ({
 	children: emptyState,
 	contactId,
+	knownSinceDate,
 	loading = false,
 	propertiesData,
 	showEmptyState,
@@ -70,11 +74,17 @@ const IndividualAttributesCDP: React.FC<IIndividualAttributesProps> = ({
 			const birthDate = propertiesData?.get('birthDate');
 
 			return birthDate
-				? formatUTCDate(birthDate, 'YYYY-MM-DD')
+				? formatUTCDate(birthDate, getCustomDateFormat())
 				: undefined;
 		}
 
 		if (key === 'contactId') return contactId;
+
+		if (key === 'knownSinceDate') {
+			return knownSinceDate
+				? formatUTCDate(knownSinceDate, getCustomDateFormat())
+				: undefined;
+		}
 
 		return propertiesData?.get(key) || undefined;
 	};

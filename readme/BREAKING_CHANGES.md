@@ -1884,3 +1884,92 @@ User.getRemotePreference(String) and User.getRemotePreferences() were just a con
 ### Why was this change made?
 
 RemotePreference API has never been used. But the api supporting logic has to collect and hold cookies in User object, causing unnecessary CPU and memory overhead.
+
+---------------------------------------
+
+## Exposed Multiselect Picklist Custom Fields on System Objects as Arrays in the Headless APIs
+- **Date:** 2026-Aug-05
+- **JIRA Ticket:** [LPD-99833](https://liferay.atlassian.net/browse/LPD-99833), [LPD-102347](https://liferay.atlassian.net/browse/LPD-102347)
+
+### What changed?
+
+A Multiselect Picklist custom field defined on a system object (such as `User`) is now exposed through the headless APIs as an array of list type entry objects instead of a comma-separated string. Each array element is a `ListEntry` with a `key` and a localized `name`, matching how the same field is already represented on the object entry (`/o/c`) APIs. The OpenAPI schema for the property changes from `type: string` to `type: array` whose `items` reference the `ListEntry` schema, and an unset field returns an empty array instead of an empty string.
+
+### Who is affected?
+
+This affects clients of the headless APIs (for example, Headless Admin User) and Batch Engine imports that read or write a Multiselect Picklist custom field defined on a system object, as well as any object action, notification template, or webhook that reads the field from an extended-properties payload, such as the one `CommerceOrderEngineImpl` builds for a Commerce Order.
+
+### How should I update my code?
+
+When reading the field, treat the value as an array of `ListEntry` objects and read the selected keys from each element's `key` property rather than parsing a comma-separated string. When writing the field, send an array of the selected keys, either as `ListEntry` objects (for example, `[{"key": "key1"}, {"key": "key2"}]`) or as plain key strings (for example, `["key1", "key2"]`, the form flat-format Batch Engine imports produce); a single comma-separated string, as previously accepted, is now rejected with a `400`. An array element of any other type, such as a number or a boolean, is likewise rejected with a `400` rather than being coerced and silently dropped. This applies to the field itself; the localized `_i18n` companion field validates only that the value is a map, not the type of the elements inside it.
+
+### Why was this change made?
+
+The field holds multiple values, so a single comma-separated string could not be parsed unambiguously and did not match the representation used for the same field on the object entry APIs. Exposing it as an array of `ListEntry` objects makes the value self-describing and consistent across the headless APIs.
+
+---------------------------------------
+
+## Removed the System Settings triggers for virtual instance copy, export, and import
+- **Date:** 2026-Aug-26
+- **JIRA Ticket:** [LPD-92622](https://liferay.atlassian.net/browse/LPD-92622)
+
+### What changed?
+
+The `Instance Copy`, `Instance Export`, and `Instance Import` entries were removed from System Settings, along with the `Virtual Instances` category that held them. The three configuration interfaces behind those entries, `CopyPortalInstanceConfiguration`, `ExportPortalInstanceConfiguration`, and `ImportPortalInstanceConfiguration`, were deleted, as were the components that performed the operation when a configuration was saved. Saving a configuration no longer triggers a copy, export, or import.
+
+### Who is affected?
+
+This affects anyone who triggered one of these operations by saving the corresponding System Settings entry, or by deploying a configuration file for one of the three PIDs to `osgi/configs`, such as `com.liferay.portal.instances.internal.configuration.ExportPortalInstanceConfiguration.config`.
+
+### How should I update my code?
+
+Use the Portal Instances headless API:
+
+- `POST /o/headless-portal-instances/v1.0/portal-instances/{portalInstanceId}/copy`
+- `POST /o/headless-portal-instances/v1.0/portal-instances/{portalInstanceId}/export`
+- `POST /o/headless-portal-instances/v1.0/portal-instances/import`
+
+Copy and export can also be triggered from the Virtual Instances page in the Control Panel. Every endpoint requires an authenticated omniadmin, whereas deploying a configuration file required no credentials, so provisioning scripts that ran before an administrator existed must now authenticate.
+
+### Why was this change made?
+
+A configuration entry is a poor trigger for a one shot operation. It returns nothing to the caller, and the only record that the operation succeeded was an `INFO` log line. The headless API returns the outcome instead, including the name of the schema an export produced, and it is permission checked.
+
+---------------------------------------
+
+## Removed the Superseded Applications Panel Categories
+- **Date:** 2026-Sep-07
+- **JIRA Ticket:** [LPD-100257](https://liferay.atlassian.net/browse/LPD-100257)
+
+### What changed?
+
+The Applications Panel reorganization emptied ten groups, and they are now removed: Batch Planner, Commerce, Communication, Content, Custom Apps, Design, Personalization, Publications, Search Experiences, and Search Tuning. Their constants are gone from `PanelCategoryKeys`, `SXPPanelCategoryKeys` and `SearchTuningPanelCategoryKeys` are deleted outright, and the `portal-search-tuning-web` and `portal-search-tuning-web-api` modules go with them.
+
+### Who is affected?
+
+Administrators with a custom object in one of the ten groups. The object **moved**, it was not deleted: it is under Control Panel > Objects.
+
+Developers whose module or client extension names a removed constant or its literal key value. A module that is never rebuilt keeps a key that names nothing, and its application stays out of the menu until it is recompiled.
+
+### How should I update my code?
+
+Point each removed key at the group its applications moved to:
+
+| Removed Key | Replacement |
+| --- | --- |
+| `APPLICATIONS_MENU_APPLICATIONS_BATCH_PLANNER` | `APPLICATIONS_MENU_APPLICATIONS_DEVELOPER_INTEGRATION` |
+| `APPLICATIONS_MENU_APPLICATIONS_CUSTOM_APPS` | `APPLICATIONS_MENU_APPLICATIONS_DEVELOPER_INTEGRATION` |
+| `APPLICATIONS_MENU_APPLICATIONS_CONTENT` | `APPLICATIONS_MENU_APPLICATIONS_IN_MAINTENANCE` |
+| `APPLICATIONS_MENU_APPLICATIONS_PUBLICATIONS` | `APPLICATIONS_MENU_APPLICATIONS_IN_MAINTENANCE` |
+| `APPLICATIONS_MENU_APPLICATIONS_COMMERCE` | `APPLICATIONS_MENU_APPLICATIONS` |
+| `APPLICATIONS_MENU_APPLICATIONS_COMMUNICATION` | `APPLICATIONS_MENU_APPLICATIONS` |
+| `APPLICATIONS_MENU_APPLICATIONS_DESIGN` | `APPLICATIONS_MENU_APPLICATIONS` |
+| `APPLICATIONS_MENU_APPLICATIONS_PERSONALIZATION` | `APPLICATIONS_MENU_APPLICATIONS` |
+| `SXPPanelCategoryKeys.CONTROL_PANEL_SEARCH_EXPERIENCES` | `SearchPanelCategoryKeys.CONTROL_PANEL_SEARCH` |
+| `SearchTuningPanelCategoryKeys.CONTROL_PANEL_SEARCH_TUNING` | `SearchPanelCategoryKeys.CONTROL_PANEL_SEARCH` |
+
+In a JSON object definition payload, the `panelCategoryKey` that points to a deleted category key should be rewritten to `control_panel.object`.
+
+### Why was this change made?
+
+The Applications Panel has been reorganized by feature area, rather than by arbitrary splits and groups containing a single application. Panel Category groups left empty by this change have been removed and are no longer available as destinations for OSGi applications or object definitions.

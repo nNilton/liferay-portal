@@ -9,6 +9,7 @@ import ClayIcon from '@clayui/icon';
 import ClayLoadingIndicator from '@clayui/loading-indicator';
 import ClaySticker from '@clayui/sticker';
 import {TrendClassification} from '@liferay/analytics-reports-js-components-web';
+import {isNullOrUndefined} from '@liferay/layout-js-components-web';
 import classNames from 'classnames';
 import React from 'react';
 
@@ -16,12 +17,31 @@ import {MetricValue} from '../../common/MetricValue';
 
 import './InteractiveCard.scss';
 
-export type MetricColor = 'green' | 'info' | 'orange' | 'purple';
+export type MetricColor =
+	| 'dark'
+	| 'green'
+	| 'orange'
+	| 'pink'
+	| 'purple'
+	| 'red';
+
+const STICKER_DISPLAY_TYPES: Record<
+	MetricColor,
+	React.ComponentProps<typeof ClaySticker>['displayType']
+> = {
+	dark: 'outline-0',
+	green: 'outline-3',
+	orange: 'outline-5',
+	pink: 'outline-8',
+	purple: 'outline-1',
+	red: 'outline-4',
+};
 
 type Props = {
 	active?: boolean;
-	color: MetricColor;
-	icon: string;
+	color?: MetricColor;
+	description?: string;
+	icon?: string;
 	loading?: boolean;
 	onClick?: () => void;
 	title: string;
@@ -30,63 +50,71 @@ type Props = {
 		percentage: number;
 	};
 	value?: React.ReactNode;
-};
+} & React.AriaAttributes;
 
 export default function InteractiveCard({
 	active = false,
 	color,
+	description,
 	icon,
 	loading = false,
 	onClick,
 	title,
 	trend,
 	value,
+	...ariaAttributes
 }: Props) {
 	return (
 		<ClayButton
+			{...ariaAttributes}
 			className={classNames(
-				'cms-dashboard__interactive-card h-100 p-3 rounded-lg sheet text-left w-100',
+				'cms-dashboard__interactive-card d-flex flex-column h-100 p-3 rounded-lg sheet text-left w-100',
 				{active}
 			)}
 			displayType="unstyled"
 			onClick={onClick}
 		>
-			<div className="align-items-center d-flex">
+			<div
+				className={classNames('align-items-center d-flex', {
+					'mb-1': description,
+				})}
+			>
 				<div className="flex-grow-1">
 					<Text size={4} weight="semi-bold">
 						{title}
 					</Text>
 				</div>
 
-				<ClaySticker
-					className={classNames(
-						'cms-dashboard__interactive-card__sticker flex-shrink-0 rounded',
-						`cms-dashboard__interactive-card__sticker--${color}`
-					)}
-					displayType="unstyled"
-					size="lg"
-				>
-					<ClayIcon symbol={icon} />
-				</ClaySticker>
+				{color && icon ? (
+					<ClaySticker
+						borderless
+						className="flex-shrink-0"
+						displayType={STICKER_DISPLAY_TYPES[color]}
+					>
+						<ClayIcon symbol={icon} />
+					</ClaySticker>
+				) : null}
 			</div>
 
-			<div className="d-flex flex-column justify-content-center mt-3">
-				{loading ? (
-					<ClayLoadingIndicator
-						displayType="secondary"
-						shape="squares"
-						size="sm"
-					/>
-				) : (
-					trend && (
+			{description ? (
+				<Text color="secondary" size={3}>
+					{description}
+				</Text>
+			) : null}
+
+			<div className="mt-2">
+				<div className="cms-dashboard__interactive-card__metric d-flex flex-column justify-content-center">
+					{loading ? (
+						<ClayLoadingIndicator className="my-3" size="sm" />
+					) : !isNullOrUndefined(value) ? (
 						<MetricValue
 							textWeight="bold"
 							trend={trend}
 							value={value}
 							valueClassName="text-lowercase"
 						/>
-					)
-				)}
+					) : null}
+				</div>
 			</div>
 		</ClayButton>
 	);

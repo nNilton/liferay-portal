@@ -21,8 +21,6 @@ const test = mergeTests(
 	apiHelpersTest,
 	dataApiHelpersTest,
 	featureFlagsTest({
-		'LPD-17564': {enabled: true},
-		'LPD-34594': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
 	itemSelectorSamplePageTest,
@@ -148,7 +146,10 @@ test('Item Selector Modal filters availability for CMS Files', async ({
 			itemSelectorSamplePage.selectCMSFileModalHeader
 		).toBeVisible();
 
-		waitForFDS({page, visualizationMode: EFDSVisualizationMode.CARDS});
+		await waitForFDS({
+			page,
+			visualizationMode: EFDSVisualizationMode.CARDS,
+		});
 
 		await itemSelectorSamplePage.filtersButton.click();
 	});
@@ -208,7 +209,10 @@ test('Item Selector Modal Space filter functionality', async ({
 }) => {
 	await test.step('Open Item Selector Modal', async () => {
 		await itemSelectorSamplePage.selectCMSFileButton.click();
-		waitForFDS({page, visualizationMode: EFDSVisualizationMode.CARDS});
+		await waitForFDS({
+			page,
+			visualizationMode: EFDSVisualizationMode.CARDS,
+		});
 	});
 
 	await test.step(`Filter CMS Files by ${firstSpace.name}`, async () => {
@@ -217,7 +221,10 @@ test('Item Selector Modal Space filter functionality', async ({
 		await page.getByLabel(firstSpace.name).click();
 		await page.getByRole('button', {name: 'Add Filter'}).click();
 
-		waitForFDS({page, visualizationMode: EFDSVisualizationMode.CARDS});
+		await waitForFDS({
+			page,
+			visualizationMode: EFDSVisualizationMode.CARDS,
+		});
 
 		await expect(
 			page.getByText(firstSpaceObjectEntry.title, {exact: true})

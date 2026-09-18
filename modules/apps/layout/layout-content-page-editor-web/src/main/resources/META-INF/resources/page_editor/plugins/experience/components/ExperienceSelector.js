@@ -15,6 +15,7 @@ import {
 	useEventListener,
 	useIsMounted,
 } from '@liferay/frontend-js-react-web';
+import classNames from 'classnames';
 import {openToast, useId, useSessionState} from 'frontend-js-components-web';
 import {COOKIE_TYPES, navigate} from 'frontend-js-web';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
@@ -446,7 +447,12 @@ const ExperienceSelector = ({experiences, segments, selectedExperience}) => {
 
 	return (
 		<>
-			<ClayButton.Group className="page-editor__experience-selector-group">
+			<ClayButton.Group
+				className={classNames({
+					'page-editor__experience-selector-group':
+						Liferay.FeatureFlags['LPD-85746'],
+				})}
+			>
 				<ClayButton
 					aria-controls={experienceSelectorContentId}
 					aria-expanded={open}
@@ -491,7 +497,7 @@ const ExperienceSelector = ({experiences, segments, selectedExperience}) => {
 					</ClayLayout.ContentRow>
 				</ClayButton>
 
-				{Liferay.FeatureFlags['LPD-86901'] && (
+				{Liferay.FeatureFlags['LPD-85746'] && (
 					<ClayButtonWithIcon
 						aria-label={Liferay.Language.get('create-variations')}
 						className="align-self-stretch h-auto"
@@ -499,7 +505,7 @@ const ExperienceSelector = ({experiences, segments, selectedExperience}) => {
 						displayType="secondary"
 						onClick={onCreateVariations}
 						size="sm"
-						symbol="nodes"
+						symbol="icon-rule-builder"
 						title={Liferay.Language.get('create-variations')}
 					/>
 				)}

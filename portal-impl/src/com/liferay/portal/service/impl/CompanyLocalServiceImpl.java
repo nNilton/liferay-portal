@@ -31,6 +31,7 @@ import com.liferay.portal.kernel.dao.orm.EntityCacheUtil;
 import com.liferay.portal.kernel.dao.orm.Property;
 import com.liferay.portal.kernel.dao.orm.PropertyFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
+import com.liferay.portal.kernel.db.partition.DBPartition;
 import com.liferay.portal.kernel.encryptor.EncryptorException;
 import com.liferay.portal.kernel.encryptor.EncryptorUtil;
 import com.liferay.portal.kernel.exception.CompanyMaxUsersException;
@@ -43,7 +44,6 @@ import com.liferay.portal.kernel.exception.NoSuchVirtualHostException;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.RequiredCompanyException;
 import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.instance.PortalInstancePool;
 import com.liferay.portal.kernel.instance.lifecycle.PortalInstanceLifecycleManager;
 import com.liferay.portal.kernel.language.LanguageUtil;
@@ -52,6 +52,7 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.messaging.async.Async;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.CompanyConstants;
+import com.liferay.portal.kernel.model.CompanyInfo;
 import com.liferay.portal.kernel.model.Contact;
 import com.liferay.portal.kernel.model.ContactConstants;
 import com.liferay.portal.kernel.model.Group;
@@ -101,10 +102,15 @@ import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.VirtualHostLocalService;
 import com.liferay.portal.kernel.service.persistence.CompanyInfoPersistence;
 import com.liferay.portal.kernel.service.persistence.ContactPersistence;
+import com.liferay.portal.kernel.service.persistence.GroupPersistence;
+import com.liferay.portal.kernel.service.persistence.LayoutSetPrototypePersistence;
+import com.liferay.portal.kernel.service.persistence.PasswordPolicyPersistence;
 import com.liferay.portal.kernel.service.persistence.PortalPreferencesPersistence;
 import com.liferay.portal.kernel.service.persistence.PortletPersistence;
+import com.liferay.portal.kernel.service.persistence.RolePersistence;
 import com.liferay.portal.kernel.service.persistence.UserPersistence;
 import com.liferay.portal.kernel.service.persistence.VirtualHostPersistence;
+import com.liferay.portal.kernel.spring.orm.LastSessionRecorderHelperUtil;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.transaction.TransactionCallbackUtil;
 import com.liferay.portal.kernel.transaction.TransactionConfig;
@@ -186,9 +192,11 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 	@Override
 	public Company addCompany(Company company) {
+		company = super.addCompany(company);
+
 		_companyInfoPersistence.update(company.getCompanyInfo());
 
-		return super.addCompany(company);
+		return company;
 	}
 
 	/**
@@ -315,7 +323,7 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 			// Guest user must have the Guest role
 
-			Role guestRole = _roleLocalService.getRole(
+			Role guestRole = _rolePersistence.findByC_N(
 				updatedCompany.getCompanyId(), RoleConstants.GUEST);
 
 			_roleLocalService.setUserRoles(
@@ -324,13 +332,29 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 			return updatedCompany;
 		};
 
+		if (PropsValues.DATABASE_PARTITION_ENABLED) {
+
+			// Pending writes must flush before this scope applies the new
+			// company, or they would execute against its partition
+
+			LastSessionRecorderHelperUtil.syncLastSessionState(false);
+		}
+
 		try (SafeCloseable safeCloseable =
 				CompanyThreadLocal.setRawCompanyIdWithSafeCloseable(
 					companyId)) {
 
 			if (PropsValues.DATABASE_PARTITION_ENABLED) {
-				return TransactionInvokerUtil.invoke(
+				Company addedCompany = TransactionInvokerUtil.invoke(
 					_transactionConfig, callable);
+
+				// Commit callbacks must flush before this scope restores the
+				// previous company, or they would execute against the
+				// caller's partition
+
+				LastSessionRecorderHelperUtil.syncLastSessionState(false);
+
+				return addedCompany;
 			}
 
 			return callable.call();
@@ -349,8 +373,6 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 			long companyId, String name, String virtualHostname, String webId)
 		throws PortalException {
 
-		FeatureFlagManagerUtil.checkEnabled("LPD-11342");
-
 		if (!PropsValues.DATABASE_PARTITION_ENABLED) {
 			throw new UnsupportedOperationException(
 				"Database partitioning must be enabled");
@@ -361,11 +383,24 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 				"Company ID " + companyId + " is the default company ID");
 		}
 
+		String lowerCaseVirtualHostname = StringUtil.toLowerCase(
+			StringUtil.trim(virtualHostname));
+
+		if (Validator.isNotNull(webId)) {
+			validateWebId(webId);
+		}
+
+		if (Validator.isNotNull(lowerCaseVirtualHostname)) {
+			validateVirtualHost(
+				GetterUtil.getString(webId), lowerCaseVirtualHostname);
+		}
+
 		try (SafeCloseable safeCloseable1 =
 				PortalInstances.setImportInProcessCompanyIdWithSafeCloseable(
 					companyId)) {
 
-			DBPartitionUtil.importDBPartition(companyId);
+			DBPartitionUtil.importDBPartition(
+				companyId, lowerCaseVirtualHostname, webId);
 
 			try (SafeCloseable safeCloseable2 =
 					CompanyThreadLocal.setCompanyIdWithSafeCloseable(
@@ -387,33 +422,20 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 							company.setName(name);
 
-							company = companyPersistence.update(company);
-						}
+							CompanyInfo companyInfo = company.getCompanyInfo();
 
-						String lowerCaseVirtualHostname =
-							StringUtil.toLowerCase(
-								StringUtil.trim(virtualHostname));
+							company = companyPersistence.update(company);
+
+							_companyInfoPersistence.update(companyInfo);
+						}
 
 						if (Validator.isNotNull(lowerCaseVirtualHostname) &&
 							!StringUtil.equals(
 								company.getVirtualHostname(),
 								lowerCaseVirtualHostname)) {
 
-							validateVirtualHost(
-								company.getWebId(), lowerCaseVirtualHostname);
-
 							company = updateVirtualHostname(
 								companyId, lowerCaseVirtualHostname);
-						}
-
-						if (Validator.isNotNull(webId) &&
-							!StringUtil.equals(company.getWebId(), webId)) {
-
-							validateWebId(webId);
-
-							company.setWebId(webId);
-
-							company = companyPersistence.update(company);
 						}
 
 						return _addDBPartitionCompany(company);
@@ -421,10 +443,15 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 				return _registerDBPartitionCompany(dbPartitionCompany);
 			}
-			catch (Throwable throwable) {
-				_removeDBPartition(companyId, true);
+			catch (Throwable throwable1) {
+				try {
+					_removeDBPartition(companyId, true);
+				}
+				catch (Throwable throwable2) {
+					throwable1.addSuppressed(throwable2);
+				}
 
-				throw new PortalException(throwable);
+				throw new PortalException(throwable1);
 			}
 		}
 	}
@@ -555,8 +582,6 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 			String virtualHostname, String webId)
 		throws PortalException {
 
-		FeatureFlagManagerUtil.checkEnabled("LPD-11342");
-
 		if (!PropsValues.DATABASE_PARTITION_ENABLED) {
 			throw new UnsupportedOperationException(
 				"Database partitioning must be enabled");
@@ -564,11 +589,6 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 		Company fromCompany = companyPersistence.findByPrimaryKey(
 			fromCompanyId);
-
-		if (fromCompany == null) {
-			throw new IllegalArgumentException(
-				"Company ID " + fromCompanyId + " does not exist");
-		}
 
 		if (fromCompanyId == PortalInstancePool.getDefaultCompanyId()) {
 			throw new IllegalArgumentException(
@@ -630,20 +650,29 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 						company.setName(name);
 						company.setNew(true);
 
+						CompanyInfo companyInfo = company.getCompanyInfo();
+
 						company = companyPersistence.update(company);
 
 						company = updateVirtualHostname(
 							company.getCompanyId(), lowerCaseVirtualHostname);
+
+						_companyInfoPersistence.update(companyInfo);
 
 						return _addDBPartitionCompany(company);
 					});
 
 				return _registerDBPartitionCompany(dbPartitionCompany);
 			}
-			catch (Throwable throwable) {
-				_removeDBPartition(companyId, false);
+			catch (Throwable throwable1) {
+				try {
+					_removeDBPartition(companyId, false);
+				}
+				catch (Throwable throwable2) {
+					throwable1.addSuppressed(throwable2);
+				}
 
-				throw new PortalException(throwable);
+				throw new PortalException(throwable1);
 			}
 		}
 	}
@@ -714,8 +743,6 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 	@Override
 	public Company exportCompany(long companyId) throws PortalException {
-		FeatureFlagManagerUtil.checkEnabled("LPD-11342");
-
 		if (companyId == PortalInstancePool.getDefaultCompanyId()) {
 			throw new RequiredCompanyException(
 				"Select another default company before exporting company " +
@@ -732,6 +759,9 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 			}
 
 			DBPartitionUtil.exportDBPartition(companyId);
+		}
+		catch (IllegalArgumentException illegalArgumentException) {
+			throw illegalArgumentException;
 		}
 		catch (Throwable throwable) {
 			throw new PortalException(throwable);
@@ -1111,9 +1141,13 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 	@Override
 	public Company updateCompany(Company company) {
-		_companyInfoPersistence.update(company.getCompanyInfo());
+		CompanyInfo companyInfo = company.getCompanyInfo();
 
-		return super.updateCompany(company);
+		company = super.updateCompany(company);
+
+		_companyInfoPersistence.update(companyInfo);
+
+		return company;
 	}
 
 	/**
@@ -1152,7 +1186,9 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 		validateMaxUsers(maxUsers);
 
-		if (PropsValues.COMPANY_MX_UPDATE) {
+		if (PropsValues.COMPANY_MX_UPDATE &&
+			!DBPartition.isCurrentCompanyRestricted()) {
+
 			validateMx(companyId, mx);
 
 			company.setMx(mx);
@@ -1202,8 +1238,6 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 			String tickerSymbol, String industry, String type, String size)
 		throws PortalException {
 
-		// Company
-
 		virtualHostname = StringUtil.toLowerCase(
 			StringUtil.trim(virtualHostname));
 
@@ -1211,13 +1245,13 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 		validateVirtualHost(company.getWebId(), virtualHostname);
 
-		if (PropsValues.COMPANY_MX_UPDATE) {
-			validateMx(companyId, mx);
-		}
-
 		validateName(companyId, name);
 
-		if (PropsValues.COMPANY_MX_UPDATE) {
+		if (PropsValues.COMPANY_MX_UPDATE &&
+			!DBPartition.isCurrentCompanyRestricted()) {
+
+			validateMx(companyId, mx);
+
 			company.setMx(mx);
 		}
 
@@ -1236,11 +1270,15 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 		company.setType(type);
 		company.setSize(size);
 
+		CompanyInfo companyInfo = company.getCompanyInfo();
+
 		companyPersistence.update(company);
 
-		// Virtual host
+		company = updateVirtualHostname(companyId, virtualHostname);
 
-		return updateVirtualHostname(companyId, virtualHostname);
+		_companyInfoPersistence.update(companyInfo);
+
+		return company;
 	}
 
 	/**
@@ -1333,7 +1371,9 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 		company.setIndexNameNext(indexNameNext);
 
-		return companyPersistence.update(company);
+		_companyInfoPersistence.update(company.getCompanyInfo());
+
+		return company;
 	}
 
 	@Override
@@ -1346,7 +1386,9 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 		company.setIndexNameCurrent(indexNameCurrent);
 		company.setIndexNameNext(indexNameNext);
 
-		return companyPersistence.update(company);
+		_companyInfoPersistence.update(company.getCompanyInfo());
+
+		return company;
 	}
 
 	/**
@@ -1486,7 +1528,7 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 				Date date = new Date();
 
 				for (LayoutSetPrototype layoutSetPrototype :
-						_layoutSetPrototypeLocalService.getLayoutSetPrototypes(
+						_layoutSetPrototypePersistence.findByCompanyId(
 							companyId)) {
 
 					layoutSetPrototype.setModifiedDate(date);
@@ -1566,7 +1608,7 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 			company.setLogoId(logoId);
 
-			company = companyPersistence.update(company);
+			_companyInfoPersistence.update(company.getCompanyInfo());
 		}
 
 		return company;
@@ -1696,18 +1738,14 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 		String[] systemGroups = PortalUtil.getSystemGroups();
 
 		for (String groupName : systemGroups) {
-			if (groupName.equals(GroupConstants.CMS) &&
-				!FeatureFlagManagerUtil.isEnabled("LPD-17564")) {
-
-				continue;
-			}
-
 			deleteGroupActionableDynamicQuery.deleteGroup(
 				_groupLocalService.getGroup(companyId, groupName));
 		}
 
 		deleteGroupActionableDynamicQuery.deleteGroup(
-			_groupLocalService.getCompanyGroup(companyId));
+			_groupPersistence.findByC_C_C(
+				companyId, _classNameLocalService.getClassNameId(Company.class),
+				companyId));
 
 		// Layout prototype
 
@@ -1759,7 +1797,8 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 		_passwordPolicyLocalService.deleteNondefaultPasswordPolicies(companyId);
 
 		PasswordPolicy defaultPasswordPolicy =
-			_passwordPolicyLocalService.getDefaultPasswordPolicy(companyId);
+			_passwordPolicyPersistence.fetchByC_N(
+				companyId, PropsValues.PASSWORDS_DEFAULT_POLICY_NAME);
 
 		if (defaultPasswordPolicy != null) {
 			_passwordPolicyLocalService.deletePasswordPolicy(
@@ -2651,6 +2690,9 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 	@BeanReference(type = GroupLocalService.class)
 	private GroupLocalService _groupLocalService;
 
+	@BeanReference(type = GroupPersistence.class)
+	private GroupPersistence _groupPersistence;
+
 	@BeanReference(type = ImageLocalService.class)
 	private ImageLocalService _imageLocalService;
 
@@ -2660,11 +2702,17 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 	@BeanReference(type = LayoutSetPrototypeLocalService.class)
 	private LayoutSetPrototypeLocalService _layoutSetPrototypeLocalService;
 
+	@BeanReference(type = LayoutSetPrototypePersistence.class)
+	private LayoutSetPrototypePersistence _layoutSetPrototypePersistence;
+
 	@BeanReference(type = OrganizationLocalService.class)
 	private OrganizationLocalService _organizationLocalService;
 
 	@BeanReference(type = PasswordPolicyLocalService.class)
 	private PasswordPolicyLocalService _passwordPolicyLocalService;
+
+	@BeanReference(type = PasswordPolicyPersistence.class)
+	private PasswordPolicyPersistence _passwordPolicyPersistence;
 
 	private final Set<Company> _pendingCompanies = new HashSet<>();
 
@@ -2687,6 +2735,9 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 	@BeanReference(type = RoleLocalService.class)
 	private RoleLocalService _roleLocalService;
+
+	@BeanReference(type = RolePersistence.class)
+	private RolePersistence _rolePersistence;
 
 	private final ServiceTracker
 		<PortalInstanceLifecycleManager, PortalInstanceLifecycleManager>

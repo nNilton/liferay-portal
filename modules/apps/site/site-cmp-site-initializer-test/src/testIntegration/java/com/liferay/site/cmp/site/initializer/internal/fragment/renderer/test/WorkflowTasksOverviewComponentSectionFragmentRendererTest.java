@@ -17,8 +17,6 @@ import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.WebKeys;
-import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -40,9 +38,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 /**
  * @author Jhosseph Gonzalez
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
 @RunWith(Arquillian.class)
 public class WorkflowTasksOverviewComponentSectionFragmentRendererTest {
 
@@ -87,8 +82,8 @@ public class WorkflowTasksOverviewComponentSectionFragmentRendererTest {
 			StringBundler.concat(
 				"/o/search/v1.0/search?emptySearch=true&entryClassNames=",
 				"com.liferay.portal.workflow.kaleo.model.",
-				"KaleoTaskInstanceToken",
-				"&filter=keywords/any(k:startswith(k, 'L_CMP_TASK'))"),
+				"KaleoTaskInstanceToken&filter=cmpTaskObjectEntryIds/any(x:x ",
+				"gt 0)"),
 			props.get("filterURL"));
 	}
 

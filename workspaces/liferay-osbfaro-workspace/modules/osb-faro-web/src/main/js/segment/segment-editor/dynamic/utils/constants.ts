@@ -48,9 +48,14 @@ export type SequentialLimitState = keyof typeof SEQUENTIAL_LIMIT_ALERT;
 export const isKnown = 'is-known';
 export const isUnknown = 'is-unknown';
 
-export enum ProfileTypes {
+export enum IndividualTypes {
 	ANONYMOUS = 'ANONYMOUS',
 	KNOWN = 'KNOWN',
+}
+
+export enum AccountTypes {
+	KNOWN = 'KNOWN',
+	UNKNOWN = 'UNKNOWN',
 }
 
 /**
@@ -59,7 +64,6 @@ export enum ProfileTypes {
 
 export const INPUT_DATE_FORMAT = 'YYYY-MM-DD';
 export const INPUT_DATE_TIME_FORMAT = 'YYYY-MM-DDTHH:mmZ';
-export const INPUT_DISPLAY_DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm';
 
 /**
  * Constants for OData query.
@@ -78,6 +82,7 @@ export enum CustomFunctionOperators {
 	EventsFilterByCount = 'events-filter-by-count',
 	InterestsFilter = 'interests-filter',
 	OrganizationsFilter = 'organizations-filter',
+	SearchTermsFilter = 'search-terms-filter',
 	SessionsFilter = 'sessions-filter',
 	TagsFilter = 'tags-filter',
 	VocabulariesFilter = 'vocabularies-filter',
@@ -125,6 +130,7 @@ export enum RelationalOperators {
 export enum PropertyTypes {
 	AccountDate = 'account-date',
 	AccountNumber = 'account-number',
+	AccountSelectText = 'account-select-text',
 	AccountText = 'account-text',
 	Behavior = 'behavior',
 	Boolean = 'boolean',
@@ -140,11 +146,14 @@ export enum PropertyTypes {
 	OrganizationNumber = 'organization-number',
 	OrganizationSelectText = 'organization-select-text',
 	OrganizationText = 'organization-text',
+	SearchTerm = 'search-term',
 	SelectText = 'select-text',
+	SessionChannel = 'session-channel',
 	SessionDateTime = 'session-date-time',
 	SessionGeolocation = 'session-geolocation',
 	SessionNumber = 'session-number',
 	SessionText = 'session-text',
+	SessionUtmParameter = 'session-utm-parameter',
 	Tag = 'tag',
 	Text = 'text',
 	Vocabulary = 'vocabulary',
@@ -163,6 +172,7 @@ export const CUSTOM_FUNCTION_OPERATOR_KEY_MAP = {
 	['events.filterByCount']: CustomFunctionOperators.EventsFilterByCount,
 	['interests.filter']: CustomFunctionOperators.InterestsFilter,
 	['organizations.filter']: CustomFunctionOperators.OrganizationsFilter,
+	['searchTerms.filter']: CustomFunctionOperators.SearchTermsFilter,
 	['sessions.filter']: CustomFunctionOperators.SessionsFilter,
 	['tag.filter']: CustomFunctionOperators.TagsFilter,
 	['vocabulary.filter']: CustomFunctionOperators.VocabulariesFilter,
@@ -194,6 +204,18 @@ export const SUPPORTED_OPERATORS_MAP = {
 			key: CustomFunctionOperators.AccountsFilter,
 			label: Liferay.Language.get('is').toLowerCase(),
 			name: CustomFunctionOperators.AccountsFilter,
+		},
+	],
+	[PropertyTypes.AccountSelectText]: [
+		{
+			key: CustomFunctionOperators.AccountsFilter,
+			label: Liferay.Language.get('is').toLowerCase(),
+			name: CustomFunctionOperators.AccountsFilter,
+		},
+		{
+			key: NotOperators.NotAccountsFilter,
+			label: Liferay.Language.get('is-not').toLowerCase(),
+			name: NotOperators.NotAccountsFilter,
 		},
 	],
 	[PropertyTypes.AccountText]: [
@@ -311,6 +333,13 @@ export const SUPPORTED_OPERATORS_MAP = {
 			name: CustomFunctionOperators.InterestsFilter,
 		},
 	],
+	[PropertyTypes.SearchTerm]: [
+		{
+			key: CustomFunctionOperators.SearchTermsFilter,
+			label: Liferay.Language.get('is').toLowerCase(),
+			name: CustomFunctionOperators.SearchTermsFilter,
+		},
+	],
 	[PropertyTypes.Number]: [
 		{
 			key: RelationalOperators.EQ,
@@ -402,6 +431,13 @@ export const SUPPORTED_OPERATORS_MAP = {
 			name: RelationalOperators.NE,
 		},
 	],
+	[PropertyTypes.SessionChannel]: [
+		{
+			key: CustomFunctionOperators.SessionsFilter,
+			label: Liferay.Language.get('is').toLowerCase(),
+			name: CustomFunctionOperators.SessionsFilter,
+		},
+	],
 	[PropertyTypes.SessionDateTime]: [
 		{
 			key: CustomFunctionOperators.SessionsFilter,
@@ -424,6 +460,13 @@ export const SUPPORTED_OPERATORS_MAP = {
 		},
 	],
 	[PropertyTypes.SessionText]: [
+		{
+			key: CustomFunctionOperators.SessionsFilter,
+			label: Liferay.Language.get('is').toLowerCase(),
+			name: CustomFunctionOperators.SessionsFilter,
+		},
+	],
+	[PropertyTypes.SessionUtmParameter]: [
 		{
 			key: CustomFunctionOperators.SessionsFilter,
 			label: Liferay.Language.get('is').toLowerCase(),
@@ -464,9 +507,37 @@ export const SUPPORTED_OPERATORS_MAP = {
 	],
 };
 
+/**
+ * The operators a criterion offers for the value comparison itself, which
+ * are not the ones its property type maps to in SUPPORTED_OPERATORS_MAP:
+ * that entry describes the outer call wrapping the criterion (e.g.
+ * "sessions.filter"), while the comparison inside it reuses the plain text
+ * operators, or the closed "is"/"is not" pair when the value can only ever
+ * be one of a fixed list of options (e.g. Channel).
+ */
+export const getCustomInputOperators = (type: PropertyTypes) =>
+	type === PropertyTypes.SessionChannel
+		? SUPPORTED_OPERATORS_MAP[PropertyTypes.SelectText]
+		: SUPPORTED_OPERATORS_MAP[PropertyTypes.Text];
+
+/**
+ * Session property types whose input carries no date filter conjunction, so
+ * their criterion holds a single item and neither the editor nor the
+ * criteria card has a time period to show for them.
+ */
+export const DATELESS_SESSION_PROPERTY_TYPES = [
+	PropertyTypes.SessionChannel,
+	PropertyTypes.SessionDateTime,
+	PropertyTypes.SessionUtmParameter,
+];
+
 export const SUPPORTED_PROPERTY_TYPES_MAP = {
 	[PropertyTypes.AccountDate]: [CustomFunctionOperators.AccountsFilter],
 	[PropertyTypes.AccountNumber]: [CustomFunctionOperators.AccountsFilter],
+	[PropertyTypes.AccountSelectText]: [
+		CustomFunctionOperators.AccountsFilter,
+		NotOperators.NotAccountsFilter,
+	],
 	[PropertyTypes.AccountText]: [CustomFunctionOperators.AccountsFilter],
 	[PropertyTypes.Behavior]: [
 		CustomFunctionOperators.ActivitiesFilterByCount,
@@ -503,6 +574,7 @@ export const SUPPORTED_PROPERTY_TYPES_MAP = {
 		NotOperators.NotActivitiesFilterByCount,
 	],
 	[PropertyTypes.Interest]: [CustomFunctionOperators.InterestsFilter],
+	[PropertyTypes.SearchTerm]: [CustomFunctionOperators.SearchTermsFilter],
 	[PropertyTypes.Number]: [
 		RelationalOperators.EQ,
 		RelationalOperators.GE,
@@ -556,6 +628,17 @@ export const BOOLEAN_OPTIONS = [
 ];
 
 export const INTEREST_BOOLEAN_OPTIONS = [
+	{
+		label: Liferay.Language.get('is').toLowerCase(),
+		value: 'true',
+	},
+	{
+		label: Liferay.Language.get('is-not').toLowerCase(),
+		value: 'false',
+	},
+];
+
+export const SEARCH_TERM_BOOLEAN_OPTIONS = [
 	{
 		label: Liferay.Language.get('is').toLowerCase(),
 		value: 'true',
@@ -625,7 +708,9 @@ export const TIME_CONJUNCTION_OPTIONS = [
 	},
 ];
 
+export const ACQUISITION_PARAMETER_PROPERTY_PREFIX = 'context/';
 export const ACTIVITY_KEY = 'activityKey';
+export const ATTRIBUTE_PROPERTY_PREFIX = 'attribute/';
 export const EVENT_KEY = 'eventId';
 
 export const ASSET_TYPE_APPLICATION_ID_MAP: Record<string, string> = {

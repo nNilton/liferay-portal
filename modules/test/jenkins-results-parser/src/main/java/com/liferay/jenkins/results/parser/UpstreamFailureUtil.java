@@ -29,11 +29,13 @@ public class UpstreamFailureUtil {
 	public static synchronized List<String> getUpstreamJobFailures(
 		String type, TopLevelBuild topLevelBuild) {
 
-		if (_upstreamFailures.containsKey(type)) {
-			return _upstreamFailures.get(type);
+		List<String> upstreamFailures = _upstreamFailures.get(type);
+
+		if (upstreamFailures != null) {
+			return upstreamFailures;
 		}
 
-		List<String> upstreamFailures = new ArrayList<>();
+		upstreamFailures = new ArrayList<>();
 
 		_upstreamFailures.put(type, upstreamFailures);
 
@@ -145,8 +147,14 @@ public class UpstreamFailureUtil {
 			return getUpstreamTopLevelBuildReport(topLevelBuild);
 		}
 
-		JobReport jobReport = JobReport.getInstance(
-			topLevelBuild.getAcceptanceUpstreamJobURL());
+		String acceptanceUpstreamJobURL =
+			topLevelBuild.getAcceptanceUpstreamJobURL();
+
+		if (acceptanceUpstreamJobURL == null) {
+			return getUpstreamTopLevelBuildReport(topLevelBuild);
+		}
+
+		JobReport jobReport = JobReport.getInstance(acceptanceUpstreamJobURL);
 
 		for (TopLevelBuildReport topLevelBuildReport :
 				jobReport.getTopLevelBuildReports(25)) {

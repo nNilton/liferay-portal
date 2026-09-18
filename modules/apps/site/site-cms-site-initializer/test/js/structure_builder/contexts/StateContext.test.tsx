@@ -58,10 +58,13 @@ function buildInitialState(child: StructureChild): State {
 			deletedGroupERCs: [],
 			deletedRelationships: [],
 			modifiedNames: new Set(),
+			modifiedSlugs: new Set(),
 		},
 		invalids: new Map(),
+		operation: null,
 		publishedChildren: new Set(),
 		renamingItemUuid: null,
+		savedChildren: new Set(),
 		selection: [],
 		structure: {
 			children,
@@ -69,6 +72,7 @@ function buildInitialState(child: StructureChild): State {
 			label: {en_US: 'Structure'},
 			name: 'myStructure',
 			path: '',
+			slug: '',
 			spaces: [],
 			status: 'draft',
 			system: false,
@@ -143,12 +147,13 @@ describe('StateContext reducer', () => {
 		const group: RepeatableGroup = {
 			children: new Map(),
 			erc: 'group-erc',
+			isRepeatable: true,
 			label: {en_US: 'Group'},
 			name: 'group',
 			parent: STRUCTURE_UUID,
 			relationshipERC: 'group-relationship-erc',
 			relationshipName: 'groupRelationship',
-			type: 'repeatable-group',
+			type: 'group',
 			uuid: getUuid(),
 		};
 

@@ -83,10 +83,10 @@ export class JournalEditArticlePage {
 		this.undoButton = page.getByTitle('Undo', {exact: true});
 	}
 
-	async assertPrivateContentIconInRelatedAssetPopUp(assetType: string) {
+	async assertPrivateContentIconInRelatedAssetPopUp() {
 		await expect(
 			this.page
-				.frameLocator(`iframe[title="Select ${assetType}"]`)
+				.getByRole('dialog')
 				.getByLabel('Not Visible to Guest Users')
 				.locator('use')
 				.first()
@@ -144,21 +144,6 @@ export class JournalEditArticlePage {
 			.click();
 
 		await this.page.locator(`button[id="${languageId}"]`).click();
-	}
-
-	async changeViewInRelatedAssetPopUp(assetType: string, viewType: string) {
-		await this.page
-			.frameLocator(`iframe[title="Select ${assetType}"]`)
-			.getByLabel('Select View, Currently Selected: ')
-			.waitFor();
-		await this.page
-			.frameLocator(`iframe[title="Select ${assetType}"]`)
-			.getByLabel('Select View, Currently Selected: ')
-			.click();
-		await this.page
-			.frameLocator(`iframe[title="Select ${assetType}"]`)
-			.getByRole('menuitem', {name: viewType})
-			.click();
 	}
 
 	async clearAllCategories(vocabulary: string) {
@@ -312,7 +297,7 @@ export class JournalEditArticlePage {
 		// CKEditor 4 instance whose editable lives inside an iframe.
 
 		const ckEditor4Content = this.page
-			.getByRole('textbox', {exact: true, name: 'Content'})
+			.getByTestId('content')
 			.frameLocator('iframe.cke_wysiwyg_frame')
 			.locator('body');
 
@@ -602,5 +587,37 @@ export class JournalEditArticlePage {
 			.filter({hasText: title});
 
 		await row.locator('span.label').filter({hasText: 'Pending'}).waitFor();
+	}
+
+	async uploadImageFromWebContentImages(filePath: string) {
+		await this.page.getByLabel('Image', {exact: true}).click();
+
+		const itemSelectorIframe = this.page.frameLocator(
+			'iframe[id$="selectDocumentLibrary_iframe_"]'
+		);
+
+		await itemSelectorIframe
+			.getByRole('link', {name: 'Web Content Images'})
+			.click();
+
+		const addButton = itemSelectorIframe.getByRole('button', {
+			exact: true,
+			name: 'Add',
+		});
+
+		await expect(async () => {
+			await itemSelectorIframe
+				.locator('input[type="file"]')
+				.setInputFiles(filePath, {timeout: 5000});
+
+			await expect(addButton).toBeVisible({timeout: 5000});
+		}).toPass();
+
+		await clickAndExpectToBeHidden({
+			target: this.page.locator(
+				'iframe[id$="selectDocumentLibrary_iframe_"]'
+			),
+			trigger: addButton,
+		});
 	}
 }

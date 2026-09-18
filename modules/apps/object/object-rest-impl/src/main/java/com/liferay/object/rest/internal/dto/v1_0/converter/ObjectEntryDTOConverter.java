@@ -132,7 +132,7 @@ import org.osgi.service.component.annotations.Reference;
  */
 @Component(
 	property = {
-		"dto.class.name=com.liferay.object.model.ObjectEntry",
+		"default=true", "dto.class.name=com.liferay.object.model.ObjectEntry",
 		"service.ranking:Integer=100"
 	},
 	service = DTOConverter.class
@@ -271,8 +271,18 @@ public class ObjectEntryDTOConverter
 				serviceBuilderObjectEntry));
 		objectEntry.setCreator(
 			() -> {
+				ObjectEntryVersion creatorObjectEntryVersion =
+					objectEntryVersion;
+
+				if (creatorObjectEntryVersion == null) {
+					creatorObjectEntryVersion =
+						(ObjectEntryVersion)dtoConverterContext.getAttribute(
+							"latestApprovedObjectEntryVersion");
+				}
+
 				long userId = _getAttribute(
-					objectEntryVersion, ObjectEntryVersionModel::getUserId,
+					creatorObjectEntryVersion,
+					ObjectEntryVersionModel::getUserId,
 					serviceBuilderObjectEntry, ObjectEntryModel::getUserId);
 
 				return CreatorUtil.toCreator(
@@ -299,11 +309,21 @@ public class ObjectEntryDTOConverter
 				serviceBuilderObjectEntry,
 				ObjectEntryModel::getExpirationDate));
 		objectEntry.setFriendlyUrlPath(
-			() -> HttpComponentsUtil.decodePath(
-				serviceBuilderObjectEntry.getURLTitle(
-					dtoConverterContext.getLocale())));
+			() -> {
+				if (objectEntryVersion != null) {
+					return contentObjectEntry.getFriendlyUrlPath();
+				}
+
+				return HttpComponentsUtil.decodePath(
+					serviceBuilderObjectEntry.getURLTitle(
+						dtoConverterContext.getLocale()));
+			});
 		objectEntry.setFriendlyUrlPath_i18n(
 			() -> {
+				if (objectEntryVersion != null) {
+					return contentObjectEntry.getFriendlyUrlPath_i18n();
+				}
+
 				Map<String, String> urlTitleMap =
 					serviceBuilderObjectEntry.getURLTitleMap();
 

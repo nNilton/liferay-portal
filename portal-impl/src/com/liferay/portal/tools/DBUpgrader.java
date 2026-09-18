@@ -173,6 +173,26 @@ public class DBUpgrader {
 
 		UpgradeProcessUtil.setUpgradeClient(true);
 
+		Runtime runtime = Runtime.getRuntime();
+
+		runtime.addShutdownHook(
+			new Thread(
+				() -> {
+					try {
+						InitUtil.shutdown();
+					}
+					catch (Exception exception) {
+						System.out.println("Unable to shut down: " + exception);
+
+						for (StackTraceElement stackTraceElement :
+								exception.getStackTrace()) {
+
+							System.out.println("\t" + stackTraceElement);
+						}
+					}
+				},
+				"DBUpgrader Shutdown"));
+
 		try {
 			PortalClassPathUtil.initializeClassPaths(null);
 
@@ -428,6 +448,17 @@ public class DBUpgrader {
 				}
 			}
 
+			if (FeatureFlagManagerUtil.isEnabled(
+					CompanyThreadLocal.getCompanyId(), "LPS-157670")) {
+
+				checkRequiredBuildNumber(
+					ReleaseInfo.RELEASE_6_1_0_BUILD_NUMBER);
+			}
+			else {
+				checkRequiredBuildNumber(
+					ReleaseInfo.RELEASE_6_2_0_BUILD_NUMBER);
+			}
+
 			if (PropsValues.UPGRADE_DATABASE_PREUPGRADE_DATA_CLEANUP_ENABLED) {
 				DataCleanupPreupgradeProcessSuite
 					dataCleanupPreupgradeProcessSuite =
@@ -449,21 +480,13 @@ public class DBUpgrader {
 				}
 			}
 
-			if (FeatureFlagManagerUtil.isEnabled("LPS-157670")) {
-				checkRequiredBuildNumber(
-					ReleaseInfo.RELEASE_6_1_0_BUILD_NUMBER);
-			}
-			else {
-				checkRequiredBuildNumber(
-					ReleaseInfo.RELEASE_6_2_0_BUILD_NUMBER);
-			}
-
 			checkReleaseState();
 
 			int buildNumber = _getBuildNumber();
 
 			try (Connection connection = DataAccess.getConnection()) {
-				if (PortalUpgradeProcess.isInLatestSchemaVersion(connection) &&
+				if (PortalUpgradeProcess.isInCompatibleSchemaVersion(
+						connection) &&
 					(buildNumber == ReleaseInfo.getParentBuildNumber())) {
 
 					_checkClassNamesAndResourceActions();
@@ -516,7 +539,9 @@ public class DBUpgrader {
 			IndexUpdaterUtil.updatePortalIndexes();
 
 			try (Connection connection = DataAccess.getConnection()) {
-				if (PortalUpgradeProcess.isInLatestSchemaVersion(connection)) {
+				if (PortalUpgradeProcess.isInCompatibleSchemaVersion(
+						connection)) {
+
 					updatePortalServiceComponent();
 				}
 

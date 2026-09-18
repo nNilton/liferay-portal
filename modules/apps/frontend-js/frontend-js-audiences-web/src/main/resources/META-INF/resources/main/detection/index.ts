@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {UAParser} from 'ua-parser-js';
-
+import {Cache} from '../cache';
 import {log} from '../log';
+import {TimeoutError} from '../timeout_error';
+import {formatError, indent, waitForAbort} from '../util';
 import {getBrowserName} from './attributes/browser_name';
 import {getBrowserVersion} from './attributes/browser_version';
 import {getCookies} from './attributes/cookies';
 import {getCustom} from './attributes/custom';
+import {getDeviceType} from './attributes/device_type';
 import {getHostname} from './attributes/hostname';
 import {getLanguage} from './attributes/language';
 import {getLocalDate} from './attributes/local_date';
@@ -40,8 +42,6 @@ import type {
 	Rule,
 } from '../index';
 
-declare const Analytics: any;
-
 type AttributeValue = Set<string> | boolean | number | string;
 
 interface OperatorImpl {
@@ -49,73 +49,163 @@ interface OperatorImpl {
 }
 
 export class Detection {
-	private _audiencesDefinition: AudiencesDefinition;
-	private _acSegments: Set<string> | undefined;
-	private _uaParser: UAParser;
+	private readonly _audiencesDefinition: AudiencesDefinition;
 
 	constructor(audiencesDefinition: AudiencesDefinition) {
 		check(audiencesDefinition);
 
 		this._audiencesDefinition = audiencesDefinition;
-		this._uaParser = new UAParser(navigator.userAgent);
 	}
 
-	async run(): Promise<AudienceId[]> {
-		const matches = [];
+	/**
+	 * Run a detection over the definitions given in the constructor.
+	 *
+	 * Note that if timeout occurs, the `matches` parameter will contain only
+	 * the audiences that were detected before the timeout.
+	 *
+	 * @param cache
+	 * @param signal
+	 * @param matches output parameter to hold detected audiences
+	 * @throws TimeoutError on timeout
+	 * @throws Error if anything fails
+	 */
+	async run(
+		cache: Cache,
+		signal: AbortSignal,
+		matches: AudienceId[]
+	): Promise<void> {
+		await Promise.race([
+			waitForAbort(signal),
+			this._matchAudiences(cache, signal, matches),
+		]);
 
-		for (const audience of this._audiencesDefinition.audiences) {
-			const {conjunction, id, rules} = audience;
+		if (signal.aborted) {
+			throw new TimeoutError('Detection of audiences');
+		}
+	}
 
-			log(`Checking rules for audience '${id}'...`);
+	/**
+	 * Match audiences in parallel.
+	 *
+	 * Note that if timeout occurs, the `matches` parameter will contain only
+	 * the audiences that were detected before the timeout.
+	 *
+	 * Never rejects, just logs errors.
+	 *
+	 * @param matches output parameter to hold detected audiences
+	 * @private
+	 */
+	private async _matchAudiences(
+		cache: Cache,
+		signal: AbortSignal,
+		matches: AudienceId[]
+	): Promise<void> {
+		const promises = this._audiencesDefinition.audiences.map(
+			async (audience) => {
+				const {conjunction, id, rules} = audience;
 
-			const matched = await this._evaluateGroup(conjunction, rules);
+				log(`Checking rules for audience '${id}'...`);
 
-			if (matched) {
-				log(`Matched audience: ${id}`);
+				try {
+					const matched = await this._evaluateGroup(
+						cache,
+						signal,
+						conjunction,
+						rules
+					);
 
-				matches.push(id);
+					if (matched) {
+						log(`Audience '${id}' is matched`);
+
+						matches.push(id);
+					}
+				}
+				catch (error: any) {
+					log(
+						`Audience '${id}' is not matched because its evaluation failed with error:\n${indent(2, true, formatError(error))}`
+					);
+				}
 			}
+		);
+
+		await Promise.allSettled(promises);
+	}
+
+	private async _evaluateGroup(
+		cache: Cache,
+		signal: AbortSignal,
+		conjunction: Conjunction,
+		rules: Rule[]
+	): Promise<boolean> {
+		const results = await Promise.all(
+			rules.map((rule) => this._evaluateRule(cache, signal, rule))
+		);
+
+		return conjunction === 'AND'
+			? results.every(Boolean)
+			: results.some(Boolean);
+	}
+
+	private async _evaluateRule(
+		cache: Cache,
+		signal: AbortSignal,
+		rule: Rule
+	): Promise<boolean> {
+		if ('conjunction' in rule) {
+			return this._evaluateGroup(
+				cache,
+				signal,
+				rule.conjunction,
+				rule.rules
+			);
 		}
 
-		return matches;
-	}
+		const ruleDescription = `('${rule.attribute}' ${rule.operator} '${rule.value}')`;
 
-	private async _getAcSegments() {
-		if (this._acSegments === undefined) {
-			if (typeof Analytics === 'undefined') {
-				throw new Error(
-					`Unable to get Analytics Cloud segments because 'Analytics' global object is missing`
-				);
+		try {
+			const operator = this._getOperator(rule.operator);
+
+			const attribute = await this._getAttribute(rule.attribute, cache);
+
+			if (signal.aborted) {
+				throw new TimeoutError('Rule evaluation');
 			}
 
-			const set: Set<string> = new Set();
+			const result = operator(attribute, rule.value);
 
-			for (const segment of await Analytics.segment.getBatchSegmentExternalReferenceCodes()) {
-				set.add(segment);
-			}
+			log(`Rule ${ruleDescription} evaluates to ${result}`);
 
-			for (const segment of await Analytics.segment.getRealTimeSegmentExternalReferenceCodes()) {
-				set.add(segment);
-			}
-
-			this._acSegments = set;
+			return result;
 		}
-
-		return this._acSegments;
+		catch (error: any) {
+			throw new Error(
+				`An error was thrown when evaluating rule ${ruleDescription}`,
+				{cause: error}
+			);
+		}
 	}
 
-	private async _getAttribute(attr: Attribute): Promise<AttributeValue> {
-		if (attr === 'browser_name') {
-			return getBrowserName(this._uaParser);
+	private async _getAttribute(
+		attr: Attribute,
+		cache: Cache
+	): Promise<AttributeValue> {
+		if (attr === 'batch_segments') {
+			return getSegments(cache);
+		}
+		else if (attr === 'browser_name') {
+			return getBrowserName(cache);
 		}
 		else if (attr === 'browser_version') {
-			return getBrowserVersion(this._uaParser);
+			return getBrowserVersion(cache);
 		}
 		else if (attr === 'cookies') {
 			return getCookies();
 		}
 		else if (attr.startsWith('custom:')) {
 			return getCustom(attr.slice(7));
+		}
+		else if (attr === 'device_type') {
+			return getDeviceType(cache);
 		}
 		else if (attr === 'hostname') {
 			return getHostname();
@@ -132,14 +222,14 @@ export class Detection {
 		else if (attr === 'pathname') {
 			return getPathname();
 		}
+		else if (attr === 'real_time_segments') {
+			return getSegments(cache);
+		}
 		else if (attr === 'referrer') {
 			return getReferrer();
 		}
 		else if (attr === 'request_parameters') {
 			return getRequestParameters();
-		}
-		else if (attr === 'segments') {
-			return getSegments(await this._getAcSegments());
 		}
 		else if (attr === 'timezone') {
 			return getTimezone();
@@ -152,44 +242,6 @@ export class Detection {
 		}
 		else {
 			throw new Error(`Unsupported attribute: ${attr}`);
-		}
-	}
-
-	private async _evaluateGroup(
-		conjunction: Conjunction,
-		rules: Rule[]
-	): Promise<boolean> {
-		const results = await Promise.all(
-			rules.map((rule) => this._evaluateRule(rule))
-		);
-
-		return conjunction === 'AND'
-			? results.every(Boolean)
-			: results.some(Boolean);
-	}
-
-	private async _evaluateRule(rule: Rule): Promise<boolean> {
-		if ('conjunction' in rule) {
-			return this._evaluateGroup(rule.conjunction, rule.rules);
-		}
-
-		const ruleDescription = `('${rule.attribute}' ${rule.operator} '${rule.value}')`;
-
-		try {
-			const operator = this._getOperator(rule.operator);
-			const attribute = await this._getAttribute(rule.attribute);
-
-			const result = operator(attribute, rule.value);
-
-			log(`Evaluation of rule ${ruleDescription}: ${result}`);
-
-			return result;
-		}
-		catch (error: any) {
-			throw new Error(
-				`An error was thrown when evaluating rule ${ruleDescription}: ` +
-					(error.message || error)
-			);
 		}
 	}
 

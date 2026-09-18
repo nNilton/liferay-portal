@@ -13,7 +13,7 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
  * @author Iván Zaera Avellón
  */
 @ExtendedObjectClassDefinition(
-	category = "infrastructure", featureFlagKey = "LPD-83647",
+	category = "infrastructure", featureFlagKey = "LPD-85746",
 	scope = ExtendedObjectClassDefinition.Scope.COMPANY, strictScope = true
 )
 @Meta.OCD(
@@ -22,6 +22,12 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
 	name = "frontend-js-audiences-configuration-name"
 )
 public interface FrontendJSAudiencesConfiguration {
+
+	@Meta.AD(
+		deflt = "0", description = "detection-timeout-help",
+		name = "detection-timeout", required = false
+	)
+	public int detectionTimeout();
 
 	@Meta.AD(
 		deflt = "false", description = "enable-log-help", name = "enable-log",

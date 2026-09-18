@@ -149,6 +149,7 @@
 	<property name="definitions.dir" value="${project.dir}/definitions" />
 	<property name="doc.dir" value="${project.dir}/api" />
 	<property name="jacoco.agent.configuration" value="=destfile=${jacoco.dump.file},excludes=${jacoco.excludes},includes=${jacoco.includes},output=file,append=true" />
+	<property name="mockito.agent" value="-javaagent:${project.dir}/lib/development/mockito-core.jar" />
 
 	<var name="fork.mode" value="false" />
 	<var if:true="${jvm.debug}" name="fork.mode" value="true" />
@@ -810,6 +811,23 @@ information.
 		</sequential>
 	</macrodef>
 
+	<macrodef name="generate-backend-batch-junit-report-workspaces">
+		<attribute name="test.class.name" />
+		<attribute name="test.task.name" />
+
+		<sequential>
+			<mkdir dir="${project.dir}/workspaces/test-results" />
+
+			<generate-backend-batch-junit-report
+				junit.failure.count="1"
+				junit.failure.message.element="&lt;failure message=&quot;@{test.task.name} was not executed. Please check the logs for details.&quot; /&gt;"
+				test.class.name="@{test.class.name}"
+				test.command.name="testRun"
+				test.results.dir="${project.dir}/workspaces/test-results"
+			/>
+		</sequential>
+	</macrodef>
+
 	<macrodef name="generate-pom-info">
 		<sequential>
 			<property name="artifact.name" value="${ant.project.name}" />
@@ -1383,6 +1401,7 @@ information.
 				<jvmarg if:set="junit.java.add.opens" line="${junit.java.add.opens}" />
 				<jvmarg line="${app.server.jvm.args}" />
 				<jvmarg line="${junit.java.gc}" />
+				<jvmarg line="${mockito.agent}" />
 				<jvmarg line="${whip.agent}" />
 				<jvmarg value="-Dexternal-properties=${test.properties}" />
 				<jvmarg value="-Dfixed.issues=${fixed.issues}" />
@@ -2465,28 +2484,6 @@ rerun your task.
 				</jacoco-report>
 			</else>
 		</if>
-	</target>
-
-	<target name="gradle-execute-modules">
-		<local name="test.task.name" />
-
-		<antelope:stringutil property="test.task.name" string="${test.task}">
-			<antelope:replace regex="\:" replacement="." />
-		</antelope:stringutil>
-
-		<trycatch property="exception.message">
-			<try>
-				<lstopwatch action="start" name="test.execution.duration${test.task.name}" />
-
-				<gradle-execute dir="${dir}" gradlejvmargs="${gradle.jvm.args}" task="${test.task}" test.name="${test.name}" />
-			</try>
-			<catch>
-				<fail>${exception.message}</fail>
-			</catch>
-			<finally>
-				<lstopwatch action="total" name="test.execution.duration${test.task.name}" />
-			</finally>
-		</trycatch>
 	</target>
 
 	<target name="print-properties">

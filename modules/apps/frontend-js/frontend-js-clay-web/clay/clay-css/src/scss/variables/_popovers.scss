@@ -76,6 +76,7 @@ $popover: map-deep-merge(
 		text-transform: none,
 		top: 0rem,
 		white-space: normal,
+		width: max-content,
 		word-break: normal,
 		word-spacing: normal,
 		word-wrap: break-word,
@@ -147,7 +148,6 @@ $popovers: map-deep-merge(
 $popover-header: () !default;
 $popover-header: map-deep-merge(
 	(
-		color: $popover-header-color,
 		background-color: $popover-header-bg,
 		border-bottom: $popover-border-width solid
 			clay-darken($popover-header-bg, 5%),
@@ -156,6 +156,7 @@ $popover-header: map-deep-merge(
 			clay-enable-rounded($popover-inner-border-radius),
 		border-top-right-radius:
 			clay-enable-rounded($popover-inner-border-radius),
+		color: $popover-header-color,
 		font-size: $popover-header-font-size,
 		font-weight: $popover-header-font-weight,
 		margin-bottom: $popover-header-margin-y,
@@ -274,8 +275,8 @@ $clay-popover-top-right: map-deep-merge(
 	(
 		arrow: (
 			left: auto,
-			right: $popover-arrow-offset,
 			margin: 0rem,
+			right: $popover-arrow-offset,
 
 			after: (
 				border-top-color: $popover-top-right-arrow-color,

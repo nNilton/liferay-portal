@@ -60,19 +60,19 @@ public class LayoutPageTemplateStructureRelElementVariationLocalServiceWrapper
 	public LayoutPageTemplateStructureRelElementVariation
 			addOrUpdateLayoutPageTemplateStructureRelElementVariation(
 				String externalReferenceCode, long userId, long groupId,
-				String[] audienceEntryERCs,
-				java.util.Map<java.util.Locale, String> hideMap,
+				boolean active, String hide,
 				java.util.Map<java.util.Locale, String> htmlMap,
 				java.util.Map<java.util.Locale, String> jsMap, String name,
 				long plid, String segmentsExperienceERC, String targetElement,
+				String[] audienceEntryERCs,
 				com.liferay.portal.kernel.service.ServiceContext serviceContext)
 		throws com.liferay.portal.kernel.exception.PortalException {
 
 		return _layoutPageTemplateStructureRelElementVariationLocalService.
 			addOrUpdateLayoutPageTemplateStructureRelElementVariation(
-				externalReferenceCode, userId, groupId, audienceEntryERCs,
-				hideMap, htmlMap, jsMap, name, plid, segmentsExperienceERC,
-				targetElement, serviceContext);
+				externalReferenceCode, userId, groupId, active, hide, htmlMap,
+				jsMap, name, plid, segmentsExperienceERC, targetElement,
+				audienceEntryERCs, serviceContext);
 	}
 
 	/**
@@ -153,6 +153,15 @@ public class LayoutPageTemplateStructureRelElementVariationLocalServiceWrapper
 		_layoutPageTemplateStructureRelElementVariationLocalService.
 			deleteLayoutPageTemplateStructureRelElementVariation(
 				externalReferenceCode, groupId);
+	}
+
+	@Override
+	public void deleteLayoutPageTemplateStructureRelElementVariations(
+		long plid, String segmentsExperienceERC) {
+
+		_layoutPageTemplateStructureRelElementVariationLocalService.
+			deleteLayoutPageTemplateStructureRelElementVariations(
+				plid, segmentsExperienceERC);
 	}
 
 	/**
@@ -386,6 +395,16 @@ public class LayoutPageTemplateStructureRelElementVariationLocalServiceWrapper
 				uuid, groupId);
 	}
 
+	@Override
+	public java.util.List<LayoutPageTemplateStructureRelElementVariation>
+		getLayoutPageTemplateStructureRelElementVariations(
+			boolean active, long plid, String segmentsExperienceERC) {
+
+		return _layoutPageTemplateStructureRelElementVariationLocalService.
+			getLayoutPageTemplateStructureRelElementVariations(
+				active, plid, segmentsExperienceERC);
+	}
+
 	/**
 	 * Returns a range of all the layout page template structure rel element variations.
 	 *
@@ -411,6 +430,16 @@ public class LayoutPageTemplateStructureRelElementVariationLocalServiceWrapper
 
 		return _layoutPageTemplateStructureRelElementVariationLocalService.
 			getLayoutPageTemplateStructureRelElementVariations(plid);
+	}
+
+	@Override
+	public java.util.List<LayoutPageTemplateStructureRelElementVariation>
+		getLayoutPageTemplateStructureRelElementVariations(
+			long plid, String segmentsExperienceERC) {
+
+		return _layoutPageTemplateStructureRelElementVariationLocalService.
+			getLayoutPageTemplateStructureRelElementVariations(
+				plid, segmentsExperienceERC);
 	}
 
 	/**
@@ -509,6 +538,17 @@ public class LayoutPageTemplateStructureRelElementVariationLocalServiceWrapper
 	}
 
 	@Override
+	public LayoutPageTemplateStructureRelElementVariation
+			updateLayoutPageTemplateStructureRelElementVariation(
+				String externalReferenceCode, long groupId, boolean active)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _layoutPageTemplateStructureRelElementVariationLocalService.
+			updateLayoutPageTemplateStructureRelElementVariation(
+				externalReferenceCode, groupId, active);
+	}
+
+	@Override
 	public BasePersistence<?> getBasePersistence() {
 		return _layoutPageTemplateStructureRelElementVariationLocalService.
 			getBasePersistence();
@@ -561,4 +601,4 @@ public class LayoutPageTemplateStructureRelElementVariationLocalServiceWrapper
 		_layoutPageTemplateStructureRelElementVariationLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-247877782
+// LIFERAY-SERVICE-BUILDER-HASH:652939744

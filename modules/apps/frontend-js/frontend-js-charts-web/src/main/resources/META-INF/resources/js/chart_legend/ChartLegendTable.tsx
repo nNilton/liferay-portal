@@ -10,7 +10,12 @@ import type {ChartLegendColumn, ChartLegendItem} from './types';
 
 interface Props {
 	columns: ChartLegendColumn[];
+
+	/** Draw the divider lines under the header and each row. Default `true`. */
+	dividers?: boolean;
+
 	items: ChartLegendItem[];
+	labelColumnLabel?: string;
 	onActivate: (id: number) => void;
 	onDeactivate: (id: number) => void;
 	onSelect: (id: number) => void;
@@ -19,7 +24,9 @@ interface Props {
 
 export default function ChartLegendTable({
 	columns,
+	dividers = true,
 	items,
+	labelColumnLabel,
 	onActivate,
 	onDeactivate,
 	onSelect,
@@ -34,7 +41,12 @@ export default function ChartLegendTable({
 	);
 
 	return (
-		<table aria-labelledby={titleId} className="charts-legend-table">
+		<table
+			aria-labelledby={titleId}
+			className={classNames('charts-legend-table', {
+				'charts-legend-table--no-dividers': !dividers,
+			})}
+		>
 			<thead>
 				<tr>
 					<th
@@ -57,7 +69,7 @@ export default function ChartLegendTable({
 						className="charts-legend-table__th charts-legend-table__th--label"
 						scope="col"
 					>
-						{Liferay.Language.get('label')}
+						{labelColumnLabel ?? Liferay.Language.get('label')}
 					</th>
 
 					{columns.map((column) => (

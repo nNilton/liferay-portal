@@ -28,7 +28,6 @@ import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.Sync;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -54,7 +53,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 /**
  * @author Alicia García
  */
-@FeatureFlag("LPD-17564")
 @RunWith(Arquillian.class)
 @Sync
 public class ViewSharedWithMeSectionDisplayContextTest
@@ -217,7 +215,7 @@ public class ViewSharedWithMeSectionDisplayContextTest
 			).build(),
 			fdsActionDropdownItems.get(7));
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
-			"download", "download-folder", "Download", "get",
+			"download", "download-folder", "Download Folder", "get",
 			HashMapBuilder.<String, Object>put(
 				"className", ObjectEntryFolder.class.getName()
 			).build(),
@@ -262,7 +260,8 @@ public class ViewSharedWithMeSectionDisplayContextTest
 		throws Exception {
 
 		_fragmentRenderer.render(
-			null, httpServletRequest, new MockHttpServletResponse());
+			fragmentRendererContext, httpServletRequest,
+			new MockHttpServletResponse());
 
 		Object viewRecycleBinSectionDisplayContext =
 			httpServletRequest.getAttribute(

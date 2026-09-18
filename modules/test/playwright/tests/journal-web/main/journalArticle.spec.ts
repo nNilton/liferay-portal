@@ -47,6 +47,15 @@ const translateNameAndMetadataFields = async (
 	);
 };
 
+const setWebContentScope = async (iframe, scope) => {
+	await clickAndExpectToBeVisible({
+		autoClick: true,
+		target: iframe.getByRole('menuitem', {exact: true, name: scope}),
+		timeout: 3000,
+		trigger: iframe.getByLabel('Filter', {exact: true}),
+	});
+};
+
 const baseTest = mergeTests(
 	apiHelpersTest,
 	isolatedSiteTest,
@@ -285,7 +294,7 @@ baseTest(
 	}
 );
 
-baseTest(
+ckeditor5Test(
 	'Check that upload field is marked as translated',
 	{
 		tag: '@LPD-66008',
@@ -479,6 +488,182 @@ translationAndAutosaveTest(
 		await expect(
 			articleSelectorIframe.getByText(unSelectableWebContent)
 		).toHaveCount(0);
+	}
+);
+
+baseTest(
+	'Web content draft in a connected asset library is not found when browsing everywhere',
+	async ({apiHelpers, journalEditArticlePage, page, site}) => {
+		const fieldName = 'WebContentSelector';
+		const structureName = getRandomString();
+		const draftTitle = getRandomString();
+
+		// A structure with a web content field opens the web content item
+		// selector; connect an asset library whose only web content is a draft
+
+		await apiHelpers.dataEngine.createStructure(
+			site.id,
+			getDataStructureDefinition({
+				defaultLanguageId: 'en_US',
+				fields: [{fieldType: 'journal_article', name: fieldName}],
+				name: structureName,
+			})
+		);
+
+		const depot =
+			await apiHelpers.jsonWebServicesDepot.addDepotEntry(
+				getRandomString()
+			);
+
+		try {
+			await apiHelpers.jsonWebServicesDepotGroupRel.addDepotEntryGroupRel(
+				depot.depotEntryId,
+				String(site.id)
+			);
+
+			await apiHelpers.headlessAdminContent.postStructuredContentDraft({
+				contentStructureId:
+					await getBasicWebContentStructureId(apiHelpers),
+				datePublished: '2026-01-01T00:00:00Z',
+				siteId: String(depot.groupId),
+				title: draftTitle,
+			});
+
+			// Open the web content item selector and browse everywhere
+
+			await journalEditArticlePage.goto({
+				siteUrl: site.friendlyUrlPath,
+				structureName,
+			});
+
+			await page
+				.getByTestId(fieldName)
+				.getByRole('button', {name: 'Select'})
+				.click();
+
+			const iframe = page.frameLocator('iframe[title="Web Content"]');
+
+			await setWebContentScope(iframe, 'Everywhere');
+
+			// The draft never surfaces, so the library reports no web content
+
+			await expect(
+				iframe.getByText('No web content was found.')
+			).toBeVisible();
+
+			await expect(iframe.getByText(draftTitle)).toHaveCount(0);
+		}
+		finally {
+			await apiHelpers.jsonWebServicesDepot.deleteDepotEntry(
+				depot.depotEntryId
+			);
+		}
+	}
+);
+
+baseTest(
+	'Web content in a connected asset library is reachable everywhere and cleared back to the current site',
+	{tag: ['@LPS-119899', '@LPS-119707']},
+	async ({apiHelpers, journalEditArticlePage, page, site}) => {
+		const fieldName = 'WebContentSelector';
+		const structureName = getRandomString();
+		const depotWebContent = getRandomString();
+		const depotFolderName = getRandomString();
+		const depotFolderWebContent = getRandomString();
+		const siteWebContent = getRandomString();
+
+		const basicWebContentStructureId =
+			await getBasicWebContentStructureId(apiHelpers);
+
+		// A structure with a web content field opens the web content item
+		// selector; seed web content in the site and in the root and a folder
+		// of a connected asset library
+
+		await apiHelpers.dataEngine.createStructure(
+			site.id,
+			getDataStructureDefinition({
+				defaultLanguageId: 'en_US',
+				fields: [{fieldType: 'journal_article', name: fieldName}],
+				name: structureName,
+			})
+		);
+
+		await apiHelpers.jsonWebServicesJournal.addWebContent({
+			ddmStructureId: basicWebContentStructureId,
+			groupId: site.id,
+			titleMap: {en_US: siteWebContent},
+		});
+
+		const depot =
+			await apiHelpers.jsonWebServicesDepot.addDepotEntry(
+				getRandomString()
+			);
+
+		try {
+			await apiHelpers.jsonWebServicesDepotGroupRel.addDepotEntryGroupRel(
+				depot.depotEntryId,
+				String(site.id)
+			);
+
+			await apiHelpers.jsonWebServicesJournal.addWebContent({
+				ddmStructureId: basicWebContentStructureId,
+				groupId: depot.groupId,
+				titleMap: {en_US: depotWebContent},
+			});
+
+			const folder = await apiHelpers.jsonWebServicesJournal.addFolder({
+				groupId: depot.groupId,
+				name: depotFolderName,
+			});
+
+			await apiHelpers.jsonWebServicesJournal.addWebContent({
+				ddmStructureId: basicWebContentStructureId,
+				folderId: folder.folderId,
+				groupId: depot.groupId,
+				titleMap: {en_US: depotFolderWebContent},
+			});
+
+			await journalEditArticlePage.goto({
+				siteUrl: site.friendlyUrlPath,
+				structureName,
+			});
+
+			await page
+				.getByTestId(fieldName)
+				.getByRole('button', {name: 'Select'})
+				.click();
+
+			const iframe = page.frameLocator('iframe[title="Web Content"]');
+
+			// Everywhere surfaces the site and asset library root web content
+
+			await setWebContentScope(iframe, 'Everywhere');
+
+			await expect(iframe.getByText(depotWebContent)).toBeVisible();
+
+			await expect(iframe.getByText(siteWebContent)).toBeVisible();
+
+			// Clearing the filter reverts to the current site only
+
+			await iframe.getByRole('button', {name: 'Clear'}).click();
+
+			await expect(iframe.getByText(siteWebContent)).toBeVisible();
+
+			await expect(iframe.getByText(depotWebContent)).toHaveCount(0);
+
+			// Everywhere again, the asset library folder holds its web content
+
+			await setWebContentScope(iframe, 'Everywhere');
+
+			await iframe.getByText(depotFolderName, {exact: true}).click();
+
+			await expect(iframe.getByText(depotFolderWebContent)).toBeVisible();
+		}
+		finally {
+			await apiHelpers.jsonWebServicesDepot.deleteDepotEntry(
+				depot.depotEntryId
+			);
+		}
 	}
 );
 
@@ -875,18 +1060,7 @@ privateContentIconTest(
 
 		await journalEditArticlePage.openRelatedAsset();
 
-		await journalEditArticlePage.assertPrivateContentIconInRelatedAssetPopUp(
-			'Basic Web Content'
-		);
-
-		await journalEditArticlePage.changeViewInRelatedAssetPopUp(
-			'Basic Web Content',
-			'table'
-		);
-
-		await journalEditArticlePage.assertPrivateContentIconInRelatedAssetPopUp(
-			'Basic Web Content'
-		);
+		await journalEditArticlePage.assertPrivateContentIconInRelatedAssetPopUp();
 	}
 );
 
@@ -1171,6 +1345,89 @@ baseTest(
 		await translationOptionsButton.click();
 
 		await expect(markAsTranslatedButton).toBeDisabled();
+	}
+);
+
+baseTest(
+	'This is a test for the translation status of a web content with empty fields after publishing',
+	{
+		tag: '@LPD-102657',
+	},
+	async ({journalEditArticlePage, page, site}) => {
+
+		// Publish a web content with only the title filled
+
+		const title = getRandomString();
+
+		await journalEditArticlePage.goto({siteUrl: site.friendlyUrlPath});
+
+		await journalEditArticlePage.createAndPublishBasicArticle(title);
+
+		// Mark Catalan as translated without filling any field
+
+		await journalEditArticlePage.editArticle(title);
+
+		const translationButton = page.getByRole('combobox', {
+			name: 'Select a language',
+		});
+
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: page.getByRole('option', {
+				name: 'Catalan Language: Not Translated',
+			}),
+			trigger: translationButton,
+		});
+
+		await page.getByLabel('Translation Options').click();
+
+		await page.getByRole('button', {name: 'Mark as Translated'}).click();
+
+		await expect(
+			page.getByRole('heading', {name: 'Mark ca_ES as Translated'})
+		).toBeVisible();
+
+		await page.getByRole('button', {name: 'Mark as Translated'}).click();
+
+		await journalEditArticlePage.publishArticle(true);
+
+		await waitForAlert(page, `Success:${title} was updated successfully.`);
+
+		// Catalan must remain translated when the web content is reopened
+
+		await journalEditArticlePage.editArticle(title);
+
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: page.getByRole('option', {
+				name: 'Catalan Language: Translated',
+			}),
+			trigger: translationButton,
+		});
+
+		// Reset the translation
+
+		await page.getByLabel('Translation Options').click();
+
+		await page.getByRole('button', {name: 'Reset Translation'}).click();
+
+		await page.getByRole('button', {name: 'Delete'}).click();
+
+		await journalEditArticlePage.publishArticle(true);
+
+		await waitForAlert(page, `Success:${title} was updated successfully.`);
+
+		// Catalan must remain untranslated when the web content is reopened
+
+		await journalEditArticlePage.editArticle(title);
+
+		await clickAndExpectToBeVisible({
+			autoClick: false,
+			target: page.getByRole('option', {
+				name: 'Catalan Language: Not Translated',
+			}),
+			trigger: translationButton,
+		});
 	}
 );
 

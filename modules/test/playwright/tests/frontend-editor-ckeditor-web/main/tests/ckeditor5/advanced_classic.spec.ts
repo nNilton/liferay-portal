@@ -42,6 +42,7 @@ test(
 				'Accessibility help',
 				'Undo',
 				'Redo',
+				'Find and replace',
 				'Styles',
 				'Normal',
 				'Bold',
@@ -397,5 +398,45 @@ test(
 
 			await expect(hiddenInput).toHaveValue('');
 		});
+	}
+);
+
+test(
+	'Find and Replace button is shown in the toolbar',
+	{tag: '@LPD-95091'},
+	async ({classicPage}) => {
+		await expect(
+			classicPage.toolbar.container.getByRole('button', {
+				exact: true,
+				name: 'Find and replace',
+			})
+		).toBeVisible();
+	}
+);
+
+test(
+	'Style Book text colors are available in the Styles dropdown',
+	{tag: '@LPD-11235'},
+	async ({classicPage, page}) => {
+		await classicPage.toolbar.container
+			.getByRole('button', {name: 'Styles'})
+			.click();
+
+		const textColors = [
+			'Primary',
+			'Secondary',
+			'Success',
+			'Danger',
+			'Warning',
+			'Info',
+			'Dark',
+			'Light',
+		];
+
+		for (const color of textColors) {
+			await expect(
+				page.getByRole('option', {exact: true, name: color})
+			).toBeVisible();
+		}
 	}
 );

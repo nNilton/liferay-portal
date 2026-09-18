@@ -41,9 +41,13 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 
+import java.io.Serializable;
+
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -123,6 +127,42 @@ public class CPDefinitionSystemObjectDefinitionManager
 		}
 
 		return cProduct.getExternalReferenceCode();
+	}
+
+	@Override
+	public Map<Serializable, String> getBaseModelExternalReferenceCodes(
+		Set<Serializable> primaryKeys) {
+
+		Map<Serializable, String> externalReferenceCodes = new HashMap<>();
+
+		Map<Serializable, CProduct> cProducts =
+			_cProductLocalService.fetchPersistedModels(primaryKeys);
+
+		for (Serializable primaryKey : primaryKeys) {
+			CProduct cProduct = cProducts.get(primaryKey);
+
+			if (cProduct == null) {
+				CPDefinition cpDefinition =
+					_cpDefinitionLocalService.fetchCPDefinition(
+						(Long)primaryKey);
+
+				if (cpDefinition == null) {
+					continue;
+				}
+
+				cProduct = _cProductLocalService.fetchCProduct(
+					cpDefinition.getCProductId());
+
+				if (cProduct == null) {
+					continue;
+				}
+			}
+
+			externalReferenceCodes.put(
+				primaryKey, cProduct.getExternalReferenceCode());
+		}
+
+		return externalReferenceCodes;
 	}
 
 	@Override
@@ -310,8 +350,10 @@ public class CPDefinitionSystemObjectDefinitionManager
 		Map<String, Object> variables = super.getVariables(
 			contentType, objectDefinition, oldValues, payloadJSONObject);
 
-		if (variables.containsKey("CProductId")) {
-			variables.put("productId", variables.get("CProductId"));
+		Object cProductId = variables.get("CProductId");
+
+		if (cProductId != null) {
+			variables.put("productId", cProductId);
 		}
 
 		return variables;

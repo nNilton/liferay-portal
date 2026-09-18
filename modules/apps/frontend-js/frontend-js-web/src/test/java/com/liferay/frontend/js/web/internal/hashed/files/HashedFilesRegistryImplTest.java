@@ -7,9 +7,13 @@ package com.liferay.frontend.js.web.internal.hashed.files;
 
 import com.liferay.frontend.js.web.internal.util.FrontendJSWebUtil;
 import com.liferay.frontend.js.web.test.util.FrontendJSWebTestUtil;
+import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.frontend.hashed.files.HashedFilesUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
+import com.liferay.portal.kernel.test.util.FIPSModeTestUtil;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.util.DigesterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
@@ -18,6 +22,8 @@ import jakarta.servlet.ServletContext;
 
 import java.net.URL;
 
+import java.security.MessageDigest;
+
 import java.util.Map;
 
 import org.junit.Assert;
@@ -25,8 +31,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.mockito.Mockito;
-
-import org.osgi.framework.BundleContext;
 
 /**
  * @author Iván Zaera Avellón
@@ -80,29 +84,20 @@ public class HashedFilesRegistryImplTest {
 			hashedFilesRegistryImpl.getResource("/o/frontend-js-web/main.css"));
 	}
 
-	private Map<String, HashedFilesRegistryImpl.DataBag> _mockDataBags(
-			String servletContextPath)
-		throws Exception {
-
-		ServletContext servletContext = Mockito.mock(ServletContext.class);
-
-		Mockito.when(
-			servletContext.getResource("/main.css")
-		).thenReturn(
-			Mockito.mock(URL.class)
-		);
-
-		return HashMapBuilder.put(
-			servletContextPath,
-			new HashedFilesRegistryImpl.DataBag(
-				HashMapBuilder.put(
-					"/main.css",
-					HashedFilesUtil.addHash(
-						"/main.css",
-						FrontendJSWebTestUtil.randomHashedFileHash())
-				).build(),
-				servletContext, null)
+	@Test
+	public void testGetServletContextHash() throws Exception {
+		Map<String, String> hashedFileURIs = HashMapBuilder.put(
+			"/o/frontend-js-web/main.css",
+			HashedFilesUtil.addHash(
+				"/o/frontend-js-web/main.css", RandomTestUtil.randomString())
 		).build();
+
+		FIPSModeTestUtil.assertAlgorithmSwitch(
+			DigesterUtil.MD5, MessageDigest.class, DigesterUtil.SHA_256,
+			MessageDigest::getInstance,
+			() -> ReflectionTestUtil.invoke(
+				new HashedFilesRegistryImpl(), "_getServletContextHash",
+				new Class<?>[] {Map.class}, hashedFileURIs));
 	}
 
 	private Portal _mockPortal(String contextPath, String proxyPath)
@@ -131,6 +126,37 @@ public class HashedFilesRegistryImplTest {
 		return portal;
 	}
 
+	private ServiceTrackerMap<String, HashedFilesRegistryImpl.DataBag>
+			_mockServiceTrackerMap(String servletContextPath)
+		throws Exception {
+
+		ServiceTrackerMap<String, HashedFilesRegistryImpl.DataBag>
+			serviceTrackerMap = Mockito.mock(ServiceTrackerMap.class);
+
+		ServletContext servletContext = Mockito.mock(ServletContext.class);
+
+		Mockito.when(
+			servletContext.getResource("/main.css")
+		).thenReturn(
+			Mockito.mock(URL.class)
+		);
+
+		Mockito.when(
+			serviceTrackerMap.getService(servletContextPath)
+		).thenReturn(
+			new HashedFilesRegistryImpl.DataBag(
+				HashMapBuilder.put(
+					"/main.css",
+					HashedFilesUtil.addHash(
+						"/main.css",
+						FrontendJSWebTestUtil.randomHashedFileHash())
+				).build(),
+				servletContext, null)
+		);
+
+		return serviceTrackerMap;
+	}
+
 	private HashedFilesRegistryImpl _newHashedFilesRegistryImpl(
 			String contextPath, String proxyPath, String servletContextPath)
 		throws Exception {
@@ -139,13 +165,11 @@ public class HashedFilesRegistryImplTest {
 			new HashedFilesRegistryImpl();
 
 		ReflectionTestUtil.setFieldValue(
-			hashedFilesRegistryImpl, "_dataBags",
-			_mockDataBags(servletContextPath));
-		ReflectionTestUtil.setFieldValue(
 			hashedFilesRegistryImpl, "_portal",
 			_mockPortal(contextPath, proxyPath));
-
-		hashedFilesRegistryImpl.activate(Mockito.mock(BundleContext.class));
+		ReflectionTestUtil.setFieldValue(
+			hashedFilesRegistryImpl, "_serviceTrackerMap",
+			_mockServiceTrackerMap(servletContextPath));
 
 		return hashedFilesRegistryImpl;
 	}

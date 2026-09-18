@@ -64,6 +64,7 @@ import com.liferay.portal.kernel.spring.aop.Retry;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
+import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -192,7 +193,7 @@ public class ResourcePermissionLocalServiceImpl
 
 			// Owner permissions
 
-			Role ownerRole = _roleLocalService.getRole(
+			Role ownerRole = _rolePersistence.findByC_N(
 				companyId, RoleConstants.OWNER);
 
 			List<String> ownerActionIds =
@@ -1232,11 +1233,11 @@ public class ResourcePermissionLocalServiceImpl
 			long companyId, Collection<String> modelResources)
 		throws PortalException {
 
-		Role guestRole = _roleLocalService.getRole(
+		Role guestRole = _rolePersistence.findByC_N(
 			companyId, RoleConstants.GUEST);
-		Role ownerRole = _roleLocalService.getRole(
+		Role ownerRole = _rolePersistence.findByC_N(
 			companyId, RoleConstants.OWNER);
-		Role siteMemberRole = _roleLocalService.getRole(
+		Role siteMemberRole = _rolePersistence.findByC_N(
 			companyId, RoleConstants.SITE_MEMBER);
 
 		for (String modelResource : modelResources) {
@@ -1272,11 +1273,11 @@ public class ResourcePermissionLocalServiceImpl
 	public void initPortletDefaultPermissions(Portlet portlet)
 		throws PortalException {
 
-		Role guestRole = _roleLocalService.getRole(
+		Role guestRole = _rolePersistence.findByC_N(
 			portlet.getCompanyId(), RoleConstants.GUEST);
-		Role ownerRole = _roleLocalService.getRole(
+		Role ownerRole = _rolePersistence.findByC_N(
 			portlet.getCompanyId(), RoleConstants.OWNER);
-		Role siteMemberRole = _roleLocalService.getRole(
+		Role siteMemberRole = _rolePersistence.findByC_N(
 			portlet.getCompanyId(), RoleConstants.SITE_MEMBER);
 
 		List<String> guestPortletActions =
@@ -1353,7 +1354,7 @@ public class ResourcePermissionLocalServiceImpl
 		String name = resourcePermission.getName();
 		long fromRoleId = resourcePermission.getRoleId();
 
-		Role toRole = _roleLocalService.getRole(toRoleId);
+		Role toRole = _rolePersistence.findByPrimaryKey(toRoleId);
 
 		List<String> actionIds = null;
 
@@ -1699,7 +1700,7 @@ public class ResourcePermissionLocalServiceImpl
 	protected void addGuestPermissions(Resource resource, String[] actionIds)
 		throws PortalException {
 
-		Role guestRole = _roleLocalService.getRole(
+		Role guestRole = _rolePersistence.findByC_N(
 			resource.getCompanyId(), RoleConstants.GUEST);
 
 		setResourcePermissions(
@@ -1730,7 +1731,7 @@ public class ResourcePermissionLocalServiceImpl
 			return _roleLocalService.getDefaultGroupRole(groupId);
 		}
 
-		return _roleLocalService.getRole(companyId, roleName);
+		return _rolePersistence.findByC_N(companyId, roleName);
 	}
 
 	protected boolean isGuestRoleId(
@@ -1740,7 +1741,7 @@ public class ResourcePermissionLocalServiceImpl
 			return guestRole;
 		}
 
-		Role role = _roleLocalService.fetchRole(companyId, RoleConstants.GUEST);
+		Role role = _rolePersistence.fetchByC_N(companyId, RoleConstants.GUEST);
 
 		if ((role != null) && (roleId == role.getRoleId())) {
 			return true;
@@ -1808,6 +1809,10 @@ public class ResourcePermissionLocalServiceImpl
 			long companyId, String name, int scope, String primKey,
 			long ownerId, Map<Long, String[]> roleIdsToActionIds)
 		throws PortalException {
+
+		if (MapUtil.isEmpty(roleIdsToActionIds)) {
+			return;
+		}
 
 		boolean flushResourcePermissionEnabled =
 			PermissionThreadLocal.isFlushResourcePermissionEnabled(
@@ -1954,7 +1959,7 @@ public class ResourcePermissionLocalServiceImpl
 						name);
 			}
 
-			Role role = _roleLocalService.getRole(
+			Role role = _rolePersistence.findByC_N(
 				companyId, RoleConstants.OWNER);
 
 			List<ResourcePermission> addedResourcePermissions = null;
@@ -2035,7 +2040,7 @@ public class ResourcePermissionLocalServiceImpl
 							name);
 				}
 
-				Role guestRole = _roleLocalService.getRole(
+				Role guestRole = _rolePersistence.findByC_N(
 					companyId, RoleConstants.GUEST);
 
 				resourcePermission = _updateResourcePermission(

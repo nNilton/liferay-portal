@@ -6,6 +6,7 @@
 import {EventSource} from 'eventsource';
 import {useCallback, useEffect, useRef, useState} from 'react';
 
+import {RequestTooLargeError} from '../utils/throwIfRequestTooLarge';
 import {
 	createCategorizationEventSource,
 	postCategorizationAgentInstance,
@@ -30,17 +31,113 @@ function toRequestContext(
 	};
 
 	if (agent === ECategorizationAgent.AUTO_CATEGORIZE) {
+		const appliedCategoryIds = new Set(context.appliedCategoryIds ?? []);
+		const candidateCategories = context.candidateCategories ?? [];
+
+		requestContext.appliedCategories = JSON.stringify(
+			candidateCategories.filter((candidateCategory) =>
+				appliedCategoryIds.has(candidateCategory.id)
+			)
+		);
 		requestContext.candidateCategories = JSON.stringify(
-			context.candidateCategories ?? []
+			candidateCategories.filter(
+				(candidateCategory) =>
+					!appliedCategoryIds.has(candidateCategory.id)
+			)
 		);
 	}
 	else {
+		const appliedTags = context.appliedTags ?? [];
+
+		const lowerCaseAppliedTags = new Set(
+			appliedTags.map((appliedTag) => appliedTag.toLowerCase())
+		);
+
+		requestContext.appliedTags = JSON.stringify(appliedTags);
 		requestContext.existingTags = JSON.stringify(
-			context.existingTags ?? []
+			(context.existingTags ?? []).filter(
+				(existingTag) =>
+					!lowerCaseAppliedTags.has(existingTag.toLowerCase())
+			)
 		);
 	}
 
 	return requestContext;
+}
+
+function resolveTargetSuggestions(
+	agent: ECategorizationAgent,
+	context: CategorizationContext,
+	targets: string[]
+): Suggestion[] {
+	const suggestions: Suggestion[] = [];
+
+	if (agent === ECategorizationAgent.AUTO_CATEGORIZE) {
+		const appliedCategoryIds = new Set(context.appliedCategoryIds ?? []);
+		const candidateCategories = context.candidateCategories ?? [];
+		const seen = new Set<number>();
+
+		targets.forEach((target) => {
+			const name = target.trim().toLowerCase();
+
+			const candidateCategory = candidateCategories.find(
+				(candidate) => candidate.name.trim().toLowerCase() === name
+			);
+
+			if (
+				candidateCategory &&
+				!appliedCategoryIds.has(candidateCategory.id) &&
+				!seen.has(candidateCategory.id)
+			) {
+				seen.add(candidateCategory.id);
+
+				suggestions.push({
+					id: candidateCategory.id,
+					name: candidateCategory.name,
+				});
+			}
+		});
+
+		return suggestions;
+	}
+
+	const appliedTags = new Set(
+		(context.appliedTags ?? []).map((appliedTag) =>
+			appliedTag.toLowerCase()
+		)
+	);
+
+	const existingTagsByLowerCase = new Map<string, string>();
+
+	(context.existingTags ?? []).forEach((existingTag) =>
+		existingTagsByLowerCase.set(existingTag.toLowerCase(), existingTag)
+	);
+
+	const seen = new Set<string>();
+
+	targets.forEach((target) => {
+		const name = target.trim();
+		const lowerCaseName = name.toLowerCase();
+
+		if (
+			!name ||
+			appliedTags.has(lowerCaseName) ||
+			seen.has(lowerCaseName)
+		) {
+			return;
+		}
+
+		seen.add(lowerCaseName);
+
+		const existingTag = existingTagsByLowerCase.get(lowerCaseName);
+
+		suggestions.push({
+			isNew: existingTag === undefined,
+			name: existingTag ?? name,
+		});
+	});
+
+	return suggestions;
 }
 
 export default function useCategorizationAgent(agent: ECategorizationAgent) {
@@ -51,9 +148,11 @@ export default function useCategorizationAgent(agent: ECategorizationAgent) {
 	const connectingRef = useRef<boolean>(false);
 	const eventSourceRef = useRef<EventSource | null>(null);
 	const lastContextRef = useRef<CategorizationContext | null>(null);
+	const lastTargetsRef = useRef<string[] | null>(null);
 	const mountedRef = useRef<boolean>(true);
 	const pendingRef = useRef<boolean>(false);
 	const sseEventSinkKeyRef = useRef<string | null>(null);
+	const stoppedRef = useRef<boolean>(false);
 
 	const closeEventSource = useCallback(() => {
 		eventSourceRef.current?.close();
@@ -70,8 +169,16 @@ export default function useCategorizationAgent(agent: ECategorizationAgent) {
 					sseEventSinkKey: sseEventSinkKeyRef.current as string,
 				});
 			}
-			catch {
-				setError(Liferay.Language.get('an-unexpected-error-occurred'));
+			catch (error) {
+				if (stoppedRef.current) {
+					return;
+				}
+
+				setError(
+					error instanceof RequestTooLargeError
+						? error.message
+						: Liferay.Language.get('an-unexpected-error-occurred')
+				);
 				setStatus('error');
 
 				closeEventSource();
@@ -91,7 +198,7 @@ export default function useCategorizationAgent(agent: ECategorizationAgent) {
 			.then((eventSource) => {
 				connectingRef.current = false;
 
-				if (!mountedRef.current) {
+				if (!mountedRef.current || stoppedRef.current) {
 					eventSource?.close();
 
 					return;
@@ -100,7 +207,10 @@ export default function useCategorizationAgent(agent: ECategorizationAgent) {
 				if (!eventSource) {
 					pendingRef.current = false;
 
-					setStatus('idle');
+					setError(
+						Liferay.Language.get('an-unexpected-error-occurred')
+					);
+					setStatus('error');
 
 					return;
 				}
@@ -140,29 +250,27 @@ export default function useCategorizationAgent(agent: ECategorizationAgent) {
 					closeEventSource();
 				});
 
-				eventSource.addEventListener(
-					'Agent Invocation Failed',
-					(event) => {
-						let text = '';
+				eventSource.addEventListener('Agent Invocation Failed', () => {
+					setError(
+						Liferay.Language.get('an-unexpected-error-occurred')
+					);
+					setStatus('error');
 
-						try {
-							text = JSON.parse(event.data).data;
-						}
-						catch {
-							text = '';
-						}
+					closeEventSource();
+				});
 
-						setError(
-							text ||
-								Liferay.Language.get(
-									'an-unexpected-error-occurred'
-								)
-						);
-						setStatus('error');
-
-						closeEventSource();
+				eventSource.addEventListener('error', () => {
+					if (stoppedRef.current) {
+						return;
 					}
-				);
+
+					setError(
+						Liferay.Language.get('an-unexpected-error-occurred')
+					);
+					setStatus('error');
+
+					closeEventSource();
+				});
 			})
 			.catch(() => {
 				connectingRef.current = false;
@@ -179,7 +287,12 @@ export default function useCategorizationAgent(agent: ECategorizationAgent) {
 
 	const run = useCallback(
 		(context: CategorizationContext) => {
+			if (stoppedRef.current) {
+				return;
+			}
+
 			lastContextRef.current = context;
+			lastTargetsRef.current = null;
 
 			setError(undefined);
 			setSuggestions([]);
@@ -197,13 +310,49 @@ export default function useCategorizationAgent(agent: ECategorizationAgent) {
 		[connect, invoke]
 	);
 
+	const resolveTargets = useCallback(
+		(context: CategorizationContext, targets: string[]) => {
+			if (stoppedRef.current) {
+				return;
+			}
+
+			lastContextRef.current = context;
+			lastTargetsRef.current = targets;
+
+			setError(undefined);
+
+			const resolved = resolveTargetSuggestions(agent, context, targets);
+
+			setSuggestions(resolved);
+			setStatus(resolved.length ? 'ready' : 'empty');
+		},
+		[agent]
+	);
+
 	const regenerate = useCallback(() => {
-		if (lastContextRef.current) {
+		if (!lastContextRef.current) {
+			return;
+		}
+
+		if (lastTargetsRef.current) {
+			resolveTargets(lastContextRef.current, lastTargetsRef.current);
+		}
+		else {
 			run(lastContextRef.current);
 		}
-	}, [run]);
+	}, [resolveTargets, run]);
+
+	const stop = useCallback(() => {
+		stoppedRef.current = true;
+
+		closeEventSource();
+
+		setStatus('stopped');
+	}, [closeEventSource]);
 
 	const reset = useCallback(() => {
+		stoppedRef.current = false;
+
 		setError(undefined);
 		setSuggestions([]);
 		setStatus('idle');
@@ -225,5 +374,14 @@ export default function useCategorizationAgent(agent: ECategorizationAgent) {
 		};
 	}, [agent, closeEventSource]);
 
-	return {error, regenerate, reset, run, status, suggestions};
+	return {
+		error,
+		regenerate,
+		reset,
+		resolveTargets,
+		run,
+		status,
+		stop,
+		suggestions,
+	};
 }

@@ -1,8 +1,35 @@
 import {FaroEnv} from './constants';
 import {Project, User} from './records';
 
+const TRACKING_CONSENT_COOKIE = 'LIFERAY_PRODUCT_EXPERIENCE_MANAGEMENT';
+
+export enum TrackingConsentValues {
+	Accepted = 'true',
+	Declined = 'false',
+}
+
 export class Pendo {
+
+	/**
+	 * Returns the stored consent decision, or `null` when there is none. Reads
+	 * the cookie the DXP tracking script uses, so the two agree.
+	 */
+	getUserConsent(): TrackingConsentValues | null {
+		return (
+			(Liferay.Util.Cookie.get(
+				TRACKING_CONSENT_COOKIE,
+				Liferay.Util.Cookie.TYPES.NECESSARY
+			) as TrackingConsentValues) ?? null
+		);
+	}
+
 	initialize({currentUser, project}: {currentUser: User; project: Project}) {
+		this.injectAgent();
+
+		if (typeof pendo === 'undefined') {
+			return;
+		}
+
 		const data = {
 			account: {
 				...(project.corpProjectUuid && {
@@ -26,8 +53,54 @@ export class Pendo {
 		return pendo.initialize(data);
 	}
 
+	setUserConsent(accepted: boolean) {
+		Liferay.Util.Cookie.set(
+			TRACKING_CONSENT_COOKIE,
+			accepted
+				? TrackingConsentValues.Accepted
+				: TrackingConsentValues.Declined,
+			Liferay.Util.Cookie.TYPES.NECESSARY
+		);
+	}
+
+	/**
+	 * Appends the agent loader on demand. On the page load where the user
+	 * accepts tracking, the loader was already skipped (no consent existed
+	 * when the page was rendered), so it must be injected here for tracking to
+	 * start without a reload. Outside production the inert stub is always
+	 * appended, so a defined `pendo` is also what keeps this method from
+	 * running there. See `pendo-script.ts` for what gets appended.
+	 */
+	private injectAgent() {
+		if (typeof pendo !== 'undefined') {
+			return;
+		}
+
+		const script = document.createElement('script');
+
+		script.innerHTML = this.script;
+
+		const nonce = (Liferay as unknown as {CSP?: {nonce?: string}}).CSP
+			?.nonce;
+
+		if (nonce) {
+			script.setAttribute('nonce', nonce);
+		}
+
+		document.body.appendChild(script);
+	}
+
 	get script() {
 		if (FARO_ENV === FaroEnv.Production) {
+
+			// Before the user accepts tracking the page must not request
+			// anything from pendo.io, not even the agent script: an empty
+			// snippet keeps `pendo-script.ts` from adding one.
+
+			if (this.getUserConsent() !== TrackingConsentValues.Accepted) {
+				return '';
+			}
+
 			return `(function(apiKey){
 			(function(p,e,n,d,o){var v,w,x,y,z;o=p[d]=p[d]||{};o._q=o._q||[];
 				v=['initialize','identify','updateOptions','pageLoad','track'];for(w=0,x=v.length;w<x;++w)(function(m){

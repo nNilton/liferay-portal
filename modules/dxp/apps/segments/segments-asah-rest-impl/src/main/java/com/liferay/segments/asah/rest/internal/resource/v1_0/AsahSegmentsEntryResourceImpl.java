@@ -59,15 +59,17 @@ public class AsahSegmentsEntryResourceImpl
 
 			if (segmentsEntry == null) {
 				segmentsEntry = _segmentsEntryLocalService.addSegmentsEntry(
-					asahSegmentsEntry.getId(), nameMap, Collections.emptyMap(),
-					true, null, SegmentsEntryConstants.SOURCE_ASAH_FARO_BACKEND,
-					serviceContext);
+					null, asahSegmentsEntry.getId(), nameMap,
+					Collections.emptyMap(), true, null,
+					SegmentsEntryConstants.SOURCE_ASAH_FARO_BACKEND,
+					SegmentsEntryConstants.TYPE_DEFAULT, serviceContext);
 			}
 			else {
 				segmentsEntry = _segmentsEntryLocalService.updateSegmentsEntry(
+					segmentsEntry.getExternalReferenceCode(),
 					segmentsEntry.getSegmentsEntryId(),
 					asahSegmentsEntry.getId(), nameMap, null, true, null,
-					serviceContext);
+					segmentsEntry.getType(), serviceContext);
 			}
 		}
 		catch (PortalException portalException) {

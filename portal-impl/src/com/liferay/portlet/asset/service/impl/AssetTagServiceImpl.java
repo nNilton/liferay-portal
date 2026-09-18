@@ -18,6 +18,7 @@ import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.Autocomplete;
 import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.StringUtil;
@@ -27,6 +28,7 @@ import com.liferay.portlet.asset.service.permission.AssetTagsPermission;
 import com.liferay.portlet.asset.util.comparator.AssetTagNameComparator;
 import com.liferay.util.dao.orm.CustomSQLUtil;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -63,7 +65,7 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 	@Override
 	public void deleteTags(long[] tagIds) throws PortalException {
 		for (long tagId : tagIds) {
-			AssetTag tag = assetTagLocalService.getTag(tagId);
+			AssetTag tag = assetTagPersistence.findByPrimaryKey(tagId);
 
 			AssetTagsPermission.check(
 				getPermissionChecker(), tag.getGroupId(),
@@ -78,8 +80,7 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 		String externalReferenceCode, long groupId) {
 
 		return sanitize(
-			assetTagLocalService.fetchAssetTagByExternalReferenceCode(
-				externalReferenceCode, groupId));
+			assetTagPersistence.fetchByERC_G(externalReferenceCode, groupId));
 	}
 
 	@Override
@@ -93,12 +94,15 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 		throws PortalException {
 
 		return sanitize(
-			assetTagLocalService.getAssetTagByExternalReferenceCode(
-				externalReferenceCode, groupId));
+			assetTagPersistence.findByERC_G(externalReferenceCode, groupId));
 	}
 
 	@Override
 	public List<AssetTag> getGroupsTags(long[] groupIds) {
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return Collections.emptyList();
+		}
+
 		return sanitize(
 			assetTagPersistence.findByGroupId(
 				groupIds, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
@@ -148,7 +152,7 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 
 	@Override
 	public AssetTag getTag(long tagId) throws PortalException {
-		return sanitize(assetTagLocalService.getTag(tagId));
+		return sanitize(assetTagPersistence.findByPrimaryKey(tagId));
 	}
 
 	@Override
@@ -203,6 +207,10 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 		long[] groupIds, String name, int start, int end,
 		OrderByComparator<AssetTag> orderByComparator) {
 
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return Collections.emptyList();
+		}
+
 		if (Validator.isNull(name)) {
 			return sanitize(
 				assetTagPersistence.findByGroupId(
@@ -232,6 +240,10 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 
 	@Override
 	public int getTagsCount(long[] groupIds, String name) {
+		if (ArrayUtil.isEmpty(groupIds)) {
+			return 0;
+		}
+
 		if (Validator.isNull(name)) {
 			return assetTagPersistence.countByGroupId(groupIds);
 		}
@@ -249,7 +261,7 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 
 	@Override
 	public void mergeTags(long fromTagId, long toTagId) throws PortalException {
-		AssetTag tag = assetTagLocalService.getTag(fromTagId);
+		AssetTag tag = assetTagPersistence.findByPrimaryKey(fromTagId);
 
 		AssetTagsPermission.check(
 			getPermissionChecker(), tag.getGroupId(), ActionKeys.MANAGE_TAG);
@@ -290,7 +302,7 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 
 	@Override
 	public void unsubscribeTag(long userId, long tagId) throws PortalException {
-		AssetTag tag = assetTagLocalService.getTag(tagId);
+		AssetTag tag = assetTagPersistence.findByPrimaryKey(tagId);
 
 		AssetTagsPermission.check(
 			getPermissionChecker(), tag.getGroupId(), ActionKeys.SUBSCRIBE);
@@ -304,7 +316,7 @@ public class AssetTagServiceImpl extends AssetTagServiceBaseImpl {
 			ServiceContext serviceContext)
 		throws PortalException {
 
-		AssetTag tag = assetTagLocalService.getTag(tagId);
+		AssetTag tag = assetTagPersistence.findByPrimaryKey(tagId);
 
 		AssetTagsPermission.check(
 			getPermissionChecker(), tag.getGroupId(), ActionKeys.MANAGE_TAG);

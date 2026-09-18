@@ -11,7 +11,12 @@ import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVis
 import {PORTLET_URLS} from '../../../../utils/portletUrls';
 import {waitForAlert} from '../../../../utils/waitForAlert';
 
-type SidePanelName = 'Categorization' | 'General' | 'Comments' | 'Schedule';
+type SidePanelName =
+	| 'Categorization'
+	| 'General'
+	| 'Comments'
+	| 'Projects'
+	| 'Schedule';
 
 type Field =
 	| {
@@ -30,6 +35,12 @@ type Field =
 			nth?: number;
 			type: 'Checkbox';
 			value: boolean;
+	  }
+	| {
+			label: string;
+			nth?: number;
+			type: 'Date';
+			value: string;
 	  }
 	| {
 			label: string;
@@ -226,11 +237,12 @@ export class ContentsPage {
 
 	async fillData(fields: Field[]) {
 		for (const field of fields) {
-			const element = this.page
-				.getByLabel(field.label)
-				.nth(field.nth || 0);
+			const element =
+				'type' in field && field.type === 'Date'
+					? this.getDateInput(field.label, field.nth)
+					: this.page.getByLabel(field.label).nth(field.nth || 0);
 
-			if (!('type' in field)) {
+			if (!('type' in field) || field.type === 'Date') {
 				await element.fill(field.value);
 			}
 			else if (field.type === 'Rich Text') {
@@ -250,6 +262,13 @@ export class ContentsPage {
 				});
 			}
 		}
+	}
+
+	getDateInput(label: string, nth: number = 0) {
+		return this.page
+			.getByLabel(label)
+			.and(this.page.getByRole('textbox'))
+			.nth(nth);
 	}
 
 	async navigateTo(folderName: string) {
@@ -349,6 +368,13 @@ export class ContentsPage {
 		await expect(
 			this.page.getByRole('dialog', {name: title})
 		).toBeVisible();
+	}
+
+	async waitForSidePanel(panelName: SidePanelName) {
+		await expect(this.page.getByLabel(panelName)).toHaveAttribute(
+			'aria-selected',
+			'true'
+		);
 	}
 
 	async viewShowDetails(title: string) {

@@ -119,10 +119,10 @@ public class SegmentsEntryCTTest {
 					_ctCollection.getCtCollectionId())) {
 
 			segmentsEntry = _segmentsEntryLocalService.updateSegmentsEntry(
-				segmentsEntry.getSegmentsEntryId(),
+				null, segmentsEntry.getSegmentsEntryId(),
 				segmentsEntry.getSegmentsEntryKey(), nameMap,
 				segmentsEntry.getDescriptionMap(), segmentsEntry.isActive(),
-				segmentsEntry.getCriteria(),
+				segmentsEntry.getCriteria(), segmentsEntry.getType(),
 				ServiceContextTestUtil.getServiceContext(_group.getGroupId()));
 		}
 

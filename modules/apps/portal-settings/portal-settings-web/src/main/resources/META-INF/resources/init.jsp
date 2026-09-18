@@ -19,6 +19,7 @@ taglib uri="http://liferay.com/tld/util" prefix="liferay-util" %>
 
 <%@ page import="com.liferay.map.constants.MapProviderWebKeys" %><%@
 page import="com.liferay.petra.string.StringPool" %><%@
+page import="com.liferay.portal.kernel.db.partition.DBPartition" %><%@
 page import="com.liferay.portal.kernel.exception.AddressCityException" %><%@
 page import="com.liferay.portal.kernel.exception.AddressStreetException" %><%@
 page import="com.liferay.portal.kernel.exception.AddressZipException" %><%@
@@ -33,6 +34,7 @@ page import="com.liferay.portal.kernel.exception.NoSuchRegionException" %><%@
 page import="com.liferay.portal.kernel.exception.PhoneNumberException" %><%@
 page import="com.liferay.portal.kernel.exception.PhoneNumberExtensionException" %><%@
 page import="com.liferay.portal.kernel.exception.WebsiteURLException" %><%@
+page import="com.liferay.portal.kernel.frontend.esm.FrontendESMUtil" %><%@
 page import="com.liferay.portal.kernel.language.LanguageUtil" %><%@
 page import="com.liferay.portal.kernel.language.UnicodeLanguageUtil" %><%@
 page import="com.liferay.portal.kernel.model.*" %><%@

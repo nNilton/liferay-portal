@@ -10,6 +10,7 @@ import com.liferay.headless.commerce.admin.catalog.client.json.BaseJSONParser;
 
 import jakarta.annotation.Generated;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -72,6 +73,25 @@ public class ProductTaxConfigurationSerDes {
 			sb.append("\"");
 		}
 
+		if (productTaxConfiguration.getTaxCategoryExternalReferenceCode() !=
+				null) {
+
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"taxCategoryExternalReferenceCode\": ");
+
+			sb.append("\"");
+
+			sb.append(
+				_escape(
+					productTaxConfiguration.
+						getTaxCategoryExternalReferenceCode()));
+
+			sb.append("\"");
+		}
+
 		if (productTaxConfiguration.getTaxable() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
@@ -119,6 +139,19 @@ public class ProductTaxConfigurationSerDes {
 				String.valueOf(productTaxConfiguration.getTaxCategory()));
 		}
 
+		if (productTaxConfiguration.getTaxCategoryExternalReferenceCode() ==
+				null) {
+
+			map.put("taxCategoryExternalReferenceCode", null);
+		}
+		else {
+			map.put(
+				"taxCategoryExternalReferenceCode",
+				String.valueOf(
+					productTaxConfiguration.
+						getTaxCategoryExternalReferenceCode()));
+		}
+
 		if (productTaxConfiguration.getTaxable() == null) {
 			map.put("taxable", null);
 		}
@@ -152,6 +185,12 @@ public class ProductTaxConfigurationSerDes {
 			else if (Objects.equals(jsonParserFieldName, "taxCategory")) {
 				return false;
 			}
+			else if (Objects.equals(
+						jsonParserFieldName,
+						"taxCategoryExternalReferenceCode")) {
+
+				return false;
+			}
 			else if (Objects.equals(jsonParserFieldName, "taxable")) {
 				return false;
 			}
@@ -173,6 +212,15 @@ public class ProductTaxConfigurationSerDes {
 			else if (Objects.equals(jsonParserFieldName, "taxCategory")) {
 				if (jsonParserFieldValue != null) {
 					productTaxConfiguration.setTaxCategory(
+						(String)jsonParserFieldValue);
+				}
+			}
+			else if (Objects.equals(
+						jsonParserFieldName,
+						"taxCategoryExternalReferenceCode")) {
+
+				if (jsonParserFieldValue != null) {
+					productTaxConfiguration.setTaxCategoryExternalReferenceCode(
 						(String)jsonParserFieldValue);
 				}
 			}
@@ -231,6 +279,12 @@ public class ProductTaxConfigurationSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -263,4 +317,4 @@ public class ProductTaxConfigurationSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-2003005126
+// LIFERAY-REST-BUILDER-HASH:-221017540

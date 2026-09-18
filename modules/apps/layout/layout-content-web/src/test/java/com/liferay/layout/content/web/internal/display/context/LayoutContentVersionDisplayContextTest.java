@@ -51,24 +51,26 @@ public class LayoutContentVersionDisplayContextTest {
 
 	@Before
 	public void setUp() throws PortalException {
+		_setUpDraftLayout();
 		_setUpGroup();
 		_setUpLanguage();
 		_setUpLayoutLocalService();
 		_setUpPublishedLayout();
+		_setUpThemeDisplay();
 	}
 
 	@Test
 	public void testGetContext() throws PortalException {
 		SegmentsExperience defaultSegmentsExperience = _getSegmentsExperience(
-			null, null);
+			0, null, null);
 
 		String segmentsEntryERC = RandomTestUtil.randomString();
 		String segmentsEntryScopeERC = RandomTestUtil.randomString();
 
 		SegmentsExperience loserSegmentsExperience = _getSegmentsExperience(
-			segmentsEntryERC, segmentsEntryScopeERC);
+			-1, segmentsEntryERC, segmentsEntryScopeERC);
 		SegmentsExperience winnerSegmentsExperience = _getSegmentsExperience(
-			segmentsEntryERC, segmentsEntryScopeERC);
+			1, segmentsEntryERC, segmentsEntryScopeERC);
 
 		Mockito.when(
 			_segmentsExperienceLocalService.getSegmentsExperiences(
@@ -88,17 +90,6 @@ public class LayoutContentVersionDisplayContextTest {
 			layoutContentVersionDisplayContext.getContext();
 
 		Map<String, Object> config = (Map<String, Object>)context.get("config");
-
-		Assert.assertEquals(
-			LocaleUtil.toLanguageId(_siteDefaultLocale),
-			config.get("defaultLanguageId"));
-		Assert.assertEquals(
-			StringBundler.concat(
-				"/o/headless-admin-site/v1.0/sites/",
-				_group.getExternalReferenceCode(), "/site-pages/",
-				_publishedLayout.getExternalReferenceCode(),
-				"/page-specification-versions"),
-			config.get("pageSpecificationVersionsURL"));
 
 		_assertAvailableLanguages(
 			(Map<String, Object>)config.get("availableLanguages"), _locale,
@@ -121,6 +112,43 @@ public class LayoutContentVersionDisplayContextTest {
 		Assert.assertEquals(
 			availableSegmentsExperiences.toString(), 3,
 			availableSegmentsExperiences.size());
+
+		Assert.assertEquals(
+			LocaleUtil.toLanguageId(_siteDefaultLocale),
+			config.get("defaultLanguageId"));
+		Assert.assertEquals(
+			_themeDisplay.getPathImage() + "/user_portrait?img_id=0",
+			config.get("defaultUserImageSrc"));
+		Assert.assertEquals(
+			_themeDisplay.getPathMain() + "/portal/get_page_preview",
+			config.get("getPagePreviewURL"));
+		Assert.assertEquals(
+			_themeDisplay.getPathMain() + "/portal/get_page_version_preview",
+			config.get("getPageVersionPreviewURL"));
+
+		Map<String, Object> layout = (Map<String, Object>)config.get("layout");
+
+		Assert.assertEquals(_draftLayout.getName(_locale), layout.get("name"));
+		Assert.assertEquals(
+			_draftLayout.isApproved() ? "approved" : "draft",
+			layout.get("status"));
+
+		Assert.assertEquals(
+			StringBundler.concat(
+				"/o/headless-admin-site/v1.0/sites/",
+				_group.getExternalReferenceCode(), "/site-pages/",
+				_publishedLayout.getExternalReferenceCode(),
+				"/page-specification-versions",
+				"/{pageSpecificationVersionExternalReferenceCode}",
+				"/page-specification-version-page-experiences"),
+			config.get("pageSpecificationVersionPageExperiencesURL"));
+		Assert.assertEquals(
+			StringBundler.concat(
+				"/o/headless-admin-site/v1.0/sites/",
+				_group.getExternalReferenceCode(), "/site-pages/",
+				_publishedLayout.getExternalReferenceCode(),
+				"/page-specification-versions"),
+			config.get("pageSpecificationVersionsURL"));
 	}
 
 	private void _assertAvailableLanguages(
@@ -150,8 +178,14 @@ public class LayoutContentVersionDisplayContextTest {
 
 		Assert.assertEquals(active, segmentsExperienceMap.get("active"));
 		Assert.assertEquals(
+			segmentsExperience.getPriority(),
+			segmentsExperienceMap.get("priority"));
+		Assert.assertEquals(
 			segmentsExperience.getExternalReferenceCode(),
 			segmentsExperienceMap.get("segmentsExperienceERC"));
+		Assert.assertEquals(
+			String.valueOf(segmentsExperience.getSegmentsExperienceId()),
+			segmentsExperienceMap.get("segmentsExperienceId"));
 		Assert.assertEquals(
 			segmentsExperience.getName(_locale),
 			segmentsExperienceMap.get("segmentsExperienceName"));
@@ -165,13 +199,13 @@ public class LayoutContentVersionDisplayContextTest {
 			new MockHttpServletRequest();
 
 		mockHttpServletRequest.setAttribute(
-			WebKeys.THEME_DISPLAY, _getThemeDisplay());
+			WebKeys.THEME_DISPLAY, _themeDisplay);
 
 		return mockHttpServletRequest;
 	}
 
 	private SegmentsExperience _getSegmentsExperience(
-		String segmentsEntryERC, String segmentsEntryScopeERC) {
+		int priority, String segmentsEntryERC, String segmentsEntryScopeERC) {
 
 		SegmentsExperience segmentsExperience = Mockito.mock(
 			SegmentsExperience.class);
@@ -186,6 +220,12 @@ public class LayoutContentVersionDisplayContextTest {
 			segmentsExperience.getName(_locale)
 		).thenReturn(
 			RandomTestUtil.randomString()
+		);
+
+		Mockito.when(
+			segmentsExperience.getPriority()
+		).thenReturn(
+			priority
 		);
 
 		Mockito.when(
@@ -215,34 +255,18 @@ public class LayoutContentVersionDisplayContextTest {
 		return segmentsExperience;
 	}
 
-	private ThemeDisplay _getThemeDisplay() {
-		ThemeDisplay themeDisplay = Mockito.mock(ThemeDisplay.class);
-
+	private void _setUpDraftLayout() {
 		Mockito.when(
-			themeDisplay.getLayout()
+			_draftLayout.getName(_locale)
 		).thenReturn(
-			_draftLayout
+			RandomTestUtil.randomString()
 		);
 
 		Mockito.when(
-			themeDisplay.getLocale()
+			_draftLayout.isApproved()
 		).thenReturn(
-			_locale
+			RandomTestUtil.randomBoolean()
 		);
-
-		Mockito.when(
-			themeDisplay.getScopeGroup()
-		).thenReturn(
-			_group
-		);
-
-		Mockito.when(
-			themeDisplay.getSiteDefaultLocale()
-		).thenReturn(
-			_siteDefaultLocale
-		);
-
-		return themeDisplay;
 	}
 
 	private void _setUpGroup() {
@@ -284,6 +308,44 @@ public class LayoutContentVersionDisplayContextTest {
 		);
 	}
 
+	private void _setUpThemeDisplay() {
+		Mockito.when(
+			_themeDisplay.getLayout()
+		).thenReturn(
+			_draftLayout
+		);
+
+		Mockito.when(
+			_themeDisplay.getLocale()
+		).thenReturn(
+			_locale
+		);
+
+		Mockito.when(
+			_themeDisplay.getPathImage()
+		).thenReturn(
+			RandomTestUtil.randomString()
+		);
+
+		Mockito.when(
+			_themeDisplay.getPathMain()
+		).thenReturn(
+			RandomTestUtil.randomString()
+		);
+
+		Mockito.when(
+			_themeDisplay.getScopeGroup()
+		).thenReturn(
+			_group
+		);
+
+		Mockito.when(
+			_themeDisplay.getSiteDefaultLocale()
+		).thenReturn(
+			_siteDefaultLocale
+		);
+	}
+
 	private final Layout _draftLayout = Mockito.mock(Layout.class);
 	private final Group _group = Mockito.mock(Group.class);
 	private final Language _language = Mockito.mock(Language.class);
@@ -295,5 +357,6 @@ public class LayoutContentVersionDisplayContextTest {
 		_segmentsExperienceLocalService = Mockito.mock(
 			SegmentsExperienceLocalService.class);
 	private final Locale _siteDefaultLocale = LocaleUtil.GERMANY;
+	private final ThemeDisplay _themeDisplay = Mockito.mock(ThemeDisplay.class);
 
 }

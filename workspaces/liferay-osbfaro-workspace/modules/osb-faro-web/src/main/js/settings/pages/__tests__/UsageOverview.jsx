@@ -5,7 +5,7 @@ import {cleanup, getByTestId, render} from '@testing-library/react';
 import {fromJS} from 'immutable';
 import {Project} from 'shared/util/records';
 import {Provider} from 'react-redux';
-import {StaticRouter} from 'react-router';
+import {MemoryRouter} from 'react-router';
 import {SubscriptionNames} from 'shared/util/subscriptions';
 import {SubscriptionStatuses, UserRoleNames} from 'shared/util/constants';
 import {UsageOverview} from '../UsageOverview';
@@ -40,9 +40,9 @@ const defaultProps = {
 
 const WrappedComponent = props => (
 	<Provider store={mockStore()}>
-		<StaticRouter>
+		<MemoryRouter>
 			<UsageOverview {...props} />
-		</StaticRouter>
+		</MemoryRouter>
 	</Provider>
 );
 
@@ -118,7 +118,7 @@ describe('UsageOverview', () => {
 
 		expect(
 			getByText(
-				'Active users logged on your DXP instance have been tracked by Analytics Cloud since Jul 08, 2018.'
+				'Active users logged on your DXP instance have been tracked by Analytics Cloud since Jul 8, 2018.'
 			)
 		).toBeInTheDocument();
 
@@ -219,7 +219,7 @@ describe('UsageOverview', () => {
 
 		expect(
 			getByText(
-				'Active users logged on your DXP instance have been tracked by Analytics Cloud since Jul 08, 2018.'
+				'Active users logged on your DXP instance have been tracked by Analytics Cloud since Jul 8, 2018.'
 			)
 		).toBeInTheDocument();
 
@@ -317,7 +317,7 @@ describe('UsageOverview', () => {
 		);
 
 		expect(queryByTestId('next-anniversary-date').textContent).toEqual(
-			'Plan usage resets on Jul 08, 2019.'
+			'Plan usage resets on Jul 8, 2019.'
 		);
 	});
 
@@ -339,7 +339,7 @@ describe('UsageOverview', () => {
 		);
 
 		expect(queryByTestId('next-anniversary-date').textContent).toEqual(
-			'Plan usage resets on Jul 08, 2019.'
+			'Plan usage resets on Jul 8, 2019.'
 		);
 	});
 

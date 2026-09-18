@@ -25,6 +25,7 @@ jest.mock('@ckeditor/ckeditor5-media-embed/dist/index', () => ({}));
 jest.mock('@ckeditor/ckeditor5-mention/dist/index', () => ({}));
 jest.mock('@ckeditor/ckeditor5-minimap/dist/index', () => ({}));
 jest.mock('@ckeditor/ckeditor5-page-break/dist/index', () => ({}));
+jest.mock('@ckeditor/ckeditor5-source-editing-enhanced/dist/index', () => ({}));
 jest.mock('@ckeditor/ckeditor5-special-characters/dist/index', () => ({}));
 jest.mock('@ckeditor/ckeditor5-style/dist/index', () => ({}));
 jest.mock('@ckeditor/ckeditor5-table/dist/index', () => ({}));
@@ -37,6 +38,8 @@ window.themeDisplay = {
 	getLanguageId: () => 'en_US',
 	getUserId: () => 0,
 };
+
+const eventHandlers = {};
 
 window.Liferay = {
 	...(window.Liferay || {}),
@@ -71,4 +74,27 @@ window.Liferay = {
 		getLexiconIconTpl: (icon) => icon,
 	},
 	component: () => {},
+	detach: (name, handler) => {
+		if (eventHandlers[name]) {
+			eventHandlers[name] = eventHandlers[name].filter(
+				(eventHandler) => eventHandler !== handler
+			);
+		}
+	},
+	fire: (name, data) => {
+		(eventHandlers[name] || []).forEach((eventHandler) =>
+			eventHandler(data)
+		);
+	},
+	on: (name, handler) => {
+		if (!eventHandlers[name]) {
+			eventHandlers[name] = [];
+		}
+
+		eventHandlers[name].push(handler);
+
+		return {
+			detach: () => window.Liferay.detach(name, handler),
+		};
+	},
 };

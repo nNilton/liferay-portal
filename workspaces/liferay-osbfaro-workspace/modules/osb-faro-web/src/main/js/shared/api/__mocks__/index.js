@@ -3,6 +3,8 @@ import * as activities from './activities';
 import * as apiTokens from './api-tokens';
 import * as assets from './assets';
 import * as blockedKeywords from './blocked-keywords';
+import * as campaigns from './campaigns';
+import * as catalog from './catalog';
 import * as categories from './categories';
 import * as channels from './channels';
 import * as contactsCards from './contacts-cards';
@@ -15,6 +17,7 @@ import * as individuals from './individuals';
 import * as individualSegment from './individual-segment';
 import * as interests from './interests';
 import * as issue from './issue';
+import * as lifecycle from './lifecycle';
 import * as notifications from './notifications';
 import * as pagesVisited from './pages-visited';
 import * as preferences from './preferences';
@@ -29,6 +32,8 @@ export {
 	apiTokens,
 	assets,
 	blockedKeywords,
+	campaigns,
+	catalog,
 	categories,
 	channels,
 	contactsCards,
@@ -41,6 +46,7 @@ export {
 	individualSegment,
 	interests,
 	issue,
+	lifecycle,
 	notifications,
 	pagesVisited,
 	preferences,

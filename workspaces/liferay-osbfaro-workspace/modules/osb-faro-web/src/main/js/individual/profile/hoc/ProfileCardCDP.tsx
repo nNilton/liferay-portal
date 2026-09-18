@@ -5,7 +5,7 @@ import {Individual} from 'shared/util/records';
 import {pickBy} from 'lodash';
 import {removeUriQueryParam, setUriQueryValues} from 'shared/util/router';
 import {SectionHeader} from 'shared/components/SectionHeader';
-import {useHistory} from 'react-router-dom';
+import {useHistoryAdapter} from 'shared/hooks/useHistoryAdapter';
 import {useStatefulPagination} from 'shared/hooks/useStatefulPagination';
 
 const DEFAULT_SESSIONS_DELTA = 50;
@@ -19,7 +19,7 @@ interface IProfileCardCDP extends React.HTMLAttributes<HTMLElement> {
 }
 
 const ProfileCardCDP: React.FC<IProfileCardCDP> = ({tabId, ...props}) => {
-	const history = useHistory();
+	const history = useHistoryAdapter();
 
 	const {
 		delta,
@@ -49,7 +49,7 @@ const ProfileCardCDP: React.FC<IProfileCardCDP> = ({tabId, ...props}) => {
 					showRangeKey: true,
 					tabId,
 				}}
-				label={Liferay.Language.get('individual-events')}
+				label={Liferay.Language.get('individual-events').toUpperCase()}
 				legacyDropdownRangeKey={false}
 				showInterval
 			>

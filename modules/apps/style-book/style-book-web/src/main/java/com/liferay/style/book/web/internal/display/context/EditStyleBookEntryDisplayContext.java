@@ -66,6 +66,7 @@ import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.segments.service.SegmentsExperienceLocalServiceUtil;
+import com.liferay.style.book.constants.StyleBookConstants;
 import com.liferay.style.book.model.StyleBookEntry;
 import com.liferay.style.book.service.StyleBookEntryLocalServiceUtil;
 import com.liferay.style.book.util.StyleBookUtil;
@@ -83,6 +84,7 @@ import java.util.Objects;
 
 /**
  * @author Eudaldo Alonso
+ * @author Thiago Buarque
  */
 public class EditStyleBookEntryDisplayContext {
 
@@ -103,11 +105,17 @@ public class EditStyleBookEntryDisplayContext {
 		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
-		_setViewAttributes();
+		_updatePortletDisplay();
 	}
 
 	public Map<String, Object> getStyleBookEditorData() throws Exception {
 		return HashMapBuilder.<String, Object>put(
+			"customTokenDefinitionId",
+			StyleBookConstants.CUSTOM_FRONTEND_TOKEN_DEFINITION_ID
+		).put(
+			"customTokenDefinitionPriority",
+			FrontendTokenDefinitionConstants.PRIORITY_CUSTOM
+		).put(
 			"defaultTokenDefinitionPriority",
 			FrontendTokenDefinitionConstants.PRIORITY_LEGACY
 		).put(
@@ -258,7 +266,9 @@ public class EditStyleBookEntryDisplayContext {
 						TransformUtil.transformToArray(
 							filteredFragmentCollectionContributors,
 							fragmentCollectionContributor -> JSONUtil.put(
-								"name", fragmentCollectionContributor.getName()
+								"name",
+								fragmentCollectionContributor.getName(
+									_themeDisplay.getLocale())
 							).put(
 								"url",
 								_getFragmentCollectionPreviewURL(
@@ -689,18 +699,12 @@ public class EditStyleBookEntryDisplayContext {
 		return styleBookEntry.getName();
 	}
 
-	private void _setViewAttributes() {
+	private void _updatePortletDisplay() {
 		PortletDisplay portletDisplay = _themeDisplay.getPortletDisplay();
 
 		portletDisplay.setShowBackIcon(true);
 		portletDisplay.setURLBack(_getRedirect());
-
-		String backURLTitle = ParamUtil.getString(
-			_httpServletRequest, "backURLTitle");
-
-		portletDisplay.setURLBackTitle(
-			Validator.isNotNull(backURLTitle) ? backURLTitle :
-				portletDisplay.getPortletDisplayName());
+		portletDisplay.setURLBackTitle(portletDisplay.getPortletDisplayName());
 
 		_renderResponse.setTitle(_getStyleBookEntryTitle());
 	}

@@ -20,8 +20,6 @@ import {itemSelectorSamplePageTest} from './fixtures/itemSelectorSamplePageTest'
 const test = mergeTests(
 	dataApiHelpersTest,
 	featureFlagsTest({
-		'LPD-17564': {enabled: true},
-		'LPD-34594': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
 	itemSelectorSamplePageTest,
@@ -106,7 +104,10 @@ test('Item Selector Modal with single selection', async ({
 	});
 
 	await test.step('Check that a single item can be selected in the Cards visualization mode', async () => {
-		waitForFDS({page, visualizationMode: EFDSVisualizationMode.CARDS});
+		await waitForFDS({
+			page,
+			visualizationMode: EFDSVisualizationMode.CARDS,
+		});
 
 		await expect(itemSelectorSamplePage.modal.selectButton).toBeDisabled();
 
@@ -168,7 +169,10 @@ test('Item Selector Modal with multiple selection', async ({
 			itemSelectorSamplePage.selectDocumentModalHeader
 		).toBeVisible();
 
-		waitForFDS({page, visualizationMode: EFDSVisualizationMode.CARDS});
+		await waitForFDS({
+			page,
+			visualizationMode: EFDSVisualizationMode.CARDS,
+		});
 	});
 
 	await test.step('Check that multiple items can be selected in the Cards visualization mode', async () => {
@@ -327,7 +331,10 @@ test(
 				itemSelectorSamplePage.selectUserModalHeader
 			).toBeVisible();
 
-			waitForFDS({page, visualizationMode: EFDSVisualizationMode.CARDS});
+			await waitForFDS({
+				page,
+				visualizationMode: EFDSVisualizationMode.CARDS,
+			});
 		});
 
 		await test.step('Select an item', async () => {
@@ -363,7 +370,10 @@ test(
 				itemSelectorSamplePage.selectUserModalHeader
 			).toBeVisible();
 
-			waitForFDS({page, visualizationMode: EFDSVisualizationMode.CARDS});
+			await waitForFDS({
+				page,
+				visualizationMode: EFDSVisualizationMode.CARDS,
+			});
 
 			await expect(
 				itemSelectorSamplePage.page.getByText(`Test Selected`)

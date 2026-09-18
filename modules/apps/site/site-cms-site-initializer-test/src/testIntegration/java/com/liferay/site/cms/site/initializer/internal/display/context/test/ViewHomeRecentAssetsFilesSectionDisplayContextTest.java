@@ -22,7 +22,6 @@ import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.Sync;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -44,7 +43,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 /**
  * @author Jürgen Kappler
  */
-@FeatureFlag("LPD-17564")
 @RunWith(Arquillian.class)
 @Sync
 public class ViewHomeRecentAssetsFilesSectionDisplayContextTest
@@ -89,7 +87,7 @@ public class ViewHomeRecentAssetsFilesSectionDisplayContextTest
 			getFDSActionDropdownItems();
 
 		Assert.assertEquals(
-			fdsActionDropdownItems.toString(), 17,
+			fdsActionDropdownItems.toString(), 19,
 			fdsActionDropdownItems.size());
 
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
@@ -198,6 +196,12 @@ public class ViewHomeRecentAssetsFilesSectionDisplayContextTest
 
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
 			"trash", "delete", "Delete", null, fdsActionDropdownItems.get(16));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"date-time", "update-expiration-date", "Update Expiration Date",
+			null, fdsActionDropdownItems.get(17));
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"date-time", "update-review-date", "Update Review Date", null,
+			fdsActionDropdownItems.get(18));
 	}
 
 	@Override
@@ -248,7 +252,8 @@ public class ViewHomeRecentAssetsFilesSectionDisplayContextTest
 		throws Exception {
 
 		_fragmentRenderer.render(
-			null, httpServletRequest, new MockHttpServletResponse());
+			fragmentRendererContext, httpServletRequest,
+			new MockHttpServletResponse());
 
 		Object viewHomeRecentAssetsSectionDisplayContext =
 			httpServletRequest.getAttribute(

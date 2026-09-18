@@ -14,6 +14,7 @@ import jakarta.annotation.Generated;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -61,6 +62,18 @@ public class ExportProcessRequestSerDes {
 			sb.append("\"comments\": ");
 
 			sb.append(exportProcessRequest.getComments());
+		}
+
+		if (exportProcessRequest.getDateRangeType() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"dateRangeType\": ");
+
+			sb.append("\"");
+			sb.append(exportProcessRequest.getDateRangeType());
+			sb.append("\"");
 		}
 
 		if (exportProcessRequest.getDeletions() != null) {
@@ -241,6 +254,15 @@ public class ExportProcessRequestSerDes {
 				"comments", String.valueOf(exportProcessRequest.getComments()));
 		}
 
+		if (exportProcessRequest.getDateRangeType() == null) {
+			map.put("dateRangeType", null);
+		}
+		else {
+			map.put(
+				"dateRangeType",
+				String.valueOf(exportProcessRequest.getDateRangeType()));
+		}
+
 		if (exportProcessRequest.getDeletions() == null) {
 			map.put("deletions", null);
 		}
@@ -359,6 +381,9 @@ public class ExportProcessRequestSerDes {
 			if (Objects.equals(jsonParserFieldName, "comments")) {
 				return false;
 			}
+			else if (Objects.equals(jsonParserFieldName, "dateRangeType")) {
+				return false;
+			}
 			else if (Objects.equals(jsonParserFieldName, "deletions")) {
 				return false;
 			}
@@ -409,6 +434,13 @@ public class ExportProcessRequestSerDes {
 				if (jsonParserFieldValue != null) {
 					exportProcessRequest.setComments(
 						(Boolean)jsonParserFieldValue);
+				}
+			}
+			else if (Objects.equals(jsonParserFieldName, "dateRangeType")) {
+				if (jsonParserFieldValue != null) {
+					exportProcessRequest.setDateRangeType(
+						ExportProcessRequest.DateRangeType.create(
+							(String)jsonParserFieldValue));
 				}
 			}
 			else if (Objects.equals(jsonParserFieldName, "deletions")) {
@@ -544,6 +576,12 @@ public class ExportProcessRequestSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -576,4 +614,4 @@ public class ExportProcessRequestSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:111588564
+// LIFERAY-REST-BUILDER-HASH:-124635644

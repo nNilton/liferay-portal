@@ -23,8 +23,6 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -47,9 +45,6 @@ import org.skyscreamer.jsonassert.JSONAssert;
 /**
  * @author Carolina Barbosa
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
 @RunWith(Arquillian.class)
 @Sync
 public class ViewTaskInfoSummarySectionDisplayContextTest
@@ -67,7 +62,8 @@ public class ViewTaskInfoSummarySectionDisplayContextTest
 	public void setUp() throws Exception {
 		super.setUp();
 
-		_taskObjectEntry = CMPTestUtil.addTaskObjectEntry(projectObjectEntry);
+		_cmpTaskObjectEntry = CMPTestUtil.addCMPTaskObjectEntry(
+			cmpProjectObjectEntry);
 	}
 
 	@Test
@@ -84,9 +80,10 @@ public class ViewTaskInfoSummarySectionDisplayContextTest
 
 		String title = RandomTestUtil.randomString();
 
-		_taskObjectEntry = _objectEntryLocalService.partialUpdateObjectEntry(
-			_taskObjectEntry.getUserId(), _taskObjectEntry.getObjectEntryId(),
-			_taskObjectEntry.getObjectEntryFolderId(),
+		_cmpTaskObjectEntry = _objectEntryLocalService.partialUpdateObjectEntry(
+			_cmpTaskObjectEntry.getUserId(),
+			_cmpTaskObjectEntry.getObjectEntryId(),
+			_cmpTaskObjectEntry.getObjectEntryFolderId(),
 			HashMapBuilder.<String, Serializable>put(
 				"assignTo",
 				HashMapBuilder.put(
@@ -104,7 +101,7 @@ public class ViewTaskInfoSummarySectionDisplayContextTest
 			).build(),
 			serviceContext);
 
-		Map<String, Object> properties = getProperties(_taskObjectEntry);
+		Map<String, Object> properties = getProperties(_cmpTaskObjectEntry);
 
 		JSONAssert.assertEquals(
 			JSONUtil.put(
@@ -117,7 +114,14 @@ public class ViewTaskInfoSummarySectionDisplayContextTest
 					"type", Assignee.Type.ROLE.toString()
 				)
 			).put(
+				"cmpProjectObjectEntryId",
+				cmpProjectObjectEntry.getObjectEntryId()
+			).put(
+				"cmpTaskObjectEntryId", _cmpTaskObjectEntry.getObjectEntryId()
+			).put(
 				"dueDate", "2026-01-31"
+			).put(
+				"hasUpdatePermission", true
 			).put(
 				"initialState", "inProgress"
 			).put(
@@ -154,8 +158,6 @@ public class ViewTaskInfoSummarySectionDisplayContextTest
 			).put(
 				"tags", assetTagNames
 			).put(
-				"taskId", _taskObjectEntry.getObjectEntryId()
-			).put(
 				"title", title
 			).toString(),
 			_jsonFactory.looseSerializeDeep(properties), true);
@@ -178,6 +180,8 @@ public class ViewTaskInfoSummarySectionDisplayContextTest
 	@Inject
 	private ClassNameLocalService _classNameLocalService;
 
+	private ObjectEntry _cmpTaskObjectEntry;
+
 	@Inject(
 		filter = "component.name=com.liferay.site.cmp.site.initializer.internal.fragment.renderer.ViewTaskInfoSummaryJSPSectionFragmentRenderer"
 	)
@@ -191,7 +195,5 @@ public class ViewTaskInfoSummarySectionDisplayContextTest
 
 	@Inject
 	private RoleLocalService _roleLocalService;
-
-	private ObjectEntry _taskObjectEntry;
 
 }

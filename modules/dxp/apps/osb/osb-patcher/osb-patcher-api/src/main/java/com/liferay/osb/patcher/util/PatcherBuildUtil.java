@@ -333,6 +333,25 @@ public class PatcherBuildUtil {
 			key);
 	}
 
+	public static String getDownloadPath(String fileName) {
+		if (Validator.isNull(fileName)) {
+			return StringPool.BLANK;
+		}
+
+		return StringUtil.replace(fileName, "/hotfix/", StringPool.SLASH);
+	}
+
+	public static String getDownloadURL(PatcherBuild patcherBuild)
+		throws Exception {
+
+		PatcherConfiguration patcherConfiguration =
+			ConfigurationProviderUtil.getCompanyConfiguration(
+				PatcherConfiguration.class, patcherBuild.getCompanyId());
+
+		return patcherConfiguration.patcherBuildDownloadURL() +
+			StringPool.SLASH + getDownloadPath(patcherBuild.getFileName());
+	}
+
 	public static List<PatcherBuild> getEquivalentPatcherBuilds(
 		long patcherProjectVersionId, String tickets) {
 
@@ -664,7 +683,7 @@ public class PatcherBuildUtil {
 				StringPool.FORWARD_SLASH + supportTicket;
 		}
 
-		return patcherConfiguration.jiraURL() + StringPool.FORWARD_SLASH +
+		return patcherConfiguration.jiraBrowseURL() + StringPool.FORWARD_SLASH +
 			supportTicket;
 	}
 
@@ -1154,19 +1173,12 @@ public class PatcherBuildUtil {
 		}
 
 		for (PatcherFix rebasePatcherFix : rebasePatcherFixes) {
-			List<Long> patcherFixIds = new ArrayList<>();
-
-			if (patcherProjectVersionIdPatcherFixIdsMap.containsKey(
-					rebasePatcherFix.getPatcherProjectVersionId())) {
-
-				patcherFixIds = patcherProjectVersionIdPatcherFixIdsMap.get(
-					rebasePatcherFix.getPatcherProjectVersionId());
-			}
+			List<Long> patcherFixIds =
+				patcherProjectVersionIdPatcherFixIdsMap.computeIfAbsent(
+					rebasePatcherFix.getPatcherProjectVersionId(),
+					key -> new ArrayList<>());
 
 			patcherFixIds.add(rebasePatcherFix.getPatcherFixId());
-
-			patcherProjectVersionIdPatcherFixIdsMap.put(
-				rebasePatcherFix.getPatcherProjectVersionId(), patcherFixIds);
 		}
 
 		return patcherProjectVersionIdPatcherFixIdsMap;
@@ -1354,7 +1366,7 @@ public class PatcherBuildUtil {
 			}
 
 			updatePatcherBuildFixes(
-				user, patcherBuild, entry.getValue(), useExistingHotfix);
+				user, patcherBuild, entry.getValue(), useExistingHotfix, false);
 		}
 
 		List<BaseModel<?>> sendToJenkinsBaseModels =
@@ -1518,12 +1530,12 @@ public class PatcherBuildUtil {
 			User user, PatcherBuild patcherBuild, List<Long> patcherFixIds)
 		throws Exception {
 
-		updatePatcherBuildFixes(user, patcherBuild, patcherFixIds, false);
+		updatePatcherBuildFixes(user, patcherBuild, patcherFixIds, false, true);
 	}
 
 	public static void updatePatcherBuildFixes(
 			User user, PatcherBuild patcherBuild, List<Long> patcherFixIds,
-			boolean useExistingHotfix)
+			boolean useExistingHotfix, boolean sendJenkinsRequest)
 		throws Exception {
 
 		PatcherFixLocalServiceUtil.clearPatcherBuildPatcherFixes(
@@ -1540,7 +1552,8 @@ public class PatcherBuildUtil {
 			patcherBuild.setPatcherFixId(patcherFixIds.get(0));
 
 			if (!useExistingHotfix) {
-				updatePatcherBuildStatusMergeComplete(user, patcherBuild);
+				updatePatcherBuildStatusMergeComplete(
+					user, patcherBuild, sendJenkinsRequest);
 			}
 
 			return;
@@ -1609,7 +1622,8 @@ public class PatcherBuildUtil {
 			if (isPreviousPatcherBuildMainFixEqualsCurrentBuildMainFix(
 					patcherBuild)) {
 
-				updatePatcherBuildStatusMergeComplete(user, patcherBuild);
+				updatePatcherBuildStatusMergeComplete(
+					user, patcherBuild, sendJenkinsRequest);
 			}
 		}
 	}
@@ -2039,7 +2053,7 @@ public class PatcherBuildUtil {
 				osbPatcherServletOutcomeResult,
 				WorkflowConstants.STATUS_FIX_COMPLETE);
 
-			updatePatcherBuildStatusMergeComplete(user, patcherBuild);
+			updatePatcherBuildStatusMergeComplete(user, patcherBuild, true);
 
 			PatcherUtil.addMessage(
 				StringBundler.concat(
@@ -2155,7 +2169,7 @@ public class PatcherBuildUtil {
 	}
 
 	protected static void updatePatcherBuildStatusMergeComplete(
-			User user, PatcherBuild patcherBuild)
+			User user, PatcherBuild patcherBuild, boolean sendJenkinsRequest)
 		throws Exception {
 
 		if (isMergeOnly(patcherBuild)) {
@@ -2172,7 +2186,9 @@ public class PatcherBuildUtil {
 
 			workflowParentPatcherBuild(user, patcherBuild);
 
-			JenkinsUtil.sendDistJenkinsRequest(user, patcherBuild);
+			if (sendJenkinsRequest) {
+				JenkinsUtil.sendDistJenkinsRequest(user, patcherBuild);
+			}
 		}
 	}
 

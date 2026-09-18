@@ -5,6 +5,7 @@
 
 package com.liferay.object.internal.upgrade.registry;
 
+import com.liferay.application.list.constants.PanelCategoryKeys;
 import com.liferay.friendly.url.configuration.manager.FriendlyURLSeparatorConfigurationManager;
 import com.liferay.notification.service.NotificationTemplateLocalService;
 import com.liferay.object.constants.ObjectFieldConstants;
@@ -21,6 +22,8 @@ import com.liferay.object.internal.upgrade.v10_8_0.util.ObjectDefinitionSettingT
 import com.liferay.object.internal.upgrade.v10_8_1.ObjectEntryAssetEntryTitleUpgradeProcess;
 import com.liferay.object.internal.upgrade.v10_9_0.util.ObjectEntryVersionTable;
 import com.liferay.object.internal.upgrade.v10_9_1.ClassNameUpgradeProcess;
+import com.liferay.object.internal.upgrade.v13_3_0.AttachmentObjectFieldDownloadPermissionUpgradeProcess;
+import com.liferay.object.internal.upgrade.v13_8_0.LayoutPageTemplateEntryClassNameIdUpgradeProcess;
 import com.liferay.object.internal.upgrade.v1_2_0.util.ObjectViewColumnTable;
 import com.liferay.object.internal.upgrade.v1_2_0.util.ObjectViewTable;
 import com.liferay.object.internal.upgrade.v2_1_0.ObjectFieldBusinessTypeUpgradeProcess;
@@ -42,6 +45,7 @@ import com.liferay.object.internal.upgrade.v9_0_1.ObjectFolderUpgradeProcess;
 import com.liferay.object.model.impl.ObjectFieldSettingModelImpl;
 import com.liferay.object.system.SystemObjectDefinitionManagerRegistry;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
@@ -54,6 +58,8 @@ import com.liferay.portal.kernel.upgrade.BaseExternalReferenceCodeUpgradeProcess
 import com.liferay.portal.kernel.upgrade.DummyUpgradeStep;
 import com.liferay.portal.kernel.upgrade.UpgradeProcessFactory;
 import com.liferay.portal.kernel.util.Localization;
+import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.language.override.service.PLOEntryLocalService;
 import com.liferay.portal.upgrade.registry.UpgradeStepRegistrator;
 
 import org.osgi.service.component.annotations.Component;
@@ -704,8 +710,10 @@ public class ObjectServiceUpgradeStepRegistrator
 			new com.liferay.object.internal.upgrade.v12_0_0.
 				ObjectFieldUpgradeProcess());
 
+		registry.register("12.0.0", "12.0.1", new DummyUpgradeStep());
+
 		registry.register(
-			"12.0.0", "12.1.0",
+			"12.0.1", "12.1.0",
 			new com.liferay.object.internal.upgrade.v12_1_0.
 				ObjectDefinitionSettingUpgradeProcess());
 
@@ -724,7 +732,77 @@ public class ObjectServiceUpgradeStepRegistrator
 			new com.liferay.object.internal.upgrade.v13_1_0.
 				ObjectDefinitionExternalReferenceCodeUpgradeProcess(
 					_systemObjectDefinitionManagerRegistry));
+
+		registry.register("13.1.0", "13.2.0", new DummyUpgradeStep());
+
+		registry.register(
+			"13.2.0", "13.3.0",
+			new com.liferay.object.internal.upgrade.v13_2_0.
+				ObjectDefinitionExternalReferenceCodeUpgradeProcess(
+					_systemObjectDefinitionManagerRegistry));
+
+		registry.register(
+			"13.3.0", "13.4.0",
+			new AttachmentObjectFieldDownloadPermissionUpgradeProcess(
+				_language, _localization, _ploEntryLocalService,
+				_resourceActionLocalService));
+
+		registry.register(
+			"13.4.0", "13.5.0",
+			new BaseExternalReferenceCodeUpgradeProcess() {
+
+				@Override
+				protected String[] getTableNames() {
+					return new String[] {"ObjectView"};
+				}
+
+			});
+
+		registry.register(
+			"13.5.0", "13.6.0",
+			UpgradeProcessFactory.runSQL(
+				"delete from PLOEntry where key_ = 'model.resource.'"),
+			UpgradeProcessFactory.runSQL(
+				StringBundler.concat(
+					"update ObjectField set readOnly = '",
+					ObjectFieldConstants.READ_ONLY_FALSE,
+					"' where readOnly not in ('",
+					ObjectFieldConstants.READ_ONLY_CONDITIONAL, "', '",
+					ObjectFieldConstants.READ_ONLY_FALSE, "', '",
+					ObjectFieldConstants.READ_ONLY_TRUE, "')")));
+
+		registry.register(
+			"13.6.0", "13.7.0",
+			UpgradeProcessFactory.runSQL(
+				StringBundler.concat(
+					"update ObjectDefinition set panelCategoryKey = '",
+					PanelCategoryKeys.CONTROL_PANEL_OBJECT,
+					"' where panelCategoryKey in ('",
+					StringUtil.merge(_REMOVED_PANEL_CATEGORY_KEYS, "', '"),
+					"')")));
+
+		registry.register(
+			"13.7.0", "13.8.0",
+			new LayoutPageTemplateEntryClassNameIdUpgradeProcess(
+				_companyLocalService));
+
+		registry.register(
+			"13.8.0", "13.8.1",
+			new com.liferay.object.internal.upgrade.v13_8_1.
+				SchemaUpgradeProcess());
 	}
+
+	private static final String[] _REMOVED_PANEL_CATEGORY_KEYS = {
+		"applications_menu.applications.batch_planner",
+		"applications_menu.applications.commerce",
+		"applications_menu.applications.communication",
+		"applications_menu.applications.content",
+		"applications_menu.applications.custom.apps",
+		"applications_menu.applications.design",
+		"applications_menu.applications.personalization",
+		"applications_menu.applications.publications",
+		"control_panel.search_experiences", "control_panel.search_tuning"
+	};
 
 	@Reference
 	private ClassNameLocalService _classNameLocalService;
@@ -740,10 +818,16 @@ public class ObjectServiceUpgradeStepRegistrator
 	private GroupLocalService _groupLocalService;
 
 	@Reference
+	private Language _language;
+
+	@Reference
 	private Localization _localization;
 
 	@Reference
 	private NotificationTemplateLocalService _notificationTemplateLocalService;
+
+	@Reference
+	private PLOEntryLocalService _ploEntryLocalService;
 
 	@Reference
 	private ResourceActionLocalService _resourceActionLocalService;

@@ -9,13 +9,11 @@ import com.liferay.headless.admin.site.dto.v1_0.UtilityPage;
 import com.liferay.headless.admin.site.dto.v1_0.UtilityPageSEOSettings;
 import com.liferay.headless.admin.site.dto.v1_0.UtilityPageSettings;
 import com.liferay.headless.admin.site.dto.v1_0.util.ThumbnailURLReferenceUtil;
-import com.liferay.headless.admin.user.dto.v1_0.Creator;
+import com.liferay.headless.admin.site.internal.dto.v1_0.util.CreatorUtil;
 import com.liferay.layout.utility.page.kernel.constants.LayoutUtilityPageEntryConstants;
 import com.liferay.layout.utility.page.model.LayoutUtilityPageEntry;
 import com.liferay.portal.kernel.model.Layout;
-import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.LayoutLocalService;
-import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterContext;
@@ -31,7 +29,10 @@ import org.osgi.service.component.annotations.Reference;
  * @author Eudaldo Alonso
  */
 @Component(
-	property = "dto.class.name=com.liferay.layout.utility.page.model.LayoutUtilityPageEntry",
+	property = {
+		"default=true",
+		"dto.class.name=com.liferay.layout.utility.page.model.LayoutUtilityPageEntry"
+	},
 	service = DTOConverter.class
 )
 public class UtilityPageDTOConverter
@@ -54,21 +55,9 @@ public class UtilityPageDTOConverter
 		return new UtilityPage() {
 			{
 				setCreator(
-					() -> {
-						User user = _userLocalService.fetchUser(
-							layoutUtilityPageEntry.getUserId());
-
-						if (user == null) {
-							return null;
-						}
-
-						return new Creator() {
-							{
-								setExternalReferenceCode(
-									user::getExternalReferenceCode);
-							}
-						};
-					});
+					() -> CreatorUtil.toCreator(
+						layoutUtilityPageEntry.getUserId(),
+						layoutUtilityPageEntry.getUserName()));
 				setDateCreated(layoutUtilityPageEntry::getCreateDate);
 				setDateModified(layoutUtilityPageEntry::getModifiedDate);
 				setDatePublished(layout::getPublishDate);
@@ -112,8 +101,11 @@ public class UtilityPageDTOConverter
 	}
 
 	private UtilityPage.Type _getType(String type) {
-		if (_internalToExternalValuesMap.containsKey(type)) {
-			return _internalToExternalValuesMap.get(type);
+		UtilityPage.Type utilityPageType = _internalToExternalValuesMap.get(
+			type);
+
+		if (utilityPageType != null) {
+			return utilityPageType;
 		}
 
 		throw new UnsupportedOperationException();
@@ -149,8 +141,5 @@ public class UtilityPageDTOConverter
 
 	@Reference
 	private LayoutLocalService _layoutLocalService;
-
-	@Reference
-	private UserLocalService _userLocalService;
 
 }

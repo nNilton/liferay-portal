@@ -24,7 +24,10 @@ import {
 	registerTabFDS,
 } from '../../utils/cmpTabPersistence';
 import {WORKFLOW_TASK_ACTION_LINK_ID} from '../../utils/constants';
+import getCMPProjectObjectEntryIds from '../../utils/getCMPProjectObjectEntryIds';
+import {getFormattedLabel} from '../../utils/getFormattedText';
 import {openCMPModal} from '../../utils/openCMPModal';
+import {transformFDSBulkActions} from '../../utils/transformFDSBulkActions';
 import {
 	ProjectTaskItemData,
 	TaskAction,
@@ -65,6 +68,11 @@ const WORKFLOW_BULK_ACTION_MODALS: Record<
 	'update-due-date': BulkEditWorkflowDueDateModalContent,
 };
 
+const WORKFLOW_BULK_ACTION_PERMISSION_KEYS: Record<string, string> = {
+	'assign-to': 'assignToUser',
+	'update-due-date': 'updateDueDate',
+};
+
 export default function AllTasksFDSPropsTransformer({
 	additionalProps,
 	bulkActions = [],
@@ -94,7 +102,47 @@ export default function AllTasksFDSPropsTransformer({
 
 	return {
 		...otherProps,
-		bulkActions: styleBulkActions(bulkActions).map((action) => ({
+		bulkActions: transformFDSBulkActions(
+			styleBulkActions(bulkActions).map((action) => ({
+				...action,
+				isVisible: ({
+					allItemsSelectedActive,
+					selectedItems,
+				}: {
+					allItemsSelectedActive: boolean;
+					selectedItems: any[];
+				}) => {
+					if (action?.data?.id !== 'assign-to') {
+						return true;
+					}
+
+					if (allItemsSelectedActive) {
+						return false;
+					}
+
+					if (
+						!selectedItems?.length ||
+						selectedItems.every(isWorkflowTask)
+					) {
+						return true;
+					}
+
+					const cmpProjectObjectEntryIds =
+						getCMPProjectObjectEntryIds(selectedItems);
+
+					return cmpProjectObjectEntryIds.size === 1;
+				},
+			})),
+			(action, item) => {
+				if (isWorkflowTask(item)) {
+					return WORKFLOW_BULK_ACTION_PERMISSION_KEYS[
+						action?.data?.id
+					];
+				}
+
+				return action?.data?.permissionKey;
+			}
+		).map((action) => ({
 			...action,
 			isDisabled: ({
 				allItemsSelectedActive,
@@ -263,7 +311,7 @@ export default function AllTasksFDSPropsTransformer({
 				await deleteItemAction(
 					sub(
 						Liferay.Language.get('delete-task-confirmation-body'),
-						itemData.embedded.title
+						getFormattedLabel(itemData.embedded.title)
 					),
 					itemData,
 					loadData
@@ -279,9 +327,13 @@ export default function AllTasksFDSPropsTransformer({
 					}) => (
 						<EditAssigneeModalContent
 							closeModal={closeModal}
+							cmpProjectObjectEntryId={
+								itemData.embedded
+									.r_cmpProjectToCMPTasks_c_cmpProjectId
+							}
+							cmpTaskObjectEntryId={String(itemData.embedded.id)}
+							cmpTaskObjectEntryTitle={itemData.embedded.title}
 							loadData={loadData}
-							taskId={String(itemData.embedded.id)}
-							taskTitle={itemData.embedded.title}
 							value={itemData.embedded.assignTo}
 						/>
 					),
@@ -333,6 +385,9 @@ export default function AllTasksFDSPropsTransformer({
 			}
 
 			if (action?.data?.id === 'assign-to') {
+				const [cmpProjectObjectEntryId] =
+					getCMPProjectObjectEntryIds(selectedItems);
+
 				await openCMPModal({
 					center: true,
 					contentComponent: ({
@@ -343,6 +398,7 @@ export default function AllTasksFDSPropsTransformer({
 						<BulkEditAssigneeModalContent
 							apiURL={otherProps.apiURL}
 							closeModal={closeModal}
+							cmpProjectObjectEntryId={cmpProjectObjectEntryId}
 							dataSetId={id}
 							selectedData={selectedData}
 							value={{name: null}}

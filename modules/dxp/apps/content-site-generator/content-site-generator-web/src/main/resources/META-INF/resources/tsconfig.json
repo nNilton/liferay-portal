@@ -1,5 +1,5 @@
 {
-	"@generated": "08fbfd59b76114d4f7f1e2761f462d7ddd357ba6",
+	"@generated": "dbd00e6383feea08c08dae1714117a23a7b2c1b0",
 	"@readonly": "** AUTO-GENERATED: DO NOT EDIT **",
 	"compilerOptions": {
 		"allowSyntheticDefaultImports": true,
@@ -11,11 +11,20 @@
 		"module": "es2022",
 		"moduleResolution": "node",
 		"paths": {
+			"@liferay/ai-hub-cell-js-components-web": [
+				"../../../../../../../../../apps/ai-hub-cell/ai-hub-cell-js-components-web/src/main/resources/META-INF/resources/js/index.ts"
+			],
+			"@liferay/ai-hub-cell-js-components-web/renderAIAssistantTrigger": [
+				"../../../../../../../../../apps/ai-hub-cell/ai-hub-cell-js-components-web/src/main/resources/META-INF/resources/js/renderAIAssistantTrigger.ts"
+			],
 			"frontend-js-components-web": [
 				"../../../../../../../../../apps/frontend-js/frontend-js-components-web/src/main/resources/META-INF/resources/index.ts"
 			],
 			"frontend-js-web": [
 				"../../../../../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/main/index.d.ts"
+			],
+			"frontend-js-web/auto_fields": [
+				"../../../../../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/auto_fields/index.js"
 			],
 			"frontend-js-web/legacy": [
 				"../../../../../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/legacy/index.ts"
@@ -37,6 +46,9 @@
 		"../../../../../../../../../global.d.ts"
 	],
 	"references": [
+		{
+			"path": "../../../../../../../../../apps/ai-hub-cell/ai-hub-cell-js-components-web/src/main/resources/META-INF/resources/tsconfig.json"
+		},
 		{
 			"path": "../../../../../../../../../apps/frontend-js/frontend-js-components-web/src/main/resources/META-INF/resources/tsconfig.json"
 		},

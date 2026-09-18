@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -137,6 +138,16 @@ public class OrderSerDes {
 			sb.append(_escape(order.getExternalReferenceCode()));
 
 			sb.append("\"");
+		}
+
+		if (order.getGroupId() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"groupId\": ");
+
+			sb.append(order.getGroupId());
 		}
 
 		if (order.getId() != null) {
@@ -361,6 +372,13 @@ public class OrderSerDes {
 				String.valueOf(order.getExternalReferenceCode()));
 		}
 
+		if (order.getGroupId() == null) {
+			map.put("groupId", null);
+		}
+		else {
+			map.put("groupId", String.valueOf(order.getGroupId()));
+		}
+
 		if (order.getId() == null) {
 			map.put("id", null);
 		}
@@ -493,6 +511,9 @@ public class OrderSerDes {
 
 				return false;
 			}
+			else if (Objects.equals(jsonParserFieldName, "groupId")) {
+				return false;
+			}
 			else if (Objects.equals(jsonParserFieldName, "id")) {
 				return false;
 			}
@@ -582,6 +603,12 @@ public class OrderSerDes {
 				if (jsonParserFieldValue != null) {
 					order.setExternalReferenceCode(
 						(String)jsonParserFieldValue);
+				}
+			}
+			else if (Objects.equals(jsonParserFieldName, "groupId")) {
+				if (jsonParserFieldValue != null) {
+					order.setGroupId(
+						Long.valueOf((String)jsonParserFieldValue));
 				}
 			}
 			else if (Objects.equals(jsonParserFieldName, "id")) {
@@ -713,6 +740,12 @@ public class OrderSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -745,4 +778,4 @@ public class OrderSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-570275343
+// LIFERAY-REST-BUILDER-HASH:808425138

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import ClayPanel from '@clayui/panel';
 import React, {useEffect, useMemo, useState} from 'react';
 
 import VocabularyService from '../../../common/services/VocabularyService';
@@ -20,6 +21,7 @@ export default function AssetCategorizationSections({
 	assetLibraryId,
 	cmsGroupId,
 	errorMessage,
+	getContent,
 	hasUpdatePermission,
 	inputSize,
 	objectEntry,
@@ -28,6 +30,9 @@ export default function AssetCategorizationSections({
 	assetLibraryId: number | string;
 	cmsGroupId: number | string;
 	errorMessage?: string;
+	getContent?: (
+		objectDefinitionExternalReferenceCode?: string
+	) => Promise<string>;
 	hasUpdatePermission: boolean;
 	inputSize?: CategorizationInputSize;
 	objectEntry: IAssetObjectEntry | EntryCategorizationDTO;
@@ -74,10 +79,11 @@ export default function AssetCategorizationSections({
 	}, [assetLibraryId]);
 
 	return (
-		<>
+		<ClayPanel.Group flush>
 			<AssetCategories
 				cmsGroupId={cmsGroupId}
 				errorMessage={errorMessage}
+				getContent={getContent}
 				hasUpdatePermission={hasUpdatePermission}
 				inputSize={inputSize}
 				objectEntry={objectEntry}
@@ -88,6 +94,7 @@ export default function AssetCategorizationSections({
 			<AssetTags
 				assetLibraryId={assetLibraryId}
 				cmsGroupId={cmsGroupId}
+				getContent={getContent}
 				hasUpdatePermission={hasUpdatePermission}
 				inputSize={inputSize}
 				key={objectEntry.keywords?.join(',') || 'tags'}
@@ -120,6 +127,6 @@ export default function AssetCategorizationSections({
 					vocabularyId={funnelStageVocabularyId}
 				/>
 			)}
-		</>
+		</ClayPanel.Group>
 	);
 }

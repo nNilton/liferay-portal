@@ -4,12 +4,14 @@
  */
 
 import {openSelectionModal} from 'frontend-js-components-web';
-import {delegate, sub} from 'frontend-js-web';
+import {delegate, fetch, sub} from 'frontend-js-web';
 
 interface Props {
 	groupSelectorURL: string;
+	isRegenerateSitemapInProgress: boolean;
 	namespace: string;
 	objectDefinitionSelectorURL: string;
+	regenerateSitemapInProgressURL: string;
 	selectGroupEventName: string;
 	selectObjectDefinitionEventName: string;
 }
@@ -22,11 +24,17 @@ type SelectedItem = {
 
 export default function ({
 	groupSelectorURL,
+	isRegenerateSitemapInProgress,
 	namespace,
 	objectDefinitionSelectorURL,
+	regenerateSitemapInProgressURL,
 	selectGroupEventName,
 	selectObjectDefinitionEventName,
 }: Props) {
+	const form = document.getElementById(
+		`${namespace}fm`
+	) as HTMLFormElement | null;
+
 	const groupIdsInput = document.getElementById(
 		`${namespace}groupsSearchContainerPrimaryKeys`
 	) as HTMLInputElement;
@@ -34,6 +42,18 @@ export default function ({
 	const objectDefinitionIdsInput = document.getElementById(
 		`${namespace}objectDefinitionsSearchContainerPrimaryKeys`
 	) as HTMLInputElement;
+
+	const onDemandRadio =
+		document
+			.getElementById(`${namespace}cachedGenerationEnabledOnDemand`)
+			?.querySelector<HTMLInputElement>('input') ?? null;
+
+	const scheduledCachedRadio =
+		document
+			.getElementById(
+				`${namespace}cachedGenerationEnabledScheduledCached`
+			)
+			?.querySelector<HTMLInputElement>('input') ?? null;
 
 	const selectObjectDefinitionButton = document.getElementById(
 		`${namespace}selectObjectDefinitionLink`
@@ -284,16 +304,128 @@ export default function ({
 		onSelectSiteClick
 	);
 
+	let regenerationPollIntervalId: number | undefined;
+	let saveAndGenerateButton: HTMLButtonElement | null = null;
+	let saveAndGenerateItem: HTMLDivElement | null = null;
+
+	const onGenerationModeChange = () => {
+		const scheduledCached = Boolean(scheduledCachedRadio?.checked);
+
+		saveAndGenerateItem?.classList.toggle('hide', !scheduledCached);
+	};
+
+	const onSaveAndGenerateClick = () => {
+		const saveAndGenerateInput = document.getElementById(
+			`${namespace}saveAndGenerate`
+		) as HTMLInputElement | null;
+
+		if (saveAndGenerateInput) {
+			saveAndGenerateInput.value = 'true';
+		}
+
+		form?.submit();
+	};
+
+	if (form && scheduledCachedRadio && onDemandRadio) {
+		const btnGroup = form.querySelector('.sheet-footer .btn-group');
+
+		if (btnGroup) {
+			saveAndGenerateButton = document.createElement('button');
+
+			saveAndGenerateButton.className = 'btn btn-primary';
+			saveAndGenerateButton.textContent =
+				Liferay.Language.get('save-and-generate');
+			saveAndGenerateButton.type = 'button';
+
+			saveAndGenerateButton.addEventListener(
+				'click',
+				onSaveAndGenerateClick
+			);
+
+			saveAndGenerateItem = document.createElement('div');
+
+			saveAndGenerateItem.className = 'btn-group-item';
+
+			saveAndGenerateItem.appendChild(saveAndGenerateButton);
+
+			btnGroup.insertBefore(saveAndGenerateItem, btnGroup.firstChild);
+		}
+
+		onDemandRadio.addEventListener('change', onGenerationModeChange);
+		scheduledCachedRadio.addEventListener('change', onGenerationModeChange);
+
+		onGenerationModeChange();
+	}
+
+	if (isRegenerateSitemapInProgress && form) {
+		const controls = form.querySelectorAll<HTMLInputElement>(
+			'button, input, select, textarea'
+		);
+
+		controls.forEach((control) => {
+			control.disabled = true;
+		});
+
+		const cancelButton = form.querySelector('.sheet-footer a');
+
+		cancelButton?.classList.add('disabled');
+		cancelButton?.setAttribute('aria-disabled', 'true');
+
+		const btnGroup = form.querySelector('.sheet-footer .btn-group');
+
+		if (btnGroup) {
+			const loadingItem = document.createElement('div');
+
+			loadingItem.className = 'btn-group-item';
+			loadingItem.innerHTML =
+				'<span aria-hidden="true" class="loading-animation loading-animation-sm"></span>';
+
+			btnGroup.appendChild(loadingItem);
+		}
+
+		regenerationPollIntervalId = window.setInterval(() => {
+			if (document.hidden) {
+				return;
+			}
+
+			fetch(regenerateSitemapInProgressURL)
+				.then((response) => response.json())
+				.then((json) => {
+					if (!json.isRegenerateSitemapInProgress) {
+						window.clearInterval(regenerationPollIntervalId);
+
+						window.location.reload();
+					}
+				});
+		}, 3000);
+	}
+
 	return {
 		dispose() {
+			onDemandRadio?.removeEventListener(
+				'change',
+				onGenerationModeChange
+			);
 			onRemoveObjectDefinition.detach();
 			onRemoveSite.detach();
+			saveAndGenerateButton?.removeEventListener(
+				'click',
+				onSaveAndGenerateClick
+			);
+			scheduledCachedRadio?.removeEventListener(
+				'change',
+				onGenerationModeChange
+			);
 			selectObjectDefinitionDelegate.dispose();
 			selectSiteDelegate.dispose();
 			xmlSitemapIndexEnabledCheckbox.removeEventListener(
 				'change',
 				onXmlSitemapIndexEnabledChange
 			);
+
+			if (regenerationPollIntervalId) {
+				window.clearInterval(regenerationPollIntervalId);
+			}
 		},
 	};
 }

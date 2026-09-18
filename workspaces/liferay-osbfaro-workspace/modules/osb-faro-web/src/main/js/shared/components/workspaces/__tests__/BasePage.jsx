@@ -1,10 +1,16 @@
+jest.unmock('shared/components/DocumentTitle');
+
 import React from 'react';
 import {render} from '@testing-library/react';
-import {StaticRouter} from 'react-router';
+import {MemoryRouter} from 'react-router';
 import {User} from 'shared/util/records';
 import {WorkspacesBasePage} from '../BasePage';
 
 jest.unmock('react-dom');
+
+jest.mock('shared/hooks/useLDPEnabled', () => ({
+	useLDPEnabled: jest.fn(() => false)
+}));
 
 const currentUser = new User({
 	emailAddress: 'test@test.com',
@@ -12,13 +18,13 @@ const currentUser = new User({
 });
 
 const DefaultComponent = props => (
-	<StaticRouter>
+	<MemoryRouter>
 		<WorkspacesBasePage
 			currentUser={currentUser}
 			title='Test Title'
 			{...props}
 		/>
-	</StaticRouter>
+	</MemoryRouter>
 );
 
 describe('WorkspacesBasePage', () => {
@@ -49,6 +55,34 @@ describe('WorkspacesBasePage', () => {
 		);
 
 		expect(queryByText('Test Details')).toBeTruthy();
+	});
+
+	it('should hide the logo container while the LDP plan check is loading', () => {
+		const {container} = render(<DefaultComponent loadingLDPEnabled />);
+
+		expect(
+			container.querySelector('.logo-container').className
+		).toContain('loading');
+	});
+
+	it('should show the logo container once the LDP plan check resolves', () => {
+		const {container} = render(<DefaultComponent />);
+
+		expect(
+			container.querySelector('.logo-container').className
+		).not.toContain('loading');
+	});
+
+	it('should append Analytics Cloud to the document title when ldpEnabled is false', () => {
+		render(<DefaultComponent />);
+
+		expect(document.title).toEqual('Test Title - Analytics Cloud');
+	});
+
+	it('should append Liferay Data Platform to the document title when ldpEnabled is true', () => {
+		render(<DefaultComponent ldpEnabled />);
+
+		expect(document.title).toEqual('Test Title - Liferay Data Platform');
 	});
 
 	it('should render with back button', () => {

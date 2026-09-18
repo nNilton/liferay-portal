@@ -8,20 +8,21 @@ package com.liferay.site.cms.site.initializer.internal.upgrade.registry;
 import com.liferay.object.constants.ObjectDefinitionConstants;
 import com.liferay.object.rest.filter.factory.FilterFactory;
 import com.liferay.object.service.ObjectDefinitionLocalService;
-import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.object.service.ObjectEntryFolderLocalService;
-import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectFolderLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
-import com.liferay.object.service.persistence.ObjectDefinitionPersistence;
 import com.liferay.petra.sql.dsl.expression.Predicate;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
+import com.liferay.portal.kernel.service.ResourceActionLocalService;
+import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
+import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.upgrade.registry.UpgradeStepRegistrator;
 import com.liferay.site.cms.site.initializer.internal.upgrade.v1_0_0.CMSDefaultPermissionsUpgradeProcess;
 import com.liferay.site.cms.site.initializer.internal.upgrade.v1_0_0.CMSObjectRelationshipEdgeUpgradeProcess;
 import com.liferay.site.cms.site.initializer.internal.upgrade.v2_0_0.CMSBulkActionTaskTaskResultUpgradeProcess;
+import com.liferay.site.cms.site.initializer.internal.upgrade.v3_0_1.CMSObjectFolderPermissionsUpgradeProcess;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -36,8 +37,10 @@ public class SiteCMSSiteInitializerUpgradeStepRegistrator
 
 	@Override
 	public void register(Registry registry) {
+		registry.registerInitialization();
+
 		registry.register(
-			"0.0.0", "1.0.0",
+			"0.0.1", "1.0.0",
 			new CMSDefaultPermissionsUpgradeProcess(
 				_filterFactory, _groupLocalService,
 				_objectDefinitionLocalService, _objectEntryFolderLocalService));
@@ -46,8 +49,6 @@ public class SiteCMSSiteInitializerUpgradeStepRegistrator
 			"1.0.0", "2.0.0",
 			new CMSObjectRelationshipEdgeUpgradeProcess(
 				_companyLocalService, _objectDefinitionLocalService,
-				_objectDefinitionPersistence,
-				_objectDefinitionSettingLocalService, _objectEntryLocalService,
 				_objectFolderLocalService, _objectRelationshipLocalService));
 
 		registry.register(
@@ -55,6 +56,13 @@ public class SiteCMSSiteInitializerUpgradeStepRegistrator
 			new CMSBulkActionTaskTaskResultUpgradeProcess(
 				_companyLocalService, _objectDefinitionLocalService,
 				_objectFieldLocalService));
+
+		registry.register(
+			"3.0.0", "3.0.1",
+			new CMSObjectFolderPermissionsUpgradeProcess(
+				_companyLocalService, _objectFolderLocalService,
+				_resourceActionLocalService, _resourcePermissionLocalService,
+				_roleLocalService));
 	}
 
 	@Reference
@@ -72,17 +80,7 @@ public class SiteCMSSiteInitializerUpgradeStepRegistrator
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;
 
 	@Reference
-	private ObjectDefinitionPersistence _objectDefinitionPersistence;
-
-	@Reference
-	private ObjectDefinitionSettingLocalService
-		_objectDefinitionSettingLocalService;
-
-	@Reference
 	private ObjectEntryFolderLocalService _objectEntryFolderLocalService;
-
-	@Reference
-	private ObjectEntryLocalService _objectEntryLocalService;
 
 	@Reference
 	private ObjectFieldLocalService _objectFieldLocalService;
@@ -92,5 +90,14 @@ public class SiteCMSSiteInitializerUpgradeStepRegistrator
 
 	@Reference
 	private ObjectRelationshipLocalService _objectRelationshipLocalService;
+
+	@Reference
+	private ResourceActionLocalService _resourceActionLocalService;
+
+	@Reference
+	private ResourcePermissionLocalService _resourcePermissionLocalService;
+
+	@Reference
+	private RoleLocalService _roleLocalService;
 
 }

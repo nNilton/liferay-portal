@@ -16,6 +16,7 @@ import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.servlet.ServletResponseUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.Http;
+import com.liferay.portal.kernel.util.PortalRunMode;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -53,15 +54,15 @@ public class OAuth2WellKnownAuthorizationServerServlet extends HttpServlet {
 			HttpServletResponse httpServletResponse)
 		throws IOException {
 
+		httpServletResponse.setCharacterEncoding(StandardCharsets.UTF_8.name());
+		httpServletResponse.setContentType(ContentTypes.APPLICATION_JSON);
+		httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
+
 		long companyId = CompanyThreadLocal.getCompanyId();
 
 		if (!FeatureFlagManagerUtil.isEnabled(companyId, "LPD-63415")) {
 			return;
 		}
-
-		httpServletResponse.setCharacterEncoding(StandardCharsets.UTF_8.name());
-		httpServletResponse.setContentType(ContentTypes.APPLICATION_JSON);
-		httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
 
 		String issuer = _getIssuer(httpServletRequest);
 
@@ -94,10 +95,15 @@ public class OAuth2WellKnownAuthorizationServerServlet extends HttpServlet {
 				_log.debug("Issuer is not null");
 			}
 
+			String scheme = Http.HTTPS_WITH_SLASH;
+
+			if (PortalRunMode.isTestMode() && !httpServletRequest.isSecure()) {
+				scheme = Http.HTTP_WITH_SLASH;
+			}
+
 			OAuthClientASLocalMetadata oAuthClientASLocalMetadata =
 				_oAuthClientASLocalMetadataLocalService.
-					fetchOAuthClientASLocalMetadata(
-						companyId, Http.HTTPS_WITH_SLASH + issuer);
+					fetchOAuthClientASLocalMetadata(companyId, scheme + issuer);
 
 			if ((oAuthClientASLocalMetadata != null) &&
 				oAuthClientASLocalMetadata.isLocalWellKnownEnabled()) {

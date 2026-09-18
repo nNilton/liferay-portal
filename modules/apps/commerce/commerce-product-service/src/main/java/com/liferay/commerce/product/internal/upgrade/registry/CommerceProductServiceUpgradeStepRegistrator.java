@@ -694,6 +694,34 @@ public class CommerceProductServiceUpgradeStepRegistrator
 					_companyLocalService, _resourceActionLocalService,
 					_resourceLocalService, _resourcePermissionLocalService));
 
+		registry.register(
+			"6.4.0", "6.5.0",
+			new com.liferay.commerce.product.internal.upgrade.v6_5_0.
+				CommerceProductStatusUpgradeProcess());
+
+		registry.register(
+			"6.5.0", "6.6.0",
+			new com.liferay.commerce.product.internal.upgrade.v6_6_0.
+				CPDefinitionCProductExternalReferenceCodeUpgradeProcess());
+
+		registry.register(
+			"6.6.0", "6.7.0",
+			new BaseExternalReferenceCodeUpgradeProcess() {
+
+				@Override
+				protected String[] getTableNames() {
+					return new String[] {
+						"CPDefinitionOptionRel", "CPDefinitionOptionValueRel"
+					};
+				}
+
+			});
+
+		registry.register(
+			"6.7.0", "6.8.0",
+			new com.liferay.commerce.product.internal.upgrade.v6_8_0.
+				CommerceProductStatusUpgradeProcess());
+
 		if (_log.isInfoEnabled()) {
 			_log.info("Commerce product upgrade step registrator finished");
 		}

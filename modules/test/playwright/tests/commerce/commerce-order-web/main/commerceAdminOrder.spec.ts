@@ -989,6 +989,8 @@ test(
 			await performLogout(page);
 			await performLoginViaApi({page, screenName: user.alternateName});
 
+			await page.goto(`/web/${site.name}`);
+
 			await page.goto(`/web/${site.name}/pending-orders`, {
 				waitUntil: 'networkidle',
 			});
@@ -1010,7 +1012,7 @@ test(
 
 test(
 	'Verify the order type management when creating a new order via add to cart',
-	{tag: ['@LPD-56416', '@COMMERCE-11565']},
+	{tag: ['@COMMERCE-11565', '@LPD-56416']},
 	async ({
 		apiHelpers,
 		commerceAdminOrderTypesPage,

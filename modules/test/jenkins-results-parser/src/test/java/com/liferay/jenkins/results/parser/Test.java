@@ -5,26 +5,27 @@
 
 package com.liferay.jenkins.results.parser;
 
+import com.liferay.jenkins.results.parser.job.property.JobPropertyFactory;
+import com.liferay.jenkins.results.parser.test.clazz.TestClassFactory;
+import com.liferay.jenkins.results.parser.test.clazz.group.JUnitBatchTestClassGroup;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.StringReader;
 
 import java.net.URI;
-import java.net.URL;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.io.SAXReader;
+import org.hamcrest.CoreMatchers;
 
 import org.junit.After;
 import org.junit.Before;
@@ -32,6 +33,7 @@ import org.junit.Rule;
 import org.junit.rules.ErrorCollector;
 
 import org.mockito.Mockito;
+import org.mockito.verification.VerificationMode;
 
 /**
  * @author Peter Yoo
@@ -41,6 +43,8 @@ public class Test {
 	@Before
 	public void setUp() throws Exception {
 		JenkinsResultsParserUtil.clearCache();
+
+		mockEnvironment(Collections.<String, String>emptyMap());
 	}
 
 	@After
@@ -49,19 +53,30 @@ public class Test {
 
 		Environment.setInstance(new Environment());
 
+		JUnitBatchTestClassGroup.clear();
+
+		JenkinsMasterTestUtil.resetCaches();
+
+		JenkinsResultsParserUtil.setBuildProperties(new Properties());
+
+		JenkinsResultsParserUtil.setTopLevelJobNames(null);
+
+		Map<String, Job> jobs = ReflectionTestUtil.getFieldValue(
+			JobFactory.class, "_jobs");
+
+		jobs.clear();
+
+		JobPropertyFactory.clear();
+
 		Shell.setInstance(new Shell());
+
+		TestClassFactory.clear();
 
 		UrlReader.setInstance(new UrlReader());
 	}
 
 	@Rule
 	public ErrorCollector errorCollector = new ErrorCollector();
-
-	public interface ExpectedMessageGenerator {
-
-		public String getMessage(TestSample testSample) throws Exception;
-
-	}
 
 	protected static List<File> getDependenciesDirs(
 		List<String> simpleClassNames) {
@@ -74,205 +89,6 @@ public class Test {
 		}
 
 		return dirs;
-	}
-
-	protected void assertSample(TestSample testSample) throws Exception {
-		String sampleKey = testSample.getSampleKey();
-
-		System.out.print("Asserting sample " + sampleKey + ": ");
-
-		String actualMessage = fixMessage(
-			expectedMessageGenerator.getMessage(testSample));
-
-		File expectedMessageFile = getExpectedMessageFile(testSample);
-
-		if (!expectedMessageFile.exists()) {
-			errorCollector.addError(
-				new Throwable(
-					JenkinsResultsParserUtil.combine(
-						"Unable to find expected_message.html for sample '",
-						sampleKey, "'. Generating file.")));
-
-			JenkinsResultsParserUtil.write(expectedMessageFile, actualMessage);
-
-			return;
-		}
-
-		String expectedMessage = read(expectedMessageFile);
-
-		boolean value = expectedMessage.equals(actualMessage);
-
-		if (value) {
-			System.out.println(" PASSED");
-		}
-		else {
-			System.out.println(" FAILED");
-			System.out.println("\nActual message: \n" + actualMessage);
-			System.out.println("\nExpected message: \n" + expectedMessage);
-
-			errorCollector.addError(
-				new Throwable(
-					JenkinsResultsParserUtil.combine(
-						"Expected message mismatch in sample '", sampleKey,
-						"'.\n Expected message file: ",
-						expectedMessageFile.getPath())));
-		}
-	}
-
-	protected void assertSamples() throws Exception {
-		for (TestSample testSample : testSamples.values()) {
-			assertSample(testSample);
-		}
-	}
-
-	protected void deleteFile(File file) {
-		if (!file.exists()) {
-			return;
-		}
-
-		if (file.isFile()) {
-			file.delete();
-		}
-		else {
-			File[] files = file.listFiles();
-
-			for (File childFile : files) {
-				deleteFile(childFile);
-			}
-
-			file.delete();
-		}
-	}
-
-	protected void deleteFile(String fileName) {
-		deleteFile(new File(fileName));
-	}
-
-	protected void downloadSample(
-			String sampleKey, String buildNumber, String jobName,
-			String hostName)
-		throws Exception {
-
-		downloadSample(sampleKey, null, buildNumber, jobName, hostName);
-	}
-
-	protected void downloadSample(
-			String sampleKey, String axisVariable, String buildNumber,
-			String jobName, String hostName)
-		throws Exception {
-
-		String urlString =
-			"https://${hostName}.liferay.com/job/${jobName}//${buildNumber}/";
-
-		if (axisVariable != null) {
-			urlString =
-				"https://${hostName}.liferay.com/job/${jobName}" +
-					"/AXIS_VARIABLE=${axis}/${buildNumber}/";
-
-			urlString = replaceToken(urlString, "axis", axisVariable);
-		}
-
-		urlString = replaceToken(urlString, "buildNumber", buildNumber);
-		urlString = replaceToken(urlString, "hostName", hostName);
-		urlString = replaceToken(urlString, "jobName", jobName);
-
-		URL url = JenkinsResultsParserUtil.createURL(urlString);
-
-		downloadSample(sampleKey, url);
-	}
-
-	protected void downloadSample(String sampleKey, URL url) throws Exception {
-		if (testSamples.containsKey(sampleKey)) {
-			throw new Exception("Duplicate sample key: '" + sampleKey + "'");
-		}
-
-		TestSample testSample = new TestSample(dependenciesDirs, sampleKey);
-
-		File sampleDir = testSample.getSampleDir();
-
-		try {
-			if (!sampleDir.exists()) {
-				System.out.println("Downloading sample " + sampleKey);
-
-				downloadSample(testSample, url);
-			}
-
-			testSamples.put(sampleKey, testSample);
-		}
-		catch (IOException ioException) {
-			deleteFile(sampleDir);
-
-			throw ioException;
-		}
-	}
-
-	protected void downloadSample(TestSample testSample, URL url)
-		throws Exception {
-	}
-
-	protected void downloadSampleURL(File dir, URL url, String urlSuffix)
-		throws Exception {
-
-		String urlString = url + urlSuffix;
-
-		if (urlString.endsWith("json")) {
-			urlString += "?pretty";
-		}
-
-		urlSuffix = JenkinsResultsParserUtil.fixFileName(urlSuffix);
-
-		JenkinsResultsParserUtil.write(
-			new File(dir, urlSuffix),
-			JenkinsResultsParserUtil.toString(
-				JenkinsResultsParserUtil.getLocalURL(urlString)));
-	}
-
-	protected String fixMessage(String message) {
-		if (message.contains(JenkinsResultsParserUtil.urlDependenciesFile)) {
-			message = message.replace(
-				JenkinsResultsParserUtil.urlDependenciesFile,
-				"${dependencies.url}");
-		}
-
-		return message.replaceAll("[^\\S\\r\\n]+\n", "\n");
-	}
-
-	protected String formatXML(String xml)
-		throws DocumentException, IOException {
-
-		SAXReader saxReader = new SAXReader();
-
-		for (String[] xmlReplacement : _XML_REPLACEMENTS) {
-			xml = xml.replace(xmlReplacement[0], xmlReplacement[1]);
-		}
-
-		Document document = null;
-
-		try {
-			document = saxReader.read(new StringReader(xml));
-		}
-		catch (DocumentException documentException1) {
-			DocumentException documentException2 = new DocumentException(
-				documentException1.getMessage() + "\n" + xml);
-
-			documentException2.setStackTrace(
-				documentException1.getStackTrace());
-
-			throw documentException2;
-		}
-
-		String formattedXML = Dom4JUtil.format(document.getRootElement());
-
-		for (String[] xmlReplacement : _XML_REPLACEMENTS) {
-			formattedXML = formattedXML.replace(
-				xmlReplacement[1], xmlReplacement[0]);
-		}
-
-		return formattedXML;
-	}
-
-	protected File getExpectedMessageFile(TestSample testSample) {
-		return new File(testSample.getSampleDir(), "expected-message.html");
 	}
 
 	protected String getMismatchMessage(
@@ -304,13 +120,37 @@ public class Test {
 		return _simpleClassNames;
 	}
 
-	protected Environment mockEnvironment(
-		Map<String, String> environmentValues) {
+	protected VerificationMode getVerificationMode(boolean invoked) {
+		if (invoked) {
+			return Mockito.times(1);
+		}
 
+		return Mockito.never();
+	}
+
+	protected boolean hasCommand(
+		Shell.ExecutionRequest executionRequest, String... substrings) {
+
+		if (executionRequest == null) {
+			return false;
+		}
+
+		String command = executionRequest.getCommands()[0];
+
+		for (String substring : substrings) {
+			if (!command.contains(substring)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	protected Environment mockEnvironment(Map<String, String> environmentMap) {
 		Environment environment = Mockito.mock(Environment.class);
 
 		Mockito.doAnswer(
-			invocation -> environmentValues.get(invocation.getArgument(0))
+			invocation -> environmentMap.get(invocation.getArgument(0))
 		).when(
 			environment
 		).doGet(
@@ -318,7 +158,7 @@ public class Test {
 		);
 
 		Mockito.doReturn(
-			environmentValues
+			environmentMap
 		).when(
 			environment
 		).doGetAll();
@@ -367,12 +207,18 @@ public class Test {
 		return read(new File(dir, fileName));
 	}
 
-	protected String replaceToken(String string, String token, String value) {
-		if (string == null) {
-			return string;
-		}
+	protected void setShellCommandExitValue(
+			String command, Shell shell, int exitValue)
+		throws Exception {
 
-		return string.replace("${" + token + "}", value);
+		Mockito.doReturn(
+			new Shell.ExecutionResult(exitValue, "", "")
+		).when(
+			shell
+		).doExecute(
+			Mockito.argThat(
+				executionRequest -> hasCommand(executionRequest, command))
+		);
 	}
 
 	protected void setShellCommandOutput(
@@ -385,16 +231,16 @@ public class Test {
 			shell
 		).doExecute(
 			Mockito.argThat(
-				executionRequest -> _hasCommand(command, executionRequest))
+				executionRequest -> hasCommand(executionRequest, command))
 		);
 	}
 
-	protected void setUrlReaderOutput(
-			String standardOut, String url, UrlReader urlReader)
+	protected void setUrlReaderException(
+			IOException ioException, String url, UrlReader urlReader)
 		throws Exception {
 
-		Mockito.doAnswer(
-			invocation -> new ByteArrayInputStream(standardOut.getBytes())
+		Mockito.doThrow(
+			ioException
 		).when(
 			urlReader
 		).doRead(
@@ -405,23 +251,40 @@ public class Test {
 		);
 	}
 
-	protected void testEquals(String expected, String actual) {
-		if (!((expected == null) ^ (actual == null))) {
-			if ((expected != null) && !expected.equals(actual)) {
-				errorCollector.addError(
-					new Throwable(
-						JenkinsResultsParserUtil.combine(
-							"String mismatch\nExpected:", expected, "\nActual:",
-							actual)));
+	protected void setUrlReaderOutput(
+			long delayMillis, String standardOut, String url,
+			UrlReader urlReader)
+		throws Exception {
+
+		Mockito.doAnswer(
+			invocation -> {
+				JenkinsResultsParserUtil.sleep(delayMillis);
+
+				return new ByteArrayInputStream(standardOut.getBytes());
 			}
-		}
-		else {
-			errorCollector.addError(
-				new Throwable(
-					JenkinsResultsParserUtil.combine(
-						"String mismatch\nExpected:", expected, "\nActual:",
-						actual)));
-		}
+		).when(
+			urlReader
+		).doRead(
+			Mockito.anyBoolean(), Mockito.any(), Mockito.any(),
+			Mockito.anyInt(), Mockito.any(), Mockito.anyInt(), Mockito.anyInt(),
+			Mockito.argThat(
+				readURL -> (readURL != null) && readURL.contains(url))
+		);
+	}
+
+	protected void setUrlReaderOutput(
+			String standardOut, String url, UrlReader urlReader)
+		throws Exception {
+
+		setUrlReaderOutput(0, standardOut, url, urlReader);
+	}
+
+	protected void testEquals(Object expected, Object actual) {
+		errorCollector.checkThat(actual, CoreMatchers.equalTo(expected));
+	}
+
+	protected void testSame(Object expected, Object actual) {
+		errorCollector.checkThat(actual, CoreMatchers.sameInstance(expected));
 	}
 
 	protected String toURLString(File file) throws Exception {
@@ -445,27 +308,22 @@ public class Test {
 			"${dependencies.url}/" + path);
 	}
 
-	protected List<File> dependenciesDirs = getDependenciesDirs(
-		getSimpleClassNames());
-	protected ExpectedMessageGenerator expectedMessageGenerator;
-	protected Map<String, TestSample> testSamples = new HashMap<>();
+	protected void verifyUrlReaderRead(
+			boolean checkCache, int maxRetries, int timeoutMillis,
+			UrlReader urlReader)
+		throws Exception {
 
-	private boolean _hasCommand(
-		String command, Shell.ExecutionRequest executionRequest) {
-
-		if (executionRequest == null) {
-			return false;
-		}
-
-		String[] commands = executionRequest.getCommands();
-
-		return commands[0].contains(command);
+		Mockito.verify(
+			urlReader
+		).doRead(
+			Mockito.eq(checkCache), Mockito.any(), Mockito.any(),
+			Mockito.eq(maxRetries), Mockito.any(), Mockito.anyInt(),
+			Mockito.eq(timeoutMillis), Mockito.anyString()
+		);
 	}
 
-	private static final String[][] _XML_REPLACEMENTS = {
-		{"<pre>", "<pre><![CDATA["}, {"</pre>", "]]></pre>"},
-		{"&raquo;", "[raquo]"}
-	};
+	protected List<File> dependenciesDirs = getDependenciesDirs(
+		getSimpleClassNames());
 
 	private List<String> _simpleClassNames;
 

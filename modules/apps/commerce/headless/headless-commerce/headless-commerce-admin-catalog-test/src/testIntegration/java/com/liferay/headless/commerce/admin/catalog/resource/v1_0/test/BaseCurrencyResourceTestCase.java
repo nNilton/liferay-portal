@@ -41,6 +41,7 @@ import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
+import com.liferay.portal.kernel.test.util.JAXRSWhiteboardTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -121,6 +122,8 @@ public abstract class BaseCurrencyResourceTestCase {
 	public static void setUpClass() throws Exception {
 		_format = FastDateFormatFactoryUtil.getSimpleDateFormat(
 			"yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+		JAXRSWhiteboardTestUtil.ensureReady();
 	}
 
 	@Before
@@ -528,7 +531,7 @@ public abstract class BaseCurrencyResourceTestCase {
 			randomCurrency());
 
 		page = currencyResource.getCurrenciesPage(
-			null, null, Pagination.of(1, 10), null);
+			null, null, Pagination.of(1, (int)totalCount + 2), null);
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -1429,6 +1432,59 @@ public abstract class BaseCurrencyResourceTestCase {
 		Currency currency = testGraphQLCurrency_addCurrency(randomCurrency);
 
 		Assert.assertTrue(equals(randomCurrency, currency));
+	}
+
+	@Test
+	public void testPutCurrencyByExternalReferenceCode() throws Exception {
+		Currency postCurrency =
+			testPutCurrencyByExternalReferenceCode_addCurrency();
+
+		Currency randomCurrency = randomCurrency();
+
+		Currency putCurrency =
+			currencyResource.putCurrencyByExternalReferenceCode(
+				postCurrency.getExternalReferenceCode(), randomCurrency);
+
+		assertEquals(randomCurrency, putCurrency);
+		assertValid(putCurrency);
+
+		Currency getCurrency =
+			currencyResource.getCurrencyByExternalReferenceCode(
+				putCurrency.getExternalReferenceCode());
+
+		assertEquals(randomCurrency, getCurrency);
+		assertValid(getCurrency);
+
+		Currency newCurrency =
+			testPutCurrencyByExternalReferenceCode_createCurrency();
+
+		putCurrency = currencyResource.putCurrencyByExternalReferenceCode(
+			newCurrency.getExternalReferenceCode(), newCurrency);
+
+		assertEquals(newCurrency, putCurrency);
+		assertValid(putCurrency);
+
+		getCurrency = currencyResource.getCurrencyByExternalReferenceCode(
+			putCurrency.getExternalReferenceCode());
+
+		assertEquals(newCurrency, getCurrency);
+
+		Assert.assertEquals(
+			newCurrency.getExternalReferenceCode(),
+			putCurrency.getExternalReferenceCode());
+	}
+
+	protected Currency testPutCurrencyByExternalReferenceCode_addCurrency()
+		throws Exception {
+
+		throw new UnsupportedOperationException(
+			"This method needs to be implemented");
+	}
+
+	protected Currency testPutCurrencyByExternalReferenceCode_createCurrency()
+		throws Exception {
+
+		return randomCurrency();
 	}
 
 	@Test
@@ -2693,4 +2749,4 @@ public abstract class BaseCurrencyResourceTestCase {
 		_vulcanCRUDItemDelegateBuilderRegistry;
 
 }
-// LIFERAY-REST-BUILDER-HASH:-2070873009
+// LIFERAY-REST-BUILDER-HASH:-1330327905

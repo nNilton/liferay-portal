@@ -6,6 +6,7 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {loginTest} from '../../../fixtures/loginTest';
+import {liferayConfig} from '../../../liferay.config';
 import {headlessDiscoveryPagesTest} from './fixtures/headlessDiscoveryPagesTest';
 
 export const test = mergeTests(headlessDiscoveryPagesTest, loginTest());
@@ -53,5 +54,95 @@ test(
 		await expect(page.getByText(`Forbidden access.`)).toBeVisible({
 			timeout: 3000,
 		});
+	}
+);
+
+test(
+	'Rejects an endpoint served from another origin',
+	{tag: '@LPD-102660'},
+	async ({page}) => {
+		const {baseUrl} = liferayConfig.environment;
+
+		const forbiddenEndpoints = [
+			[
+				'A host that only starts with the portal origin',
+				`${baseUrl}.attacker.test/openapi.json`,
+			],
+			[
+				'A host smuggled in the user information',
+				`${baseUrl}@attacker.test/openapi.json`,
+			],
+		];
+
+		for (const [title, forbiddenEndpoint] of forbiddenEndpoints) {
+			await test.step(title, async () => {
+				await page.goto(`/o/api?endpoint=${forbiddenEndpoint}`);
+
+				await expect(page.getByText('Forbidden access.')).toBeVisible({
+					timeout: 10000,
+				});
+			});
+		}
+	}
+);
+
+test(
+	'Renders an endpoint published by the portal',
+	{tag: '@LPD-102660'},
+	async ({apiExplorer, page}) => {
+		await apiExplorer.goToApplication('headless-delivery/v1.0');
+
+		await expect(page.getByText('Forbidden access.')).toBeHidden();
+		await expect(
+			apiExplorer.getOperationBlock('getSiteBlogPostingsPage')
+		).toBeVisible();
+	}
+);
+
+test(
+	'Renders the global OpenAPI document',
+	{tag: '@LPD-105213'},
+	async ({apiExplorer, page}) => {
+		const {baseUrl} = liferayConfig.environment;
+
+		await apiExplorer.goToApplication('openapi');
+
+		await expect(page.getByText('Forbidden access.')).toBeHidden();
+		await expect(
+			page.getByRole('heading', {name: 'Global REST API - OpenAPI'})
+		).toBeVisible({timeout: 60000});
+		await expect(page.locator('.servers select')).toHaveValue(
+			`${baseUrl}/o`
+		);
+
+		// The merged document keeps every application's operations
+
+		await expect(
+			page.getByText('HeadlessAdminWorkflow.v1.0.getOpenAPI', {
+				exact: true,
+			})
+		).toBeVisible({timeout: 60000});
+	}
+);
+
+test(
+	'Sends the CSRF token to an endpoint published by the portal',
+	{tag: '@LPD-102660'},
+	async ({apiExplorer, page}) => {
+		const requestHeaders: Array<Record<string, string>> = [];
+
+		page.on('request', (request) => {
+			const {pathname} = new URL(request.url());
+
+			if (pathname.endsWith('/openapi.json')) {
+				requestHeaders.push(request.headers());
+			}
+		});
+
+		await apiExplorer.goToApplication('headless-delivery/v1.0');
+
+		await expect.poll(() => requestHeaders.length).toBeGreaterThan(0);
+
+		expect(requestHeaders[0]['x-csrf-token']).toBeTruthy();
 	}
 );

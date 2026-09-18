@@ -7,6 +7,7 @@ import * as audiences from '../src/main/resources/META-INF/resources/main/implem
 
 import type {
 	Attribute,
+	Audience,
 	AudiencesDefinition,
 	Conjunction,
 	Operator,
@@ -15,25 +16,22 @@ import type {
 
 const URL = 'https://example.com/audiences.json';
 
-function mockAudiencesDefinition(conjunction: Conjunction, rules: Rule[]) {
-	const audiencesDefinition: AudiencesDefinition = {
-		audiences: [
-			{
-				conjunction,
-				id: 'the_audience',
-				rules,
-			},
-		],
-	};
+const TIMEOUT = 1000;
 
-	(global as any).fetch = jest.fn(() =>
-		Promise.resolve({
-			json: () => Promise.resolve(audiencesDefinition),
-			ok: true,
-			status: 200,
-			statusText: 'OK',
-		})
-	);
+async function flushMicrotasks() {
+	for (let i = 0; i < 10; i++) {
+		await Promise.resolve();
+	}
+}
+
+function mockAudiencesDefinition(conjunction: Conjunction, rules: Rule[]) {
+	return mockAudiencesDefinitionWithAudiences([
+		{
+			conjunction,
+			id: 'the_audience',
+			rules,
+		},
+	]);
 }
 
 function mockAudiencesDefinitionWithAttribute(
@@ -50,11 +48,28 @@ function mockAudiencesDefinitionWithAttribute(
 	]);
 }
 
+function mockAudiencesDefinitionWithAudiences(audiences: Audience[]) {
+	const audiencesDefinition: AudiencesDefinition = {audiences};
+
+	(global as any).fetch = jest.fn(() =>
+		Promise.resolve({
+			json: () => Promise.resolve(audiencesDefinition),
+			ok: true,
+			status: 200,
+			statusText: 'OK',
+		})
+	);
+}
+
 describe('detection', () => {
 	afterEach(() => {
 		jest.useRealTimers();
 
 		jest.dontMock('https://example.com/custom.js');
+
+		jest.dontMock('https://example.com/custom-error.js');
+
+		jest.dontMock('https://example.com/custom-slow.js');
 
 		jest.restoreAllMocks();
 
@@ -71,6 +86,7 @@ describe('detection', () => {
 		window.history.replaceState({}, '', '/');
 
 		audiences.clear();
+		audiences.setLogEnabled(false);
 	});
 
 	beforeEach(() => {
@@ -82,6 +98,26 @@ describe('detection', () => {
 			() => ({
 				__esModule: true,
 				getCountry: () => 'US',
+			}),
+			{virtual: true}
+		);
+
+		jest.doMock(
+			'https://example.com/custom-error.js',
+			() => ({
+				__esModule: true,
+				getCountry: () => {
+					throw new Error('The custom attribute is broken');
+				},
+			}),
+			{virtual: true}
+		);
+
+		jest.doMock(
+			'https://example.com/custom-slow.js',
+			() => ({
+				__esModule: true,
+				getCountry: () => new Promise(() => {}),
 			}),
 			{virtual: true}
 		);
@@ -381,31 +417,34 @@ describe('detection', () => {
 		});
 	});
 
-	describe('attribute segments', () => {
-		it('positive test', async () => {
-			mockAudiencesDefinitionWithAttribute(
-				'segments',
-				'includes',
-				'SEGMENT_REAL_TIME'
-			);
+	describe.each(['batch_segments', 'real_time_segments'] as const)(
+		'attribute %s',
+		(attribute) => {
+			it('positive test', async () => {
+				mockAudiencesDefinitionWithAttribute(
+					attribute,
+					'includes',
+					'SEGMENT_REAL_TIME'
+				);
 
-			await audiences.runDetection(URL);
+				await audiences.runDetection(URL);
 
-			expect(audiences.get()).toEqual(new Set(['the_audience']));
-		});
+				expect(audiences.get()).toEqual(new Set(['the_audience']));
+			});
 
-		it('negative test', async () => {
-			mockAudiencesDefinitionWithAttribute(
-				'segments',
-				'includes',
-				'NON_EXISTENT_SEGMENT'
-			);
+			it('negative test', async () => {
+				mockAudiencesDefinitionWithAttribute(
+					attribute,
+					'includes',
+					'NON_EXISTENT_SEGMENT'
+				);
 
-			await audiences.runDetection(URL);
+				await audiences.runDetection(URL);
 
-			expect(audiences.get()).toEqual(new Set());
-		});
-	});
+				expect(audiences.get()).toEqual(new Set());
+			});
+		}
+	);
 
 	describe('attribute timezone', () => {
 		it('positive test', async () => {
@@ -527,5 +566,111 @@ describe('detection', () => {
 		await audiences.runDetection(URL);
 
 		expect(audiences.get()).toEqual(new Set());
+	});
+
+	it('matches the remaining audiences when one audience throws', async () => {
+		audiences.setLogEnabled(true);
+
+		const consoleLog = jest
+			.spyOn(console, 'log')
+			.mockImplementation(() => {});
+
+		mockAudiencesDefinitionWithAudiences([
+			{
+				conjunction: 'AND',
+				id: 'the_broken_audience',
+				rules: [
+					{
+						attribute:
+							'custom:https://example.com/custom-error.js#getCountry',
+						operator: 'eq',
+						value: 'US',
+					},
+				],
+			},
+			{
+				conjunction: 'AND',
+				id: 'the_audience',
+				rules: [
+					{attribute: 'hostname', operator: 'eq', value: 'localhost'},
+				],
+			},
+		]);
+
+		await audiences.runDetection(URL);
+
+		expect(audiences.get()).toEqual(new Set(['the_audience']));
+
+		expect(
+			consoleLog.mock.calls.find((call) =>
+				call[2].includes(
+					`Audience 'the_broken_audience' is not matched because its evaluation failed with error`
+				)
+			)
+		).toBeTruthy();
+	});
+
+	describe('timeout', () => {
+		it('discards the audiences that are still being detected', async () => {
+			mockAudiencesDefinitionWithAudiences([
+				{
+					conjunction: 'AND',
+					id: 'the_slow_audience',
+					rules: [
+						{
+							attribute:
+								'custom:https://example.com/custom-slow.js#getCountry',
+							operator: 'eq',
+							value: 'US',
+						},
+					],
+				},
+				{
+					conjunction: 'AND',
+					id: 'the_audience',
+					rules: [
+						{
+							attribute: 'hostname',
+							operator: 'eq',
+							value: 'localhost',
+						},
+					],
+				},
+			]);
+
+			const promise = audiences.runDetection(URL, {
+				timeout: TIMEOUT,
+			});
+
+			await flushMicrotasks();
+
+			jest.advanceTimersByTime(TIMEOUT);
+
+			await promise;
+
+			expect(audiences.get()).toEqual(new Set(['the_audience']));
+		});
+
+		it('discards every audience when the definition never arrives', async () => {
+			(global as any).fetch = jest.fn(() => new Promise(() => {}));
+
+			const promise = audiences.runDetection(URL, {
+				timeout: TIMEOUT,
+			});
+
+			jest.advanceTimersByTime(TIMEOUT);
+
+			await promise;
+
+			expect(audiences.get()).toEqual(new Set());
+		});
+
+		it('detects the audiences that finish before the timeout', async () => {
+			mockAudiencesDefinitionWithAttribute('hostname', 'eq', 'localhost');
+
+			await audiences.runDetection(URL, {timeout: TIMEOUT});
+
+			expect(audiences.get()).toEqual(new Set(['the_audience']));
+		});
 	});
 });

@@ -17,7 +17,10 @@ import org.osgi.service.component.annotations.Component;
  * @author Rubén Pulido
  */
 @Component(
-	property = "dto.class.name=com.liferay.fragment.model.FragmentCollection",
+	property = {
+		"default=true",
+		"dto.class.name=com.liferay.fragment.model.FragmentCollection"
+	},
 	service = DTOConverter.class
 )
 public class FragmentSetDTOConverter
@@ -36,6 +39,14 @@ public class FragmentSetDTOConverter
 
 		return new FragmentSet() {
 			{
+				setActions(
+					() -> {
+						if (dtoConverterContext == null) {
+							return null;
+						}
+
+						return dtoConverterContext.getActions();
+					});
 				setCreator(
 					() -> CreatorUtil.toCreator(
 						fragmentCollection.getUserId()));

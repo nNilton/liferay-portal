@@ -15,9 +15,9 @@ _SCRIPTS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 _ROOT_CLOUD_DIR=$(cd "${_SCRIPTS_DIR}/.." && pwd)
 
 function main {
-	if [ "${#}" -ne 2 ]
+	if [ ${#} -eq 0 ]
 	then
-		echo "Usage: ${0} <configuration-json-file> <versions-tfvars-file>" >&2
+		echo "Usage: ${0} <configuration-json-file>" >&2
 		echo "" >&2
 		echo "See cloud/scripts/config.json.example_gcp for a sample." >&2
 
@@ -30,16 +30,14 @@ function main {
 
 	_validate_config_json "${1}"
 
-	_validate_versions_tfvars "${2}"
-
 	_generate_tfvars "${1}" "${_SCRIPTS_DIR}/global_terraform.tfvars"
 
 	_GCP_DEPLOYMENT_NAME="$(jq --raw-output '.variables.deployment_name' "${1}")"
 	_GCP_PROJECT_ID="$(jq --raw-output '.variables.project_id' "${1}")"
 
-	echo "Attempting to login to your Google Cloud account via application default credentials."
+	_log_in_to_gcloud_application_default
 
-	gcloud auth application-default login
+	_log_in_to_gcloud
 
 	local bucket_name=""
 	local region=""
@@ -49,7 +47,7 @@ function main {
 	while IFS= read -r terraform_arg
 	do
 		terraform_args+=("${terraform_arg}")
-	done < <(_get_terraform_apply_args "${1}" "${2}")
+	done < <(_get_terraform_apply_args "${1}")
 
 	if jq --exit-status '.variables.tfstate_bucket_name' "${1}" &> /dev/null
 	then
@@ -76,7 +74,7 @@ function _check_terraform_version {
 
 	lowest_version=$(printf "%s\n%s\n" "${required_version}" "${found_version}" | sort --version-sort | head -n 1)
 
-	if [ "${lowest_version}" != "${required_version}" ]
+	if [[ ${lowest_version} != ${required_version} ]]
 	then
 		echo "The installed Terraform version ${found_version} is older than ${required_version}." >&2
 
@@ -143,7 +141,7 @@ function _configure_gcs_bucket {
 
 	local service_agent
 
-	service_agent="$(gcloud storage service-agent --project "${project_id}")"
+	service_agent="$(gcloud storage service-agent --format="value(.)" --project "${project_id}")"
 
 	gcloud kms keys add-iam-policy-binding \
 		"${key_name}" \
@@ -224,7 +222,7 @@ function _generate_tfvars {
 		  	"\(.key) = \(.value)"
 		  end' "${configuration_json_file}")
 
-	if [ -z "${tfvars_content}" ]
+	if [[ -z ${tfvars_content} ]]
 	then
 		echo "The \"variables\" object in the configuration JSON file is empty. You will be prompted for all required variables."
 
@@ -246,17 +244,10 @@ function _get_terraform_apply_args {
 		auto_approve=$(jq --raw-output '.options.auto_approve' "${configuration_json_file}")
 	fi
 
-	local versions_tfvars_file="${2}"
-
-	local versions_tfvars_file_path
-
-	versions_tfvars_file_path=$(_resolve_path "${versions_tfvars_file}")
-
 	local apply_args=(
-		"-var-file=${versions_tfvars_file_path}"
 		"-var-file=${_SCRIPTS_DIR}/global_terraform.tfvars")
 
-	if [[ "${auto_approve}" == "true" ]]
+	if [[ ${auto_approve} == true ]]
 	then
 		apply_args+=("-auto-approve")
 	fi
@@ -277,6 +268,32 @@ function _log {
 	echo "[Tfstate bucket configuration] ${1}"
 }
 
+function _log_in_to_gcloud {
+	if gcloud auth print-access-token --quiet &> /dev/null
+	then
+		echo "Reusing the active Google Cloud login."
+
+		return
+	fi
+
+	echo "Attempting to log in to your Google Cloud account."
+
+	gcloud auth login
+}
+
+function _log_in_to_gcloud_application_default {
+	if gcloud auth application-default print-access-token --quiet &> /dev/null
+	then
+		echo "Reusing the active Google Cloud application default credentials."
+
+		return
+	fi
+
+	echo "Attempting to log in to your Google Cloud account via application default credentials."
+
+	gcloud auth application-default login
+}
+
 function _popd {
 	popd > /dev/null
 }
@@ -288,7 +305,7 @@ function _pushd {
 function _recover_kubectl_context {
 	local exit_code="${1}"
 
-	if [ -z "${_GCP_DEPLOYMENT_NAME:-}" ] || [ "${_GCP_DEPLOYMENT_NAME}" = "null" ] || [ -z "${_GCP_PROJECT_ID:-}" ] || [ "${_GCP_PROJECT_ID}" = "null" ]
+	if [[ -z ${_GCP_DEPLOYMENT_NAME:-} ]] || [[ ${_GCP_DEPLOYMENT_NAME} == null ]] || [[ -z ${_GCP_PROJECT_ID:-} ]] || [[ ${_GCP_PROJECT_ID} == null ]]
 	then
 		exit "${exit_code}"
 	fi
@@ -327,28 +344,6 @@ function _recover_kubectl_context {
 	exit "${exit_code}"
 }
 
-function _resolve_path {
-	local file_path="${1}"
-
-	if [ ! -e "${file_path}" ]
-	then
-		echo "Path ${file_path} does not exist." >&2
-
-		exit 1
-	fi
-
-	local dir_path
-
-	if ! dir_path=$(cd "$(dirname "${file_path}")" && pwd)
-	then
-		echo "Failed to resolve directory for ${file_path}." >&2
-
-		exit 1
-	fi
-
-	printf '%s/%s\n' "${dir_path}" "$(basename "${file_path}")"
-}
-
 function _set_up_gcp_gitops {
 	local bucket_name="${1}"
 	local deployment_name="${2}"
@@ -378,8 +373,6 @@ function _set_up_gcp_gke {
 
 	_terraform_init_and_apply "." "gke" "${bucket_name}" "${deployment_name}" "${region}" "${@:4}"
 
-	gcloud auth login
-
 	gcloud \
 		container \
 		fleet \
@@ -401,7 +394,7 @@ function _terraform_init_and_apply {
 
 	_pushd "${1}"
 
-	if [ -n "${bucket_name}" ]
+	if [[ -n ${bucket_name} ]]
 	then
 		terraform init \
 			-backend-config="bucket=${bucket_name}" \
@@ -424,7 +417,7 @@ EOF
 function _validate_config_json {
 	local configuration_json_file="${1}"
 
-	if [ ! -f "${configuration_json_file}" ]
+	if [[ ! -f ${configuration_json_file} ]]
 	then
 		echo "Configuration JSON file ${configuration_json_file} does not exist." >&2
 
@@ -441,17 +434,6 @@ function _validate_config_json {
 	if ! jq --exit-status '.variables | objects' "${configuration_json_file}" > /dev/null
 	then
 		echo "The configuration JSON file must contain a root object named \"variables\"." >&2
-
-		exit 1
-	fi
-}
-
-function _validate_versions_tfvars {
-	local versions_tfvars_file="${1}"
-
-	if [ ! -f "${versions_tfvars_file}" ]
-	then
-		echo "Versions tfvars file ${versions_tfvars_file} does not exist." >&2
 
 		exit 1
 	fi

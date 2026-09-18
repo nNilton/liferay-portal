@@ -313,6 +313,11 @@
 			<finder-column name="objectDefinitionId" />
 			<finder-column name="status" />
 		</finder>
+		<finder name="G_ODI_NotS" return-type="Collection" where="objectEntryId = headObjectEntryId">
+			<finder-column name="groupId" />
+			<finder-column name="objectDefinitionId" />
+			<finder-column comparator="!=" name="status" />
+		</finder>
 		<finder name="U_GtCD_ODI" return-type="Collection" where="objectEntryId = headObjectEntryId">
 			<finder-column name="userId" />
 			<finder-column comparator="&gt;" name="createDate" />
@@ -1108,6 +1113,10 @@
 	</entity>
 	<entity local-service="true" name="ObjectView" remote-service="true" uuid="true">
 
+		<!-- External reference code -->
+
+		<column name="externalReferenceCode" type="String" />
+
 		<!-- PK fields -->
 
 		<column name="objectViewId" primary="true" type="long" />
@@ -1134,6 +1143,11 @@
 		<finder name="ODI_DOV" return-type="Collection">
 			<finder-column name="objectDefinitionId" />
 			<finder-column name="defaultObjectView" />
+		</finder>
+		<finder name="ERC_C_ODI" return-type="ObjectEntry" unique="true">
+			<finder-column name="externalReferenceCode" />
+			<finder-column name="companyId" />
+			<finder-column name="objectDefinitionId" />
 		</finder>
 	</entity>
 	<entity local-service="false" name="ObjectViewColumn" remote-service="true" uuid="true">
@@ -1236,7 +1250,6 @@
 		<exception>DuplicateObjectFieldExternalReferenceCode</exception>
 		<exception>DuplicateObjectRelationship</exception>
 		<exception>DuplicateObjectRelationshipExternalReferenceCode</exception>
-		<exception>LockedObjectAction</exception>
 		<exception>ObjectActionActive</exception>
 		<exception>ObjectActionConditionExpression</exception>
 		<exception>ObjectActionErrorMessage</exception>

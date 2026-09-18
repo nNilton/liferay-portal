@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {render, screen} from '@testing-library/react';
+import {act, render, screen, within} from '@testing-library/react';
 import React from 'react';
 
 import '@testing-library/jest-dom';
@@ -21,6 +21,26 @@ const SERIES = [
 ];
 
 describe('LineChart', () => {
+	const {ResizeObserver: ResizeObserverOriginal} = window;
+
+	let resizeCallback: ResizeObserverCallback;
+
+	beforeEach(() => {
+		window.ResizeObserver = jest.fn().mockImplementation((callback) => {
+			resizeCallback = callback;
+
+			return {
+				disconnect: jest.fn(),
+				observe: jest.fn(),
+				unobserve: jest.fn(),
+			};
+		});
+	});
+
+	afterEach(() => {
+		window.ResizeObserver = ResizeObserverOriginal;
+	});
+
 	it('renders one accessible point per non-null value', () => {
 		render(
 			<LineChart
@@ -115,6 +135,141 @@ describe('LineChart', () => {
 		expect(
 			screen.getByRole('rowheader', {name: 'Visits'})
 		).toBeInTheDocument();
+	});
+
+	it('shows each series latest value in the list legend by default', () => {
+		render(
+			<LineChart
+				categories={CATEGORIES}
+				legend="list"
+				series={SERIES}
+				title="Traffic over time"
+			/>
+		);
+
+		const legend = screen.getByRole('list', {hidden: true});
+
+		// Visits latest = 9.
+
+		expect(within(legend).getByText('9')).toBeInTheDocument();
+	});
+
+	it('hides the list legend value for legendValue="name"', () => {
+		render(
+			<LineChart
+				categories={CATEGORIES}
+				legend="list"
+				legendValue="name"
+				series={SERIES}
+				title="Traffic over time"
+			/>
+		);
+
+		const legend = screen.getByRole('list', {hidden: true});
+
+		expect(within(legend).getByText('Visits')).toBeInTheDocument();
+		expect(within(legend).queryByText('9')).not.toBeInTheDocument();
+	});
+
+	it('applies the alignment and swatch-border modifiers', () => {
+		render(
+			<LineChart
+				alignment="center"
+				categories={CATEGORIES}
+				legend="list"
+				legendSwatchBorder={false}
+				series={SERIES}
+				title="Traffic over time"
+			/>
+		);
+
+		const figure = screen.getByRole('figure');
+
+		expect(figure).toHaveClass('charts-line-chart--align-center');
+		expect(figure).toHaveClass('charts-line-chart--no-swatch-border');
+	});
+
+	it('renders every category label when they fit', () => {
+		const {container} = render(
+			<LineChart
+				categories={CATEGORIES}
+				series={SERIES}
+				title="Traffic over time"
+			/>
+		);
+
+		expect(
+			container.querySelectorAll('.charts-line-chart__category-label')
+		).toHaveLength(3);
+	});
+
+	it('culls category labels that would overlap', () => {
+		const categories = Array.from(
+			{length: 24},
+			(_, index) => `Jul 22, ${index} AM`
+		);
+
+		const {container} = render(
+			<LineChart
+				categories={categories}
+				series={[{label: 'Visits', values: categories.map(() => 0)}]}
+				title="Traffic over time"
+				width={640}
+			/>
+		);
+
+		const labels = container.querySelectorAll(
+			'.charts-line-chart__category-label'
+		);
+
+		expect(labels).toHaveLength(5);
+		expect(labels[0]).toHaveTextContent('Jul 22, 0 AM');
+		expect(labels[4]).toHaveTextContent('Jul 22, 20 AM');
+	});
+
+	it('lays the plot out at the measured container width when width is omitted', () => {
+		const {container} = render(
+			<LineChart
+				categories={CATEGORIES}
+				series={SERIES}
+				title="Traffic over time"
+			/>
+		);
+
+		act(() =>
+			resizeCallback(
+				[{contentRect: {width: 1000}} as ResizeObserverEntry],
+				{} as ResizeObserver
+			)
+		);
+
+		expect(container.querySelector('svg')).toHaveAttribute(
+			'viewBox',
+			'0 0 1000 320'
+		);
+	});
+
+	it('lays the plot out at the given width regardless of the container', () => {
+		const {container} = render(
+			<LineChart
+				categories={CATEGORIES}
+				series={SERIES}
+				title="Traffic over time"
+				width={500}
+			/>
+		);
+
+		act(() =>
+			resizeCallback(
+				[{contentRect: {width: 1000}} as ResizeObserverEntry],
+				{} as ResizeObserver
+			)
+		);
+
+		expect(container.querySelector('svg')).toHaveAttribute(
+			'viewBox',
+			'0 0 500 320'
+		);
 	});
 
 	it('has no accessibility violations', async () => {

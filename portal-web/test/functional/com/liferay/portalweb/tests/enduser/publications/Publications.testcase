@@ -118,7 +118,7 @@ definition {
 			publicationName = "Publication Name 2");
 
 		ApplicationsMenu.gotoPortlet(
-			category = "Publications",
+			category = "In Maintenance",
 			panel = "Applications",
 			portlet = "Publications");
 
@@ -1596,7 +1596,7 @@ definition {
 			webContentContent = "Web Content Content",
 			webContentTitle = "Web Content Title");
 
-		WebContent.scheduleWCArticleWithPermissions(displayDate = "01/01/2050");
+		WebContent.scheduleWCArticleWithPermissions(displayDate = "2050-01-01 01:00 AM");
 
 		Publications.publishPublication(
 			gotoPublicationsAdmin = "true",

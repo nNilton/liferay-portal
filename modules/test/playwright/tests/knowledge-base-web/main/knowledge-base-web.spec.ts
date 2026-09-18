@@ -4,6 +4,7 @@
  */
 
 import {expect, mergeTests} from '@playwright/test';
+import path from 'path';
 
 import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
 import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
@@ -12,6 +13,7 @@ import {knowledgeBasePages} from '../../../fixtures/knowledgeBasePagesTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {liferayConfig} from '../../../liferay.config';
 import {KnowledgeBaseEditArticlePage} from '../../../pages/knowledge-base-web/KnowledgeBaseEditArticlePage';
+import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisible';
 import getLoggedInPage from '../../../utils/getLoggedInPage';
 import getRandomString from '../../../utils/getRandomString';
 import {performLogout} from '../../../utils/performLogin';
@@ -29,6 +31,11 @@ const test = mergeTests(
 		'LPS-178052': {enabled: true},
 	}),
 	loginTest()
+);
+
+const SAMPLE_IMAGE = path.join(
+	__dirname,
+	'../../frontend-js-item-selector-web/main/dependencies/sample_image.png'
 );
 
 test('LPD-27537: Article should be shown to guest users', async ({
@@ -296,5 +303,131 @@ test(
 		await searchInput.press('Enter');
 
 		await expect(searchInput).not.toBeDisabled();
+	}
+);
+
+test('Add an image to an article through the Upload Image tab', async ({
+	apiHelpers,
+	knowledgeBaseEditArticlePage,
+	knowledgeBaseViewArticlePage,
+	page,
+	site,
+}) => {
+	const title = getRandomString();
+
+	const article =
+		await apiHelpers.headlessDelivery.postSiteKnowledgeBaseArticle({
+			articleBody: getRandomString(),
+			siteId: site.id,
+			title,
+		});
+
+	const knowledgeBaseUrls = new KnowledgeBaseUrls(site.friendlyUrlPath);
+
+	// Open the article editor and upload an image into the content field
+
+	await page.goto(knowledgeBaseUrls.getEditKBArticleUrl(article.id));
+
+	await expect(page.getByPlaceholder('Untitled Article')).toHaveValue(title);
+
+	await page.getByRole('button', {name: 'Image'}).click();
+
+	const itemSelector = page.frameLocator('iframe[title="Select Item"]');
+
+	await itemSelector.getByRole('link', {name: 'Upload Image'}).click();
+
+	await itemSelector
+		.locator('input[type="file"]')
+		.setInputFiles(SAMPLE_IMAGE);
+
+	await itemSelector.getByRole('button', {exact: true, name: 'Add'}).click();
+
+	// Publish and verify the uploaded image renders in the article
+
+	await clickAndExpectToBeVisible({
+		autoClick: true,
+		target: knowledgeBaseEditArticlePage.publishMenuItem,
+		trigger: knowledgeBaseEditArticlePage.publishButton,
+	});
+
+	await waitForAlert(page, `Success:${title} was successfully published.`);
+
+	await knowledgeBaseViewArticlePage.goto(site.friendlyUrlPath, title);
+
+	await expect(page.locator('img[src*="sample_image"]')).toBeVisible();
+});
+
+test(
+	'Child articles are ordered by priority in the navigation menu',
+	{tag: '@LPD-99924'},
+	async ({apiHelpers, knowledgeBasePage, page, site}) => {
+		const parentKnowledgeBaseArticle =
+			await apiHelpers.headlessDelivery.postSiteKnowledgeBaseArticle({
+				articleBody: getRandomString(),
+				siteId: site.id,
+				title: 'Parent',
+			});
+
+		for (const title of ['Child C', 'Child B', 'Child A']) {
+			await apiHelpers.headlessDelivery.postKnowledgeBaseArticleKnowledgeBaseArticle(
+				{
+					articleBody: getRandomString(),
+					parentKnowledgeBaseArticleId: String(
+						parentKnowledgeBaseArticle.id
+					),
+					title,
+				}
+			);
+		}
+
+		await knowledgeBasePage.goto(site.friendlyUrlPath);
+
+		await page
+			.locator('.treeview-link', {hasText: 'Parent'})
+			.locator('.component-expander')
+			.click();
+
+		await expect(
+			page.locator('.treeview-link', {hasText: 'Child A'})
+		).toBeVisible();
+
+		const getChildOrder = async () =>
+			(await page.locator('.treeview-link').allInnerTexts())
+				.map((text) => text.trim())
+				.filter((text) => text.startsWith('Child'));
+
+		expect(await getChildOrder()).toEqual([
+			'Child C',
+			'Child B',
+			'Child A',
+		]);
+
+		await page
+			.locator('.treeview-link', {hasText: 'Child A'})
+			.getByRole('button', {name: 'Drag'})
+			.press('Enter');
+
+		await page.keyboard.press('ArrowUp');
+		await page.keyboard.press('ArrowUp');
+		await page.keyboard.press('Enter');
+
+		await waitForAlert(page);
+
+		await page.reload();
+
+		await page
+			.locator('.treeview-link', {hasText: 'Parent'})
+			.locator('.component-expander')
+			.click();
+
+		await expect(
+			page.locator('.treeview-link', {hasText: 'Child A'})
+		).toBeVisible();
+
+		expect(await getChildOrder()).toEqual([
+			'Child C',
+			'Child A',
+			'Child B',
+		]);
 	}
 );

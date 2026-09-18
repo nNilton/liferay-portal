@@ -20,6 +20,7 @@ import {
 import {FIELD_TYPE_TO_DB_TYPE, Field, getFieldBusinessType} from './field';
 import isField from './isField';
 import {isFieldTextSearchable} from './isFieldTextSearchable';
+import isRepeatableGroup from './isRepeatableGroup';
 
 export default function buildObjectDefinition({
 	children = new Map(),
@@ -28,6 +29,7 @@ export default function buildObjectDefinition({
 	label,
 	name,
 	settings,
+	slug,
 	spaces,
 	status = 'draft',
 	workflows,
@@ -38,6 +40,7 @@ export default function buildObjectDefinition({
 	label: Structure['label'];
 	name: Structure['name'];
 	settings?: Structure['settings'];
+	slug?: Structure['slug'];
 	spaces: Structure['spaces'];
 	status?: Structure['status'];
 	workflows?: Structure['workflows'];
@@ -67,6 +70,10 @@ export default function buildObjectDefinition({
 		},
 		titleObjectFieldName: 'title',
 	};
+
+	if (slug) {
+		objectDefinition.friendlyURLSeparator = slug;
+	}
 
 	if (id) {
 		objectDefinition.id = id;
@@ -137,9 +144,7 @@ function getReferencedStructures(
 function getRepeatableGroups(
 	children: Structure['children']
 ): RepeatableGroup[] {
-	return Array.from(children.values()).filter(
-		(child) => child.type === 'repeatable-group'
-	) as RepeatableGroup[];
+	return Array.from(children.values()).filter(isRepeatableGroup);
 }
 
 function buildFields(fields: Field[]) {

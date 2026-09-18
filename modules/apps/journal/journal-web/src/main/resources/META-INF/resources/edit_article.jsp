@@ -250,13 +250,15 @@ journalEditArticleDisplayContext.setViewAttributes();
 									/>
 								</c:if>
 
-								<clay:button
-									data-actionname="<%= Constants.PUBLISH %>"
-									displayType="primary"
-									id='<%= liferayPortletResponse.getNamespace() + "publishButton" %>'
-									label="<%= journalEditArticleDisplayContext.getPublishButtonLabel() %>"
-									type="submit"
-								/>
+								<c:if test='<%= !(FeatureFlagManagerUtil.isEnabled("LPD-11228") && !JournalUtil.isEditDefaultValues(article)) %>'>
+									<clay:button
+										data-actionname="<%= Constants.PUBLISH %>"
+										displayType="primary"
+										id='<%= liferayPortletResponse.getNamespace() + "publishButton" %>'
+										label="<%= journalEditArticleDisplayContext.getPublishButtonLabel() %>"
+										type="submit"
+									/>
+								</c:if>
 
 								<c:if test="<%= !JournalUtil.isEditDefaultValues(article) %>">
 									<react:component
@@ -348,16 +350,14 @@ journalEditArticleDisplayContext.setViewAttributes();
 					>
 						<div class="c-gap-4 d-flex flex-column panel-body">
 							<div id="<portlet:namespace />titleMapAsXMLWrapper">
-								<label for="<portlet:namespace />titleMapAsXML" id="<portlet:namespace />Aria"><liferay-ui:message key="title" /></label>
-
-								<aui:input cssClass="form-control-inline form-control-sm" defaultLanguageId="<%= journalEditArticleDisplayContext.getDefaultArticleLanguageId() %>" label='<%= LanguageUtil.get(request, "title") %>' labelCssClass="sr-only" languagesDropdownDirection="down" languagesDropdownVisible="<%= false %>" localized="<%= true %>" name="titleMapAsXML" placeholder='<%= LanguageUtil.format(request, "untitled-x", HtmlUtil.escape(ddmStructure.getName(locale))) %>' required="<%= journalEditArticleDisplayContext.getClassNameId() == JournalArticleConstants.CLASS_NAME_ID_DEFAULT %>" selectedLanguageId="<%= journalEditArticleDisplayContext.getSelectedLanguageId() %>" type="text" wrapperCssClass="article-content-title mb-0" />
+								<aui:input cssClass="form-control-inline form-control-sm" defaultLanguageId="<%= journalEditArticleDisplayContext.getDefaultArticleLanguageId() %>" label='<%= LanguageUtil.get(request, "title") %>' languagesDropdownDirection="down" languagesDropdownVisible="<%= false %>" localized="<%= true %>" name="titleMapAsXML" placeholder='<%= LanguageUtil.format(request, "untitled-x", HtmlUtil.escape(ddmStructure.getName(locale))) %>' required="<%= journalEditArticleDisplayContext.getClassNameId() == JournalArticleConstants.CLASS_NAME_ID_DEFAULT %>" selectedLanguageId="<%= journalEditArticleDisplayContext.getSelectedLanguageId() %>" type="text" wrapperCssClass="article-content-title mb-0" />
 							</div>
 
 							<div id="<portlet:namespace />descriptionMapAsXMLWrapper">
-								<label for="<portlet:namespace />descriptionMapAsXML" id="<portlet:namespace />Aria"><liferay-ui:message key="description" /></label>
-
 								<c:choose>
 									<c:when test='<%= !FeatureFlagManagerUtil.isEnabled("LPD-11235") %>'>
+										<label for="<portlet:namespace />descriptionMapAsXML" id="<portlet:namespace />Aria"><liferay-ui:message key="description" /></label>
+
 										<liferay-editor:input-localized
 											autofillFromDefault="<%= true %>"
 											availableLocales="<%= journalEditArticleDisplayContext.getAvailableLocales() %>"
@@ -421,6 +421,7 @@ journalEditArticleDisplayContext.setViewAttributes();
 											ignoreRequestValue="<%= journalEditArticleDisplayContext.isChangeStructure() %>"
 											languagesDropdownVisible="<%= false %>"
 											name="descriptionMapAsXML"
+											placeholder="description"
 											selectedLanguageId="<%= journalEditArticleDisplayContext.getSelectedLanguageId() %>"
 											type="editor"
 											xml="<%= (article != null) ? article.getDescriptionMapAsXML() : StringPool.BLANK %>"

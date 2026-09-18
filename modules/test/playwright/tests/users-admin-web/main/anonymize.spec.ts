@@ -33,6 +33,7 @@ export const test = mergeTests(
 	dataApiHelpersTest,
 	featureFlagsTest({
 		'LPD-35013': {enabled: true},
+		'LPD-105225': {enabled: true},
 		'LPS-178052': {enabled: true},
 	}),
 	isolatedSiteTest,
@@ -947,7 +948,7 @@ test(
 		);
 
 		await usersAndOrganizationsPage.goToUsers(false);
-		await usersAndOrganizationsPage.filterUsers('inactive');
+		await usersAndOrganizationsPage.filterUsers('Inactive');
 		await usersAndOrganizationsPage.activateUsers([userAccount.name]);
 
 		await page.goto(`/group/${site.name}${PORTLET_URLS.documentLibrary}`);
@@ -1484,8 +1485,20 @@ test(
 		personalDataErasurePage,
 		usersAndOrganizationsPage,
 	}) => {
+		let checkAnonymizeMessage = true;
+
 		page.on('dialog', (dialog) => {
-			dialog.accept().catch(() => {});
+			if (
+				checkAnonymizeMessage &&
+				dialog.message().includes('has been deleted or anonymized')
+			) {
+				checkAnonymizeMessage = false;
+
+				dialog.dismiss().catch(() => {});
+			}
+			else {
+				dialog.accept().catch(() => {});
+			}
 		});
 
 		const userAccount =
@@ -1569,6 +1582,8 @@ test(
 		await expect(
 			personalDataErasurePage.anonymizedAllRemainingDataMessage
 		).toBeVisible();
+
+		await page.reload();
 
 		await waitForAlert(page, 'Success:User successfully deleted.');
 

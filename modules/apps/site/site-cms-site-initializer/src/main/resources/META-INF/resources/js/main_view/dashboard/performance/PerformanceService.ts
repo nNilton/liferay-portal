@@ -8,6 +8,8 @@ import {RangeSelectors} from '@liferay/analytics-reports-js-components-web';
 import ApiHelper from '../../../common/services/ApiHelper';
 import {
 	AssetConsumption,
+	ConnectionInfo,
+	HistogramMetric,
 	MetricType,
 	OverviewMetrics,
 	PerformanceMetric,
@@ -40,26 +42,62 @@ function buildQuery(params: Record<string, unknown>): string {
 }
 
 async function getOverviewMetrics({
+	cmpProjectIds,
 	depotEntryIds,
 	rangeKey,
 }: {
+	cmpProjectIds?: string[];
 	depotEntryIds?: string[];
 	rangeKey: RangeSelectors;
 }) {
 	return ApiHelper.get<OverviewMetrics>(
 		`${BASE_URL}/performance-overview-metric${buildQuery({
+			cmpProjectIds,
 			depotEntryIds,
 			rangeKey,
 		})}`
 	);
 }
 
+async function getConnectionInfo({
+	depotEntryGroupId,
+}: {
+	depotEntryGroupId: number;
+}) {
+	return ApiHelper.get<ConnectionInfo>(
+		`${BASE_URL}/connection-info${buildQuery({depotEntryGroupId})}`
+	);
+}
+
+async function getHistogramMetric({
+	cmpProjectIds,
+	depotEntryIds,
+	rangeKey,
+	selectedMetric,
+}: {
+	cmpProjectIds?: string[];
+	depotEntryIds?: string[];
+	rangeKey: RangeSelectors;
+	selectedMetric: MetricType;
+}) {
+	return ApiHelper.get<HistogramMetric>(
+		`${BASE_URL}/performance-histogram-metric${buildQuery({
+			cmpProjectIds,
+			depotEntryIds,
+			rangeKey,
+			selectedMetric,
+		})}`
+	);
+}
+
 async function getMetric({
+	cmpProjectIds,
 	depotEntryIds,
 	groupBy,
 	metricType,
 	rangeKey,
 }: {
+	cmpProjectIds?: string[];
 	depotEntryIds?: string[];
 	groupBy: 'categories' | 'location';
 	metricType: MetricType;
@@ -67,6 +105,7 @@ async function getMetric({
 }) {
 	return ApiHelper.get<PerformanceMetric>(
 		`${BASE_URL}/performance-metric${buildQuery({
+			cmpProjectIds,
 			depotEntryIds,
 			groupBy,
 			metricType,
@@ -77,6 +116,7 @@ async function getMetric({
 
 async function getAssetConsumption({
 	categoryId,
+	cmpProjectIds,
 	depotEntryIds,
 	groupBy,
 	page,
@@ -87,6 +127,7 @@ async function getAssetConsumption({
 	vocabularyId,
 }: {
 	categoryId?: string;
+	cmpProjectIds?: string[];
 	depotEntryIds?: string[];
 	groupBy: 'category' | 'structure' | 'tag' | 'vocabulary';
 	page?: number;
@@ -99,6 +140,7 @@ async function getAssetConsumption({
 	return ApiHelper.get<AssetConsumption>(
 		`${BASE_URL}/performance-asset-consumption${buildQuery({
 			categoryId,
+			cmpProjectIds,
 			depotEntryIds,
 			groupBy,
 			page,
@@ -112,44 +154,50 @@ async function getAssetConsumption({
 }
 
 async function getTopAssets({
-	assetFilterString,
+	cmpProjectIds,
 	depotEntryIds,
 	page,
 	pageSize,
 	rangeKey,
+	search,
 	sort,
 }: {
-	assetFilterString?: string;
+	cmpProjectIds?: string[];
 	depotEntryIds?: string[];
 	page?: number;
 	pageSize?: number;
 	rangeKey: RangeSelectors;
+	search?: string;
 	sort?: string;
 }) {
 	return ApiHelper.get<TopAssets>(
 		`${BASE_URL}/performance-top-asset${buildQuery({
-			assetFilterString,
+			cmpProjectIds,
 			depotEntryIds,
 			page,
 			pageSize,
 			rangeKey,
+			search,
 			sort,
 		})}`
 	);
 }
 
 function getMetricExportURL({
+	cmpProjectIds,
 	depotEntryIds,
 	groupBy,
 	metricType,
 	rangeKey,
 }: {
+	cmpProjectIds?: string[];
 	depotEntryIds?: string[];
 	groupBy: 'categories' | 'location';
 	metricType: MetricType;
 	rangeKey: RangeSelectors;
 }) {
 	return `${BASE_URL}/performance-metric/export${buildQuery({
+		cmpProjectIds,
 		depotEntryIds,
 		groupBy,
 		metricType,
@@ -158,26 +206,31 @@ function getMetricExportURL({
 }
 
 function getTopAssetsExportURL({
-	assetFilterString,
+	cmpProjectIds,
 	depotEntryIds,
 	rangeKey,
+	search,
 	sort,
 }: {
-	assetFilterString?: string;
+	cmpProjectIds?: string[];
 	depotEntryIds?: string[];
 	rangeKey: RangeSelectors;
+	search?: string;
 	sort?: string;
 }) {
 	return `${BASE_URL}/performance-top-asset/export${buildQuery({
-		assetFilterString,
+		cmpProjectIds,
 		depotEntryIds,
 		rangeKey,
+		search,
 		sort,
 	})}`;
 }
 
 export default {
 	getAssetConsumption,
+	getConnectionInfo,
+	getHistogramMetric,
 	getMetric,
 	getMetricExportURL,
 	getOverviewMetrics,

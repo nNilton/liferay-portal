@@ -9,8 +9,10 @@ import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.depot.constants.DepotConstants;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalService;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.service.ServiceContext;
@@ -26,9 +28,11 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
+import com.liferay.style.book.constants.StyleBookActionKeys;
 import com.liferay.style.book.model.StyleBookEntry;
 import com.liferay.style.book.service.StyleBookEntryLocalService;
 import com.liferay.style.book.service.StyleBookEntryService;
+import com.liferay.style.book.test.util.FrontendTokenDefinitionTestUtil;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -238,6 +242,54 @@ public class StyleBookEntryServiceTest {
 		finally {
 			UserTestUtil.setUser(TestPropsValues.getUser());
 		}
+	}
+
+	@Test
+	public void testUpdateFrontendTokenDefinition() throws Exception {
+		StyleBookEntry styleBookEntry =
+			_styleBookEntryService.addStyleBookEntry(
+				RandomTestUtil.randomString(), _group.getGroupId(),
+				RandomTestUtil.randomString(), null,
+				RandomTestUtil.randomString(), _serviceContext);
+
+		String frontendTokenDefinition =
+			FrontendTokenDefinitionTestUtil.getFrontendTokenDefinition(
+				RandomTestUtil.randomString());
+
+		User user = UserTestUtil.addGroupUser(
+			_group, RoleConstants.SITE_MEMBER);
+
+		try {
+			UserTestUtil.setUser(user);
+
+			_styleBookEntryService.updateFrontendTokenDefinition(
+				styleBookEntry.getStyleBookEntryId(), frontendTokenDefinition,
+				_serviceContext);
+
+			Assert.fail();
+		}
+		catch (PrincipalException.MustHavePermission principalException) {
+			String message = principalException.getMessage();
+
+			Assert.assertTrue(
+				message,
+				message.contains(
+					StringBundler.concat(
+						"User ", user.getUserId(), " must have ",
+						StyleBookActionKeys.MANAGE_STYLE_BOOK_ENTRIES,
+						" permission for")));
+		}
+		finally {
+			UserTestUtil.setUser(TestPropsValues.getUser());
+		}
+
+		styleBookEntry = _styleBookEntryService.updateFrontendTokenDefinition(
+			styleBookEntry.getStyleBookEntryId(), frontendTokenDefinition,
+			_serviceContext);
+
+		Assert.assertEquals(
+			frontendTokenDefinition,
+			styleBookEntry.getFrontendTokenDefinition());
 	}
 
 	@Inject

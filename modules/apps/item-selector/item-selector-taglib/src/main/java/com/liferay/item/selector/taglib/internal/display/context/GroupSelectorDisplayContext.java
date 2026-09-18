@@ -16,7 +16,6 @@ import com.liferay.journal.model.JournalArticle;
 import com.liferay.petra.string.StringPool;
 import com.liferay.petra.string.StringUtil;
 import com.liferay.portal.kernel.dao.search.SearchContainer;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
 import com.liferay.portal.kernel.portlet.RequestBackedPortletURLFactoryUtil;
@@ -24,7 +23,7 @@ import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
-import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.site.search.GroupSearch;
 
@@ -101,14 +100,6 @@ public class GroupSelectorDisplayContext {
 			GroupItemSelectorProviderRegistryUtil.
 				getGroupItemSelectorProviderTypes();
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				PortalUtil.getCompanyId(_liferayPortletRequest), "LPD-17564")) {
-
-			groupItemSelectorProviderTypes.remove("space-depot");
-
-			return groupItemSelectorProviderTypes;
-		}
-
 		for (String criterion :
 				ParamUtil.getStringValues(_liferayPortletRequest, "criteria")) {
 
@@ -117,7 +108,7 @@ public class GroupSelectorDisplayContext {
 			if (parts.contains("file") || parts.contains("folder") ||
 				parts.contains("image") ||
 				(parts.contains("infoitem") &&
-				 _isJournalArticleItemSelectorCriterion())) {
+				 _isLegacyAssetItemSelectorCriterion())) {
 
 				groupItemSelectorProviderTypes.remove("space-depot");
 
@@ -241,10 +232,16 @@ public class GroupSelectorDisplayContext {
 		_selectedTab = ParamUtil.getString(
 			_liferayPortletRequest, "selectedTab");
 
+		if (Validator.isNull(_selectedTab)) {
+			_selectedTab = GetterUtil.getString(
+				_liferayPortletRequest.getAttribute(
+					"liferay-item-selector:group-selector:selectedTab"));
+		}
+
 		return _selectedTab;
 	}
 
-	private boolean _isJournalArticleItemSelectorCriterion() {
+	private boolean _isLegacyAssetItemSelectorCriterion() {
 		ItemSelector itemSelector = _getItemSelector();
 
 		for (ItemSelectorCriterion itemSelectorCriterion :
@@ -268,6 +265,16 @@ public class GroupSelectorDisplayContext {
 			}
 		}
 
+		String selectedTab = _getSelectedTab();
+
+		if (Validator.isNotNull(selectedTab) &&
+			!selectedTab.startsWith(
+				_CLASS_NAME_OBJECT_ENTRY_ITEM_SELECTOR_VIEW +
+					StringPool.UNDERLINE)) {
+
+			return true;
+		}
+
 		return false;
 	}
 
@@ -281,6 +288,10 @@ public class GroupSelectorDisplayContext {
 
 		return _scopeGroupType;
 	}
+
+	private static final String _CLASS_NAME_OBJECT_ENTRY_ITEM_SELECTOR_VIEW =
+		"com.liferay.object.web.internal.item.selector." +
+			"ObjectEntryItemSelectorView";
 
 	private String _groupType;
 	private final LiferayPortletRequest _liferayPortletRequest;

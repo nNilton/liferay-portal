@@ -4,46 +4,71 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-_SCRIPTS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "$(dirname "${BASH_SOURCE[0]}")/_chart_version_common.sh"
 
-_ROOT_CLOUD_DIR=$(cd "${_SCRIPTS_DIR}/.." && pwd)
-_VERSIONS_AWS_TFVARS_FILE="${_SCRIPTS_DIR}/versions_aws.tfvars"
-_VERSIONS_GCP_TFVARS_FILE="${_SCRIPTS_DIR}/versions_gcp.tfvars"
-_VERSIONS_JSON_FILE="${_SCRIPTS_DIR}/versions.json"
+_BUMPED_BOOTSTRAPS=()
+_MODIFIED_BOOTSTRAPS=()
+
+_VERSIONS_JSON_FILE="${SCRIPTS_DIR}/versions.json"
+
+readonly _VERSIONS_JSON_FILE
 
 function main {
-	find "${_ROOT_CLOUD_DIR}" -name "Chart.yaml" -type f | while read -r chart_yaml_file;
-	do
-		_update_default_chart_version "${chart_yaml_file}"
-	done
-
-	_update_versions_tfvars "${_ROOT_CLOUD_DIR}/terraform/aws" "${_VERSIONS_AWS_TFVARS_FILE}"
-
-	_update_versions_tfvars "${_ROOT_CLOUD_DIR}/terraform/gcp" "${_VERSIONS_GCP_TFVARS_FILE}"
-
 	local aws_bootstrap_sources=(
-		"${_ROOT_CLOUD_DIR}/scripts/setup_aws.sh"
-		"${_ROOT_CLOUD_DIR}/scripts/versions_aws.tfvars"
-		"${_ROOT_CLOUD_DIR}/terraform/aws/eks"
-		"${_ROOT_CLOUD_DIR}/terraform/aws/gitops/platform"
-		"${_ROOT_CLOUD_DIR}/terraform/aws/gitops/resources"
+		"${ROOT_CLOUD_DIR}/scripts/setup_aws.sh"
+		"${ROOT_CLOUD_DIR}/terraform/aws/eks"
+		"${ROOT_CLOUD_DIR}/terraform/aws/gitops/platform"
+		"${ROOT_CLOUD_DIR}/terraform/aws/gitops/resources"
 	)
 
 	_check_bootstrap "aws" "${aws_bootstrap_sources[@]}"
 
+	local azure_bootstrap_sources=(
+		"${ROOT_CLOUD_DIR}/scripts/_azure_common.sh"
+		"${ROOT_CLOUD_DIR}/scripts/chart_versions.json"
+		"${ROOT_CLOUD_DIR}/scripts/setup_azure.sh"
+		"${ROOT_CLOUD_DIR}/terraform/azure/aks"
+		"${ROOT_CLOUD_DIR}/terraform/azure/platform"
+		"${ROOT_CLOUD_DIR}/terraform/modules/argocd"
+	)
+
+	_check_bootstrap "azure" "${azure_bootstrap_sources[@]}"
+
 	local gcp_bootstrap_sources=(
-		"${_ROOT_CLOUD_DIR}/scripts/setup_gcp.sh"
-		"${_ROOT_CLOUD_DIR}/scripts/versions_gcp.tfvars"
-		"${_ROOT_CLOUD_DIR}/terraform/gcp/gke"
-		"${_ROOT_CLOUD_DIR}/terraform/gcp/gitops/platform"
-		"${_ROOT_CLOUD_DIR}/terraform/gcp/gitops/resources"
+		"${ROOT_CLOUD_DIR}/scripts/setup_gcp.sh"
+		"${ROOT_CLOUD_DIR}/terraform/gcp/gke"
+		"${ROOT_CLOUD_DIR}/terraform/gcp/gitops/platform"
+		"${ROOT_CLOUD_DIR}/terraform/gcp/gitops/resources"
 	)
 
 	_check_bootstrap "gcp" "${gcp_bootstrap_sources[@]}"
+
+	_check_operator
+
+	while true
+	do
+		_update_default_versions
+
+		if has_modified_charts
+		then
+			bump_modified_charts
+
+			continue
+		fi
+
+		if ! _has_modified_bootstraps
+		then
+			return
+		fi
+
+		_bump_modified_bootstraps
+	done
 }
 
 function _bump_bootstrap_version {
-	local bootstrap_name="${1}"
+	local bootstrap_name=${1}
+
+	_BUMPED_BOOTSTRAPS+=("${bootstrap_name}")
 
 	local current_version
 
@@ -51,48 +76,102 @@ function _bump_bootstrap_version {
 
 	local new_version
 
-	new_version=$(echo "${current_version}" | awk -F"." -v OFS="." '{$NF += 1; print}')
+	new_version=$(echo "${current_version}" | awk -F "." -v OFS="." '{$NF += 1; print}')
+
+	local config_json_example_file="${ROOT_CLOUD_DIR}/scripts/config.json.example_${bootstrap_name}"
+
+	local updated_config_json
+
+	updated_config_json=$(jq --arg version "${new_version}" --tab '.options.version = $version' "${config_json_example_file}")
+
+	printf '%s' "${updated_config_json}" > "${config_json_example_file}"
+
+	local blame_line
+
+	blame_line=$(git_blame_line '"liferay-'"${bootstrap_name}"'-bootstrap": "[0-9]+\.[0-9]+\.[0-9]+"' "${_VERSIONS_JSON_FILE}")
 
 	sed \
 		--in-place \
 		--regexp-extended \
-		"s/\"version\": \".*\"/\"version\": \"${new_version}\"/" \
-		"${_ROOT_CLOUD_DIR}/scripts/config.json.example_${bootstrap_name}"
-
-	local git_blame_line
-
-	git_blame_line=$(_git_blame_line '"liferay-'"${bootstrap_name}"'-bootstrap": "[0-9]+\.[0-9]+\.[0-9]+"' "${_VERSIONS_JSON_FILE}")
-
-	sed \
-		--in-place \
-		--regexp-extended \
-		"${git_blame_line}s/\"liferay-${bootstrap_name}-bootstrap\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"liferay-${1}-bootstrap\": \"${new_version}\"/" \
+		--expression "${blame_line}s/\"liferay-${bootstrap_name}-bootstrap\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"liferay-${bootstrap_name}-bootstrap\": \"${new_version}\"/" \
 		"${_VERSIONS_JSON_FILE}"
 }
 
+function _bump_modified_bootstraps {
+	count_pass
+
+	local bootstrap_names=("${_MODIFIED_BOOTSTRAPS[@]}")
+
+	_MODIFIED_BOOTSTRAPS=()
+
+	local bootstrap_name
+
+	for bootstrap_name in "${bootstrap_names[@]}"
+	do
+		echo "A source packaged in the liferay-${bootstrap_name}-bootstrap tarball was rewritten. Updating liferay-${bootstrap_name}-bootstrap version." >&2
+		echo "" >&2
+
+		_bump_bootstrap_version "${bootstrap_name}"
+	done
+}
+
+function _bump_operator_version {
+	local current_version
+
+	current_version=$(jq --raw-output '."liferay-dxp-operator"' "${_VERSIONS_JSON_FILE}")
+
+	local new_version
+
+	new_version=$(echo "${current_version}" | awk -F "." -v OFS="." '{$NF += 1; print}')
+
+	local blame_line
+
+	blame_line=$(git_blame_line '"liferay-dxp-operator": "[0-9]+\.[0-9]+\.[0-9]+"' "${_VERSIONS_JSON_FILE}")
+
+	sed \
+		--in-place \
+		--regexp-extended \
+		--expression "${blame_line}s/\"liferay-dxp-operator\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"liferay-dxp-operator\": \"${new_version}\"/" \
+		"${_VERSIONS_JSON_FILE}"
+
+	local operator_values_yaml="${ROOT_CLOUD_DIR}/helm/dxp-operator/values.yaml"
+
+	record_chart_file_update \
+		"${operator_values_yaml}" \
+		sed \
+			--in-place \
+			--regexp-extended \
+			--expression "/^image:/,/^[^[:space:]]/ s/^(    tag: ).*/\1${new_version}/" \
+			"${operator_values_yaml}"
+}
+
 function _check_bootstrap {
-	local bootstrap_name="${1}"
+	local bootstrap_name=${1}
 
 	shift
 
-	local git_blame_sha
+	local blame_sha
 
-	git_blame_sha=$(_git_blame_sha '"liferay-'"${bootstrap_name}"'-bootstrap": ".*"' "${_VERSIONS_JSON_FILE}")
+	blame_sha=$(git_blame_sha '"liferay-'"${bootstrap_name}"'-bootstrap": ".*"' "${_VERSIONS_JSON_FILE}")
 
-	local bootstrap_sources
+	if ! is_commit "${blame_sha}"
+	then
+		echo "The blame boundary commit for liferay-${bootstrap_name}-bootstrap cannot be resolved." >&2
 
-	mapfile -d '' bootstrap_sources < <(printf '%s\0' "$@")
+		return
+	fi
 
-	for source in "${bootstrap_sources[@]}"
+	local bootstrap_source
+
+	for bootstrap_source in "${@}"
 	do
-		local clean_source="${source%$'\0'}"
-
 		local commit_count
 
-		commit_count=$(git rev-list --count "${git_blame_sha}..HEAD" -- "${clean_source}")
+		commit_count=$(git rev-list --count "${blame_sha}..HEAD" -- "${bootstrap_source}")
 
-		if [[ "${commit_count}" -gt 0 ]]; then
-			git rev-list --oneline "${git_blame_sha}..HEAD" -- "${clean_source}"
+		if [[ "${commit_count}" -gt 0 ]]
+		then
+			git rev-list --oneline "${blame_sha}..HEAD" -- "${bootstrap_source}"
 
 			echo "The version in ${_VERSIONS_JSON_FILE} is outdated. Updating liferay-${bootstrap_name}-bootstrap version." >&2
 			echo "" >&2
@@ -104,93 +183,190 @@ function _check_bootstrap {
 	done
 }
 
-function _git_blame_line {
-	local pattern="${1}"
-	local git_path="${2}"
+function _check_operator {
+	local blame_sha
 
-	local blame_line
+	blame_sha=$(git_blame_sha '"liferay-dxp-operator": ".*"' "${_VERSIONS_JSON_FILE}")
 
-	blame_line=$(grep --extended-regexp --line-number "${pattern}" "${git_path}" | cut --delimiter=':' --fields=1)
+	if ! is_commit "${blame_sha}"
+	then
+		echo "The blame boundary commit for liferay-dxp-operator cannot be resolved." >&2
 
-	echo "${blame_line}"
+		return
+	fi
+
+	local commit_count
+
+	commit_count=$(git rev-list --count "${blame_sha}..HEAD" -- "${ROOT_CLOUD_DIR}/operator")
+
+	if [[ "${commit_count}" -gt 0 ]]
+	then
+		git rev-list --oneline "${blame_sha}..HEAD" -- "${ROOT_CLOUD_DIR}/operator"
+
+		echo "The version in ${_VERSIONS_JSON_FILE} is outdated. Updating liferay-dxp-operator version." >&2
+		echo "" >&2
+
+		_bump_operator_version
+	fi
 }
 
-function _git_blame_sha {
-	local pattern="${1}"
-	local git_path="${2}"
+function _has_modified_bootstraps {
+	if [[ "${#_MODIFIED_BOOTSTRAPS[@]}" -eq 0 ]]
+	then
+		return 1
+	fi
 
-	local git_blame_line
+	return 0
+}
 
-	git_blame_line=$(_git_blame_line "${pattern}" "${git_path}")
+function _record_bootstrap_file_update {
+	local bootstrap_name=${1}
+	local file=${2}
 
-	local target_sha
+	shift 2
 
-	target_sha=$(git blame -L "${git_blame_line}","${git_blame_line}" -- "${git_path}" | cut --delimiter=' ' --fields=1)
+	local previous_checksum
 
-	echo "${target_sha}"
+	previous_checksum=$(get_file_checksum "${file}")
+
+	"${@}"
+
+	if [ "${previous_checksum}" != "$(get_file_checksum "${file}")" ]
+	then
+		_record_modified_bootstrap "${bootstrap_name}"
+	fi
+}
+
+function _record_modified_bootstrap {
+	local bootstrap_name=${1}
+
+	if has_array_element "${bootstrap_name}" "${_BUMPED_BOOTSTRAPS[@]}" "${_MODIFIED_BOOTSTRAPS[@]}"
+	then
+		return
+	fi
+
+	_MODIFIED_BOOTSTRAPS+=("${bootstrap_name}")
+}
+
+function _update_chart_versions_json {
+	local chart_name="liferay-${1}"
+	local new_version=${2}
+
+	local chart_versions_json_file="${SCRIPTS_DIR}/chart_versions.json"
+
+	_record_bootstrap_file_update \
+		"azure" \
+		"${chart_versions_json_file}" \
+		_write_chart_versions_json "${chart_name}" "${new_version}" "${chart_versions_json_file}"
 }
 
 function _update_default_chart_version {
-	local helm_chart_yaml="${1}"
+	local helm_chart_yaml=${1}
 
 	local helm_chart_name
 
 	helm_chart_name=$(basename "$(dirname "${helm_chart_yaml}")")
 
-	local file_to_update=""
+	local new_version
 
-	case "${helm_chart_name}" in
-		"aws" | "aws-infrastructure" | "aws-infrastructure-provider")
-			file_to_update="${_ROOT_CLOUD_DIR}/terraform/aws/gitops/resources/terraform.tfvars"
-			;;
-		"gcp" | "gcp-infrastructure" | "gcp-infrastructure-provider")
-			file_to_update="${_ROOT_CLOUD_DIR}/terraform/gcp/gitops/resources/terraform.tfvars"
-			;;
-	esac
-
-	local var_to_update=""
+	new_version=$(yq '.version' "${helm_chart_yaml}")
 
 	case "${helm_chart_name}" in
 		"aws" | "gcp")
-			var_to_update="liferay_helm_chart_version"
+			_update_resources_tfvars "${helm_chart_name}" "liferay_helm_chart_version" "${new_version}"
 			;;
 		"aws-infrastructure" | "gcp-infrastructure")
-			var_to_update="infrastructure_helm_chart_version"
+			_update_resources_tfvars "${helm_chart_name%%-*}" "infrastructure_helm_chart_version" "${new_version}"
 			;;
 		"aws-infrastructure-provider" | "gcp-infrastructure-provider")
-			var_to_update="infrastructure_provider_helm_chart_version"
+			_update_resources_tfvars "${helm_chart_name%%-*}" "infrastructure_provider_helm_chart_version" "${new_version}"
+			;;
+		"dxp-operator")
+			_update_platform_components_target_revision "liferay-dxp-operator" "${new_version}"
+			;;
+		"observability")
+			_update_platform_components_target_revision "observability" "${new_version}"
+
+			_update_resources_tfvars "aws" "observability_helm_chart_version" "${new_version}"
+			_update_resources_tfvars "gcp" "observability_helm_chart_version" "${new_version}"
+			;;
+		"platform")
+			_update_chart_versions_json "${helm_chart_name}" "${new_version}"
+			;;
+		"platform-components")
+			_update_platform_target_revision "${new_version}"
 			;;
 	esac
-
-	if [ -n "${var_to_update}" ]
-	then
-		local new_version
-
-		new_version=$(yq '.version' "${helm_chart_yaml}")
-
-		sed --in-place "s/\(${var_to_update} *= *\)\".*\"/\1\"${new_version}\"/" "${file_to_update}"
-	fi
 }
 
-function _update_versions_tfvars {
-	local terraform_dir="${1}"
+function _update_default_versions {
+	local chart_yaml_file
 
-	local versions_tfvars_file="${2}"
-
-	rm -f "${versions_tfvars_file}"
-
-	local terraform_tfvars_files
-
-	terraform_tfvars_files=$(find "${terraform_dir}" -name "terraform.tfvars")
-
-	echo "${terraform_tfvars_files}" | while read -r tfvars_file
+	while read -r chart_yaml_file
 	do
-		cat "${tfvars_file}" >> "${versions_tfvars_file}"
-
-		echo "" >> "${versions_tfvars_file}"
-	done
-
-	grep . "${versions_tfvars_file}" | sort -o "${versions_tfvars_file}"
+		_update_default_chart_version "${chart_yaml_file}"
+	done < <(find "${ROOT_CLOUD_DIR}" -name "Chart.yaml" -type f)
 }
 
-main "$@"
+function _update_platform_components_target_revision {
+	local chart_repository_name=${1}
+	local new_version=${2}
+
+	local platform_components_values_yaml="${ROOT_CLOUD_DIR}/helm/platform-components/values.yaml"
+
+	record_chart_file_update \
+		"${platform_components_values_yaml}" \
+		sed \
+			--expression "\|repoURL: .*/${chart_repository_name}\$|,/targetRevision: / s/\(targetRevision: \).*/\1${new_version}/" \
+			--in-place \
+			"${platform_components_values_yaml}"
+}
+
+function _update_platform_target_revision {
+	local new_version=${1}
+
+	local platform_values_yaml="${ROOT_CLOUD_DIR}/helm/platform/values.yaml"
+
+	record_chart_file_update \
+		"${platform_values_yaml}" \
+		sed \
+			--expression "s/^\(    targetRevision: \).*/\1${new_version}/" \
+			--in-place \
+			"${platform_values_yaml}"
+}
+
+function _update_resources_tfvars {
+	local cloud=${1}
+	local variable_name=${2}
+	local new_version=${3}
+
+	local resources_tfvars_file="${ROOT_CLOUD_DIR}/terraform/${cloud}/gitops/resources/terraform.tfvars"
+
+	_record_bootstrap_file_update \
+		"${cloud}" \
+		"${resources_tfvars_file}" \
+		sed \
+			--expression "s/\(${variable_name} *= *\)\".*\"/\1\"${new_version}\"/" \
+			--in-place \
+			"${resources_tfvars_file}"
+}
+
+function _write_chart_versions_json {
+	local chart_name=${1}
+	local new_version=${2}
+	local chart_versions_json_file=${3}
+
+	local updated_chart_versions_json
+
+	updated_chart_versions_json=$( \
+		jq \
+			--arg chart_name "${chart_name}" \
+			--arg version "${new_version}" \
+			--tab \
+			'.[$chart_name] = $version' \
+			"${chart_versions_json_file}")
+
+	printf '%s' "${updated_chart_versions_json}" > "${chart_versions_json_file}"
+}
+
+main "${@}"

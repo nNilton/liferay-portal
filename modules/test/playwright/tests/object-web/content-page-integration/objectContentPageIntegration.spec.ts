@@ -30,6 +30,7 @@ import getFragmentDefinition from '../../layout-content-page-editor-web/main/uti
 import getPageDefinition from '../../layout-content-page-editor-web/main/utils/getPageDefinition';
 import {templatesPageTest} from '../../template-web/main/fixtures/templatesPageTest';
 import {getPageEditorDateFormat} from '../utils/dateFormat';
+import {generateFormulaObjectFields} from '../utils/generateFormulaObjectFields';
 import {generateObjectEntryValues} from '../utils/generateObjectEntry';
 import {generateObjectFields} from '../utils/generateObjectFields';
 import {postListTypeDefinitionListTypeEntries} from '../utils/postListTypeDefinitionListTypeEntries';
@@ -1310,169 +1311,6 @@ test.describe('Display Page', () => {
 		}
 	);
 
-	test.describe('Information Template', () => {
-		let contentPageName: string;
-		let informationTemplateName: string;
-
-		test.afterEach(async ({pagesAdminPage, templatesPage}) => {
-			if (contentPageName) {
-				await pagesAdminPage.goto();
-
-				await pagesAdminPage.deletePage(contentPageName);
-
-				contentPageName = '';
-			}
-
-			if (informationTemplateName) {
-				await templatesPage.goto();
-
-				await templatesPage.deleteInformationTemplate(
-					informationTemplateName
-				);
-
-				informationTemplateName = '';
-			}
-		});
-
-		test('verify it is possible to create a information template with an object as an item type and see its entries', async ({
-			apiHelpers,
-			page,
-			pageEditorPage,
-			pagesAdminPage,
-			templatesPage,
-		}) => {
-			const {listTypeDefinition, listTypeEntries} =
-				await postListTypeDefinitionListTypeEntries({
-					apiHelpers,
-				});
-
-			const objectFields = generateObjectFields({
-				listTypeDefinitionExternalReferenceCode:
-					listTypeDefinition.externalReferenceCode,
-				objectFieldBusinessTypes: [
-					'Boolean',
-					'Decimal',
-					'Integer',
-					'LongText',
-					'Picklist',
-					'Text',
-				],
-			});
-
-			apiHelpers.data.push({
-				id: listTypeDefinition.id,
-				type: 'listTypeDefinition',
-			});
-
-			const objectDefinition =
-				await apiHelpers.objectAdmin.postRandomObjectDefinition({
-					objectFields,
-					status: {code: 0},
-				});
-
-			apiHelpers.data.push({
-				id: objectDefinition.id,
-				type: 'objectDefinition',
-			});
-
-			const {objectEntry: objectEntryValues} =
-				await generateObjectEntryValues({
-					listTypeEntries: listTypeEntries.map(
-						(listTypeEntry) => listTypeEntry.name
-					),
-					objectEntryFormat: 'API',
-					objectFields,
-				});
-
-			const applicationName =
-				'c/' + objectDefinition.name.toLowerCase() + 's';
-
-			const objectEntry = await apiHelpers.objectEntry.postObjectEntry(
-				objectEntryValues,
-				applicationName
-			);
-
-			informationTemplateName = 'Object Template' + getRandomInt();
-
-			await test.step('create information template and add object fields', async () => {
-				await templatesPage.goto();
-
-				await templatesPage.createInformationTemplate({
-					itemType: objectDefinition.label['en_US'],
-					name: informationTemplateName,
-				});
-
-				for (const objectField of objectFields) {
-					await page
-						.getByRole('button', {name: objectField.label['en_US']})
-						.click();
-				}
-
-				await templatesPage.saveTemplate(informationTemplateName);
-			});
-
-			contentPageName = getRandomString();
-
-			await test.step('create page template with HTML element linked to the informationTemplateName', async () => {
-				await pagesAdminPage.goto();
-
-				await pagesAdminPage.createNewPage({
-					name: contentPageName,
-				});
-
-				await pagesAdminPage.editPage(contentPageName);
-
-				await pageEditorPage.addFragment('Basic Components', 'HTML');
-
-				const htmlFragmentId =
-					await pageEditorPage.getFragmentId('HTML');
-
-				await pageEditorPage.selectEditable(
-					htmlFragmentId,
-					'element-html'
-				);
-
-				await pageEditorPage.setMappedItem({
-					entity: objectDefinition.label['en_US'],
-					entry: objectEntry.id.toString(),
-					entryLocator: page
-						.frameLocator('iframe[title="Select"]')
-						.getByText(objectEntry.id.toString())
-						.first(),
-					field: informationTemplateName,
-				});
-
-				await pageEditorPage.waitForChangesSaved();
-
-				await pageEditorPage.publishPage();
-			});
-
-			await test.step('go to created page and assert object entries', async () => {
-				await page.goto(`/web/guest/${contentPageName}`);
-
-				const entries = Object.values(objectEntryValues)
-					.map((value) => {
-						if (typeof value === 'boolean') {
-							return value ? 'Yes' : 'No';
-						}
-
-						if (
-							typeof value === 'object' &&
-							value !== null &&
-							'key' in (value as object)
-						) {
-							return (value as {key: string}).key;
-						}
-
-						return String(value);
-					})
-					.join(' ');
-
-				await expect(page.getByText(entries)).toBeVisible();
-			});
-		});
-	});
-
 	test('verify if the object entries are displayed when selecting to preview an object entry on a page template', async ({
 		apiHelpers,
 		displayPageTemplatesPage,
@@ -1638,7 +1476,288 @@ test.describe('Display Page', () => {
 	});
 });
 
+test.describe('Information Template', () => {
+	let contentPageName: string;
+	let informationTemplateName: string;
+
+	test.afterEach(async ({pagesAdminPage, templatesPage}) => {
+		if (contentPageName) {
+			await pagesAdminPage.goto();
+
+			await pagesAdminPage.deletePage(contentPageName);
+
+			contentPageName = '';
+		}
+
+		if (informationTemplateName) {
+			await templatesPage.goto();
+
+			await templatesPage.deleteInformationTemplate(
+				informationTemplateName
+			);
+
+			informationTemplateName = '';
+		}
+	});
+
+	test('verify it is possible to create a information template with an object as an item type and see its entries', async ({
+		apiHelpers,
+		page,
+		pageEditorPage,
+		pagesAdminPage,
+		templatesPage,
+	}) => {
+		const {listTypeDefinition, listTypeEntries} =
+			await postListTypeDefinitionListTypeEntries({
+				apiHelpers,
+			});
+
+		const objectFields = generateObjectFields({
+			listTypeDefinitionExternalReferenceCode:
+				listTypeDefinition.externalReferenceCode,
+			objectFieldBusinessTypes: [
+				'Boolean',
+				'Decimal',
+				'Integer',
+				'LongText',
+				'Picklist',
+				'Text',
+			],
+		});
+
+		apiHelpers.data.push({
+			id: listTypeDefinition.id,
+			type: 'listTypeDefinition',
+		});
+
+		const objectDefinition =
+			await apiHelpers.objectAdmin.postRandomObjectDefinition({
+				objectFields,
+				status: {code: 0},
+			});
+
+		apiHelpers.data.push({
+			id: objectDefinition.id,
+			type: 'objectDefinition',
+		});
+
+		const {objectEntry: objectEntryValues} =
+			await generateObjectEntryValues({
+				listTypeEntries: listTypeEntries.map(
+					(listTypeEntry) => listTypeEntry.name
+				),
+				objectEntryFormat: 'API',
+				objectFields,
+			});
+
+		const applicationName =
+			'c/' + objectDefinition.name.toLowerCase() + 's';
+
+		const objectEntry = await apiHelpers.objectEntry.postObjectEntry(
+			objectEntryValues,
+			applicationName
+		);
+
+		informationTemplateName = 'Object Template' + getRandomInt();
+
+		await test.step('create information template and add object fields', async () => {
+			await templatesPage.goto();
+
+			await templatesPage.createInformationTemplate({
+				itemType: objectDefinition.label['en_US'],
+				name: informationTemplateName,
+			});
+
+			for (const objectField of objectFields) {
+				await page
+					.getByRole('button', {name: objectField.label['en_US']})
+					.click();
+			}
+
+			await templatesPage.saveTemplate(informationTemplateName);
+		});
+
+		contentPageName = getRandomString();
+
+		await test.step('create page template with HTML element linked to the informationTemplateName', async () => {
+			await pagesAdminPage.goto();
+
+			await pagesAdminPage.createNewPage({
+				name: contentPageName,
+			});
+
+			await pagesAdminPage.editPage(contentPageName);
+
+			await pageEditorPage.addFragment('Basic Components', 'HTML');
+
+			const htmlFragmentId = await pageEditorPage.getFragmentId('HTML');
+
+			await pageEditorPage.selectEditable(htmlFragmentId, 'element-html');
+
+			await pageEditorPage.setMappedItem({
+				entity: objectDefinition.label['en_US'],
+				entry: objectEntry.id.toString(),
+				entryLocator: page
+					.frameLocator('iframe[title="Select"]')
+					.getByText(objectEntry.id.toString())
+					.first(),
+				field: informationTemplateName,
+			});
+
+			await pageEditorPage.waitForChangesSaved();
+
+			await pageEditorPage.publishPage();
+		});
+
+		await test.step('go to created page and assert object entries', async () => {
+			await page.goto(`/web/guest/${contentPageName}`);
+
+			const entries = Object.values(objectEntryValues)
+				.map((value) => {
+					if (typeof value === 'boolean') {
+						return value ? 'Yes' : 'No';
+					}
+
+					if (
+						typeof value === 'object' &&
+						value !== null &&
+						'key' in (value as object)
+					) {
+						return (value as {key: string}).key;
+					}
+
+					return String(value);
+				})
+				.join(' ');
+
+			await expect(page.getByText(entries)).toBeVisible();
+		});
+	});
+});
+
 test.describe('Object Widget', () => {
+	test(
+		'can add and view auto increment object entries on a widget page',
+		{tag: '@LPD-102828'},
+		async ({
+			apiHelpers,
+			page,
+			site,
+			viewObjectEntriesPage,
+			widgetPagePage,
+		}) => {
+			const objectFields = generateObjectFields({
+				objectFieldBusinessTypes: [
+					'Text',
+					{
+						businessType: 'AutoIncrement',
+						objectFieldSettings: [
+							{name: 'initialValue', value: '24680'},
+							{name: 'prefix', value: 'T-Shirt-'},
+							{name: 'suffix', value: '-Brazil'},
+						],
+					},
+				],
+			});
+
+			const objectDefinition =
+				await apiHelpers.objectAdmin.postRandomObjectDefinition({
+					objectFields,
+					status: {code: 0},
+				});
+
+			apiHelpers.data.push({
+				id: objectDefinition.id,
+				type: 'objectDefinition',
+			});
+
+			for (const size of ['Small', 'Large']) {
+				await apiHelpers.objectEntry.postObjectEntry(
+					{[objectFields[0].name as string]: size},
+					'c/' + objectDefinition.name.toLowerCase() + 's'
+				);
+			}
+
+			const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
+				groupId: site.id,
+				title: getRandomString(),
+			});
+
+			await page.goto(`/web${site.friendlyUrlPath}${layout.friendlyURL}`);
+
+			await widgetPagePage.addPortlet(
+				objectDefinition.pluralLabel['en_US']
+			);
+
+			await viewObjectEntriesPage.clickAddObjectEntry(
+				objectDefinition.label['en_US']
+			);
+
+			await page
+				.getByLabel(objectFields[0].label.en_US, {exact: true})
+				.fill('Medium');
+
+			await viewObjectEntriesPage.saveObjectEntryButton.click();
+
+			await waitForAlert(page);
+
+			await page.goto(`/web${site.friendlyUrlPath}${layout.friendlyURL}`);
+
+			for (const identification of ['24680', '24681', '24682']) {
+				await expect(
+					page.getByText(`T-Shirt-${identification}-Brazil`)
+				).toBeVisible();
+			}
+		}
+	);
+
+	test(
+		'can map a formula field on a widget page',
+		{tag: '@LPD-102828'},
+		async ({apiHelpers, page, site, widgetPagePage}) => {
+			const {firstObjectField, objectFields, secondObjectField} =
+				generateFormulaObjectFields({
+					objectFieldBusinessType: 'Integer',
+					operator: '/',
+					output: 'Integer',
+				});
+
+			const objectDefinition =
+				await apiHelpers.objectAdmin.postRandomObjectDefinition({
+					objectFields,
+					status: {code: 0},
+				});
+
+			apiHelpers.data.push({
+				id: objectDefinition.id,
+				type: 'objectDefinition',
+			});
+
+			await apiHelpers.objectEntry.postObjectEntry(
+				{
+					[firstObjectField.name as string]: 24680,
+					[secondObjectField.name as string]: 20,
+				},
+				'c/' + objectDefinition.name.toLowerCase() + 's'
+			);
+
+			const layout = await apiHelpers.jsonWebServicesLayout.addLayout({
+				groupId: site.id,
+				title: getRandomString(),
+			});
+
+			await page.goto(`/web${site.friendlyUrlPath}${layout.friendlyURL}`);
+
+			await widgetPagePage.addPortlet(
+				objectDefinition.pluralLabel['en_US']
+			);
+
+			await expect(
+				page.getByRole('cell', {exact: true, name: '1234'})
+			).toBeVisible();
+		}
+	);
+
 	test(
 		'can add object portlet as a widget on a page',
 		{tag: '@LPS-143122'},

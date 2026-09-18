@@ -5,11 +5,13 @@
 
 import {FrameLocator, Locator, Page, expect} from '@playwright/test';
 
+import {performLoginViaApi, performLogout} from '../../../utils/performLogin';
 import {waitForAlert} from '../../../utils/waitForAlert';
 import {GlobalMenuPage} from '../../product-navigation-applications-menu/GlobalMenuPage';
 import {searchTableRowByValue} from '../commerceDNDTablePage';
 
 export class CommerceAdminChannelDetailsPage {
+	readonly accountEntryValidationModeSelect: Locator;
 	readonly activeToggle: (tableName: string) => Promise<Locator>;
 	readonly addTaxRateButton: (tableName: string) => Promise<Locator>;
 	readonly addTaxRateSettingButton: (tableName: string) => Promise<Locator>;
@@ -70,12 +72,14 @@ export class CommerceAdminChannelDetailsPage {
 	readonly linkSupplierSelect: Locator;
 	readonly linkTab: (tabName: string) => Locator;
 	readonly maxOpenOrderAccountInput: Locator;
+	readonly ordersPanel: Locator;
 	readonly page: Page;
 	readonly placeHolderTerm: (
 		isNestedFrame: boolean,
 		tableName: string,
 		text: string
 	) => Promise<Locator>;
+	readonly requestedDeliveryDateAtCheckoutToggle: Locator;
 	readonly saveButton: Locator;
 	readonly searchedEntry: (name: string) => Locator;
 	readonly selectButton: (
@@ -180,6 +184,9 @@ export class CommerceAdminChannelDetailsPage {
 		this.categoryDisplayPageTab = page.getByRole('link', {
 			name: 'Category Display Pages',
 		});
+		this.accountEntryValidationModeSelect = page.locator(
+			'select[name$="validationMode--"]'
+		);
 		this.channelCurrencySelect = page.locator("select[title='Currency']");
 		this.channelId = page.locator('span:has-text("ID")+strong');
 		this.channelNameLink = (channelName: string) =>
@@ -320,6 +327,11 @@ export class CommerceAdminChannelDetailsPage {
 		this.maxOpenOrderAccountInput = page.getByLabel(
 			'Maximum Number of Open Orders per Account'
 		);
+		this.ordersPanel = page
+			.locator('.card')
+			.filter({has: page.locator('.card-header', {hasText: 'Orders'})});
+		this.requestedDeliveryDateAtCheckoutToggle =
+			this.ordersPanel.getByLabel('Requested Delivery Date at Checkout');
 		this.saveButton = page.getByRole('link', {name: 'Save'});
 		this.searchedEntry = (name) => {
 			return page.getByRole('menuitem', {name: new RegExp(name)});
@@ -529,6 +541,30 @@ export class CommerceAdminChannelDetailsPage {
 		await (await this.frameSaveButton(false, tableName)).click();
 		await waitForAlert(await this.sidePanelFrame(tableName));
 		await (await this.closeSidePanelFrame(false, tableName)).click();
+	}
+
+	async activateChannelEntry(name: string) {
+		await expect(async () => {
+			if (await this.isActive.isHidden()) {
+				await (
+					await this.generalCommerceAdminChannelTableLink(name)
+				).click({timeout: 5000});
+			}
+
+			await expect(this.isActive).toBeVisible({timeout: 5000});
+		}).toPass({timeout: 30000});
+
+		await this.isActive.setChecked(true);
+
+		await expect(this.isActive).toBeChecked({timeout: 5000});
+
+		await this.sidePanelSaveButton.click();
+
+		await waitForAlert(this.sidePanelFrameLocator);
+
+		await this.sidePanelCloseButton.click();
+
+		await expect(this.isActive).toBeHidden({timeout: 15000});
 	}
 
 	async activatePaymentMethod(name: string, description: string) {
@@ -772,12 +808,41 @@ export class CommerceAdminChannelDetailsPage {
 		).toBeVisible();
 	}
 
+	async setValidationMode(validationMode: string) {
+		await this.accountEntryValidationModeSelect.selectOption(
+			validationMode
+		);
+
+		await expect(this.accountEntryValidationModeSelect).toHaveValue(
+			validationMode
+		);
+
+		await this.saveButton.click();
+
+		await waitForAlert(this.page);
+	}
+
+	async setValidationModeAsAdmin(
+		channelName: string,
+		validationMode: string
+	) {
+		await performLogout(this.page);
+		await performLoginViaApi({page: this.page, screenName: 'test'});
+
+		await this.goto();
+		await this.channelNameLink(channelName).click();
+
+		await this.setValidationMode(validationMode);
+	}
+
 	async changeChannelDefaultCurrency(currency: string) {
 		await this.channelCurrencySelect.selectOption(currency);
 
 		await expect(this.channelCurrencySelect).toHaveValue(currency);
 
 		await this.saveButton.click();
+
+		await waitForAlert(this.page);
 	}
 
 	async editFixedTaxRate(newAmount: string, name: string) {

@@ -14,8 +14,6 @@ import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.CalendarFactoryUtil;
-import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 
 import java.util.Calendar;
@@ -27,9 +25,6 @@ import org.junit.runner.RunWith;
 /**
  * @author Carolina Barbosa
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
 @RunWith(Arquillian.class)
 public class UserModelListenerTest extends BaseModelListenerTestCase {
 
@@ -42,14 +37,14 @@ public class UserModelListenerTest extends BaseModelListenerTestCase {
 
 	@Test
 	public void testOnAfterAddAssociation() throws Exception {
-		_updateUser(new long[] {projectObjectEntry.getGroupId()});
+		_updateUser(new long[] {cmpProjectObjectEntry.getGroupId()});
 
 		assertAuditMessage("CMP_ADD_MEMBER");
 	}
 
 	@Test
 	public void testOnAfterRemoveAssociation() throws Exception {
-		_updateUser(new long[] {projectObjectEntry.getGroupId()});
+		_updateUser(new long[] {cmpProjectObjectEntry.getGroupId()});
 
 		assertAuditMessage("CMP_ADD_MEMBER");
 

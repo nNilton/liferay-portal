@@ -17,18 +17,20 @@ import type {
 } from '../index';
 
 const ATTRIBUTES: Attribute[] = [
+	'batch_segments',
 	'browser_name',
 	'browser_version',
 	'cookies',
 	'custom:*',
+	'device_type',
 	'hostname',
 	'language',
 	'local_date',
 	'local_hour',
 	'pathname',
+	'real_time_segments',
 	'referrer',
 	'request_parameters',
-	'segments',
 	'timezone',
 	'url',
 	'user_agent',

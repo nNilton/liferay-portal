@@ -7,6 +7,10 @@ import {IBulkActionItem} from '@liferay/frontend-data-set-web';
 import React from 'react';
 
 import DecimalDataRenderer from './FDSDataRenderers/DecimalDataRenderer';
+import LocalizedMultiselectPicklistDataRenderer from './FDSDataRenderers/LocalizedMultiselectPicklistDataRenderer';
+import LocalizedPicklistDataRenderer from './FDSDataRenderers/LocalizedPicklistDataRenderer';
+import LocalizedRichTextDataRenderer from './FDSDataRenderers/LocalizedRichTextDataRenderer';
+import LocalizedTextDataRenderer from './FDSDataRenderers/LocalizedTextDataRenderer';
 import MultiselectPicklistDataRenderer from './FDSDataRenderers/MultiselectPicklistDataRenderer';
 import ObjectEntryStatusDataRenderer from './FDSDataRenderers/ObjectEntryStatusDataRenderer';
 import transformFDSBulkActions from './utils/transformFDSBulkActions';
@@ -29,6 +33,11 @@ export default function ViewObjectEntriesFDSPropsTransformer({
 			bulkActions && transformFDSBulkActions<ObjectEntry>(bulkActions),
 		customDataRenderers: {
 			decimalDataRenderer: DecimalDataRenderer,
+			localizedMultiselectPicklistDataRenderer:
+				LocalizedMultiselectPicklistDataRenderer,
+			localizedPicklistDataRenderer: LocalizedPicklistDataRenderer,
+			localizedRichTextDataRenderer: LocalizedRichTextDataRenderer,
+			localizedTextDataRenderer: LocalizedTextDataRenderer,
 			multiselectPicklistDataRenderer: MultiselectPicklistDataRenderer,
 			statusDataRenderer: (props: ObjectEntryStatusDataRendererProps) => (
 				<ObjectEntryStatusDataRenderer
@@ -45,9 +54,12 @@ export default function ViewObjectEntriesFDSPropsTransformer({
 			itemData: any;
 		}) {
 			if (action.data.id === 'deleteObjectEntry') {
-				Liferay.fire('openModalDeleteObjectEntry', {
-					objectEntry: itemData,
-				});
+				Liferay.fire(
+					`${otherProps.namespace}openModalDeleteObjectEntry`,
+					{
+						objectEntry: itemData,
+					}
+				);
 			}
 		},
 		onBulkActionItemClick: async ({
@@ -58,9 +70,12 @@ export default function ViewObjectEntriesFDSPropsTransformer({
 			selectedData: any;
 		}) => {
 			if (action?.data?.id === 'delete') {
-				Liferay.fire('openModalBulkDeleteObjectEntries', {
-					selectedData,
-				});
+				Liferay.fire(
+					`${otherProps.namespace}openModalBulkDeleteObjectEntries`,
+					{
+						selectedData,
+					}
+				);
 			}
 		},
 	};

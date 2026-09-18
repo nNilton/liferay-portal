@@ -6,7 +6,10 @@ import React from 'react';
 import {cleanup, render, screen} from '@testing-library/react';
 import {DndProvider} from 'react-dnd';
 import {FieldOwnerTypes} from 'shared/util/constants';
-import {getIndexFromPropertyName} from '../../utils/custom-inputs';
+import {
+	getIndexFromPropertyName,
+	getIndexFromPropertyNamePrefix
+} from '../../utils/custom-inputs';
 import {HTML5Backend} from 'react-dnd-html5-backend';
 import {List} from 'immutable';
 import {Property, PropertyGroup, PropertySubgroup} from 'shared/util/records';
@@ -309,37 +312,60 @@ describe('getDefaultValue', () => {
 		).toBe('true');
 	});
 
-	it('should return a single-type CustomValueMap (applicationId, eventId, day, operator and value) for PropertyTypes.Behavior', () => {
+	it('should return CustomValueMap with name and searching items for PropertyTypes.SearchTerm', () => {
+		const result = getDefaultValue(
+			new Property({name: 'shoes', type: PropertyTypes.SearchTerm})
+		);
+		const nameIdx = getIndexFromPropertyName(result, 'name');
+		const searchingIdx = getIndexFromPropertyName(result, 'searching');
+
+		expect(nameIdx).toBeGreaterThanOrEqual(0);
+		expect(searchingIdx).toBeGreaterThanOrEqual(0);
+		expect(
+			result.getIn(['criterionGroup', 'items', nameIdx, 'value'])
+		).toBe('shoes');
+		expect(
+			result.getIn(['criterionGroup', 'items', searchingIdx, 'value'])
+		).toBe('true');
+	});
+
+	it('should seed no asset type for PropertyTypes.Behavior', () => {
 		const result = getDefaultValue(
 			new Property({name: 'download', type: PropertyTypes.Behavior})
 		);
 
-		// A behavior requires a type; it starts on the first the event supports
-		// (Download -> Document): applicationId eq 'Document' and eventId eq
-		// 'documentDownloaded'.
+		// A behavior no longer seeds an asset type: the criterion starts with the
+		// day and (empty) attribute filters but no applicationId/eventId, so the
+		// picker shows the "Select a Type" placeholder and the user must choose a
+		// type before saving.
 
-		const applicationIdIdx = getIndexFromPropertyName(
-			result,
-			'applicationId'
-		);
+		const items = result.getIn(['criterionGroup', 'items']);
 
-		expect(applicationIdIdx).toBeGreaterThanOrEqual(0);
-		expect(
-			result.getIn(['criterionGroup', 'items', applicationIdIdx, 'value'])
-		).toBe('Document');
-
-		const eventIdIdx = getIndexFromPropertyName(result, 'eventId');
-
-		expect(eventIdIdx).toBeGreaterThanOrEqual(0);
-		expect(
-			result.getIn(['criterionGroup', 'items', eventIdIdx, 'value'])
-		).toBe('documentDownloaded');
-
+		expect(items.size).toBe(2);
 		expect(getIndexFromPropertyName(result, 'day')).toBeGreaterThanOrEqual(
 			0
 		);
+
+		expect(getIndexFromPropertyName(result, 'applicationId')).toBeLessThan(
+			0
+		);
+		expect(getIndexFromPropertyName(result, 'eventId')).toBeLessThan(0);
+
 		expect(result.get('operator')).toBeTruthy();
 		expect(result.get('value')).toBe(1);
+
+		const attributeIdx = getIndexFromPropertyNamePrefix(
+			result,
+			'attribute/'
+		);
+
+		expect(attributeIdx).toBeGreaterThanOrEqual(0);
+		expect(
+			result.getIn(['criterionGroup', 'items', attributeIdx, 'propertyName'])
+		).toBe('attribute/');
+		expect(
+			result.getIn(['criterionGroup', 'items', attributeIdx, 'value'])
+		).toBe('');
 	});
 
 	it('should return CustomValueMap with eventId set to property name for PropertyTypes.Event', () => {
@@ -367,6 +393,40 @@ describe('getDefaultValue', () => {
 		expect(result.getIn(['criterionGroup', 'items', idx, 'value'])).toBe(
 			''
 		);
+	});
+
+	it('should return CustomValueMap seeded with the first option and no date filter for PropertyTypes.SessionChannel', () => {
+		const result = getDefaultValue(
+			new Property({
+				name: 'context/channel',
+				options: [
+					{label: 'Direct', value: 'direct'},
+					{label: 'Organic', value: 'organic'}
+				],
+				type: PropertyTypes.SessionChannel
+			})
+		);
+		const items = result.getIn(['criterionGroup', 'items']);
+
+		expect(items.size).toBe(1);
+		expect(items.getIn([0, 'propertyName'])).toBe('context/channel');
+		expect(items.getIn([0, 'value'])).toBe('direct');
+	});
+
+	it('should return CustomValueMap seeded with the first UTM parameter and no date filter for PropertyTypes.SessionUtmParameter', () => {
+		const result = getDefaultValue(
+			new Property({
+				name: 'attribute/utmParameter',
+				type: PropertyTypes.SessionUtmParameter
+			})
+		);
+		const items = result.getIn(['criterionGroup', 'items']);
+
+		expect(items.size).toBe(1);
+		expect(items.getIn([0, 'propertyName'])).toBe(
+			'context/acquisitionSource'
+		);
+		expect(items.getIn([0, 'value'])).toBe('');
 	});
 
 	it('should return empty string for an unrecognized property type', () => {

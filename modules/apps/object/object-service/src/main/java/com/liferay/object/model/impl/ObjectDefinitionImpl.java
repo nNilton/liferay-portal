@@ -21,7 +21,6 @@ import com.liferay.object.service.ObjectFieldLocalServiceUtil;
 import com.liferay.object.service.ObjectFolderLocalServiceUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
@@ -105,6 +104,7 @@ public class ObjectDefinitionImpl extends ObjectDefinitionBaseImpl {
 		if (_objectFieldBag == null) {
 			setObjectFieldBag(
 				new ObjectFieldBag(
+					isModifiableAndSystem(),
 					ObjectFieldLocalServiceUtil.getObjectFields(
 						getObjectDefinitionId())));
 		}
@@ -124,8 +124,7 @@ public class ObjectDefinitionImpl extends ObjectDefinitionBaseImpl {
 
 	@Override
 	public String getObjectFolderExternalReferenceCode() {
-		ObjectFolder objectFolder =
-			ObjectFolderLocalServiceUtil.fetchObjectFolder(getObjectFolderId());
+		ObjectFolder objectFolder = getObjectFolder();
 
 		if (objectFolder == null) {
 			return null;
@@ -194,10 +193,6 @@ public class ObjectDefinitionImpl extends ObjectDefinitionBaseImpl {
 
 	@Override
 	public long getRootObjectDefinitionId() {
-		if (!FeatureFlagManagerUtil.isEnabled(getCompanyId(), "LPD-34594")) {
-			return 0L;
-		}
-
 		long[] rootObjectDefinitionIds = getRootObjectDefinitionIds();
 
 		if (ArrayUtil.isEmpty(rootObjectDefinitionIds)) {
@@ -209,10 +204,6 @@ public class ObjectDefinitionImpl extends ObjectDefinitionBaseImpl {
 
 	@Override
 	public long[] getRootObjectDefinitionIds() {
-		if (!FeatureFlagManagerUtil.isEnabled(getCompanyId(), "LPD-34594")) {
-			return new long[0];
-		}
-
 		return ObjectDefinitionTreeUtil.getRootObjectDefinitionIds(
 			getObjectDefinitionId(),
 			ObjectDefinitionSettingLocalServiceUtil.getService());
@@ -247,32 +238,35 @@ public class ObjectDefinitionImpl extends ObjectDefinitionBaseImpl {
 	}
 
 	public boolean isCMP() {
-		if (!FeatureFlagManagerUtil.isEnabled(getCompanyId(), "LPD-58677")) {
-			return false;
-		}
-
-		if (Objects.equals(getExternalReferenceCode(), "L_CMP_PROJECT") ||
-			Objects.equals(getExternalReferenceCode(), "L_CMP_TASK")) {
-
-			return true;
-		}
-
-		return false;
+		return Objects.equals(
+			getObjectFolderExternalReferenceCode(),
+			ObjectFolderConstants.
+				EXTERNAL_REFERENCE_CODE_PROJECT_MANAGEMENT_DEFINITIONS);
 	}
 
 	@Override
 	public boolean isCMS() {
-		if (!FeatureFlagManagerUtil.isEnabled(getCompanyId(), "LPD-17564")) {
-			return false;
-		}
+		ObjectFolder contentStructuresObjectFolder =
+			ObjectFolderLocalServiceUtil.
+				fetchObjectFolderByExternalReferenceCode(
+					ObjectFolderConstants.
+						EXTERNAL_REFERENCE_CODE_CONTENT_STRUCTURES,
+					getCompanyId());
+		ObjectFolder fileTypesObjectFolder =
+			ObjectFolderLocalServiceUtil.
+				fetchObjectFolderByExternalReferenceCode(
+					ObjectFolderConstants.EXTERNAL_REFERENCE_CODE_FILE_TYPES,
+					getCompanyId());
 
-		if (Objects.equals(
-				getObjectFolderExternalReferenceCode(),
-				ObjectFolderConstants.
-					EXTERNAL_REFERENCE_CODE_CONTENT_STRUCTURES) ||
-			Objects.equals(
-				getObjectFolderExternalReferenceCode(),
-				ObjectFolderConstants.EXTERNAL_REFERENCE_CODE_FILE_TYPES)) {
+		if ((contentStructuresObjectFolder != null) &&
+			(contentStructuresObjectFolder.getObjectFolderId() ==
+				getObjectFolderId())) {
+
+			return true;
+		}
+		else if ((fileTypesObjectFolder != null) &&
+				 (fileTypesObjectFolder.getObjectFolderId() ==
+					 getObjectFolderId())) {
 
 			return true;
 		}
@@ -321,20 +315,12 @@ public class ObjectDefinitionImpl extends ObjectDefinitionBaseImpl {
 
 	@Override
 	public boolean isRootDescendantNode(long rootObjectDefinitionId) {
-		if (!FeatureFlagManagerUtil.isEnabled(getCompanyId(), "LPD-34594")) {
-			return false;
-		}
-
 		return ArrayUtil.contains(
 			getRootObjectDefinitionIds(), rootObjectDefinitionId);
 	}
 
 	@Override
 	public boolean isRootNode() {
-		if (!FeatureFlagManagerUtil.isEnabled(getCompanyId(), "LPD-34594")) {
-			return false;
-		}
-
 		return ArrayUtil.contains(
 			getRootObjectDefinitionIds(), getObjectDefinitionId());
 	}

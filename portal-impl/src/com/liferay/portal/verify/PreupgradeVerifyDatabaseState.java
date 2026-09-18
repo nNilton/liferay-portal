@@ -13,7 +13,6 @@ import com.liferay.portal.events.StartupHelperUtil;
 import com.liferay.portal.kernel.dao.db.DBInspector;
 import com.liferay.portal.kernel.db.DBResourceUtil;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.instance.PortalInstancePool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.ReleaseConstants;
@@ -58,7 +57,8 @@ public class PreupgradeVerifyDatabaseState extends PreupgradeVerifyProcess {
 		try {
 			try (Connection connection = getConnection()) {
 				if (StartupHelperUtil.isDBNew() ||
-					PortalUpgradeProcess.isInLatestSchemaVersion(connection) ||
+					PortalUpgradeProcess.isInCompatibleSchemaVersion(
+						connection) ||
 					(PortalUpgradeProcess.getCurrentState(connection) !=
 						ReleaseConstants.STATE_GOOD)) {
 
@@ -127,8 +127,15 @@ public class PreupgradeVerifyDatabaseState extends PreupgradeVerifyProcess {
 			missingTableNames.removeAll(
 				_falsePositive74UpgradeDroppedTableNames);
 
-			Set<String> viewNames = _removeViewNames(
-				dbInspector, missingTableNames);
+			Set<String> viewNames = new TreeSet<>(
+				String.CASE_INSENSITIVE_ORDER);
+
+			if (!CompanyThreadLocal.isDefaultCompany()) {
+				viewNames.addAll(
+					dbInspector.getControlTableNames(missingTableNames));
+
+				missingTableNames.removeAll(viewNames);
+			}
 
 			if (!missingTableNames.isEmpty()) {
 				String prefix = (missingTableNames.size() == 1) ?
@@ -205,29 +212,6 @@ public class PreupgradeVerifyDatabaseState extends PreupgradeVerifyProcess {
 		}
 
 		_verifyColumns(dbInspector);
-	}
-
-	private Set<String> _removeViewNames(
-			DBInspector dbInspector, Set<String> missingTableNames)
-		throws Exception {
-
-		Set<String> viewNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-
-		if (CompanyThreadLocal.getNonsystemCompanyId() ==
-				PortalInstancePool.getDefaultCompanyId()) {
-
-			return viewNames;
-		}
-
-		for (String missingTableName : missingTableNames) {
-			if (dbInspector.isControlTable(missingTableName)) {
-				viewNames.add(dbInspector.normalizeName(missingTableName));
-			}
-		}
-
-		missingTableNames.removeAll(viewNames);
-
-		return viewNames;
 	}
 
 	private void _verifyColumns(DBInspector dbInspector) throws Exception {

@@ -65,7 +65,6 @@ import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -272,6 +271,20 @@ public class AssetCategoryLocalServiceTest {
 		Assert.assertEquals(
 			"Expected title map does not match", titleMap,
 			assetCategory.getTitleMap());
+	}
+
+	@Test
+	public void testAddCategorySystemCategory() throws Exception {
+		AssetCategory assetCategory = _addSystemCategory();
+
+		AssertUtils.assertFailure(
+			SystemCategoryException.MustNotAddChild.class,
+			StringBundler.concat(
+				"Category ", assetCategory.getCategoryId(),
+				" cannot have child categories"),
+			() -> AssetTestUtil.addCategory(
+				_group.getGroupId(), _assetVocabulary.getVocabularyId(),
+				assetCategory.getCategoryId()));
 	}
 
 	@Test
@@ -523,7 +536,6 @@ public class AssetCategoryLocalServiceTest {
 			assetCategory, assetCategoryTitle);
 	}
 
-	@FeatureFlag("LPD-86291")
 	@Test
 	public void testDeleteCategories() throws Exception {
 		AssetCategory assetCategory = _addSystemCategory();
@@ -537,7 +549,6 @@ public class AssetCategoryLocalServiceTest {
 				new long[] {assetCategory.getCategoryId()}));
 	}
 
-	@FeatureFlag("LPD-86291")
 	@Test
 	public void testDeleteCategory() throws Exception {
 		Map<Locale, String> titleMap = HashMapBuilder.put(
@@ -900,10 +911,9 @@ public class AssetCategoryLocalServiceTest {
 		}
 	}
 
-	@FeatureFlag("LPD-86291")
 	@Test
 	public void testMoveCategory() throws Exception {
-		AssetCategory assetCategory = _addSystemCategory();
+		AssetCategory assetCategory1 = _addSystemCategory();
 
 		AssetVocabulary assetVocabulary =
 			_assetVocabularyLocalService.addVocabulary(
@@ -915,12 +925,29 @@ public class AssetCategoryLocalServiceTest {
 		AssertUtils.assertFailure(
 			SystemCategoryException.MustNotModify.class,
 			StringBundler.concat(
-				"Category ", assetCategory.getCategoryId(),
+				"Category ", assetCategory1.getCategoryId(),
 				" cannot be modified"),
 			() -> _assetCategoryLocalService.moveCategory(
-				assetCategory.getCategoryId(),
+				assetCategory1.getCategoryId(),
 				AssetCategoryConstants.DEFAULT_PARENT_CATEGORY_ID,
 				assetVocabulary.getVocabularyId(),
+				ServiceContextTestUtil.getServiceContext(
+					_group.getGroupId(), TestPropsValues.getUserId())));
+
+		AssetCategory assetCategory2 = _addSystemCategory();
+
+		AssetCategory assetCategory3 = AssetTestUtil.addCategory(
+			_group.getGroupId(), _assetVocabulary.getVocabularyId(),
+			AssetCategoryConstants.DEFAULT_PARENT_CATEGORY_ID);
+
+		AssertUtils.assertFailure(
+			SystemCategoryException.MustNotAddChild.class,
+			StringBundler.concat(
+				"Category ", assetCategory2.getCategoryId(),
+				" cannot have child categories"),
+			() -> _assetCategoryLocalService.moveCategory(
+				assetCategory3.getCategoryId(), assetCategory2.getCategoryId(),
+				_assetVocabulary.getVocabularyId(),
 				ServiceContextTestUtil.getServiceContext(
 					_group.getGroupId(), TestPropsValues.getUserId())));
 	}
@@ -1293,11 +1320,11 @@ public class AssetCategoryLocalServiceTest {
 			assetCategory2.getCategoryId());
 	}
 
-	@FeatureFlag("LPD-86291")
 	@Test
 	public void testUpdateCategory() throws Exception {
 		_testUpdateCategorySystemDescription();
 		_testUpdateCategorySystemExternalReferenceCode();
+		_testUpdateCategorySystemParent();
 		_testUpdateCategorySystemRename();
 		_testUpdateCategorySystemWhenImporting();
 		_testUpdateCategorySystemWithNullDescription();
@@ -1428,6 +1455,28 @@ public class AssetCategoryLocalServiceTest {
 				RandomTestUtil.randomString(), TestPropsValues.getUserId(),
 				assetCategory.getCategoryId(),
 				assetCategory.getParentCategoryId(),
+				assetCategory.getTitleMap(), assetCategory.getDescriptionMap(),
+				assetCategory.getVocabularyId(), null,
+				ServiceContextTestUtil.getServiceContext(
+					_group.getGroupId(), TestPropsValues.getUserId())));
+	}
+
+	private void _testUpdateCategorySystemParent() throws Exception {
+		AssetCategory parentAssetCategory = _addSystemCategory();
+
+		AssetCategory assetCategory = AssetTestUtil.addCategory(
+			_group.getGroupId(), _assetVocabulary.getVocabularyId(),
+			AssetCategoryConstants.DEFAULT_PARENT_CATEGORY_ID);
+
+		AssertUtils.assertFailure(
+			SystemCategoryException.MustNotAddChild.class,
+			StringBundler.concat(
+				"Category ", parentAssetCategory.getCategoryId(),
+				" cannot have child categories"),
+			() -> _assetCategoryLocalService.updateCategory(
+				assetCategory.getExternalReferenceCode(),
+				TestPropsValues.getUserId(), assetCategory.getCategoryId(),
+				parentAssetCategory.getCategoryId(),
 				assetCategory.getTitleMap(), assetCategory.getDescriptionMap(),
 				assetCategory.getVocabularyId(), null,
 				ServiceContextTestUtil.getServiceContext(

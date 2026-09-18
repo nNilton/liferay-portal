@@ -29,6 +29,7 @@ import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.VirtualHostLocalService;
 import com.liferay.portal.kernel.service.persistence.GroupPersistence;
+import com.liferay.portal.kernel.service.persistence.ImagePersistence;
 import com.liferay.portal.kernel.service.persistence.LayoutPersistence;
 import com.liferay.portal.kernel.service.persistence.LayoutSetBranchPersistence;
 import com.liferay.portal.kernel.service.persistence.VirtualHostPersistence;
@@ -563,10 +564,9 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 			groupId, privateLayout);
 
 		if (!virtualHostnames.isEmpty()) {
-			long virtualHostsCount =
-				_virtualHostLocalService.getVirtualHostsCount(
-					layoutSet.getLayoutSetId(),
-					ArrayUtil.toStringArray(virtualHostnames.keySet()));
+			long virtualHostsCount = _virtualHostPersistence.countByNotL_H(
+				layoutSet.getLayoutSetId(),
+				ArrayUtil.toStringArray(virtualHostnames.keySet()));
 
 			if (virtualHostsCount > 0) {
 				throw new LayoutSetVirtualHostException();
@@ -614,7 +614,7 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 			layoutSet.setLogoId(liveLayoutSet.getLogoId());
 
 			if (liveLayoutSet.isLogo()) {
-				Image logoImage = _imageLocalService.getImage(
+				Image logoImage = _imagePersistence.findByPrimaryKey(
 					liveLayoutSet.getLogoId());
 
 				long logoId = counterLocalService.increment();
@@ -705,6 +705,9 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 
 	@BeanReference(type = ImageLocalService.class)
 	private ImageLocalService _imageLocalService;
+
+	@BeanReference(type = ImagePersistence.class)
+	private ImagePersistence _imagePersistence;
 
 	@BeanReference(type = LayoutLocalService.class)
 	private LayoutLocalService _layoutLocalService;

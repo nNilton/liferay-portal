@@ -42,7 +42,7 @@ public class ServiceNodeValidator extends BaseNodeValidator<ServiceNode> {
 		}
 
 		if (Validator.isNull(javaDelegate) ||
-			!javaDelegate.matches("[\\w.$]+#\\w+")) {
+			!javaDelegate.matches("[\\w.$]+(#\\w+)+")) {
 
 			throw new KaleoDefinitionValidationException(
 				StringBundler.concat(
@@ -54,12 +54,6 @@ public class ServiceNodeValidator extends BaseNodeValidator<ServiceNode> {
 		if (serviceNode.getOutgoingTransitionsCount() == 0) {
 			throw new KaleoDefinitionValidationException.
 				MustSetOutgoingTransition(serviceNode.getDefaultLabel());
-		}
-
-		if (serviceNode.getOutgoingTransitionsCount() > 1) {
-			throw new KaleoDefinitionValidationException.
-				MustNotSetMultipleOutgoingTransitions(
-					serviceNode.getDefaultLabel());
 		}
 	}
 

@@ -12,19 +12,27 @@ import com.liferay.audiences.criteria.AudiencesCriteriaType;
 import com.liferay.client.extension.constants.ClientExtensionEntryConstants;
 import com.liferay.client.extension.model.ClientExtensionEntry;
 import com.liferay.client.extension.service.ClientExtensionEntryLocalService;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
+import com.liferay.segments.constants.SegmentsEntryConstants;
+import com.liferay.segments.criteria.Criteria;
+import com.liferay.segments.criteria.CriteriaSerializer;
+import com.liferay.segments.model.SegmentsEntry;
+import com.liferay.segments.test.util.SegmentsTestUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -44,7 +52,9 @@ public class AudiencesCriteriaProviderTest {
 		new LiferayIntegrationTestRule();
 
 	@Test
-	public void testGetAudiencesCriteriaTypes() throws Exception {
+	public void testGetBrowserAttributesAudiencesCriteriaType()
+		throws Exception {
+
 		List<AudiencesCriteriaType> audiencesCriteriaTypes =
 			_audiencesCriteriaProvider.getAudiencesCriteriaTypes(
 				TestPropsValues.getCompanyId(), LocaleUtil.getDefault());
@@ -56,23 +66,63 @@ public class AudiencesCriteriaProviderTest {
 			audiencesCriteriaType.getAudiencesCriterias();
 
 		Assert.assertEquals(
-			audiencesCriterias.toString(), 15, audiencesCriterias.size());
+			audiencesCriterias.toString(), 14, audiencesCriterias.size());
+		Assert.assertNull(
+			_getAudiencesCriteria(audiencesCriterias, "batch_segments"));
+		Assert.assertNull(
+			_getAudiencesCriteria(audiencesCriterias, "real_time_segments"));
 
-		AudiencesCriteria audiencesCriteria = _getAudiencesCriteria(
+		AudiencesCriteria urlAudiencesCriteria = _getAudiencesCriteria(
 			audiencesCriterias, "url");
 
 		Assert.assertEquals(
-			AudiencesCriteria.Type.STRING, audiencesCriteria.getType());
+			AudiencesCriteria.Type.STRING, urlAudiencesCriteria.getType());
 	}
 
 	@Test
-	public void testGetAudiencesCriteriaTypesWithCustomAttribute()
+	public void testGetCustomAudiencesCriteriaKeys() throws Exception {
+		String symbol = RandomTestUtil.randomString();
+		String url = "http://" + RandomTestUtil.randomString() + ".com";
+
+		ClientExtensionEntry clientExtensionEntry = _addClientExtensionEntry(
+			RandomTestUtil.randomString(), symbol, url);
+
+		Set<String> customAudiencesCriteriaKeys =
+			_audiencesCriteriaProvider.getCustomAudiencesCriteriaKeys(
+				TestPropsValues.getCompanyId());
+
+		Assert.assertFalse(
+			customAudiencesCriteriaKeys.toString(),
+			customAudiencesCriteriaKeys.contains("url"));
+		Assert.assertTrue(
+			customAudiencesCriteriaKeys.toString(),
+			customAudiencesCriteriaKeys.contains(
+				"custom:" + _GENERAL_ATTRIBUTES_URL + "#language"));
+		Assert.assertTrue(
+			customAudiencesCriteriaKeys.toString(),
+			customAudiencesCriteriaKeys.contains(
+				"custom:" + _GENERAL_ATTRIBUTES_URL + "#signed_in"));
+		Assert.assertTrue(
+			customAudiencesCriteriaKeys.toString(),
+			customAudiencesCriteriaKeys.contains(
+				StringBundler.concat(
+					"custom:", url, StringPool.POUND, symbol)));
+
+		_clientExtensionEntryLocalService.deleteClientExtensionEntry(
+			clientExtensionEntry);
+
+		_clientExtensionEntries.remove(clientExtensionEntry);
+	}
+
+	@Test
+	public void testGetCustomAudiencesCriteriaTypeWithCustomAttribute()
 		throws Exception {
 
 		String name = RandomTestUtil.randomString();
 		String symbol = RandomTestUtil.randomString();
 
-		_addClientExtensionEntry(name, symbol);
+		_addClientExtensionEntry(
+			name, symbol, "http://" + RandomTestUtil.randomString() + ".com");
 
 		List<AudiencesCriteriaType> audiencesCriteriaTypes =
 			_audiencesCriteriaProvider.getAudiencesCriteriaTypes(
@@ -114,9 +164,15 @@ public class AudiencesCriteriaProviderTest {
 
 		Assert.assertEquals(
 			audiencesCriterias.toString(), 2, audiencesCriterias.size());
+		Assert.assertNull(
+			_getAudiencesCriteria(audiencesCriterias, "batch_segments"));
+		Assert.assertNull(
+			_getAudiencesCriteria(audiencesCriterias, "real_time_segments"));
 
 		AudiencesCriteria authenticationAudiencesCriteria =
-			_getAudiencesCriteria(audiencesCriterias, "user_authentication");
+			_getAudiencesCriteria(
+				audiencesCriterias,
+				"custom:" + _GENERAL_ATTRIBUTES_URL + "#signed_in");
 
 		Assert.assertEquals(
 			AudiencesCriteria.Type.BOOLEAN,
@@ -124,7 +180,8 @@ public class AudiencesCriteriaProviderTest {
 		Assert.assertNull(authenticationAudiencesCriteria.getOptions());
 
 		AudiencesCriteria languageAudiencesCriteria = _getAudiencesCriteria(
-			audiencesCriterias, "user_language");
+			audiencesCriterias,
+			"custom:" + _GENERAL_ATTRIBUTES_URL + "#language");
 
 		Assert.assertEquals(
 			AudiencesCriteria.Type.STRING, languageAudiencesCriteria.getType());
@@ -133,12 +190,36 @@ public class AudiencesCriteriaProviderTest {
 			languageAudiencesCriteria.getOptions();
 
 		Assert.assertFalse(options.toString(), options.isEmpty());
+
+		SegmentsEntry batchSegmentsEntry = _addSegmentsEntry(
+			SegmentsEntryConstants.TYPE_BATCH);
+		SegmentsEntry realTimeSegmentsEntry = _addSegmentsEntry(
+			SegmentsEntryConstants.TYPE_REAL_TIME);
+
+		audiencesCriteriaTypes =
+			_audiencesCriteriaProvider.getAudiencesCriteriaTypes(
+				TestPropsValues.getCompanyId(), LocaleUtil.getDefault());
+
+		audiencesCriteriaType = audiencesCriteriaTypes.get(1);
+
+		audiencesCriterias = audiencesCriteriaType.getAudiencesCriterias();
+
+		Assert.assertEquals(
+			audiencesCriterias.toString(), 4, audiencesCriterias.size());
+
+		_assertSegmentsAudiencesCriteria(
+			_getAudiencesCriteria(audiencesCriterias, "real_time_segments"),
+			"Real-Time Segments", realTimeSegmentsEntry);
+		_assertSegmentsAudiencesCriteria(
+			_getAudiencesCriteria(audiencesCriterias, "batch_segments"),
+			"Batch Segments", batchSegmentsEntry);
 	}
 
-	private void _addClientExtensionEntry(String name, String symbol)
+	private ClientExtensionEntry _addClientExtensionEntry(
+			String name, String symbol, String url)
 		throws Exception {
 
-		_clientExtensionEntries.add(
+		ClientExtensionEntry clientExtensionEntry =
 			_clientExtensionEntryLocalService.addClientExtensionEntry(
 				RandomTestUtil.randomString(), TestPropsValues.getUserId(),
 				StringPool.BLANK,
@@ -154,8 +235,45 @@ public class AudiencesCriteriaProviderTest {
 				).put(
 					"types", "string"
 				).put(
-					"url", "http://" + RandomTestUtil.randomString() + ".com"
-				).buildString()));
+					"url", url
+				).buildString());
+
+		_clientExtensionEntries.add(clientExtensionEntry);
+
+		return clientExtensionEntry;
+	}
+
+	private SegmentsEntry _addSegmentsEntry(int type) throws Exception {
+		SegmentsEntry segmentsEntry = SegmentsTestUtil.addSegmentsEntry(
+			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
+			RandomTestUtil.randomString(),
+			CriteriaSerializer.serialize(new Criteria()),
+			SegmentsEntryConstants.SOURCE_ASAH_FARO_BACKEND, type,
+			ServiceContextTestUtil.getServiceContext(
+				TestPropsValues.getGroupId()));
+
+		_segmentsEntries.add(segmentsEntry);
+
+		return segmentsEntry;
+	}
+
+	private void _assertSegmentsAudiencesCriteria(
+		AudiencesCriteria audiencesCriteria, String label,
+		SegmentsEntry segmentsEntry) {
+
+		Assert.assertEquals(
+			AudiencesCriteria.InputType.SELECT,
+			audiencesCriteria.getInputType());
+		Assert.assertEquals(label, audiencesCriteria.getLabel());
+		Assert.assertEquals(
+			AudiencesCriteria.Type.SET, audiencesCriteria.getType());
+
+		AudiencesCriteria.Option option = _getOption(
+			audiencesCriteria.getOptions(),
+			segmentsEntry.getExternalReferenceCode());
+
+		Assert.assertEquals(
+			segmentsEntry.getName(LocaleUtil.getDefault()), option.getLabel());
 	}
 
 	private AudiencesCriteria _getAudiencesCriteria(
@@ -170,6 +288,21 @@ public class AudiencesCriteriaProviderTest {
 		return null;
 	}
 
+	private AudiencesCriteria.Option _getOption(
+		List<AudiencesCriteria.Option> options, String value) {
+
+		for (AudiencesCriteria.Option option : options) {
+			if (value.equals(option.getValue())) {
+				return option;
+			}
+		}
+
+		return null;
+	}
+
+	private static final String _GENERAL_ATTRIBUTES_URL =
+		"/o/frontend-js-audiences-web/__liferay__/custom-attributes.js";
+
 	@Inject
 	private AudiencesCriteriaProvider _audiencesCriteriaProvider;
 
@@ -179,5 +312,8 @@ public class AudiencesCriteriaProviderTest {
 
 	@Inject
 	private ClientExtensionEntryLocalService _clientExtensionEntryLocalService;
+
+	@DeleteAfterTestRun
+	private final List<SegmentsEntry> _segmentsEntries = new ArrayList<>();
 
 }

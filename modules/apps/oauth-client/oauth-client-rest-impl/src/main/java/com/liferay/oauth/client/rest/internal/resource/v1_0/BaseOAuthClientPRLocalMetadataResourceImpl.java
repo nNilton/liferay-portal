@@ -5,6 +5,7 @@
 
 package com.liferay.oauth.client.rest.internal.resource.v1_0;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.oauth.client.rest.dto.v1_0.OAuthClientPRLocalMetadata;
 import com.liferay.oauth.client.rest.resource.v1_0.OAuthClientPRLocalMetadataResource;
 import com.liferay.petra.function.UnsafeBiConsumer;
@@ -77,7 +78,7 @@ public abstract class BaseOAuthClientPRLocalMetadataResourceImpl
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
-				name = "externalReferenceCode"
+				name = "externalReferenceCode", required = true
 			)
 		}
 	)
@@ -111,7 +112,7 @@ public abstract class BaseOAuthClientPRLocalMetadataResourceImpl
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
-				name = "externalReferenceCode"
+				name = "externalReferenceCode", required = true
 			)
 		}
 	)
@@ -308,7 +309,7 @@ public abstract class BaseOAuthClientPRLocalMetadataResourceImpl
 		value = {
 			@io.swagger.v3.oas.annotations.Parameter(
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.PATH,
-				name = "externalReferenceCode"
+				name = "externalReferenceCode", required = true
 			)
 		}
 	)
@@ -501,6 +502,15 @@ public abstract class BaseOAuthClientPRLocalMetadataResourceImpl
 			@Override
 			public Locale getPreferredLocale() {
 				return LocaleUtil.fromLanguageId(languageId);
+			}
+
+			@Override
+			public boolean isAcceptAllLanguages() {
+				if (ExportImportThreadLocal.isExportInProcess()) {
+					return true;
+				}
+
+				return AcceptLanguage.super.isAcceptAllLanguages();
 			}
 
 		};
@@ -1083,4 +1093,4 @@ public abstract class BaseOAuthClientPRLocalMetadataResourceImpl
 		LogFactoryUtil.getLog(BaseOAuthClientPRLocalMetadataResourceImpl.class);
 
 }
-// LIFERAY-REST-BUILDER-HASH:1209371799
+// LIFERAY-REST-BUILDER-HASH:517956176

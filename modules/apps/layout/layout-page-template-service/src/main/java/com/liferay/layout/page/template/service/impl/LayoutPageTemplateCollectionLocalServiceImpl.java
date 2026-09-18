@@ -5,6 +5,9 @@
 
 package com.liferay.layout.page.template.service.impl;
 
+import com.liferay.design.library.util.DesignLibraryUtil;
+import com.liferay.layout.page.template.constants.LayoutPageTemplateCollectionTypeConstants;
+import com.liferay.layout.page.template.constants.LayoutPageTemplateConstants;
 import com.liferay.layout.page.template.exception.DuplicateLayoutPageTemplateCollectionException;
 import com.liferay.layout.page.template.exception.LayoutPageTemplateCollectionGroupIdException;
 import com.liferay.layout.page.template.exception.LayoutPageTemplateCollectionLayoutPageTemplateCollectionKeyException;
@@ -19,6 +22,7 @@ import com.liferay.portal.aop.AopService;
 import com.liferay.portal.dao.orm.custom.sql.CustomSQL;
 import com.liferay.portal.kernel.dao.orm.WildcardMode;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.ModelHintsUtil;
 import com.liferay.portal.kernel.model.ResourceConstants;
@@ -66,13 +70,20 @@ public class LayoutPageTemplateCollectionLocalServiceImpl
 
 		Group group = _groupLocalService.getGroup(groupId);
 
-		if (group.isCompany() || group.isDepot()) {
+		if (group.isCompany() ||
+			(group.isDepot() &&
+			 (!FeatureFlagManagerUtil.isEnabled(
+				 group.getCompanyId(), "LPD-57283") ||
+			  !DesignLibraryUtil.isDesignLibraryScope(group)))) {
+
 			throw new LayoutPageTemplateCollectionGroupIdException();
 		}
 
 		User user = _userLocalService.getUser(userId);
 
 		_validate(groupId, name, parentLayoutPageTemplateCollectionId, type);
+		_validateParentLayoutPageTemplateCollectionType(
+			parentLayoutPageTemplateCollectionId, type);
 
 		if (Validator.isNull(layoutPageTemplateCollectionKey)) {
 			layoutPageTemplateCollectionKey =
@@ -568,6 +579,32 @@ public class LayoutPageTemplateCollectionLocalServiceImpl
 		if (layoutPageTemplateCollection != null) {
 			throw new LayoutPageTemplateCollectionLayoutPageTemplateCollectionKeyException.MustNotBeDuplicate(
 				groupId, layoutPageTemplateCollectionKey, type);
+		}
+	}
+
+	private void _validateParentLayoutPageTemplateCollectionType(
+		long parentLayoutPageTemplateCollectionId, int type) {
+
+		if ((type != LayoutPageTemplateCollectionTypeConstants.DISPLAY_PAGE) ||
+			(parentLayoutPageTemplateCollectionId ==
+				LayoutPageTemplateConstants.
+					PARENT_LAYOUT_PAGE_TEMPLATE_COLLECTION_ID_DEFAULT)) {
+
+			return;
+		}
+
+		LayoutPageTemplateCollection parentLayoutPageTemplateCollection =
+			layoutPageTemplateCollectionPersistence.fetchByPrimaryKey(
+				parentLayoutPageTemplateCollectionId);
+
+		if ((parentLayoutPageTemplateCollection == null) ||
+			(parentLayoutPageTemplateCollection.getType() !=
+				LayoutPageTemplateCollectionTypeConstants.DISPLAY_PAGE)) {
+
+			throw new IllegalArgumentException(
+				"The parent layout page template collection " +
+					parentLayoutPageTemplateCollectionId +
+						" must be of type display page");
 		}
 	}
 

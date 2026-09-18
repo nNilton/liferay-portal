@@ -138,7 +138,7 @@ public class DefaultStyleBookEntryUtilTest {
 
 		_layout = _layoutLocalService.updateLookAndFeel(
 			_group.getGroupId(), _layout.isPrivateLayout(),
-			_layout.getLayoutId(), _THEME_ID_DIALECT, "01", StringPool.BLANK);
+			_layout.getLayoutId(), _THEME_ID_CMS, "01", StringPool.BLANK);
 
 		Assert.assertNull(
 			DefaultStyleBookEntryUtil.getDefaultStyleBookEntry(_layout));
@@ -146,8 +146,8 @@ public class DefaultStyleBookEntryUtilTest {
 		StyleBookEntry styleBookEntry2 =
 			_styleBookEntryLocalService.addStyleBookEntry(
 				RandomTestUtil.randomString(), TestPropsValues.getUserId(),
-				_group.getGroupId(), true, null, RandomTestUtil.randomString(),
-				null, _THEME_ID_DIALECT, null);
+				_group.getGroupId(), true, null, null,
+				RandomTestUtil.randomString(), null, _THEME_ID_CMS, null);
 
 		StyleBookEntry defaultStyleBookEntry =
 			DefaultStyleBookEntryUtil.getDefaultStyleBookEntry(_layout);
@@ -253,8 +253,8 @@ public class DefaultStyleBookEntryUtilTest {
 		StyleBookEntry styleBookEntry =
 			_styleBookEntryLocalService.addStyleBookEntry(
 				RandomTestUtil.randomString(), TestPropsValues.getUserId(),
-				_group.getGroupId(), false, null, name, null, _THEME_ID_CLASSIC,
-				null);
+				_group.getGroupId(), false, null, null, name, null,
+				_THEME_ID_CLASSIC, null);
 
 		Assert.assertEquals(
 			name,
@@ -267,7 +267,7 @@ public class DefaultStyleBookEntryUtilTest {
 
 		return _styleBookEntryLocalService.addStyleBookEntry(
 			RandomTestUtil.randomString(), TestPropsValues.getUserId(),
-			_group.getGroupId(), defaultStyleBookEntry, null,
+			_group.getGroupId(), defaultStyleBookEntry, null, null,
 			RandomTestUtil.randomString(), null, _THEME_ID_CLASSIC, null);
 	}
 
@@ -342,8 +342,9 @@ public class DefaultStyleBookEntryUtilTest {
 		StyleBookEntry styleBookEntry =
 			_styleBookEntryLocalService.addStyleBookEntry(
 				RandomTestUtil.randomString(), TestPropsValues.getUserId(),
-				_group.getGroupId(), true, null, RandomTestUtil.randomString(),
-				null, _THEME_ID_CLASSIC, new ServiceContext());
+				_group.getGroupId(), true, null, null,
+				RandomTestUtil.randomString(), null, _THEME_ID_CLASSIC,
+				new ServiceContext());
 
 		Group stagingGroup = _group.getStagingGroup();
 
@@ -372,7 +373,7 @@ public class DefaultStyleBookEntryUtilTest {
 
 	private static final String _THEME_ID_CLASSIC = "classic_WAR_classictheme";
 
-	private static final String _THEME_ID_DIALECT = "dialect_WAR_dialecttheme";
+	private static final String _THEME_ID_CMS = "cms_WAR_cmstheme";
 
 	@Inject
 	private FrontendTokenDefinitionRegistry _frontendTokenDefinitionRegistry;

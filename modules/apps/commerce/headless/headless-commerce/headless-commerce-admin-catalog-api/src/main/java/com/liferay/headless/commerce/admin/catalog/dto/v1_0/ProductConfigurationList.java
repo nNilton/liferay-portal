@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
@@ -28,6 +29,8 @@ import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
@@ -622,6 +625,62 @@ public class ProductConfigurationList implements Serializable {
 	@JsonIgnore
 	private Supplier<Boolean> _neverExpireSupplier;
 
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "External reference code of the parent configuration list; it takes precedence over `parentProductConfigurationListId`. An unresolved code fails the request, except during an import, where it creates an empty configuration list to be completed later. The parent must belong to the same site as the child.",
+		example = "AB-34098-789-N"
+	)
+	public String getParentProductConfigurationListExternalReferenceCode() {
+		if (_parentProductConfigurationListExternalReferenceCodeSupplier !=
+				null) {
+
+			parentProductConfigurationListExternalReferenceCode =
+				_parentProductConfigurationListExternalReferenceCodeSupplier.
+					get();
+
+			_parentProductConfigurationListExternalReferenceCodeSupplier = null;
+		}
+
+		return parentProductConfigurationListExternalReferenceCode;
+	}
+
+	public void setParentProductConfigurationListExternalReferenceCode(
+		String parentProductConfigurationListExternalReferenceCode) {
+
+		this.parentProductConfigurationListExternalReferenceCode =
+			parentProductConfigurationListExternalReferenceCode;
+
+		_parentProductConfigurationListExternalReferenceCodeSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setParentProductConfigurationListExternalReferenceCode(
+		UnsafeSupplier<String, Exception>
+			parentProductConfigurationListExternalReferenceCodeUnsafeSupplier) {
+
+		_parentProductConfigurationListExternalReferenceCodeSupplier = () -> {
+			try {
+				return parentProductConfigurationListExternalReferenceCodeUnsafeSupplier.
+					get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "External reference code of the parent configuration list; it takes precedence over `parentProductConfigurationListId`. An unresolved code fails the request, except during an import, where it creates an empty configuration list to be completed later. The parent must belong to the same site as the child."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String parentProductConfigurationListExternalReferenceCode;
+
+	@JsonIgnore
+	private Supplier<String>
+		_parentProductConfigurationListExternalReferenceCodeSupplier;
+
 	@DecimalMin("0")
 	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "Identifier of the parent configuration list; enables inheritance, with child lists copying parent entry snapshots on creation; the parent must belong to the same site as the child.",
@@ -979,6 +1038,25 @@ public class ProductConfigurationList implements Serializable {
 			sb.append(neverExpire);
 		}
 
+		String parentProductConfigurationListExternalReferenceCode =
+			getParentProductConfigurationListExternalReferenceCode();
+
+		if (parentProductConfigurationListExternalReferenceCode != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append(
+				"\"parentProductConfigurationListExternalReferenceCode\": ");
+
+			sb.append("\"");
+
+			sb.append(
+				_escape(parentProductConfigurationListExternalReferenceCode));
+
+			sb.append("\"");
+		}
+
 		Long parentProductConfigurationListId =
 			getParentProductConfigurationListId();
 
@@ -1120,6 +1198,27 @@ public class ProductConfigurationList implements Serializable {
 		return sb.toString();
 	}
 
+	private static String _toJSON(Object value) {
+		if (value instanceof Collection) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray((Collection<?>)value));
+		}
+		else if (value instanceof Map) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONObject((Map<?, ?>)value));
+		}
+		else if (value instanceof Object[]) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray(
+					Arrays.asList((Object[])value)));
+		}
+		else if (value instanceof String) {
+			return StringBundler.concat("\"", _escape(value), "\"");
+		}
+
+		return String.valueOf(value);
+	}
+
 	private static final String[][] _JSON_ESCAPE_STRINGS = {
 		{"\\", "\"", "\b", "\f", "\n", "\r", "\t"},
 		{"\\\\", "\\\"", "\\b", "\\f", "\\n", "\\r", "\\t"}
@@ -1128,4 +1227,4 @@ public class ProductConfigurationList implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:164501718
+// LIFERAY-REST-BUILDER-HASH:152721965

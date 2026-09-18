@@ -86,12 +86,13 @@ public class SegmentsEntryModelResourcePermissionWrapperTest {
 	public void testContainsWithSourceAsahFaroBackend() throws Exception {
 		SegmentsEntry segmentsEntry =
 			_segmentsEntryLocalService.addSegmentsEntry(
-				RandomTestUtil.randomString(),
+				null, RandomTestUtil.randomString(),
 				Collections.singletonMap(
 					LocaleUtil.getDefault(), RandomTestUtil.randomString()),
 				Collections.singletonMap(
 					LocaleUtil.getDefault(), RandomTestUtil.randomString()),
 				true, null, SegmentsEntryConstants.SOURCE_ASAH_FARO_BACKEND,
+				SegmentsEntryConstants.TYPE_DEFAULT,
 				ServiceContextTestUtil.getServiceContext(_group.getGroupId()));
 
 		Assert.assertFalse(

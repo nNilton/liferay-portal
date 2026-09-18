@@ -5,6 +5,7 @@
 
 package com.liferay.segments.service.impl;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
@@ -85,24 +86,22 @@ import org.osgi.service.component.annotations.Reference;
 public class SegmentsEntryLocalServiceImpl
 	extends SegmentsEntryLocalServiceBaseImpl {
 
+	@Indexable(type = IndexableType.REINDEX)
 	@Override
-	public SegmentsEntry addSegmentsEntry(
-			String segmentsEntryKey, Map<Locale, String> nameMap,
-			Map<Locale, String> descriptionMap, boolean active, String criteria,
-			ServiceContext serviceContext)
-		throws PortalException {
+	public SegmentsEntry addSegmentsEntry(SegmentsEntry segmentsEntry) {
+		segmentsEntry.setActive(
+			_isActive(segmentsEntry.isActive(), segmentsEntry.getSource()));
 
-		return segmentsEntryLocalService.addSegmentsEntry(
-			segmentsEntryKey, nameMap, descriptionMap, active, criteria, null,
-			serviceContext);
+		return super.addSegmentsEntry(segmentsEntry);
 	}
 
 	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public SegmentsEntry addSegmentsEntry(
-			String segmentsEntryKey, Map<Locale, String> nameMap,
-			Map<Locale, String> descriptionMap, boolean active, String criteria,
-			String source, ServiceContext serviceContext)
+			String externalReferenceCode, String segmentsEntryKey,
+			Map<Locale, String> nameMap, Map<Locale, String> descriptionMap,
+			boolean active, String criteria, String source, int type,
+			ServiceContext serviceContext)
 		throws PortalException {
 
 		// Segments entry
@@ -126,6 +125,7 @@ public class SegmentsEntryLocalServiceImpl
 			segmentsEntryId);
 
 		segmentsEntry.setUuid(serviceContext.getUuid());
+		segmentsEntry.setExternalReferenceCode(externalReferenceCode);
 		segmentsEntry.setGroupId(groupId);
 		segmentsEntry.setCompanyId(user.getCompanyId());
 		segmentsEntry.setUserId(user.getUserId());
@@ -136,9 +136,15 @@ public class SegmentsEntryLocalServiceImpl
 		segmentsEntry.setSegmentsEntryKey(segmentsEntryKey);
 		segmentsEntry.setNameMap(nameMap);
 		segmentsEntry.setDescriptionMap(descriptionMap);
-		segmentsEntry.setActive(active);
+
 		segmentsEntry.setCriteria(criteria);
-		segmentsEntry.setSource(_getSource(criteria, source));
+
+		source = _getSource(criteria, source);
+
+		segmentsEntry.setActive(_isActive(active, source));
+		segmentsEntry.setSource(source);
+
+		segmentsEntry.setType(_getType(source, type));
 
 		segmentsEntry = segmentsEntryPersistence.update(segmentsEntry);
 
@@ -331,12 +337,12 @@ public class SegmentsEntryLocalServiceImpl
 
 	@Override
 	public List<SegmentsEntry> getSegmentsEntries(
-		long groupId, String[] sources, int start, int end,
+		long groupId, String[] sources, int[] types, int start, int end,
 		OrderByComparator<SegmentsEntry> orderByComparator) {
 
-		return segmentsEntryPersistence.findByG_SRC(
-			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources, start,
-			end, orderByComparator);
+		return segmentsEntryPersistence.findByG_SRC_T(
+			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources, types,
+			start, end, orderByComparator);
 	}
 
 	@Override
@@ -357,11 +363,21 @@ public class SegmentsEntryLocalServiceImpl
 
 	@Override
 	public List<SegmentsEntry> getSegmentsEntriesBySource(
-		String source, int start, int end,
+		long companyId, String source, int[] types, int start, int end,
 		OrderByComparator<SegmentsEntry> orderByComparator) {
 
-		return segmentsEntryPersistence.findBySource(
-			source, start, end, orderByComparator);
+		return segmentsEntryPersistence.findByC_SRC_T(
+			companyId, new String[] {source}, types, start, end,
+			orderByComparator);
+	}
+
+	@Override
+	public List<SegmentsEntry> getSegmentsEntriesBySource(
+		String source, int[] types, int start, int end,
+		OrderByComparator<SegmentsEntry> orderByComparator) {
+
+		return segmentsEntryPersistence.findBySRC_T(
+			new String[] {source}, types, start, end, orderByComparator);
 	}
 
 	@Override
@@ -371,9 +387,11 @@ public class SegmentsEntryLocalServiceImpl
 	}
 
 	@Override
-	public int getSegmentsEntriesCount(long groupId, String[] sources) {
-		return segmentsEntryPersistence.countByG_SRC(
-			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources);
+	public int getSegmentsEntriesCount(
+		long groupId, String[] sources, int[] types) {
+
+		return segmentsEntryPersistence.countByG_SRC_T(
+			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources, types);
 	}
 
 	@Override
@@ -414,9 +432,10 @@ public class SegmentsEntryLocalServiceImpl
 	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public SegmentsEntry updateSegmentsEntry(
-			long segmentsEntryId, String segmentsEntryKey,
-			Map<Locale, String> nameMap, Map<Locale, String> descriptionMap,
-			boolean active, String criteria, ServiceContext serviceContext)
+			String externalReferenceCode, long segmentsEntryId,
+			String segmentsEntryKey, Map<Locale, String> nameMap,
+			Map<Locale, String> descriptionMap, boolean active, String criteria,
+			int type, ServiceContext serviceContext)
 		throws PortalException {
 
 		// Segments entry
@@ -432,15 +451,21 @@ public class SegmentsEntryLocalServiceImpl
 		_validateName(segmentsEntry.getGroupId(), nameMap);
 		_validateSegmentsExperiment(segmentsEntry);
 
+		segmentsEntry.setExternalReferenceCode(externalReferenceCode);
 		segmentsEntry.setModifiedDate(
 			serviceContext.getModifiedDate(new Date()));
 		segmentsEntry.setSegmentsEntryKey(segmentsEntryKey);
 		segmentsEntry.setNameMap(nameMap);
 		segmentsEntry.setDescriptionMap(descriptionMap);
-		segmentsEntry.setActive(active);
+
 		segmentsEntry.setCriteria(criteria);
-		segmentsEntry.setSource(
-			_getSource(criteria, segmentsEntry.getSource()));
+
+		String source = _getSource(criteria, segmentsEntry.getSource());
+
+		segmentsEntry.setActive(_isActive(active, source));
+		segmentsEntry.setSource(source);
+
+		segmentsEntry.setType(type);
 
 		segmentsEntry = segmentsEntryPersistence.update(segmentsEntry);
 
@@ -469,6 +494,9 @@ public class SegmentsEntryLocalServiceImpl
 			).build();
 
 		params.put("keywords", keywords);
+
+		params.putIfAbsent(
+			"excludedTypes", new int[] {SegmentsEntryConstants.TYPE_REAL_TIME});
 
 		attributes.put("params", params);
 
@@ -563,6 +591,29 @@ public class SegmentsEntryLocalServiceImpl
 		}
 
 		return source;
+	}
+
+	private int _getType(String source, int type) {
+		if ((type == SegmentsEntryConstants.TYPE_DEFAULT) &&
+			SegmentsEntryConstants.SOURCE_ASAH_FARO_BACKEND.equals(source)) {
+
+			return SegmentsEntryConstants.TYPE_BATCH;
+		}
+
+		return type;
+	}
+
+	private boolean _isActive(boolean active, String source) {
+		if (!active ||
+			SegmentsEntryConstants.SOURCE_ASAH_FARO_BACKEND.equals(source) ||
+			ExportImportThreadLocal.isImportInProcess() ||
+			FeatureFlagManagerUtil.isEnabled(
+				CompanyConstants.SYSTEM, "LPD-78863")) {
+
+			return active;
+		}
+
+		return false;
 	}
 
 	private void _reindexReferredSegmentsEntryRels(SegmentsEntry segmentsEntry)

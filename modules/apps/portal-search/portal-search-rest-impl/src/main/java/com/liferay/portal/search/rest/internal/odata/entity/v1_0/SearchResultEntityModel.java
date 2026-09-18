@@ -31,7 +31,27 @@ public class SearchResultEntityModel implements EntityModel {
 			new BooleanEntityField(
 				"rootDescendantNode", locale -> "rootDescendantNode"),
 			new CollectionEntityField(
+				new IntegerEntityField(
+					"cmpFunnelStageCategoryIds",
+					locale -> Field.ASSET_INTERNAL_CATEGORY_IDS)),
+			new CollectionEntityField(
+				new IntegerEntityField(
+					"cmpPersonaCategoryIds",
+					locale -> Field.ASSET_INTERNAL_CATEGORY_IDS)),
+			new CollectionEntityField(
+				new IntegerEntityField(
+					"cmpProjectObjectEntryIds",
+					locale -> "cmpProjectObjectEntryIds")),
+			new CollectionEntityField(
+				new IntegerEntityField(
+					"cmpTaskObjectEntryIds",
+					locale -> "cmpTaskObjectEntryIds")),
+			new CollectionEntityField(
 				new IntegerEntityField("groupIds", locale -> Field.GROUP_ID)),
+			new CollectionEntityField(
+				new IntegerEntityField(
+					"internalTaxonomyCategoryIds",
+					locale -> Field.ASSET_INTERNAL_CATEGORY_IDS)),
 			new CollectionEntityField(
 				new IntegerEntityField(
 					"taxonomyCategoryIds", locale -> "assetCategoryIds")),
@@ -42,6 +62,8 @@ public class SearchResultEntityModel implements EntityModel {
 				new StringEntityField(
 					"objectFolderExternalReferenceCode",
 					locale -> "objectFolderExternalReferenceCode")),
+			new CollectionEntityField(
+				new StringEntityField("treePath", locale -> Field.TREE_PATH)),
 			new DateTimeEntityField(
 				"cmpDueDate", locale -> "cmpDueDate", locale -> "cmpDueDate"),
 			new DateTimeEntityField(
@@ -83,6 +105,8 @@ public class SearchResultEntityModel implements EntityModel {
 			new IntegerEntityField(
 				"cmpTaskCMPProjectId", locale -> "cmpTaskCMPProjectId"),
 			new IntegerEntityField("creatorId", locale -> Field.USER_ID),
+			new IntegerEntityField(
+				"entryClassPK", locale -> Field.ENTRY_CLASS_PK),
 			new IntegerEntityField("folderId", locale -> Field.FOLDER_ID),
 			new IntegerEntityField(
 				"objectDefinitionId", locale -> "objectDefinitionId"),
@@ -105,7 +129,8 @@ public class SearchResultEntityModel implements EntityModel {
 							LocaleUtil.toLanguageId(locale)));
 
 					return sortableFieldName.concat(".keyword_lowercase");
-				}));
+				}),
+			new StringEntityField("type", locale -> Field.TYPE));
 	}
 
 	@Override

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {normalizeFriendlyURL} from 'frontend-js-web';
 import React, {
 	Dispatch,
 	ReactNode,
@@ -16,6 +17,7 @@ import {Space} from '../../common/types/Space';
 import {Workflow} from '../../common/types/Workflow';
 import getLocalizedValue from '../../common/utils/getLocalizedValue';
 import {
+	Group,
 	ReferencedStructure,
 	RelatedContent,
 	RepeatableGroup,
@@ -33,22 +35,24 @@ import getRandomId from '../utils/getRandomId';
 import getUuid from '../utils/getUuid';
 import normalizeString from '../utils/normalizeString';
 import addChild from '../utils/state/addChild';
+import addGroup from '../utils/state/addGroup';
 import addRepeatableGroup from '../utils/state/addRepeatableGroup';
 import cloneChild from '../utils/state/cloneChild';
 import deleteChildren from '../utils/state/deleteChildren';
 import moveChildren from '../utils/state/moveChildren';
 import refreshReferencedStructures from '../utils/state/refreshReferencedStructures';
 import sortChildren from '../utils/state/sortChildren';
-import ungroup from '../utils/state/ungroupRepeatableGroup';
+import ungroup from '../utils/state/ungroup';
 import updateChild from '../utils/state/updateChild';
+import updateGroupRepeatable from '../utils/state/updateGroupRepeatable';
 import updateHistory from '../utils/state/updateHistory';
 import {
 	ErrorMap,
 	ValidationError,
 	ValidationProperty,
 	validateField,
+	validateGroup,
 	validateRelatedContent,
-	validateRepeatableGroup,
 	validateStructure,
 } from '../utils/validation';
 
@@ -60,18 +64,23 @@ type History = {
 		structureERC: string;
 	}>;
 	modifiedNames: Set<Uuid>;
+	modifiedSlugs: Set<Uuid>;
 };
 
 export type Clipboard = {
 	items: StructureChild[];
 };
 
+export type Operation = 'publishing' | 'saving';
+
 export type State = {
 	clipboard: Clipboard | null;
 	history: History;
 	invalids: Map<Uuid, ErrorMap>;
+	operation: Operation | null;
 	publishedChildren: Set<Uuid>;
 	renamingItemUuid: Uuid | null;
+	savedChildren: Set<Uuid>;
 	selection: Uuid[];
 	structure: Structure;
 	unsavedChanges: boolean;
@@ -84,10 +93,13 @@ const INITIAL_STATE: State = {
 		deletedGroupERCs: [],
 		deletedRelationships: [],
 		modifiedNames: new Set(),
+		modifiedSlugs: new Set(),
 	},
 	invalids: new Map(),
+	operation: null,
 	publishedChildren: new Set(),
 	renamingItemUuid: null,
+	savedChildren: new Set(),
 	selection: [],
 	structure: {
 		children: new Map(),
@@ -96,6 +108,7 @@ const INITIAL_STATE: State = {
 		name: '',
 		path: '',
 		settings: {},
+		slug: '',
 		spaces: 'all',
 		status: 'new',
 		system: false,
@@ -118,6 +131,12 @@ type AddRelatedContentAction = {
 	type: 'add-related-content';
 };
 
+type AddGroupAction = {
+	parent: Uuid;
+	type: 'add-group';
+	uuids: Uuid[];
+};
+
 type AddRepeatableGroupAction = {
 	type: 'add-repeatable-group';
 	uuids: Uuid[];
@@ -126,7 +145,6 @@ type AddRepeatableGroupAction = {
 type AddErrorAction = {
 	error: ValidationError;
 	property: ValidationProperty;
-	status?: Structure['status'];
 	type: 'add-error';
 	uuid: Uuid;
 };
@@ -145,6 +163,8 @@ type CreateStructureAction = {
 type DeleteChildrenAction = {type: 'delete-children'; uuids: Uuid[]};
 
 type DuplicateChildrenAction = {type: 'duplicate-children'; uuids: Uuid[]};
+
+type EndOperationAction = {type: 'end-operation'};
 
 type MoveChildrenAction = {
 	items: StructureChild[];
@@ -167,6 +187,8 @@ type RenameItemAction = {
 	uuid: Uuid;
 };
 
+type SaveStructureAction = {type: 'save-structure'};
+
 type SetRenamingItemUuidAction = {
 	type: 'set-renaming-item-uuid';
 	uuid: Uuid;
@@ -177,15 +199,15 @@ type SetSelectionAction = {
 	type: 'set-selection';
 };
 
-type SetStructureStatusAction = {
-	status: Structure['status'];
-	type: 'set-structure-status';
-};
-
 type SetWorkflowAction = {
 	name: Workflow['name'];
 	spaceERC?: Space['externalReferenceCode'];
 	type: 'set-workflow';
+};
+
+type StartOperationAction = {
+	operation: Operation;
+	type: 'start-operation';
 };
 
 type UngroupAction = {
@@ -217,9 +239,10 @@ type UpdateRelatedContentAction = {
 	uuid: Uuid;
 };
 
-type UpdateRepeatableGroupAction = {
-	label: Liferay.Language.LocalizedValue<string>;
-	type: 'update-repeatable-group';
+type UpdateGroupAction = {
+	isRepeatable?: boolean;
+	label?: Liferay.Language.LocalizedValue<string>;
+	type: 'update-group';
 	uuid: Uuid;
 };
 
@@ -228,6 +251,7 @@ type UpdateStructureAction = {
 	label?: Liferay.Language.LocalizedValue<string>;
 	name?: string;
 	objectDefinitions?: ObjectDefinitions;
+	slug?: string;
 	spaces?: Structure['spaces'];
 	type: 'update-structure';
 };
@@ -241,6 +265,7 @@ export type Action =
 	| AddFieldAction
 	| AddReferencedStructuresAction
 	| AddRelatedContentAction
+	| AddGroupAction
 	| AddRepeatableGroupAction
 	| AddErrorAction
 	| ClearErrorsAction
@@ -248,19 +273,21 @@ export type Action =
 	| CreateStructureAction
 	| DeleteChildrenAction
 	| DuplicateChildrenAction
+	| EndOperationAction
 	| MoveChildrenAction
 	| PasteAction
 	| PublishStructureAction
 	| RefreshReferencedStructuresAction
 	| RenameItemAction
+	| SaveStructureAction
 	| SetRenamingItemUuidAction
 	| SetSelectionAction
-	| SetStructureStatusAction
 	| SetWorkflowAction
+	| StartOperationAction
 	| UngroupAction
 	| UpdateFieldAction
 	| UpdateRelatedContentAction
-	| UpdateRepeatableGroupAction
+	| UpdateGroupAction
 	| UpdateStructureAction
 	| ValidateAction;
 
@@ -275,12 +302,12 @@ function reducer(state: State, action: Action): State {
 
 			const {structure} = state;
 
-			let parent: Structure | RepeatableGroup = structure;
+			let parent: Structure | Group = structure;
 
 			if (field.parent !== structure.uuid) {
 				const item = findChild({root: structure, uuid: field.parent});
 
-				if (item?.type === 'repeatable-group') {
+				if (item?.type === 'group') {
 					parent = item;
 				}
 			}
@@ -311,10 +338,11 @@ function reducer(state: State, action: Action): State {
 		case 'add-referenced-structures': {
 			const {referencedStructures} = action;
 
-			const {publishedChildren, structure} = state;
+			const {publishedChildren, savedChildren, structure} = state;
 
 			let children = new Map(structure.children);
 
+			let nextSavedChildren = new Set(savedChildren);
 			let nextPublishedChildren = new Set(publishedChildren);
 
 			let selection: State['selection'] = [];
@@ -328,9 +356,17 @@ function reducer(state: State, action: Action): State {
 					root: {...structure, children},
 				});
 
+				const referencedStructureChildrenUuids = getChildrenUuids({
+					root: referencedStructure,
+				});
+
+				nextSavedChildren = new Set([
+					...nextSavedChildren,
+					...referencedStructureChildrenUuids,
+				]);
 				nextPublishedChildren = new Set([
 					...nextPublishedChildren,
-					...getChildrenUuids({root: referencedStructure}),
+					...referencedStructureChildrenUuids,
 				]);
 
 				if (i === 0) {
@@ -343,6 +379,7 @@ function reducer(state: State, action: Action): State {
 			return {
 				...state,
 				publishedChildren: nextPublishedChildren,
+				savedChildren: nextSavedChildren,
 				selection,
 				structure: {...structure, children: sortedChildren},
 			};
@@ -365,8 +402,32 @@ function reducer(state: State, action: Action): State {
 				structure: {...structure, children: sortedChildren},
 			};
 		}
+		case 'add-group': {
+			const {structure} = state;
+
+			const {parent, uuids} = action;
+
+			const items = uuids.map(
+				(uuid) => findChild({root: structure, uuid})!
+			);
+
+			const groupUuid = getUuid();
+
+			const children = addGroup({
+				groupChildren: items,
+				groupParent: parent,
+				groupUuid,
+				root: structure,
+			});
+
+			return {
+				...state,
+				selection: [groupUuid],
+				structure: {...structure, children},
+			};
+		}
 		case 'add-repeatable-group': {
-			const {history, publishedChildren, structure} = state;
+			const {history, savedChildren, structure} = state;
 
 			const {uuids} = action;
 
@@ -386,7 +447,7 @@ function reducer(state: State, action: Action): State {
 			const deletedChildrenUuids = new Set<Uuid>();
 
 			for (const item of items) {
-				if (publishedChildren.has(item.uuid)) {
+				if (savedChildren.has(item.uuid)) {
 					deletedChildrenUuids.add(item.uuid);
 				}
 			}
@@ -397,7 +458,7 @@ function reducer(state: State, action: Action): State {
 					? updateHistory({
 							deletedChildrenUuids,
 							initialHistory: history,
-							publishedChildren,
+							savedChildren,
 							structure,
 						})
 					: history,
@@ -406,7 +467,7 @@ function reducer(state: State, action: Action): State {
 			};
 		}
 		case 'add-error': {
-			const {error, property, status, uuid} = action;
+			const {error, property, uuid} = action;
 
 			const invalids = new Map(state.invalids);
 
@@ -418,7 +479,6 @@ function reducer(state: State, action: Action): State {
 
 			return {
 				...state,
-				...(status && {structure: {...state.structure, status}}),
 				invalids,
 			};
 		}
@@ -477,7 +537,7 @@ function reducer(state: State, action: Action): State {
 				history: updateHistory({
 					deletedChildrenUuids,
 					initialHistory: state.history,
-					publishedChildren: state.publishedChildren,
+					savedChildren: state.savedChildren,
 					structure,
 				}),
 				invalids,
@@ -505,7 +565,7 @@ function reducer(state: State, action: Action): State {
 				const parent = (findChild({
 					root: nextStructure,
 					uuid: child.parent,
-				}) || nextStructure) as Structure | RepeatableGroup;
+				}) || nextStructure) as Structure | Group;
 
 				const copy = cloneChild({
 					child,
@@ -530,10 +590,13 @@ function reducer(state: State, action: Action): State {
 				structure: nextStructure,
 			};
 		}
+		case 'end-operation': {
+			return {...state, operation: null};
+		}
 		case 'move-children': {
 			const {items, targetUuid} = action;
 
-			const {history, publishedChildren, structure} = state;
+			const {history, savedChildren, structure} = state;
 
 			const children = moveChildren({
 				items,
@@ -544,7 +607,7 @@ function reducer(state: State, action: Action): State {
 			const deletedChildrenUuids = new Set<Uuid>();
 
 			for (const item of items) {
-				if (publishedChildren.has(item.uuid)) {
+				if (savedChildren.has(item.uuid)) {
 					deletedChildrenUuids.add(item.uuid);
 				}
 			}
@@ -555,7 +618,7 @@ function reducer(state: State, action: Action): State {
 					? updateHistory({
 							deletedChildrenUuids,
 							initialHistory: history,
-							publishedChildren,
+							savedChildren,
 							structure,
 						})
 					: history,
@@ -619,7 +682,22 @@ function reducer(state: State, action: Action): State {
 				history: INITIAL_STATE.history,
 				invalids: new Map(),
 				publishedChildren: getChildrenUuids({root: structure}),
+				savedChildren: getChildrenUuids({root: structure}),
 				structure: nextStructure,
+				unsavedChanges: false,
+			};
+		}
+		case 'save-structure': {
+			const {structure} = state;
+
+			return {
+				...state,
+				history: INITIAL_STATE.history,
+				savedChildren: getChildrenUuids({root: structure}),
+				structure: {
+					...structure,
+					status: 'draft' as Structure['status'],
+				},
 				unsavedChanges: false,
 			};
 		}
@@ -690,17 +768,6 @@ function reducer(state: State, action: Action): State {
 
 			return {...state, selection};
 		}
-		case 'set-structure-status': {
-			const {status} = action;
-
-			return {
-				...state,
-				structure: {
-					...state.structure,
-					status,
-				},
-			};
-		}
 		case 'set-workflow': {
 			const {name, spaceERC} = action;
 
@@ -715,6 +782,11 @@ function reducer(state: State, action: Action): State {
 			};
 
 			return {...state, structure: nextStructure};
+		}
+		case 'start-operation': {
+			const {operation} = action;
+
+			return {...state, operation};
 		}
 		case 'ungroup': {
 			const {structure} = state;
@@ -899,41 +971,41 @@ function reducer(state: State, action: Action): State {
 				},
 			};
 		}
-		case 'update-repeatable-group': {
-			const {label, uuid} = action;
+		case 'update-group': {
+			const {isRepeatable, label, uuid} = action;
 
-			const {structure} = state;
+			const {history, savedChildren, structure} = state;
 
-			const group = findChild({root: structure, uuid}) as RepeatableGroup;
+			const group = findChild({root: structure, uuid});
 
-			if (!group) {
+			if (!group || group.type !== 'group') {
 				return state;
 			}
 
-			const nextGroup = {
-				...group,
-				label,
-			};
+			if (isRepeatable !== undefined) {
+				if (group.isRepeatable === isRepeatable) {
+					return state;
+				}
 
-			const nextChildren = updateChild({
-				child: nextGroup,
-				root: structure,
-			});
+				const {children, history: nextHistory} = updateGroupRepeatable({
+					group,
+					history,
+					isRepeatable,
+					savedChildren,
+					structure,
+				});
 
-			const nextState: State = {
-				...state,
-				structure: {
-					...structure,
-					children: nextChildren,
-				},
-			};
-
-			// Validate the data sent in the action
+				return {
+					...state,
+					history: nextHistory,
+					structure: {...structure, children},
+				};
+			}
 
 			const invalids = new Map(state.invalids);
 
-			const errors = validateRepeatableGroup({
-				currentErrors: invalids.get(structure.uuid),
+			const errors = validateGroup({
+				currentErrors: invalids.get(group.uuid),
 				data: {label},
 			});
 
@@ -944,18 +1016,23 @@ function reducer(state: State, action: Action): State {
 				invalids.delete(group.uuid);
 			}
 
-			// Return new state
-
 			return {
-				...nextState,
+				...state,
 				invalids,
+				structure: {
+					...structure,
+					children: updateChild({
+						child: {...group, label: label!},
+						root: structure,
+					}),
+				},
 			};
 		}
 		case 'update-structure': {
 
 			// Prepare updated state
 
-			const {erc, label, name, objectDefinitions, spaces} = action;
+			const {erc, label, name, objectDefinitions, slug, spaces} = action;
 
 			const {history, structure} = state;
 
@@ -965,6 +1042,20 @@ function reducer(state: State, action: Action): State {
 
 			if (name && name !== structure.name) {
 				modifiedNames.add(structure.uuid);
+			}
+
+			// If the slug is being updated manually, mark it so it stops
+			// tracking the label. An empty value resumes auto-generation.
+
+			const modifiedSlugs = new Set(history.modifiedSlugs);
+
+			if (slug !== undefined) {
+				if (slug) {
+					modifiedSlugs.add(structure.uuid);
+				}
+				else {
+					modifiedSlugs.delete(structure.uuid);
+				}
 			}
 
 			// Calculate new name
@@ -980,17 +1071,28 @@ function reducer(state: State, action: Action): State {
 				});
 			}
 
+			// Calculate new slug
+
+			const nextSlug = getNextSlug({
+				action,
+				isPublished,
+				modifiedSlugs,
+				structure,
+			});
+
 			const nextState: State = {
 				...state,
 				history: {
 					...history,
 					modifiedNames,
+					modifiedSlugs,
 				},
 				structure: {
 					...state.structure,
 					erc: erc ?? structure.erc,
 					label: label ?? structure.label,
 					name: nextName,
+					slug: nextSlug,
 					spaces: spaces ?? structure.spaces,
 				},
 			};
@@ -1129,6 +1231,28 @@ function getDefaultChildren(structureUuid: Uuid) {
 	return children;
 }
 
+function getNextSlug({
+	action,
+	isPublished,
+	modifiedSlugs,
+	structure,
+}: {
+	action: UpdateStructureAction;
+	isPublished: boolean;
+	modifiedSlugs: State['history']['modifiedSlugs'];
+	structure: Structure;
+}): string {
+	if ('slug' in action) {
+		return action.slug!;
+	}
+
+	if (isPublished || !action.label || modifiedSlugs.has(structure.uuid)) {
+		return structure.slug;
+	}
+
+	return normalizeFriendlyURL(getLocalizedValue(action.label));
+}
+
 function getNextName({
 	action,
 	item,
@@ -1172,8 +1296,7 @@ function getTargetChildren({
 
 	if (
 		target &&
-		(target.type === 'repeatable-group' ||
-			target.type === 'referenced-structure')
+		(target.type === 'group' || target.type === 'referenced-structure')
 	) {
 		return target.children;
 	}

@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
@@ -30,6 +31,8 @@ import java.io.Serializable;
 
 import java.math.BigDecimal;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -201,6 +204,58 @@ public class ProductConfiguration implements Serializable {
 
 	@JsonIgnore
 	private Supplier<BigDecimal[]> _allowedOrderQuantitiesSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "External reference code of the linked availability estimate; resolved before `availabilityEstimateId` and never falling back to it. An unresolved code fails the request, except during an import, where it creates an empty availability estimate to be completed later.",
+		example = "AB-34098-789-N"
+	)
+	public String getAvailabilityEstimateExternalReferenceCode() {
+		if (_availabilityEstimateExternalReferenceCodeSupplier != null) {
+			availabilityEstimateExternalReferenceCode =
+				_availabilityEstimateExternalReferenceCodeSupplier.get();
+
+			_availabilityEstimateExternalReferenceCodeSupplier = null;
+		}
+
+		return availabilityEstimateExternalReferenceCode;
+	}
+
+	public void setAvailabilityEstimateExternalReferenceCode(
+		String availabilityEstimateExternalReferenceCode) {
+
+		this.availabilityEstimateExternalReferenceCode =
+			availabilityEstimateExternalReferenceCode;
+
+		_availabilityEstimateExternalReferenceCodeSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setAvailabilityEstimateExternalReferenceCode(
+		UnsafeSupplier<String, Exception>
+			availabilityEstimateExternalReferenceCodeUnsafeSupplier) {
+
+		_availabilityEstimateExternalReferenceCodeSupplier = () -> {
+			try {
+				return availabilityEstimateExternalReferenceCodeUnsafeSupplier.
+					get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "External reference code of the linked availability estimate; resolved before `availabilityEstimateId` and never falling back to it. An unresolved code fails the request, except during an import, where it creates an empty availability estimate to be completed later."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String availabilityEstimateExternalReferenceCode;
+
+	@JsonIgnore
+	private Supplier<String> _availabilityEstimateExternalReferenceCodeSupplier;
 
 	@DecimalMin("0")
 	@io.swagger.v3.oas.annotations.media.Schema(
@@ -1223,6 +1278,23 @@ public class ProductConfiguration implements Serializable {
 			sb.append("]");
 		}
 
+		String availabilityEstimateExternalReferenceCode =
+			getAvailabilityEstimateExternalReferenceCode();
+
+		if (availabilityEstimateExternalReferenceCode != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"availabilityEstimateExternalReferenceCode\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(availabilityEstimateExternalReferenceCode));
+
+			sb.append("\"");
+		}
+
 		Long availabilityEstimateId = getAvailabilityEstimateId();
 
 		if (availabilityEstimateId != null) {
@@ -1633,6 +1705,27 @@ public class ProductConfiguration implements Serializable {
 		return sb.toString();
 	}
 
+	private static String _toJSON(Object value) {
+		if (value instanceof Collection) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray((Collection<?>)value));
+		}
+		else if (value instanceof Map) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONObject((Map<?, ?>)value));
+		}
+		else if (value instanceof Object[]) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray(
+					Arrays.asList((Object[])value)));
+		}
+		else if (value instanceof String) {
+			return StringBundler.concat("\"", _escape(value), "\"");
+		}
+
+		return String.valueOf(value);
+	}
+
 	private static final String[][] _JSON_ESCAPE_STRINGS = {
 		{"\\", "\"", "\b", "\f", "\n", "\r", "\t"},
 		{"\\\\", "\\\"", "\\b", "\\f", "\\n", "\\r", "\\t"}
@@ -1641,4 +1734,4 @@ public class ProductConfiguration implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:1539407543
+// LIFERAY-REST-BUILDER-HASH:-456359552

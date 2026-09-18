@@ -46,6 +46,7 @@ export default function buildStructure({
 		name: mainObjectDefinition.name ?? '',
 		path: mainObjectDefinition.restContextPath ?? '',
 		settings: getSettings(mainObjectDefinition),
+		slug: mainObjectDefinition.friendlyURLSeparator ?? '',
 		spaces: getSpaces(mainObjectDefinition),
 		status: isPublished ? 'published' : 'draft',
 		system: mainObjectDefinition.system ?? false,
@@ -293,12 +294,13 @@ export function buildRepeatableGroup({
 			parent: uuid,
 		}),
 		erc,
+		isRepeatable: true,
 		label: objectDefinition.label,
 		name: objectDefinition.name!,
 		parent,
 		relationshipERC,
 		relationshipName,
-		type: 'repeatable-group',
+		type: 'group',
 		uuid,
 	};
 }
@@ -487,20 +489,18 @@ function getRelatedContentObjectRelationships(
 	const relationships: ObjectRelationship[] = [];
 
 	for (const objectDefinition of Object.values(objectDefinitions)) {
-		if (
-			mainObjectDefinition.externalReferenceCode ===
-			objectDefinition.externalReferenceCode
-		) {
-			continue;
-		}
-
 		for (const objectRelationship of objectDefinition.objectRelationships ||
 			[]) {
 			if (
 				objectRelationship.objectDefinitionExternalReferenceCode2 ===
 					mainObjectDefinition.externalReferenceCode &&
 				objectRelationship.type === 'oneToMany' &&
-				!objectRelationship.edge
+				!objectRelationship.edge &&
+				!(
+					objectDefinition.externalReferenceCode ===
+						mainObjectDefinition.externalReferenceCode &&
+					isRepeatableGroup(objectRelationship, objectDefinitions)
+				)
 			) {
 				relationships.push(objectRelationship);
 			}

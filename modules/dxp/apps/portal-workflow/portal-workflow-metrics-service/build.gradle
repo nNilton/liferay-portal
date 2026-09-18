@@ -6,6 +6,7 @@ buildService {
 dependencies {
 	compileOnly group: "com.liferay", name: "biz.aQute.bnd.annotation", version: "4.2.0.LIFERAY-PATCHED-2"
 	compileOnly group: "com.liferay.jakarta.portlet", name: "com.liferay.jakarta.portlet-api", version: "4.0.0"
+	compileOnly group: "com.liferay.portal", name: "com.liferay.portal.impl", version: "default"
 	compileOnly group: "com.liferay.portal", name: "com.liferay.portal.kernel", version: "default"
 	compileOnly group: "commons-codec", name: "commons-codec", version: "1.15"
 	compileOnly group: "commons-lang", name: "commons-lang", version: "2.6"
@@ -16,6 +17,9 @@ dependencies {
 	compileOnly project(":apps:portal-background-task:portal-background-task-api")
 	compileOnly project(":apps:portal-search:portal-search-api")
 	compileOnly project(":apps:portal-search:portal-search-engine-adapter-api")
+	compileOnly project(":apps:portal-search:portal-search-spi")
+	compileOnly project(":apps:portal-workflow:portal-workflow-kaleo-api")
+	compileOnly project(":apps:portal-workflow:portal-workflow-kaleo-definition-api")
 	compileOnly project(":apps:portal-workflow:portal-workflow-metrics-sla-api")
 	compileOnly project(":apps:portal:portal-aop-api")
 	compileOnly project(":apps:portal:portal-dao-orm-custom-sql-api")
@@ -30,7 +34,7 @@ dependencies {
 	compileOnly project(":core:petra:petra-lang")
 	compileOnly project(":core:petra:petra-sql-dsl-api")
 	compileOnly project(":core:petra:petra-string")
+	compileOnly project(":dxp:apps:portal-workflow:portal-workflow-kaleo-metrics-integration")
 	compileOnly project(":dxp:apps:portal-workflow:portal-workflow-metrics-api")
-	testImplementation group: "com.liferay.portal", name: "com.liferay.portal.impl", version: "default"
 	testImplementation project(":apps:portal-search:portal-search")
 }

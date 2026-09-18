@@ -35,6 +35,7 @@ import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
+import com.liferay.portal.kernel.test.util.JAXRSWhiteboardTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -112,6 +113,8 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 	public static void setUpClass() throws Exception {
 		_format = FastDateFormatFactoryUtil.getSimpleDateFormat(
 			"yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+		JAXRSWhiteboardTestUtil.ensureReady();
 	}
 
 	@Before
@@ -199,6 +202,7 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 		workflowTask.setLabel(regex);
 		workflowTask.setName(regex);
 		workflowTask.setWorkflowDefinitionName(regex);
+		workflowTask.setWorkflowDefinitionTitle(regex);
 		workflowTask.setWorkflowDefinitionVersion(regex);
 
 		String json = WorkflowTaskSerDes.toJSON(workflowTask);
@@ -211,6 +215,7 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 		Assert.assertEquals(regex, workflowTask.getLabel());
 		Assert.assertEquals(regex, workflowTask.getName());
 		Assert.assertEquals(regex, workflowTask.getWorkflowDefinitionName());
+		Assert.assertEquals(regex, workflowTask.getWorkflowDefinitionTitle());
 		Assert.assertEquals(regex, workflowTask.getWorkflowDefinitionVersion());
 	}
 
@@ -263,7 +268,8 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 		page =
 			workflowTaskResource.
 				getWorkflowInstanceWorkflowTasksAssignedToMePage(
-					workflowInstanceId, null, Pagination.of(1, 10));
+					workflowInstanceId, null,
+					Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -462,7 +468,8 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 		page =
 			workflowTaskResource.
 				getWorkflowInstanceWorkflowTasksAssignedToUserPage(
-					workflowInstanceId, null, null, Pagination.of(1, 10));
+					workflowInstanceId, null, null,
+					Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -654,7 +661,7 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 				workflowInstanceId, randomWorkflowTask());
 
 		page = workflowTaskResource.getWorkflowInstanceWorkflowTasksPage(
-			workflowInstanceId, null, Pagination.of(1, 10));
+			workflowInstanceId, null, Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -1130,7 +1137,7 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 				randomWorkflowTask());
 
 		page = workflowTaskResource.getWorkflowTasksAssignedToMePage(
-			Pagination.of(1, 10));
+			Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -1261,7 +1268,7 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 				randomWorkflowTask());
 
 		page = workflowTaskResource.getWorkflowTasksAssignedToMyRolesPage(
-			Pagination.of(1, 10));
+			Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -1394,7 +1401,7 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 				randomWorkflowTask());
 
 		page = workflowTaskResource.getWorkflowTasksAssignedToRolePage(
-			null, Pagination.of(1, 10));
+			null, Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -1529,7 +1536,7 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 				randomWorkflowTask());
 
 		page = workflowTaskResource.getWorkflowTasksAssignedToUserPage(
-			null, Pagination.of(1, 10));
+			null, Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -1664,7 +1671,7 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 				randomWorkflowTask());
 
 		page = workflowTaskResource.getWorkflowTasksAssignedToUserRolesPage(
-			null, Pagination.of(1, 10));
+			null, Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -1801,7 +1808,7 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 				randomWorkflowTask());
 
 		page = workflowTaskResource.getWorkflowTasksSubmittingUserPage(
-			null, Pagination.of(1, 10));
+			null, Pagination.of(1, (int)totalCount + 2));
 
 		Assert.assertEquals(totalCount + 2, page.getTotalCount());
 
@@ -2307,6 +2314,16 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 			}
 
 			if (Objects.equals(
+					"workflowDefinitionTitle", additionalAssertFieldName)) {
+
+				if (workflowTask.getWorkflowDefinitionTitle() == null) {
+					valid = false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals(
 					"workflowDefinitionVersion", additionalAssertFieldName)) {
 
 				if (workflowTask.getWorkflowDefinitionVersion() == null) {
@@ -2625,6 +2642,19 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 				if (!Objects.deepEquals(
 						workflowTask1.getWorkflowDefinitionName(),
 						workflowTask2.getWorkflowDefinitionName())) {
+
+					return false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals(
+					"workflowDefinitionTitle", additionalAssertFieldName)) {
+
+				if (!Objects.deepEquals(
+						workflowTask1.getWorkflowDefinitionTitle(),
+						workflowTask2.getWorkflowDefinitionTitle())) {
 
 					return false;
 				}
@@ -3092,6 +3122,52 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 			return sb.toString();
 		}
 
+		if (entityFieldName.equals("workflowDefinitionTitle")) {
+			Object object = workflowTask.getWorkflowDefinitionTitle();
+
+			String value = String.valueOf(object);
+
+			if (operator.equals("contains")) {
+				sb = new StringBundler();
+
+				sb.append("contains(");
+				sb.append(entityFieldName);
+				sb.append(",'");
+
+				if ((object != null) && (value.length() > 2)) {
+					sb.append(value.substring(1, value.length() - 1));
+				}
+				else {
+					sb.append(value);
+				}
+
+				sb.append("')");
+			}
+			else if (operator.equals("startswith")) {
+				sb = new StringBundler();
+
+				sb.append("startswith(");
+				sb.append(entityFieldName);
+				sb.append(",'");
+
+				if ((object != null) && (value.length() > 1)) {
+					sb.append(value.substring(0, value.length() - 1));
+				}
+				else {
+					sb.append(value);
+				}
+
+				sb.append("')");
+			}
+			else {
+				sb.append("'");
+				sb.append(value);
+				sb.append("'");
+			}
+
+			return sb.toString();
+		}
+
 		if (entityFieldName.equals("workflowDefinitionVersion")) {
 			Object object = workflowTask.getWorkflowDefinitionVersion();
 
@@ -3207,6 +3283,8 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 				name = StringUtil.toLowerCase(RandomTestUtil.randomString());
 				workflowDefinitionId = RandomTestUtil.randomLong();
 				workflowDefinitionName = StringUtil.toLowerCase(
+					RandomTestUtil.randomString());
+				workflowDefinitionTitle = StringUtil.toLowerCase(
 					RandomTestUtil.randomString());
 				workflowDefinitionVersion = StringUtil.toLowerCase(
 					RandomTestUtil.randomString());
@@ -3458,4 +3536,4 @@ public abstract class BaseWorkflowTaskResourceTestCase {
 		_vulcanCRUDItemDelegateBuilderRegistry;
 
 }
-// LIFERAY-REST-BUILDER-HASH:644017525
+// LIFERAY-REST-BUILDER-HASH:-1052208513

@@ -11,6 +11,7 @@ import {SectionHeader} from '../../common/SectionHeader';
 import {PerformanceContext} from '../PerformanceContext';
 import PerformanceService from '../PerformanceService';
 import {MetricType, OverviewMetrics} from '../types';
+import {HistogramCard} from './HistogramCard';
 import InteractiveCard, {MetricColor} from './InteractiveCard';
 
 type MetricConfig = {
@@ -22,13 +23,13 @@ type MetricConfig = {
 
 const METRICS: MetricConfig[] = [
 	{
-		color: 'purple',
+		color: 'pink',
 		icon: 'low-vision',
 		key: 'impressionsMetric',
 		title: Liferay.Language.get('impressions'),
 	},
 	{
-		color: 'info',
+		color: 'purple',
 		icon: 'view',
 		key: 'viewsMetric',
 		title: Liferay.Language.get('views'),
@@ -48,17 +49,21 @@ const METRICS: MetricConfig[] = [
 ];
 
 export function Overview() {
-	const {range, space} = useContext(PerformanceContext);
+	const {project, range, space} = useContext(PerformanceContext);
 
 	const [loading, setLoading] = useState(true);
 	const [metrics, setMetrics] = useState<OverviewMetrics>();
-	const [selected, setSelected] = useState<MetricType>(METRICS[0].key);
+	const [selected, setSelected] = useState<MetricType | undefined>(undefined);
+
+	const selectedMetric = METRICS.find(({key}) => key === selected);
 
 	useEffect(() => {
 		async function getMetrics() {
 			setLoading(true);
 
 			const {data, error} = await PerformanceService.getOverviewMetrics({
+				cmpProjectIds:
+					project.value === 'all' ? undefined : [project.value],
 				depotEntryIds:
 					space.value === 'all' ? undefined : [space.value],
 				rangeKey: range.rangeKey,
@@ -76,19 +81,17 @@ export function Overview() {
 		}
 
 		getMetrics();
-	}, [range.rangeKey, space.value]);
+	}, [project.value, range.rangeKey, space.value]);
 
 	return (
 		<>
 			<ClayLayout.Row className="mb-3">
 				<ClayLayout.Col size={12}>
 					<SectionHeader
-						ariaLevel={2}
 						description={Liferay.Language.get(
 							'get-a-high-level-view-of-performance-trends-to-spot-changes-and-guide-decisions'
 						)}
-						icon="analytics"
-						role="heading"
+						icon="polls"
 						title={Liferay.Language.get('performance-overview')}
 					/>
 				</ClayLayout.Col>
@@ -110,7 +113,11 @@ export function Overview() {
 								color={color}
 								icon={icon}
 								loading={loading}
-								onClick={() => setSelected(key)}
+								onClick={() =>
+									setSelected(
+										selected === key ? undefined : key
+									)
+								}
 								title={title}
 								trend={metric?.trend}
 								value={metric && toThousands(metric.value)}
@@ -119,6 +126,17 @@ export function Overview() {
 					);
 				})}
 			</ClayLayout.Row>
+
+			{selectedMetric ? (
+				<ClayLayout.Row className="mb-4">
+					<ClayLayout.Col className="mb-3" size={12}>
+						<HistogramCard
+							metricType={selectedMetric.key}
+							title={selectedMetric.title}
+						/>
+					</ClayLayout.Col>
+				</ClayLayout.Row>
+			) : null}
 		</>
 	);
 }

@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
@@ -24,6 +25,8 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 
 import java.io.Serializable;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -147,6 +150,57 @@ public class ProductTaxConfiguration implements Serializable {
 	private Supplier<String> _taxCategorySupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "External reference code of the tax category assigned to the product; it takes precedence over `id`. An unresolved code fails the request, except during an import, where it creates an empty tax category to be completed later.",
+		example = "AB-34098-789-N"
+	)
+	public String getTaxCategoryExternalReferenceCode() {
+		if (_taxCategoryExternalReferenceCodeSupplier != null) {
+			taxCategoryExternalReferenceCode =
+				_taxCategoryExternalReferenceCodeSupplier.get();
+
+			_taxCategoryExternalReferenceCodeSupplier = null;
+		}
+
+		return taxCategoryExternalReferenceCode;
+	}
+
+	public void setTaxCategoryExternalReferenceCode(
+		String taxCategoryExternalReferenceCode) {
+
+		this.taxCategoryExternalReferenceCode =
+			taxCategoryExternalReferenceCode;
+
+		_taxCategoryExternalReferenceCodeSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setTaxCategoryExternalReferenceCode(
+		UnsafeSupplier<String, Exception>
+			taxCategoryExternalReferenceCodeUnsafeSupplier) {
+
+		_taxCategoryExternalReferenceCodeSupplier = () -> {
+			try {
+				return taxCategoryExternalReferenceCodeUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "External reference code of the tax category assigned to the product; it takes precedence over `id`. An unresolved code fails the request, except during an import, where it creates an empty tax category to be completed later."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String taxCategoryExternalReferenceCode;
+
+	@JsonIgnore
+	private Supplier<String> _taxCategoryExternalReferenceCodeSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "Whether the product is subject to tax; defaults to true on create when omitted.",
 		example = "true"
 	)
@@ -244,6 +298,23 @@ public class ProductTaxConfiguration implements Serializable {
 			sb.append("\"");
 
 			sb.append(_escape(taxCategory));
+
+			sb.append("\"");
+		}
+
+		String taxCategoryExternalReferenceCode =
+			getTaxCategoryExternalReferenceCode();
+
+		if (taxCategoryExternalReferenceCode != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"taxCategoryExternalReferenceCode\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(taxCategoryExternalReferenceCode));
 
 			sb.append("\"");
 		}
@@ -353,6 +424,27 @@ public class ProductTaxConfiguration implements Serializable {
 		return sb.toString();
 	}
 
+	private static String _toJSON(Object value) {
+		if (value instanceof Collection) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray((Collection<?>)value));
+		}
+		else if (value instanceof Map) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONObject((Map<?, ?>)value));
+		}
+		else if (value instanceof Object[]) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray(
+					Arrays.asList((Object[])value)));
+		}
+		else if (value instanceof String) {
+			return StringBundler.concat("\"", _escape(value), "\"");
+		}
+
+		return String.valueOf(value);
+	}
+
 	private static final String[][] _JSON_ESCAPE_STRINGS = {
 		{"\\", "\"", "\b", "\f", "\n", "\r", "\t"},
 		{"\\\\", "\\\"", "\\b", "\\f", "\\n", "\\r", "\\t"}
@@ -361,4 +453,4 @@ public class ProductTaxConfiguration implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:1511246903
+// LIFERAY-REST-BUILDER-HASH:2023021276

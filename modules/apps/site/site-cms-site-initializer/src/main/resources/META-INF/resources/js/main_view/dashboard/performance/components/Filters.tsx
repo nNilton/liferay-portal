@@ -10,21 +10,43 @@ import {
 } from '@liferay/analytics-reports-js-components-web';
 import React, {useContext} from 'react';
 
-import {SpacesDropdown} from '../../common/SpacesDropdown';
+import {ProjectPicker} from '../../common/ProjectPicker';
+import {SpacePicker} from '../../common/SpacePicker';
 import {PerformanceContext} from '../PerformanceContext';
 
 export function Filters() {
-	const {range, setRange, setSpace, space} = useContext(PerformanceContext);
+	const {
+		additionalProps,
+		project,
+		range,
+		setProject,
+		setRange,
+		setSpace,
+		space,
+		spaceIds,
+	} = useContext(PerformanceContext);
 
 	return (
 		<ClayLayout.Row className="mb-4">
 			<ClayLayout.Col size={12}>
 				<div className="d-flex">
-					<SpacesDropdown
+					<SpacePicker
 						className="mr-3"
 						onSelectSpace={setSpace}
 						selectedSpace={space}
+						spaceIds={spaceIds}
 					/>
+
+					{additionalProps?.cmpEnabled ? (
+						<ProjectPicker
+							className="mr-3"
+							cmpProjectObjectDefinitionId={
+								additionalProps.cmpProjectObjectDefinitionId
+							}
+							onSelectProject={setProject}
+							selectedProject={project}
+						/>
+					) : null}
 
 					<RangeSelectorsDropdown
 						activeRangeSelector={range}

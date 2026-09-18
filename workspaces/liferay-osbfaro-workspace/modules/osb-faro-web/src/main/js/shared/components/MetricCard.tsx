@@ -3,27 +3,28 @@ import classNames from 'classnames';
 import ClayIcon from '@clayui/icon';
 import Loading from 'shared/components/Loading';
 import React, {ReactNode} from 'react';
+import {formatPercent} from 'shared/util/numbers';
 import {getIcon, getStatsColor} from 'shared/util/metrics';
 import {isNil} from 'lodash';
 import {Text} from '@clayui/core';
-import {toRounded} from 'shared/util/numbers';
 import {TrendClassification} from 'segment/types';
+import {TREND_PLACEHOLDER} from '../util/constants';
 
 interface IMetricCardTrend {
 	percentage: number;
 	trendClassification: TrendClassification;
 }
-
 interface IMetricCardProps {
 	className?: string;
 	description: string;
 	loading?: boolean;
 	minHeight?: number;
-	renderTrendLabel: (percentageNode: ReactNode) => ReactNode;
+	renderTrendLabel?: (percentageNode: ReactNode) => ReactNode;
 	title: string;
 	trend?: IMetricCardTrend;
 	trendClassName?: string;
 	value: ReactNode;
+	valueClassName?: string;
 }
 
 const MetricCard: React.FC<IMetricCardProps> = ({
@@ -36,6 +37,7 @@ const MetricCard: React.FC<IMetricCardProps> = ({
 	trend,
 	trendClassName,
 	value,
+	valueClassName = 'text-lowercase',
 }) => {
 	if (loading) {
 		return (
@@ -71,35 +73,49 @@ const MetricCard: React.FC<IMetricCardProps> = ({
 				</div>
 
 				<div>
-					<div className="mt-2 text-lowercase text-weight-semi-bold">
+					<div
+						className={classNames(
+							'mt-2 text-weight-semi-bold',
+							valueClassName
+						)}
+					>
 						<Text size={7}>{value}</Text>
 					</div>
 
 					<div
 						className={classNames('text-secondary', trendClassName)}
+						data-testid="metric-card-trend"
 					>
-						{!isNil(trend?.trendClassification) &&
-							trend?.trendClassification !==
-								TrendClassification.Neutral && (
-								<ClayIcon
-									style={{color: percentageColor}}
-									symbol={
-										getIcon(trend?.percentage ?? 0) ?? ''
-									}
-								/>
-							)}
+						{renderTrendLabel ? (
+							<>
+								{!isNil(trend?.trendClassification) &&
+									trend?.trendClassification !==
+										TrendClassification.Neutral && (
+										<ClayIcon
+											style={{color: percentageColor}}
+											symbol={
+												getIcon(
+													trend?.percentage ?? 0
+												) ?? ''
+											}
+										/>
+									)}
 
-						{renderTrendLabel(
-							<span
-								className="mr-1"
-								key="percentage"
-								style={{color: percentageColor}}
-							>
-								{`${toRounded(
-									Math.abs(trend?.percentage ?? 0),
-									1
-								)}%`}
-							</span>
+								{renderTrendLabel(
+									<span
+										className="mr-1"
+										key="percentage"
+										style={{color: percentageColor}}
+									>
+										{formatPercent(
+											Math.abs(trend?.percentage ?? 0),
+											1
+										)}
+									</span>
+								)}
+							</>
+						) : (
+							TREND_PLACEHOLDER
 						)}
 					</div>
 				</div>

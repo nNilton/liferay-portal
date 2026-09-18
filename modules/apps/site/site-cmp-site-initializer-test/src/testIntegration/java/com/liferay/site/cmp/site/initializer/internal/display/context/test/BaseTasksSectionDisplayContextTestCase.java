@@ -25,8 +25,6 @@ import com.liferay.portal.kernel.test.rule.Sync;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -49,9 +47,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 /**
  * @author Fábio Alves
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
 @RunWith(Arquillian.class)
 @Sync
 public abstract class BaseTasksSectionDisplayContextTestCase
@@ -68,41 +63,44 @@ public abstract class BaseTasksSectionDisplayContextTestCase
 	public void setUp() throws Exception {
 		super.setUp();
 
-		projectObjectDefinition =
+		cmpProjectObjectDefinition =
 			objectDefinitionLocalService.
 				getObjectDefinitionByExternalReferenceCode(
 					"L_CMP_PROJECT", TestPropsValues.getCompanyId());
 
-		ObjectEntry projectObjectEntry = CMPTestUtil.addProjectObjectEntry();
+		ObjectEntry cmpProjectObjectEntry =
+			CMPTestUtil.addCMPProjectObjectEntry();
 
-		projectObjectEntry = _objectEntryLocalService.updateObjectEntry(
-			TestPropsValues.getUserId(), projectObjectEntry.getObjectEntryId(),
-			projectObjectEntry.getObjectEntryFolderId(),
-			projectObjectEntry.getValues(),
+		cmpProjectObjectEntry = _objectEntryLocalService.updateObjectEntry(
+			TestPropsValues.getUserId(),
+			cmpProjectObjectEntry.getObjectEntryId(),
+			cmpProjectObjectEntry.getObjectEntryFolderId(),
+			cmpProjectObjectEntry.getValues(),
 			ServiceContextTestUtil.getServiceContext());
 
 		assetEntry = _assetEntryLocalService.getEntry(
-			projectObjectDefinition.getClassName(),
-			projectObjectEntry.getObjectEntryId());
+			cmpProjectObjectDefinition.getClassName(),
+			cmpProjectObjectEntry.getObjectEntryId());
 	}
 
 	@Test
 	public void testGetAdditionalProps() throws Exception {
 		Map<String, Object> additionalProps = getAdditionalProps(null);
 
-		Assert.assertNull(additionalProps.get("projectId"));
 		Assert.assertEquals(
-			projectObjectDefinition.getObjectDefinitionId(),
-			additionalProps.get("projectObjectDefinitionId"));
+			cmpProjectObjectDefinition.getObjectDefinitionId(),
+			additionalProps.get("cmpProjectObjectDefinitionId"));
+		Assert.assertNull(additionalProps.get("cmpProjectObjectEntryId"));
 		Assert.assertNotNull(additionalProps.get("states"));
 
 		additionalProps = getAdditionalProps(assetEntry);
 
 		Assert.assertEquals(
-			assetEntry.getClassPK(), additionalProps.get("projectId"));
+			cmpProjectObjectDefinition.getObjectDefinitionId(),
+			additionalProps.get("cmpProjectObjectDefinitionId"));
 		Assert.assertEquals(
-			projectObjectDefinition.getObjectDefinitionId(),
-			additionalProps.get("projectObjectDefinitionId"));
+			assetEntry.getClassPK(),
+			additionalProps.get("cmpProjectObjectEntryId"));
 		Assert.assertNotNull(additionalProps.get("states"));
 	}
 
@@ -115,18 +113,46 @@ public abstract class BaseTasksSectionDisplayContextTestCase
 			bulkActionDropdownItems.toString(), 4,
 			bulkActionDropdownItems.size());
 
+		FDSActionDropdownItem updateDueDateFDSActionDropdownItem =
+			(FDSActionDropdownItem)bulkActionDropdownItems.get(0);
+
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
 			"date-time", "update-due-date", "Update Due Date", "post",
-			(FDSActionDropdownItem)bulkActionDropdownItems.get(0));
+			updateDueDateFDSActionDropdownItem);
+
+		Assert.assertEquals(
+			"update",
+			getValue(updateDueDateFDSActionDropdownItem, "permissionKey"));
+
+		FDSActionDropdownItem assignToFDSActionDropdownItem =
+			(FDSActionDropdownItem)bulkActionDropdownItems.get(1);
+
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
 			"user", "assign-to", "Assign to...", null,
-			(FDSActionDropdownItem)bulkActionDropdownItems.get(1));
+			assignToFDSActionDropdownItem);
+
+		Assert.assertEquals(
+			"update", getValue(assignToFDSActionDropdownItem, "permissionKey"));
+
+		FDSActionDropdownItem updateStateFDSActionDropdownItem =
+			(FDSActionDropdownItem)bulkActionDropdownItems.get(2);
+
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
 			"arrow-start", "update-state", "Update State", "post",
-			(FDSActionDropdownItem)bulkActionDropdownItems.get(2));
+			updateStateFDSActionDropdownItem);
+
+		Assert.assertEquals(
+			"update",
+			getValue(updateStateFDSActionDropdownItem, "permissionKey"));
+
+		FDSActionDropdownItem deleteFDSActionDropdownItem =
+			(FDSActionDropdownItem)bulkActionDropdownItems.get(3);
+
 		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
-			"trash", "delete", "Delete", null,
-			(FDSActionDropdownItem)bulkActionDropdownItems.get(3));
+			"trash", "delete", "Delete", null, deleteFDSActionDropdownItem);
+
+		Assert.assertEquals(
+			"delete", getValue(deleteFDSActionDropdownItem, "permissionKey"));
 	}
 
 	@Test
@@ -140,7 +166,7 @@ public abstract class BaseTasksSectionDisplayContextTestCase
 				themeDisplay.getPortalURL(), themeDisplay.getPathMain(),
 				GroupConstants.CMS_FRIENDLY_URL,
 				"/add_project?objectDefinitionId=",
-				projectObjectDefinition.getObjectDefinitionId(), "&plid=",
+				cmpProjectObjectDefinition.getObjectDefinitionId(), "&plid=",
 				themeDisplay.getPlid(), "&redirect=",
 				themeDisplay.getURLCurrent(),
 				"&action=createProjectGlobalTask"),
@@ -155,13 +181,13 @@ public abstract class BaseTasksSectionDisplayContextTestCase
 				"&redirect=", themeDisplay.getURLCurrent(),
 				"&action=createGlobalTask"),
 			getValue(dropdownItem, "addTaskURL"));
+		Assert.assertEquals(
+			String.valueOf(cmpProjectObjectDefinition.getObjectDefinitionId()),
+			getValue(dropdownItem, "cmpProjectObjectDefinitionId"));
 		Assert.assertEquals("New Task", dropdownItem.get("label"));
 		Assert.assertEquals(
 			String.valueOf(objectDefinition.getObjectDefinitionId()),
 			getValue(dropdownItem, "objectDefinitionId"));
-		Assert.assertEquals(
-			String.valueOf(projectObjectDefinition.getObjectDefinitionId()),
-			getValue(dropdownItem, "projectObjectDefinitionId"));
 		Assert.assertEquals(
 			StringBundler.concat(
 				themeDisplay.getPortalURL(), themeDisplay.getPathMain(),
@@ -244,7 +270,7 @@ public abstract class BaseTasksSectionDisplayContextTestCase
 		"com.liferay.portal.workflow.kaleo.model.KaleoTaskInstanceToken";
 
 	protected AssetEntry assetEntry;
-	protected ObjectDefinition projectObjectDefinition;
+	protected ObjectDefinition cmpProjectObjectDefinition;
 
 	private DropdownItem _getDropdownItem(CreationMenu creationMenu) {
 		List<DropdownItem> dropdownItems = (List<DropdownItem>)creationMenu.get(

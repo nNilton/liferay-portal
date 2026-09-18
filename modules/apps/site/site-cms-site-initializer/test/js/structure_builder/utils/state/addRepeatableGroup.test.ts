@@ -20,6 +20,7 @@ const ROOT: Structure = {
 	label: {},
 	name: 'Root',
 	path: '',
+	slug: '',
 	spaces: 'all',
 	status: 'new',
 	system: false,
@@ -59,7 +60,7 @@ describe('addRepeatableGroup', () => {
 		const group = children.get(GROUP_UUID) as RepeatableGroup;
 
 		expect(group).toBeDefined();
-		expect(group.type).toBe('repeatable-group');
+		expect(group.type).toBe('group');
 		expect(group.label).toEqual({
 			en_US: 'repeatable-group',
 			es_ES: 'repeatable-group',

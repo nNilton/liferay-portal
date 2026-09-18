@@ -5,6 +5,7 @@
 
 package com.liferay.fragment.web.internal.display.context;
 
+import com.liferay.design.library.util.DesignLibraryUtil;
 import com.liferay.fragment.constants.FragmentActionKeys;
 import com.liferay.fragment.constants.FragmentPortletKeys;
 import com.liferay.fragment.contributor.FragmentCollectionContributor;
@@ -89,6 +90,8 @@ public class FragmentDisplayContext {
 					FragmentCollectionContributorRegistry.class.getName());
 		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
+
+		_updatePortletDisplay();
 	}
 
 	public List<DropdownItem> getActionDropdownItems() throws Exception {
@@ -291,6 +294,31 @@ public class FragmentDisplayContext {
 		return _contributedEntriesSearchContainer;
 	}
 
+	public long getEditFragmentCollectionId() {
+		long fragmentCollectionId = ParamUtil.getLong(
+			_httpServletRequest, "fragmentCollectionId");
+
+		if (fragmentCollectionId == 0) {
+			String externalReferenceCode = ParamUtil.getString(
+				_httpServletRequest, "fragmentCollectionExternalReferenceCode");
+
+			if (Validator.isNotNull(externalReferenceCode)) {
+				FragmentCollection fragmentCollection =
+					FragmentCollectionLocalServiceUtil.
+						fetchFragmentCollectionByExternalReferenceCode(
+							externalReferenceCode,
+							_themeDisplay.getScopeGroupId());
+
+				if (fragmentCollection != null) {
+					fragmentCollectionId =
+						fragmentCollection.getFragmentCollectionId();
+				}
+			}
+		}
+
+		return fragmentCollectionId;
+	}
+
 	public FragmentCollection getFragmentCollection() {
 		if (_fragmentCollection != null) {
 			return _fragmentCollection;
@@ -339,9 +367,13 @@ public class FragmentDisplayContext {
 			return _fragmentCollectionId;
 		}
 
-		_fragmentCollectionId = ParamUtil.getLong(
-			_httpServletRequest, "fragmentCollectionId",
-			_getDefaultFragmentCollectionId());
+		long fragmentCollectionId = getEditFragmentCollectionId();
+
+		if (fragmentCollectionId == 0) {
+			fragmentCollectionId = _getDefaultFragmentCollectionId();
+		}
+
+		_fragmentCollectionId = fragmentCollectionId;
 
 		return _fragmentCollectionId;
 	}
@@ -790,6 +822,11 @@ public class FragmentDisplayContext {
 		return _updatePermission;
 	}
 
+	public boolean isHideCollectionsPanel() {
+		return DesignLibraryUtil.isDesignLibraryScope(
+			_themeDisplay.getScopeGroup());
+	}
+
 	public boolean isLocked(FragmentCollection fragmentCollection) {
 		if ((fragmentCollection.getGroupId() != CompanyConstants.SYSTEM) &&
 			(fragmentCollection.getGroupId() !=
@@ -1053,6 +1090,32 @@ public class FragmentDisplayContext {
 		}
 
 		return true;
+	}
+
+	private void _updatePortletDisplay() {
+		if (!DesignLibraryUtil.isDesignLibraryScope(
+				_themeDisplay.getScopeGroup())) {
+
+			return;
+		}
+
+		PortletDisplay portletDisplay = _themeDisplay.getPortletDisplay();
+
+		portletDisplay.setPortletDecoratorId("barebone");
+		portletDisplay.setShowBackIcon(true);
+
+		String backURL = ParamUtil.getString(_httpServletRequest, "backURL");
+
+		if (Validator.isNull(backURL)) {
+			backURL = getRedirect();
+		}
+
+		if (Validator.isNull(backURL)) {
+			backURL = DesignLibraryUtil.getDesignLibraryResourcesURL(
+				_themeDisplay.getScopeGroup(), _httpServletRequest);
+		}
+
+		portletDisplay.setURLBack(backURL);
 	}
 
 	private SearchContainer<Object> _contributedEntriesSearchContainer;

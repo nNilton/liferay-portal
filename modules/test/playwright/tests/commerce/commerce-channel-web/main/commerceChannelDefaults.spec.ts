@@ -112,6 +112,13 @@ test(
 					scope: 1,
 				},
 				{
+					actionIds: ['VIEW'],
+					primaryKey: companyId,
+					resourceName:
+						'com.liferay.commerce.product.model.CommerceCatalog',
+					scope: 1,
+				},
+				{
 					actionIds: ['UPDATE', 'VIEW'],
 					primaryKey: companyId,
 					resourceName:
@@ -368,7 +375,7 @@ test(
 
 test(
 	'Can user with account manager role view and manage channel defaults',
-	{tag: '@LPD-28220'},
+	{tag: ['@LPD-28220', '@LPD-102068']},
 	async ({
 		accountManagementWidgetPage,
 		accountsPage,

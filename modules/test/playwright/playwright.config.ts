@@ -20,6 +20,7 @@ import {config as analyticsWebConfig} from './tests/analytics-web/main/config';
 import {config as announcementsWebConfig} from './tests/announcements-web/main/config';
 import {config as applicationListTaglibConfig} from './tests/application-list-taglib/main/config';
 import {config as assetCategoriesAdminWebConfig} from './tests/asset-categories-admin-web/main/config';
+import {config as assetListWebConfig} from './tests/asset-list-web/main/config';
 import {config as assetPublisherWebConfig} from './tests/asset-publisher-web/main/config';
 import {config as assetPublisherWebRelatedAssetsConfig} from './tests/asset-publisher-web/related-assets/config';
 import {config as assetTagsAdminWebConfig} from './tests/asset-tags-admin-web/main/config';
@@ -32,7 +33,17 @@ import {config as captchaWebConfig} from './tests/captcha-web/main/config';
 import {config as changeTrackingWebLocalePrependConfig} from './tests/change-tracking-web/main-locale-prepend/config';
 import {config as changeTrackingWebConfig} from './tests/change-tracking-web/main/config';
 import {config as clientExtensionWebClusterConfig} from './tests/client-extension-web/cluster/config';
+import {config as clientExtensionWebCSSConfig} from './tests/client-extension-web/css/config';
+import {config as clientExtensionWebCustomElementConfig} from './tests/client-extension-web/custom-element/config';
+import {config as clientExtensionWebEditorConfigContributorConfig} from './tests/client-extension-web/editor-config-contributor/config';
+import {config as clientExtensionWebFrontendDataSetConfig} from './tests/client-extension-web/frontend-data-set/config';
+import {config as clientExtensionWebIFrameConfig} from './tests/client-extension-web/iframe/config';
+import {config as clientExtensionWebJSImportMapsEntryConfig} from './tests/client-extension-web/js-import-maps-entry/config';
+import {config as clientExtensionWebJSConfig} from './tests/client-extension-web/js/config';
 import {config as clientExtensionWebConfig} from './tests/client-extension-web/main/config';
+import {config as clientExtensionWebThemeCSSConfig} from './tests/client-extension-web/theme-css/config';
+import {config as clientExtensionWebThemeFaviconConfig} from './tests/client-extension-web/theme-favicon/config';
+import {config as clientExtensionWebThemeSpritemapConfig} from './tests/client-extension-web/theme-spritemap/config';
 import {config as commerceAccountWebConfig} from './tests/commerce/commerce-account-web/main/config';
 import {config as commerceCartContentWebConfig} from './tests/commerce/commerce-cart-content-web/main/config';
 import {config as commerceCatalogWebConfig} from './tests/commerce/commerce-catalog-web/main/config';
@@ -112,6 +123,7 @@ import {config as layoutAdminWebConfig} from './tests/layout-admin-web/main/conf
 import {config as layoutContentPageEditorWebFormContainerConfig} from './tests/layout-content-page-editor-web/form-container/config';
 import {config as layoutContentPageEditorWebFragmentsConfig} from './tests/layout-content-page-editor-web/fragments/config';
 import {config as layoutContentPageEditorWebConfig} from './tests/layout-content-page-editor-web/main/config';
+import {config as layoutContentWebConfig} from './tests/layout-content-web/main/config';
 import {config as layoutLockedLayoutsWebConfig} from './tests/layout-locked-layouts-web/main/config';
 import {config as layoutPageTemplateAdminWebConfig} from './tests/layout-page-template-admin-web/main/config';
 import {config as layoutSetPrototypeWebConfig} from './tests/layout-set-prototype-web/main/config';
@@ -121,6 +133,7 @@ import {config as loginWebConfig} from './tests/login-web/main/config';
 import {config as loginWebSetupAdminConfig} from './tests/login-web/setup-admin/config';
 import {config as mapsConfig} from './tests/maps/main/config';
 import {config as marketplaceAppManagerWebConfig} from './tests/marketplace-app-manager-web/main/config';
+import {config as mcpServerWebConfig} from './tests/mcp-server-web/main/config';
 import {config as messageBoardsWebConfig} from './tests/message-boards-web/main/config';
 import {config as messageBoardsWebPaginationConfig} from './tests/message-boards-web/pagination/config';
 import {config as multifactorAuthenticationEmailOTPConfig} from './tests/multi-factor-authentication-email-otp-web/main/config';
@@ -159,9 +172,21 @@ import {config as osbFaroWebSettingsConfig} from './tests/osb-faro-web/settings/
 import {config as passwordPoliciesAdminWebFirstLoginConfig} from './tests/password-policies-admin-web/first-login/config';
 import {config as passwordPoliciesAdminWebConfig} from './tests/password-policies-admin-web/main/config';
 import {config as passwordPoliciesAdminWebSetupAdminConfig} from './tests/password-policies-admin-web/setup-admin/config';
+import {config as portalDbInfrastructureUpgradePortal6130Config} from './tests/portal-db-infrastructure/upgrade-portal-6130/config';
+import {config as portalDbInfrastructureUpgradePortal621021Config} from './tests/portal-db-infrastructure/upgrade-portal-621021/config';
+import {config as portalDbInfrastructureUpgradePortal625Config} from './tests/portal-db-infrastructure/upgrade-portal-625/config';
+import {config as portalDbInfrastructureUpgradePortal70106Config} from './tests/portal-db-infrastructure/upgrade-portal-70106/config';
+import {config as portalDbInfrastructureUpgradePortal7110Config} from './tests/portal-db-infrastructure/upgrade-portal-7110/config';
+import {config as portalDbInfrastructureUpgradePortal71103Config} from './tests/portal-db-infrastructure/upgrade-portal-71103/config';
+import {config as portalDbInfrastructureUpgradePortal7210Config} from './tests/portal-db-infrastructure/upgrade-portal-7210/config';
+import {config as portalDbInfrastructureUpgradePortal7310Config} from './tests/portal-db-infrastructure/upgrade-portal-7310/config';
+import {config as portalDbInfrastructureUpgradePortal7413Config} from './tests/portal-db-infrastructure/upgrade-portal-7413/config';
 import {config as portalDefaultPermissionsWebConfig} from './tests/portal-default-permissions-web/main/config';
 import {config as portalImplMainConfig} from './tests/portal-impl/main/config';
 import {config as portalImplPortletConfig} from './tests/portal-impl/portlet/config';
+import {config as portalInstancesWebDatabasePartitionConfig} from './tests/portal-instances-web/main-database-partition/config';
+import {config as portalInstancesWebConfig} from './tests/portal-instances-web/main/config';
+import {config as portalLanguageOverrideWebClientExtensionConfig} from './tests/portal-language-override-web/client-extension/config';
 import {config as portalLanguageOverrideWebConfig} from './tests/portal-language-override-web/main/config';
 import {config as portalSearchAdminWebConfig} from './tests/portal-search-admin-web/main/config';
 import {config as portalSearchWebConfig} from './tests/portal-search-web/main/config';
@@ -185,6 +210,7 @@ import {config as productNavigationApplicationsMenuConfig} from './tests/product
 import {config as productNavigationControlMenuWeb} from './tests/product-navigation-control-menu-web/main/config';
 import {config as productNavigationProductMenuWeb} from './tests/product-navigation-product-menu-web/main/config';
 import {config as productNavigationUserPersonalBarWebConfig} from './tests/product-navigation-user-personal-bar-web/main/config';
+import {config as pushNotificationsWebConfig} from './tests/push-notifications-web/main/config';
 import {config as questionsWebConfig} from './tests/questions-web/main/config';
 import {config as redirectWebConfig} from './tests/redirect-web/main/config';
 import {config as rolesAdminWebConfig} from './tests/roles-admin-web/main/config';
@@ -195,7 +221,7 @@ import {config as scimConfiguraitonWebConfig} from './tests/scim-configuration-w
 import {config as searchExperiencesWebConfig} from './tests/search-experiences-web/main/config';
 import {config as segmentExperimentWebConfig} from './tests/segment-experiment-web/main/config';
 import {config as segmentsWebConfig} from './tests/segments-web/main/config';
-import {config as seoStudioWebConfig} from './tests/seo-studio-web/main/config';
+import {config as serverAdminWebDatabaseMigrationConfig} from './tests/server-admin-web/database-migration/config';
 import {config as serverAdminWebConfig} from './tests/server-admin-web/main/config';
 import {config as pageManagementSiteConfig} from './tests/setup/page-management-site/main/config';
 import {config as pageManagementSiteTeardownConfig} from './tests/setup/page-management-site/teardown/config';
@@ -206,6 +232,7 @@ import {config as siteCmpSiteInitializerConfig} from './tests/site-cmp-site-init
 import {config as siteCmsSiteInitializerConfig} from './tests/site-cms-site-initializer/main/config';
 import {config as siteCmsSiteInitializerPermissionsConfig} from './tests/site-cms-site-initializer/permissions/config';
 import {config as siteCmsSiteInitializerStructureBuilderConfig} from './tests/site-cms-site-initializer/structure-builder/config';
+import {config as siteCmsStandaloneSiteInitializerConfig} from './tests/site-cms-standalone-site-initializer/main/config';
 import {config as siteDsrSiteInitializerConfig} from './tests/site-dsr-site-initializer/main/config';
 import {config as siteMySitesWebConfig} from './tests/site-my-sites-web/main/config';
 import {config as siteNavigationAdminWebConfig} from './tests/site-navigation-admin-web/main/config';
@@ -214,6 +241,7 @@ import {config as siteNavigationDirectoryWebConfig} from './tests/site-navigatio
 import {config as siteNavigationLanguageWebConfig} from './tests/site-navigation-language-web/main/config';
 import {config as siteNavigationMenuWebConfig} from './tests/site-navigation-menu-web/main/config';
 import {config as siteNavigationSiteMapWebConfig} from './tests/site-navigation-site-map-web/main/config';
+import {config as sitePimSiteInitializerConfig} from './tests/site-pim-site-initializer/main/config';
 import {config as siteSitemapWebConfig} from './tests/site-sitemap-web/main/config';
 import {config as siteTeamsWebConfig} from './tests/site-teams-web/main/config';
 import {config as smokeConfig} from './tests/smoke/main/config';
@@ -230,7 +258,6 @@ import {config as utilTaglibConfig} from './tests/util-taglib/main/config';
 import {config as wikiWebConfig} from './tests/wiki-web/main/config';
 import {config as customerConfig} from './tests/workspaces/liferay-customer-workspace/main/config';
 import {config as commerceWorkspaceConfig} from './tests/workspaces/liferay-workspace-commerce/main/config';
-import {config as jethr0Config} from './tests/workspaces/liferay-workspace-jethr0/main/config';
 import {config as marketplaceConfig} from './tests/workspaces/liferay-workspace-marketplace/main/config';
 
 const setupProjects = [
@@ -261,6 +288,7 @@ export default defineConfig({
 		announcementsWebConfig,
 		applicationListTaglibConfig,
 		assetCategoriesAdminWebConfig,
+		assetListWebConfig,
 		assetPublisherWebConfig,
 		assetPublisherWebRelatedAssetsConfig,
 		assetTagsAdminWebConfig,
@@ -274,6 +302,16 @@ export default defineConfig({
 		changeTrackingWebLocalePrependConfig,
 		clientExtensionWebConfig,
 		clientExtensionWebClusterConfig,
+		clientExtensionWebCSSConfig,
+		clientExtensionWebCustomElementConfig,
+		clientExtensionWebEditorConfigContributorConfig,
+		clientExtensionWebFrontendDataSetConfig,
+		clientExtensionWebIFrameConfig,
+		clientExtensionWebJSConfig,
+		clientExtensionWebJSImportMapsEntryConfig,
+		clientExtensionWebThemeCSSConfig,
+		clientExtensionWebThemeFaviconConfig,
+		clientExtensionWebThemeSpritemapConfig,
 		commerceAccountWebConfig,
 		commerceCartContentWebConfig,
 		commerceCatalogWebConfig,
@@ -348,13 +386,13 @@ export default defineConfig({
 		headlessDiscoveryWebConfig,
 		iframeWebConfig,
 		itemSelectorTaglibConfig,
-		jethr0Config,
 		journalWebConfig,
 		knowledgeBaseWebConfig,
 		layoutAdminWebConfig,
 		layoutContentPageEditorWebConfig,
 		layoutContentPageEditorWebFormContainerConfig,
 		layoutContentPageEditorWebFragmentsConfig,
+		layoutContentWebConfig,
 		layoutLockedLayoutsWebConfig,
 		layoutPageTemplateAdminWebConfig,
 		layoutSetPrototypeWebConfig,
@@ -365,6 +403,7 @@ export default defineConfig({
 		mapsConfig,
 		marketplaceAppManagerWebConfig,
 		marketplaceConfig,
+		mcpServerWebConfig,
 		messageBoardsWebConfig,
 		messageBoardsWebPaginationConfig,
 		multifactorAuthenticationConfig,
@@ -403,9 +442,21 @@ export default defineConfig({
 		passwordPoliciesAdminWebConfig,
 		passwordPoliciesAdminWebFirstLoginConfig,
 		passwordPoliciesAdminWebSetupAdminConfig,
+		portalDbInfrastructureUpgradePortal6130Config,
+		portalDbInfrastructureUpgradePortal621021Config,
+		portalDbInfrastructureUpgradePortal625Config,
+		portalDbInfrastructureUpgradePortal70106Config,
+		portalDbInfrastructureUpgradePortal71103Config,
+		portalDbInfrastructureUpgradePortal7110Config,
+		portalDbInfrastructureUpgradePortal7210Config,
+		portalDbInfrastructureUpgradePortal7310Config,
+		portalDbInfrastructureUpgradePortal7413Config,
 		portalDefaultPermissionsWebConfig,
 		portalImplMainConfig,
 		portalImplPortletConfig,
+		portalInstancesWebConfig,
+		portalInstancesWebDatabasePartitionConfig,
+		portalLanguageOverrideWebClientExtensionConfig,
 		portalLanguageOverrideWebConfig,
 		portalSearchAdminWebConfig,
 		portalSearchWebConfig,
@@ -429,6 +480,7 @@ export default defineConfig({
 		productNavigationControlMenuWeb,
 		productNavigationProductMenuWeb,
 		productNavigationUserPersonalBarWebConfig,
+		pushNotificationsWebConfig,
 		questionsWebConfig,
 		redirectWebConfig,
 		rolesAdminWebConfig,
@@ -440,13 +492,14 @@ export default defineConfig({
 		searchExperiencesWebConfig,
 		segmentExperimentWebConfig,
 		segmentsWebConfig,
-		seoStudioWebConfig,
 		serverAdminWebConfig,
+		serverAdminWebDatabaseMigrationConfig,
 		siteAdminWebConfig,
 		siteCmpSiteInitializerConfig,
 		siteCmsSiteInitializerConfig,
 		siteCmsSiteInitializerPermissionsConfig,
 		siteCmsSiteInitializerStructureBuilderConfig,
+		siteCmsStandaloneSiteInitializerConfig,
 		siteDsrSiteInitializerConfig,
 		siteMySitesWebConfig,
 		siteNavigationAdminWebConfig,
@@ -455,6 +508,7 @@ export default defineConfig({
 		siteNavigationLanguageWebConfig,
 		siteNavigationMenuWebConfig,
 		siteNavigationSiteMapWebConfig,
+		sitePimSiteInitializerConfig,
 		siteSitemapWebConfig,
 		siteTeamsWebConfig,
 		smokeConfig,

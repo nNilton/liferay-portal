@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {Immutable} from '@liferay/frontend-js-state-web';
 import {AssigneeValue} from '@liferay/object-dynamic-data-mapping-form-field-type';
 
 import {DISPLAY_TYPES} from './constants';
@@ -17,6 +18,12 @@ export interface ITaskSchema {
 	sticker?: string;
 	symbol: string;
 	title: string;
+}
+
+export interface ChangeTransition {
+	comment?: string;
+	transitionName: string;
+	workflowTaskId: number;
 }
 
 export interface IColumn {
@@ -125,6 +132,11 @@ export interface ITask {
 	score: number;
 }
 
+export interface ITaskItemsActionsTask {
+	actions?: ITaskObjectEntry['actions'];
+	embedded: Immutable<ITaskObjectEntry> | ITaskObjectEntry;
+}
+
 export type TaskAction = {
 	data: {
 		id: string;
@@ -137,6 +149,7 @@ export interface ProjectTaskItemData {
 		dueDate: string;
 		externalReferenceCode: string;
 		id: number;
+		r_cmpProjectToCMPTasks_c_cmpProjectId?: number;
 		title: string;
 	};
 	entryClassName: string;
@@ -192,6 +205,7 @@ export interface WorkflowTaskItemData {
 		};
 		workflowDefinitionId: number;
 		workflowDefinitionName: string;
+		workflowDefinitionTitle?: string;
 		workflowDefinitionVersion: string;
 		workflowInstanceId: number;
 	};

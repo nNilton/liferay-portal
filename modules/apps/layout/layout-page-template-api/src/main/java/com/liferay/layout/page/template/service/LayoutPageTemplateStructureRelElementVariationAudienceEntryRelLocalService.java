@@ -142,7 +142,12 @@ public interface
 
 	public void
 		deleteLayoutPageTemplateStructureRelElementVariationAudienceEntryRels(
+			long groupId,
 			String layoutPageTemplateStructureRelElementVariationERC);
+
+	public void
+		deleteLayoutPageTemplateStructureRelElementVariationAudienceEntryRelsByAudienceEntryERC(
+			long companyId, String audienceEntryERC);
 
 	/**
 	 * @throws PortalException
@@ -309,6 +314,7 @@ public interface
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public List<LayoutPageTemplateStructureRelElementVariationAudienceEntryRel>
 		getLayoutPageTemplateStructureRelElementVariationAudienceEntryRels(
+			long groupId,
 			String layoutPageTemplateStructureRelElementVariationERC);
 
 	/**
@@ -402,4 +408,4 @@ public interface
 		throws E;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-651643994
+// LIFERAY-SERVICE-BUILDER-HASH:-1459376752

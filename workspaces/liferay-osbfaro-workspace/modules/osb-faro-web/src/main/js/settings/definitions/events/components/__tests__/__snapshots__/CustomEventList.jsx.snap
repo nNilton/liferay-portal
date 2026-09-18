@@ -203,6 +203,7 @@ exports[`CustomEventList should render 1`] = `
                   >
                     <a
                       class="text-truncate"
+                      data-discover="true"
                       href="/workspace/23/settings/definitions/events/0"
                     >
                       name-0
@@ -307,6 +308,7 @@ exports[`CustomEventList should render 1`] = `
           class="page-item disabled"
         >
           <a
+            aria-label="Previous"
             class="button-root btn btn-unstyled page-link"
             disabled=""
             href="/?page=0"
@@ -335,6 +337,7 @@ exports[`CustomEventList should render 1`] = `
           class="page-item disabled"
         >
           <a
+            aria-label="Next"
             class="button-root btn btn-unstyled page-link"
             disabled=""
             href="/?page=2"
@@ -606,6 +609,7 @@ exports[`CustomEventList should render alert notification 1`] = `
                   >
                     <a
                       class="text-truncate"
+                      data-discover="true"
                       href="/workspace/23/settings/definitions/events/0"
                     >
                       name-0
@@ -710,6 +714,7 @@ exports[`CustomEventList should render alert notification 1`] = `
           class="page-item disabled"
         >
           <a
+            aria-label="Previous"
             class="button-root btn btn-unstyled page-link"
             disabled=""
             href="/?page=0"
@@ -738,6 +743,7 @@ exports[`CustomEventList should render alert notification 1`] = `
           class="page-item disabled"
         >
           <a
+            aria-label="Next"
             class="button-root btn btn-unstyled page-link"
             disabled=""
             href="/?page=2"

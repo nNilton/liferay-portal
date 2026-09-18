@@ -110,7 +110,7 @@ public class DatabaseTableAndColumnCaseDataCleanupPreupgradeProcessTest
 
 		String objectDefinitionDBTableName = objectDefinition.getDBTableName();
 
-		String invalidObjectDefinitionDBTableName = StringUtil.toUpperCase(
+		String invalidObjectDefinitionDBTableName = StringUtil.toLowerCase(
 			objectDefinitionDBTableName);
 
 		try (Connection connection = DataAccess.getConnection();
@@ -360,8 +360,8 @@ public class DatabaseTableAndColumnCaseDataCleanupPreupgradeProcessTest
 
 		serviceComponent.setData(
 			StringBundler.concat(
-				"<![CDATA[create table ", testTableName, " (	 \n",
-				testColumnName, " LONG"));
+				"<![CDATA[create table ", testTableName, " (\n\t",
+				testColumnName, " LONG\n);]]>"));
 
 		_serviceComponentLocalService.addServiceComponent(serviceComponent);
 

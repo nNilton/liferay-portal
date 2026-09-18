@@ -12,6 +12,7 @@ import {
 	CATEGORY_ICON_COLORS,
 	DEFAULT_ICON_COLOR,
 } from '../constants/categoryIconColors';
+import useKeyboardNavigation from '../hooks/useKeyboardNavigation';
 import {AudiencesCriteriaType} from '../types';
 import AttributeListItem from './AttributeListItem';
 
@@ -33,39 +34,50 @@ export default function AttributesSidebar({audiencesCriteriaTypes}: IProps) {
 				audiencesCriteria.label.toLowerCase().includes(normalizedQuery)
 		) ?? [];
 
+	const {getItemProps} = useKeyboardNavigation({
+		itemCount: audiencesCriterias.length,
+	});
+
 	return (
 		<div className="d-flex flex-column flex-grow-0 h-100">
-			<p className="h4 my-3">
-				{Liferay.Language.get('attributes-types')}
-			</p>
+			<div className="audience-builder-sidebar-header px-4">
+				<p className="h4 my-3">
+					{Liferay.Language.get('attributes-types')}
+				</p>
 
-			<ClayForm.Group>
-				<ClaySelectWithOption
-					aria-label={Liferay.Language.get('attributes-types')}
-					className="bg-white font-weight-semi-bold text-4"
-					onChange={(event) => {
-						setSelectedIndex(Number(event.target.value));
-						setQuery('');
-					}}
-					options={audiencesCriteriaTypes.map(
-						(audiencesCriteriaType, index) => ({
-							label: audiencesCriteriaType.label,
-							value: index,
-						})
-					)}
-					value={selectedIndex}
+				<ClayForm.Group>
+					<ClaySelectWithOption
+						aria-label={Liferay.Language.get('attributes-types')}
+						className="bg-white font-weight-semi-bold text-4"
+						onChange={(event) => {
+							setSelectedIndex(Number(event.target.value));
+							setQuery('');
+						}}
+						options={audiencesCriteriaTypes.map(
+							(audiencesCriteriaType, index) => ({
+								label: audiencesCriteriaType.label,
+								value: index,
+							})
+						)}
+						value={selectedIndex}
+					/>
+				</ClayForm.Group>
+
+				<SearchForm
+					className="mb-3"
+					label={Liferay.Language.get('search-attributes')}
+					onChange={setQuery}
 				/>
-			</ClayForm.Group>
-
-			<SearchForm
-				className="mb-3"
-				label={Liferay.Language.get('search-attributes')}
-				onChange={setQuery}
-			/>
+			</div>
 
 			{audiencesCriterias.length ? (
-				<div className="overflow-auto">
-					{audiencesCriterias.map((audiencesCriteria) => (
+				<div
+					aria-label={Liferay.Language.get('attributes')}
+					aria-orientation="vertical"
+					className="overflow-auto px-4 py-3"
+					role="menu"
+				>
+					{audiencesCriterias.map((audiencesCriteria, index) => (
 						<AttributeListItem
 							audiencesCriteria={audiencesCriteria}
 							iconColor={
@@ -73,11 +85,13 @@ export default function AttributesSidebar({audiencesCriteriaTypes}: IProps) {
 								DEFAULT_ICON_COLOR
 							}
 							key={audiencesCriteria.key}
+							navigationProps={getItemProps(index)}
 						/>
 					))}
 				</div>
 			) : (
 				<ClayEmptyState
+					className="px-4"
 					description={Liferay.Language.get(
 						'no-attributes-were-found'
 					)}

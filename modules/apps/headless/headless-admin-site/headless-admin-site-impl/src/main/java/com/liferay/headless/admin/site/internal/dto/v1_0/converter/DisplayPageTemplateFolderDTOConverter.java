@@ -6,11 +6,9 @@
 package com.liferay.headless.admin.site.internal.dto.v1_0.converter;
 
 import com.liferay.headless.admin.site.dto.v1_0.DisplayPageTemplateFolder;
-import com.liferay.headless.admin.user.dto.v1_0.Creator;
+import com.liferay.headless.admin.site.internal.dto.v1_0.util.CreatorUtil;
 import com.liferay.layout.page.template.model.LayoutPageTemplateCollection;
 import com.liferay.layout.page.template.service.LayoutPageTemplateCollectionService;
-import com.liferay.portal.kernel.model.User;
-import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterContext;
 
@@ -21,7 +19,10 @@ import org.osgi.service.component.annotations.Reference;
  * @author Bárbara Cabrera
  */
 @Component(
-	property = "dto.class.name=com.liferay.portal.kernel.model.LayoutPageTemplateCollection",
+	property = {
+		"default=true",
+		"dto.class.name=com.liferay.portal.kernel.model.LayoutPageTemplateCollection"
+	},
 	service = DTOConverter.class
 )
 public class DisplayPageTemplateFolderDTOConverter
@@ -55,21 +56,9 @@ public class DisplayPageTemplateFolderDTOConverter
 		return new DisplayPageTemplateFolder() {
 			{
 				setCreator(
-					() -> {
-						User user = _userLocalService.fetchUser(
-							layoutPageTemplateCollection.getUserId());
-
-						if (user == null) {
-							return null;
-						}
-
-						return new Creator() {
-							{
-								setExternalReferenceCode(
-									user::getExternalReferenceCode);
-							}
-						};
-					});
+					() -> CreatorUtil.toCreator(
+						layoutPageTemplateCollection.getUserId(),
+						layoutPageTemplateCollection.getUserName()));
 				setDateCreated(layoutPageTemplateCollection::getCreateDate);
 				setDateModified(layoutPageTemplateCollection::getModifiedDate);
 				setDescription(layoutPageTemplateCollection::getDescription);
@@ -105,8 +94,5 @@ public class DisplayPageTemplateFolderDTOConverter
 	@Reference
 	private LayoutPageTemplateCollectionService
 		_layoutPageTemplateCollectionService;
-
-	@Reference
-	private UserLocalService _userLocalService;
 
 }

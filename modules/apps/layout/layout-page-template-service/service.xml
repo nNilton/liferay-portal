@@ -193,7 +193,7 @@
 			<finder-column name="status" />
 		</finder>
 		<finder name="G_C_C_T" return-type="Collection">
-			<finder-column name="groupId" />
+			<finder-column arrayable-operator="OR" name="groupId" />
 			<finder-column name="classNameId" />
 			<finder-column name="classTypeKey" />
 			<finder-column name="type" />
@@ -223,14 +223,14 @@
 			<finder-column name="status" />
 		</finder>
 		<finder name="G_C_C_LikeN_T" return-type="Collection">
-			<finder-column name="groupId" />
+			<finder-column arrayable-operator="OR" name="groupId" />
 			<finder-column name="classNameId" />
 			<finder-column name="classTypeKey" />
 			<finder-column comparator="LIKE" name="name" />
 			<finder-column name="type" />
 		</finder>
 		<finder name="G_C_C_T_S" return-type="Collection">
-			<finder-column name="groupId" />
+			<finder-column arrayable-operator="OR" name="groupId" />
 			<finder-column name="classNameId" />
 			<finder-column name="classTypeKey" />
 			<finder-column name="type" />
@@ -244,7 +244,7 @@
 			<finder-column name="status" />
 		</finder>
 		<finder name="G_C_C_LikeN_T_S" return-type="Collection">
-			<finder-column name="groupId" />
+			<finder-column arrayable-operator="OR" name="groupId" />
 			<finder-column name="classNameId" />
 			<finder-column name="classTypeKey" />
 			<finder-column comparator="LIKE" name="name" />
@@ -346,7 +346,8 @@
 
 		<!-- Other fields -->
 
-		<column localized="true" name="hide" type="String" />
+		<column name="active" type="boolean" />
+		<column name="hide" type="String" />
 		<column localized="true" name="html" type="String" />
 		<column localized="true" name="js" type="String" />
 		<column name="name" type="String" />
@@ -363,6 +364,11 @@
 			<finder-column name="segmentsExperienceERC" />
 		</finder>
 		<finder name="P_SEERC" return-type="Collection">
+			<finder-column name="plid" />
+			<finder-column name="segmentsExperienceERC" />
+		</finder>
+		<finder name="A_P_SEERC" return-type="Collection">
+			<finder-column name="active" />
 			<finder-column name="plid" />
 			<finder-column name="segmentsExperienceERC" />
 		</finder>
@@ -392,14 +398,20 @@
 
 		<!-- Finder methods -->
 
-		<finder name="LayoutPageTemplateStructureRelElementVariationERC" return-type="Collection">
+		<finder name="G_LPTSREVERC" return-type="Collection">
+			<finder-column name="groupId" />
 			<finder-column name="layoutPageTemplateStructureRelElementVariationERC" />
+		</finder>
+		<finder name="C_AEERC" return-type="Collection">
+			<finder-column name="companyId" />
+			<finder-column name="audienceEntryERC" />
 		</finder>
 	</entity>
 	<exceptions>
 		<exception>DuplicateLayoutPageTemplateCollection</exception>
 		<exception>DuplicateLayoutPageTemplateCollectionType</exception>
 		<exception>DuplicateLayoutPageTemplateEntry</exception>
+		<exception>DuplicateLayoutPageTemplateStructureRelElementVariationAudienceEntryRel</exception>
 		<exception>LayoutPageTemplateCollectionGroupId</exception>
 		<exception>LayoutPageTemplateCollectionLayoutPageTemplateCollectionKey</exception>
 		<exception>LayoutPageTemplateCollectionName</exception>

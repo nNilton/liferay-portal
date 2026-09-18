@@ -5,8 +5,12 @@
 
 import {FrameLocator, Locator, Page, expect} from '@playwright/test';
 
+import {selectMaxItemsPerPage} from '../../../../utils/pagination';
+
 export class PermissionsPage {
 	readonly page: Page;
+	readonly itemsPerPageButton: Locator;
+	readonly maxItemsPerPageLink: Locator;
 	readonly permissionsModal: FrameLocator;
 	readonly permissionsModalCancelButton: Locator;
 	readonly permissionsModalCloseButton: Locator;
@@ -17,6 +21,11 @@ export class PermissionsPage {
 		this.page = page;
 		this.permissionsModal = page.frameLocator(
 			'iframe[title="Permissions"]'
+		);
+		this.itemsPerPageButton =
+			this.permissionsModal.getByLabel('Items per Page');
+		this.maxItemsPerPageLink = this.permissionsModal.locator(
+			'a[href*="_delta=60"]'
 		);
 		this.permissionsModalCancelButton = this.permissionsModal.getByRole(
 			'button',
@@ -39,6 +48,8 @@ export class PermissionsPage {
 	) {
 		await expect(this.permissionsModalSaveButton).toBeVisible();
 
+		await this.showAllRoles();
+
 		for (const permission of permissions) {
 			let role = permission.role.toLowerCase();
 			role = role.replace(/ /g, '-');
@@ -54,10 +65,30 @@ export class PermissionsPage {
 		await this.permissionsModalCloseButton.click();
 	}
 
+	async openFromActionsMenu() {
+		const permissionsMenuItems = this.page.getByRole('menuitem', {
+			exact: true,
+			name: 'Permissions',
+		});
+
+		await permissionsMenuItems.first().click();
+
+		await permissionsMenuItems.nth(1).click();
+	}
+
+	async showAllRoles() {
+		await selectMaxItemsPerPage(
+			this.itemsPerPageButton,
+			this.maxItemsPerPageLink
+		);
+	}
+
 	async verifyPermissions(
 		permissions: Array<{action: string; checked: boolean; role: string}>
 	) {
 		await expect(this.permissionsModalSaveButton).toBeVisible();
+
+		await this.showAllRoles();
 
 		for (const permission of permissions) {
 			let role = permission.role.toLowerCase();

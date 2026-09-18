@@ -39,9 +39,9 @@ import com.liferay.portal.kernel.util.PortletKeys;
 import com.liferay.portal.workflow.kaleo.model.KaleoTaskInstanceToken;
 import com.liferay.site.cmp.site.initializer.internal.constants.CMPActionConstants;
 import com.liferay.site.cmp.site.initializer.internal.frontend.data.set.filter.AssigneeSelectionFDSFilter;
+import com.liferay.site.cmp.site.initializer.internal.frontend.data.set.filter.CMPProjectSelectionFDSFilter;
 import com.liferay.site.cmp.site.initializer.internal.frontend.data.set.filter.CreateDateFDSFilter;
 import com.liferay.site.cmp.site.initializer.internal.frontend.data.set.filter.DueDateRangeFDSFilter;
-import com.liferay.site.cmp.site.initializer.internal.frontend.data.set.filter.ProjectSelectionFDSFilter;
 import com.liferay.site.cmp.site.initializer.internal.frontend.data.set.filter.StateSelectionFDSFilter;
 import com.liferay.site.cmp.site.initializer.internal.frontend.data.set.filter.TagSelectionFDSFilter;
 import com.liferay.site.cmp.site.initializer.internal.util.ActionUtil;
@@ -63,6 +63,8 @@ public abstract class BaseTasksSectionDisplayContext
 	public BaseTasksSectionDisplayContext(
 		AssetTagLocalService assetTagLocalService,
 		ClassNameLocalService classNameLocalService,
+		ObjectDefinition cmpProjectObjectDefinition,
+		ObjectDefinition cmpTaskObjectDefinition,
 		DepotEntryLocalService depotEntryLocalService,
 		HttpServletRequest httpServletRequest,
 		ListTypeEntryLocalService listTypeEntryLocalService,
@@ -70,25 +72,27 @@ public abstract class BaseTasksSectionDisplayContext
 		ObjectFieldLocalService objectFieldLocalService,
 		ObjectStateFlowLocalService objectStateFlowLocalService,
 		ObjectStateLocalService objectStateLocalService,
-		ObjectDefinition projectObjectDefinition, RoleService roleService,
-		ObjectDefinition taskObjectDefinition) {
+		RoleService roleService) {
 
-		super(httpServletRequest, taskObjectDefinition, objectEntryService);
+		super(httpServletRequest, cmpTaskObjectDefinition, objectEntryService);
 
 		this.assetTagLocalService = assetTagLocalService;
 		this.classNameLocalService = classNameLocalService;
+		this.cmpProjectObjectDefinition = cmpProjectObjectDefinition;
 		this.depotEntryLocalService = depotEntryLocalService;
 		this.listTypeEntryLocalService = listTypeEntryLocalService;
 		this.objectFieldLocalService = objectFieldLocalService;
 		this.objectStateFlowLocalService = objectStateFlowLocalService;
 		this.objectStateLocalService = objectStateLocalService;
-		this.projectObjectDefinition = projectObjectDefinition;
 		this.roleService = roleService;
 	}
 
 	public Map<String, Object> getAdditionalProps() throws Exception {
 		return HashMapBuilder.<String, Object>put(
-			"projectId",
+			"cmpProjectObjectDefinitionId",
+			cmpProjectObjectDefinition.getObjectDefinitionId()
+		).put(
+			"cmpProjectObjectEntryId",
 			() -> {
 				if (assetEntry == null) {
 					return null;
@@ -97,8 +101,7 @@ public abstract class BaseTasksSectionDisplayContext
 				return assetEntry.getClassPK();
 			}
 		).put(
-			"projectObjectDefinitionId",
-			projectObjectDefinition.getObjectDefinitionId()
+			"hasAddTaskPermission", hasAddObjectEntryPortletResourcePermission()
 		).put(
 			"states",
 			() -> {
@@ -144,7 +147,7 @@ public abstract class BaseTasksSectionDisplayContext
 			).setMethod(
 				"post"
 			).setPermissionKey(
-				"update-due-date"
+				"update"
 			).build(
 				"update-due-date"
 			),
@@ -156,6 +159,8 @@ public abstract class BaseTasksSectionDisplayContext
 				"user"
 			).setLabel(
 				LanguageUtil.get(httpServletRequest, "assign-to-...")
+			).setPermissionKey(
+				"update"
 			).build(
 				"assign-to"
 			),
@@ -168,7 +173,7 @@ public abstract class BaseTasksSectionDisplayContext
 			).setMethod(
 				"post"
 			).setPermissionKey(
-				"update-state"
+				"update"
 			).build(
 				"update-state"
 			),
@@ -180,6 +185,8 @@ public abstract class BaseTasksSectionDisplayContext
 				"trash"
 			).setLabel(
 				LanguageUtil.get(httpServletRequest, "delete")
+			).setPermissionKey(
+				"delete"
 			).build(
 				"delete"
 			));
@@ -198,7 +205,7 @@ public abstract class BaseTasksSectionDisplayContext
 					"addProjectURL",
 					StringBundler.concat(
 						ActionUtil.getAddProjectURL(
-							projectObjectDefinition, themeDisplay),
+							cmpProjectObjectDefinition, themeDisplay),
 						"&action=",
 						CMPActionConstants.CREATE_PROJECT_GLOBAL_TASK));
 				dropdownItem.putData(
@@ -208,12 +215,12 @@ public abstract class BaseTasksSectionDisplayContext
 							0, objectDefinition, 0, themeDisplay),
 						"&action=", CMPActionConstants.CREATE_GLOBAL_TASK));
 				dropdownItem.putData(
+					"cmpProjectObjectDefinitionId",
+					String.valueOf(
+						cmpProjectObjectDefinition.getObjectDefinitionId()));
+				dropdownItem.putData(
 					"objectDefinitionId",
 					String.valueOf(objectDefinition.getObjectDefinitionId()));
-				dropdownItem.putData(
-					"projectObjectDefinitionId",
-					String.valueOf(
-						projectObjectDefinition.getObjectDefinitionId()));
 
 				if (assetEntry != null) {
 					dropdownItem.putData(
@@ -253,21 +260,21 @@ public abstract class BaseTasksSectionDisplayContext
 
 		fdsFilters.add(
 			new AssigneeSelectionFDSFilter(
-				classNameLocalService, projectObjectDefinition.getCompanyId(),
-				roleService));
+				classNameLocalService,
+				cmpProjectObjectDefinition.getCompanyId(), roleService));
 		fdsFilters.add(new CreateDateFDSFilter());
 		fdsFilters.add(new DueDateRangeFDSFilter());
 
 		if (assetEntry == null) {
 			fdsFilters.add(
-				new ProjectSelectionFDSFilter(projectObjectDefinition));
+				new CMPProjectSelectionFDSFilter(cmpProjectObjectDefinition));
 		}
 
 		fdsFilters.add(new StateSelectionFDSFilter());
 		fdsFilters.add(
 			new TagSelectionFDSFilter(
-				assetTagLocalService, depotEntryLocalService, assetEntry,
-				projectObjectDefinition));
+				assetTagLocalService, cmpProjectObjectDefinition,
+				depotEntryLocalService, assetEntry));
 
 		return fdsFilters;
 	}
@@ -367,6 +374,19 @@ public abstract class BaseTasksSectionDisplayContext
 				"assign-to"
 			),
 			FDSActionDropdownItemBuilder.setIcon(
+				"date-time"
+			).setLabel(
+				LanguageUtil.get(httpServletRequest, "update-due-date")
+			).setMethod(
+				"get"
+			).setPermissionKey(
+				"update"
+			).setVisibilityFilters(
+				visibilityFilters
+			).build(
+				"update-due-date"
+			),
+			FDSActionDropdownItemBuilder.setIcon(
 				"trash"
 			).setLabel(
 				LanguageUtil.get(httpServletRequest, "delete")
@@ -377,6 +397,14 @@ public abstract class BaseTasksSectionDisplayContext
 			).build(
 				"delete"
 			));
+	}
+
+	public String getSelectionType() throws Exception {
+		if (!hasAddObjectEntryPortletResourcePermission()) {
+			return null;
+		}
+
+		return "multiple";
 	}
 
 	public List<FDSActionDropdownItem>
@@ -474,12 +502,12 @@ public abstract class BaseTasksSectionDisplayContext
 
 	protected final AssetTagLocalService assetTagLocalService;
 	protected final ClassNameLocalService classNameLocalService;
+	protected final ObjectDefinition cmpProjectObjectDefinition;
 	protected final DepotEntryLocalService depotEntryLocalService;
 	protected final ListTypeEntryLocalService listTypeEntryLocalService;
 	protected final ObjectFieldLocalService objectFieldLocalService;
 	protected final ObjectStateFlowLocalService objectStateFlowLocalService;
 	protected final ObjectStateLocalService objectStateLocalService;
-	protected final ObjectDefinition projectObjectDefinition;
 	protected final RoleService roleService;
 
 	private JSONArray _getNextStatesJSONArray(

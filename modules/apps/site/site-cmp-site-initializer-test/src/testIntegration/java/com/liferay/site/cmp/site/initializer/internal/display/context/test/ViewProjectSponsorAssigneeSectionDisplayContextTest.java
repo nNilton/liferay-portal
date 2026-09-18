@@ -12,8 +12,6 @@ import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.Sync;
 import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -35,9 +33,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 /**
  * @author Pedro Leite
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
 @RunWith(Arquillian.class)
 @Sync
 public class ViewProjectSponsorAssigneeSectionDisplayContextTest
@@ -78,7 +73,7 @@ public class ViewProjectSponsorAssigneeSectionDisplayContextTest
 			).put(
 				"type", Assignee.Type.USER.toString()
 			).build(),
-			projectObjectEntry,
+			cmpProjectObjectEntry,
 			HashMapBuilder.<String, Serializable>put(
 				"r_userToCMPProjectSponsor_userId", user.getUserId()
 			).build());

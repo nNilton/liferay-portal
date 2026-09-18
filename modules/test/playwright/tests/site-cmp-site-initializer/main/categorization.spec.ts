@@ -6,7 +6,6 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
-import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import getRandomString from '../../../utils/getRandomString';
 import {waitForAlert} from '../../../utils/waitForAlert';
@@ -17,9 +16,6 @@ const test = mergeTests(
 	cmpPagesTest,
 	cmsPagesTest,
 	dataApiHelpersTest,
-	featureFlagsTest({
-		'LPD-58677': {enabled: true},
-	}),
 	loginTest()
 );
 
@@ -64,11 +60,11 @@ test(
 
 			await test.step('Read the assigned categories', async () => {
 				await expect(
-					page.getByText('Decision Maker', {exact: true})
+					projectPage.getInfoCategory('Decision Maker')
 				).toBeVisible();
 
 				await expect(
-					page.getByText('Awareness', {exact: true})
+					projectPage.getInfoCategory('Awareness')
 				).toBeVisible();
 			});
 
@@ -90,11 +86,11 @@ test(
 				);
 
 				await expect(
-					page.getByText('Champion', {exact: true})
+					projectPage.getInfoCategory('Champion')
 				).toBeVisible();
 
 				await expect(
-					page.getByText('Awareness', {exact: true})
+					projectPage.getInfoCategory('Awareness')
 				).toBeHidden();
 			});
 
@@ -116,11 +112,11 @@ test(
 				);
 
 				await expect(
-					page.getByText('Decision Maker', {exact: true})
+					projectPage.getInfoCategory('Decision Maker')
 				).toBeHidden();
 
 				await expect(
-					page.getByText('Champion', {exact: true})
+					projectPage.getInfoCategory('Champion')
 				).toBeHidden();
 			});
 		}

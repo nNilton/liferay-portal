@@ -93,16 +93,6 @@ public class CommerceOrderNoteSystemObjectDefinitionManager
 	}
 
 	@Override
-	public String getBaseModelExternalReferenceCode(long primaryKey)
-		throws PortalException {
-
-		CommerceOrderNote commerceOrderNote =
-			_commerceOrderNoteLocalService.getCommerceOrderNote(primaryKey);
-
-		return commerceOrderNote.getExternalReferenceCode();
-	}
-
-	@Override
 	public String getExternalReferenceCode() {
 		return "L_COMMERCE_ORDER_NOTE";
 	}
@@ -194,10 +184,12 @@ public class CommerceOrderNoteSystemObjectDefinitionManager
 		Map<String, Object> variables = super.getVariables(
 			contentType, objectDefinition, oldValues, payloadJSONObject);
 
-		if (variables.containsKey("commerceOrderId")) {
+		Object commerceOrderId = variables.get("commerceOrderId");
+
+		if (commerceOrderId != null) {
 			CommerceOrder commerceOrder =
 				_commerceOrderLocalService.fetchCommerceOrder(
-					GetterUtil.getLong(variables.get("commerceOrderId")));
+					GetterUtil.getLong(commerceOrderId));
 
 			if (commerceOrder == null) {
 				return variables;

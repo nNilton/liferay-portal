@@ -10,8 +10,6 @@ import com.liferay.portal.kernel.model.ModelListener;
 import com.liferay.portal.kernel.model.UserGroup;
 import com.liferay.portal.kernel.service.UserGroupLocalService;
 import com.liferay.portal.kernel.test.util.UserGroupTestUtil;
-import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 
 import org.junit.Before;
@@ -21,9 +19,6 @@ import org.junit.runner.RunWith;
 /**
  * @author Carolina Barbosa
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
 @RunWith(Arquillian.class)
 public class UserGroupModelListenerTest extends BaseModelListenerTestCase {
 
@@ -37,7 +32,7 @@ public class UserGroupModelListenerTest extends BaseModelListenerTestCase {
 	@Test
 	public void testOnAfterAddAssociation() throws Exception {
 		_userGroupLocalService.setGroupUserGroups(
-			projectObjectEntry.getGroupId(),
+			cmpProjectObjectEntry.getGroupId(),
 			new long[] {_userGroup.getUserGroupId()});
 
 		assertAuditMessage("CMP_ADD_MEMBER");
@@ -46,13 +41,13 @@ public class UserGroupModelListenerTest extends BaseModelListenerTestCase {
 	@Test
 	public void testOnAfterRemoveAssociation() throws Exception {
 		_userGroupLocalService.setGroupUserGroups(
-			projectObjectEntry.getGroupId(),
+			cmpProjectObjectEntry.getGroupId(),
 			new long[] {_userGroup.getUserGroupId()});
 
 		assertAuditMessage("CMP_ADD_MEMBER");
 
 		_userGroupLocalService.unsetGroupUserGroups(
-			projectObjectEntry.getGroupId(),
+			cmpProjectObjectEntry.getGroupId(),
 			new long[] {_userGroup.getUserGroupId()});
 
 		assertAuditMessage("CMP_REMOVE_MEMBER");

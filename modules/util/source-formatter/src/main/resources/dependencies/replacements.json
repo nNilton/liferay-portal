@@ -3548,6 +3548,14 @@
 		"issueKey": "LPD-31312"
 	},
 	{
+		"from": "regex:aui:container",
+		"issueKey": "LPD-31352",
+		"to": "clay:container",
+		"validExtensions": [
+			"jsp"
+		]
+	},
+	{
 		"classNames": [
 			"CustomFacetPortletPreferences"
 		],
@@ -3719,6 +3727,20 @@
 	},
 	{
 		"classNames": [
+			"BaseJSPDynamicInclude"
+		],
+		"classStructurePattern": true,
+		"issueKey": "LPD-35156",
+		"newImports": [
+			"jakarta.servlet.ServletContext"
+		],
+		"newMethods": [
+			"@Override\n\tprotected ServletContext getServletContext() {\n\t\treturn _servletContext;\n\t}"
+		],
+		"newReference": "ServletContext _servletContext"
+	},
+	{
+		"classNames": [
 			"ListTypeLocalService"
 		],
 		"from": "addListType(String paramName, String paramName)",
@@ -3754,6 +3776,19 @@
 			{
 				"from": "regex:alter\\(\\s*?(?<tableClass>\\w*),\\s*?new\\s*?AlterTableAddColumn\\(\\s*?(?<columnName>\\w*?)\\s*?\\+[^+]*?\\+\\s*?(?<columnType>\\w*)\\)\\);",
 				"to": "alterTableAddColumn((String)${tableClass}.getField(\"TABLE_NAME\").get(null), ${columnName}, ${columnType});"
+			}
+		]
+	},
+	{
+		"classNames": [
+			"UpgradeProcess"
+		],
+		"classStructurePattern": true,
+		"issueKey": "LPD-35263",
+		"methodsToFormat": [
+			{
+				"from": "regex:alter\\(\\s*?(?<tableClass>\\w*),\\s*?new\\s*?AlterColumnType\\(\\s*?(?<columnName>\\w*?)[\\s,]*?(?<newColumnType>\\w*)\\)\\);",
+				"to": "alterColumnType((String)${tableClass}.getField(\\\"TABLE_NAME\\\").get(null), ${columnName}, ${newColumnType});"
 			}
 		]
 	},
@@ -4550,6 +4585,22 @@
 	},
 	{
 		"classNames": [
+			"PortletSharedSearchResponse"
+		],
+		"from": "getKeywordsOptional",
+		"issueKey": "LPD-47005",
+		"to": "getKeywords"
+	},
+	{
+		"classNames": [
+			"PortletSharedSearchResponse"
+		],
+		"from": "getSpellCheckSuggestionOptional",
+		"issueKey": "LPD-47005",
+		"to": "getSpellCheckSuggestion"
+	},
+	{
+		"classNames": [
 			"SiteNavigationMenuLocalService",
 			"SiteNavigationMenuLocalServiceUtil"
 		],
@@ -4666,14 +4717,6 @@
 		"newMethods": [
 			"@Override\n\tpublic boolean validate(String typeSettings) {\n\t\treturn Validator.isNotNull(typeSettings);\n\t}"
 		]
-	},
-	{
-		"classNames": [
-			"PortletSharedSearchSettings"
-		],
-		"from": "getParameterValues71",
-		"issueKey": "LPD-48215",
-		"to": "getParameterValues"
 	},
 	{
 		"classNames": [
@@ -5158,6 +5201,16 @@
 		]
 	},
 	{
+		"from": "JournalServiceConfigurationKeys",
+		"hasMessage": true,
+		"issueKey": "LPD-58184"
+	},
+	{
+		"from": "JournalServiceConfigurationValues",
+		"hasMessage": true,
+		"issueKey": "LPD-58184"
+	},
+	{
 		"classNames": [
 			"DDMTemplateLocalService",
 			"DDMTemplateLocalServiceUtil"
@@ -5514,6 +5567,11 @@
 		]
 	},
 	{
+		"from": "regex:Optional<String\\[\\]>\\s+(?<variableName>\\w+)\\s*=\\s*portletSharedSearchSettings\\s*\\.\\s*getParameterValues71\\s*\\(\\s*(?<param>\\w+)\\s*\\)",
+		"issueKey": "LPD-60899",
+		"to": "String[] ${variableName} = portletSharedSearchSettings.getParameterValues(${param})"
+	},
+	{
 		"classNames": [
 			"CPCompareHelperUtil"
 		],
@@ -5523,6 +5581,7 @@
 	},
 	{
 		"classNames": [
+			"CPCompareHelper",
 			"CPCompareHelperUtil"
 		],
 		"from": "getCPDefinitionIds(long paramName, long paramName, HttpSession paramName)",
@@ -5559,6 +5618,11 @@
 			"com.liferay.portal.kernel.model.UserConstants"
 		],
 		"to": "addUserWithWorkflow(param#0#, param#1#, param#2#, param#3#, param#4#, param#5#, param#6#, param#7#, param#8#, param#9#, param#10#, param#11#, param#12#, param#13#, param#14#, param#15#, param#16#, param#17#, param#18#, UserConstants.TYPE_REGULAR, param#19#, param#20#, param#21#, param#22#, param#23#, param#24#)"
+	},
+	{
+		"from": "new FileAttachment(File paramName, String paramName)",
+		"hasMessage": true,
+		"issueKey": "LPD-61487"
 	},
 	{
 		"classNames": [
@@ -5825,18 +5889,6 @@
 		"to": "updateStructure(StringPool.BLANK, param#0#, param#1#, param#6#.getScopeGroupId(), param#2#, DDMStructureLocalServiceUtil.getStructure(param#1#).getClassNameId(), DDMStructureLocalServiceUtil.getStructure(param#1#).getStructureKey(), param#3#, param#4#, param#5#, param#6#)"
 	},
 	{
-		"classNames": [
-			"Language",
-			"LanguageUtil"
-		],
-		"from": "get(PageContext paramName, String paramName)",
-		"hasMessage": true,
-		"issueKey": "LPD-70233",
-		"validExtensions": [
-			"java"
-		]
-	},
-	{
 		"from": "regex:(?<class>Language(?:Util)?)\\.(?<method>format|get)\\(pageContext,",
 		"issueKey": "LPD-70233",
 		"to": "${class}.${method}(request,",
@@ -5948,6 +6000,19 @@
 	},
 	{
 		"classNames": [
+			"CommerceOrderItemLocalServiceWrapper"
+		],
+		"classStructurePattern": true,
+		"issueKey": "LPD-84225",
+		"methodsToFormat": [
+			{
+				"from": "CommerceOrderItem fetchCommerceOrderItemByBookedQuantityId",
+				"to": "CommerceOrderItem\n\t\tfetchCommerceOrderItemByCommerceInventoryBookedQuantityId"
+			}
+		]
+	},
+	{
+		"classNames": [
 			"PhoneLocalService",
 			"PhoneLocalServiceUtil",
 			"PhoneService",
@@ -5968,6 +6033,299 @@
 			"java",
 			"jsp"
 		]
+	},
+	{
+		"from": "SitesUtil.updateLayoutSetPrototypesLinks",
+		"issueKey": "LPD-85995",
+		"newImports": [
+			"com.liferay.sites.kernel.util.Sites"
+		],
+		"newReference": "Sites _sites",
+		"to": "_sites.updateLayoutSetPrototypesLinks"
+	},
+	{
+		"classNames": [
+			"LayoutPageTemplateEntryLocalService",
+			"LayoutPageTemplateEntryLocalServiceUtil"
+		],
+		"from": "fetchLayoutPageTemplateEntry(long paramName, String paramName, int paramName)",
+		"issueKey": "LPD-99284",
+		"to": "fetchLayoutPageTemplateEntry(param#0#, 0L, param#1#, param#2#)"
+	},
+	{
+		"from": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_BATCH_PLANNER",
+		"issueKey": "LPD-100257",
+		"to": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_DEVELOPER_INTEGRATION",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_COMMERCE",
+		"issueKey": "LPD-100257",
+		"to": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_COMMUNICATION",
+		"issueKey": "LPD-100257",
+		"to": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_CONTENT",
+		"issueKey": "LPD-100257",
+		"to": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_IN_MAINTENANCE",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_CUSTOM_APPS",
+		"issueKey": "LPD-100257",
+		"to": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_DEVELOPER_INTEGRATION",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_DESIGN",
+		"issueKey": "LPD-100257",
+		"to": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_PERSONALIZATION",
+		"issueKey": "LPD-100257",
+		"to": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_PUBLICATIONS",
+		"issueKey": "LPD-100257",
+		"to": "PanelCategoryKeys.APPLICATIONS_MENU_APPLICATIONS_IN_MAINTENANCE",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.batch_planner(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "applications_menu.applications.developer-integration",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.batch_planner(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.object",
+		"validExtensions": [
+			"json"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.commerce(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "applications_menu.applications",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.commerce(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.object",
+		"validExtensions": [
+			"json"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.communication(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "applications_menu.applications",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.communication(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.object",
+		"validExtensions": [
+			"json"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.content(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "applications_menu.applications.in-maintenance",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.content(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.object",
+		"validExtensions": [
+			"json"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.custom\\.apps(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "applications_menu.applications.developer-integration",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.custom\\.apps(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.object",
+		"validExtensions": [
+			"json"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.design(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "applications_menu.applications",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.design(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.object",
+		"validExtensions": [
+			"json"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.personalization(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "applications_menu.applications",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.personalization(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.object",
+		"validExtensions": [
+			"json"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.publications(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "applications_menu.applications.in-maintenance",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "regex:\\bapplications_menu\\.applications\\.publications(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.object",
+		"validExtensions": [
+			"json"
+		]
+	},
+	{
+		"from": "regex:\\bcontrol_panel\\.search_experiences(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.object",
+		"validExtensions": [
+			"json"
+		]
+	},
+	{
+		"from": "regex:\\bcontrol_panel\\.search_experiences(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.search",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "regex:\\bcontrol_panel\\.search_tuning(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.object",
+		"validExtensions": [
+			"json"
+		]
+	},
+	{
+		"from": "regex:\\bcontrol_panel\\.search_tuning(?![\\w.-])",
+		"issueKey": "LPD-100257",
+		"to": "control_panel.search",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "SearchTuningPanelCategoryKeys.CONTROL_PANEL_SEARCH_TUNING",
+		"issueKey": "LPD-100257",
+		"newImports": [
+			"com.liferay.portal.search.web.application.list.constants.SearchPanelCategoryKeys"
+		],
+		"to": "SearchPanelCategoryKeys.CONTROL_PANEL_SEARCH",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"from": "SXPPanelCategoryKeys.CONTROL_PANEL_SEARCH_EXPERIENCES",
+		"issueKey": "LPD-100257",
+		"newImports": [
+			"com.liferay.portal.search.web.application.list.constants.SearchPanelCategoryKeys"
+		],
+		"to": "SearchPanelCategoryKeys.CONTROL_PANEL_SEARCH",
+		"validExtensions": [
+			"java",
+			"jsp"
+		]
+	},
+	{
+		"classNames": [
+			"Language",
+			"LanguageUtil"
+		],
+		"from": "get(PageContext paramName, String paramName)",
+		"hasMessage": true,
+		"issueKey": "LPD-105365"
 	},
 	{
 		"from": "regex:MultiVMPoolUtil\\s*.\\s*getPortalCache\\(\\s*(?<prefixMethodName>[\\s\\S]*?)\\)",
@@ -6261,26 +6619,57 @@
 		"classNames": [
 			"AddressLocalService",
 			"AddressLocalServiceUtil",
-			"AddressService",
-			"AddressServiceUtil"
+			"AddressLocalServiceWrapper"
 		],
 		"from": "addAddress(long paramName, String paramName, long paramName, String paramName, String paramName, String paramName, String paramName, String paramName, long paramName, long paramName, long paramName, boolean paramName, boolean paramName)",
 		"issueKey": "LPS-193462",
 		"newImports": [
 			"com.liferay.portal.kernel.service.ServiceContextThreadLocal"
 		],
-		"to": "addAddress(null, param#0#, param#1#, param#2#, null, null, param#3#, param#4#, param#5#, param#6#, param#7#, param#8#, param#9#, param#10#, param#11#, param#12#, null, ServiceContextThreadLocal.getServiceContext())"
+		"to": "addAddress(null, param#0#, param#1#, param#2#, param#9#, param#10#, param#8#, param#6#, null, param#11#, null, param#12#, param#3#, param#4#, param#5#, null, param#7#, null, ServiceContextThreadLocal.getServiceContext())"
 	},
 	{
 		"classNames": [
 			"AddressLocalService",
 			"AddressLocalServiceUtil",
-			"AddressService",
-			"AddressServiceUtil"
+			"AddressLocalServiceWrapper"
 		],
 		"from": "addAddress(long paramName, String paramName, long paramName, String paramName, String paramName, String paramName, String paramName, String paramName, long paramName, long paramName, long paramName, boolean paramName, boolean paramName, ServiceContext paramName)",
 		"issueKey": "LPS-193462",
-		"to": "addAddress(null, param#0#, param#1#, param#2#, null, null, param#3#, param#4#, param#5#, param#6#, param#7#, param#8#, param#9#, param#10#, param#11#, param#12#, null, param#13#)"
+		"to": "addAddress(null, param#0#, param#1#, param#2#, param#9#, param#10#, param#8#, param#6#, null, param#11#, null, param#12#, param#3#, param#4#, param#5#, null, param#7#, null, param#13#)"
+	},
+	{
+		"classNames": [
+			"AddressLocalService",
+			"AddressLocalServiceUtil",
+			"AddressLocalServiceWrapper"
+		],
+		"from": "addAddress(String paramName, long paramName, String paramName, long paramName, String paramName, String paramName, String paramName, String paramName, String paramName, String paramName, String paramName, long paramName, long paramName, long paramName, boolean paramName, boolean paramName, String paramName, ServiceContext paramName)",
+		"issueKey": "LPS-193462",
+		"to": "addAddress(param#0#, param#1#, param#2#, param#3#, param#12#, param#13#, param#11#, param#9#, param#5#, param#14#, param#4#, param#15#, param#6#, param#7#, param#8#, null, param#10#, param#16#, param#17#)"
+	},
+	{
+		"classNames": [
+			"AddressService",
+			"AddressServiceUtil",
+			"AddressServiceWrapper"
+		],
+		"from": "addAddress(String paramName, long paramName, String paramName, String paramName, String paramName, String paramName, String paramName, long paramName, long paramName, long paramName, boolean paramName, boolean paramName)",
+		"issueKey": "LPS-193462",
+		"newImports": [
+			"com.liferay.portal.kernel.service.ServiceContextThreadLocal"
+		],
+		"to": "addAddress(null, param#0#, param#1#, param#8#, param#9#, param#7#, param#5#, null, param#10#, null, param#11#, param#2#, param#3#, param#4#, null, param#6#, null, ServiceContextThreadLocal.getServiceContext())"
+	},
+	{
+		"classNames": [
+			"AddressService",
+			"AddressServiceUtil",
+			"AddressServiceWrapper"
+		],
+		"from": "addAddress(String paramName, String paramName, long paramName, String paramName, String paramName, String paramName, String paramName, String paramName, String paramName, String paramName, long paramName, long paramName, long paramName, boolean paramName, boolean paramName, String paramName, ServiceContext paramName)",
+		"issueKey": "LPS-193462",
+		"to": "addAddress(param#0#, param#1#, param#2#, param#11#, param#12#, param#10#, param#8#, param#4#, param#13#, param#3#, param#14#, param#5#, param#6#, param#7#, null, param#9#, param#15#, param#16#)"
 	},
 	{
 		"classNames": [

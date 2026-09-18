@@ -23,12 +23,15 @@ import {
 } from '../../common/types/AssetType';
 import {
 	CMSSiteInitializerFDSNames,
+	NO_VALUE,
+	OBJECT_ENTRY_CLASS_NAME,
 	OBJECT_ENTRY_FOLDER_CLASS_NAME,
 } from '../../common/utils/constants';
 import {getFormattedLabel} from '../../common/utils/getFormattedText';
 import {getScopeExternalReferenceCode} from '../../common/utils/getScopeExternalReferenceCode';
 import {openBulkActionConfirmationModal} from '../../common/utils/openBulkActionConfirmationModal';
 import {openCMSModal} from '../../common/utils/openCMSModal';
+import refreshOnContentChanged from '../../common/utils/refreshOnContentChanged';
 import EditAssetCategoriesModalContent from '../categorization/modal/EditAssetCategoriesModalContent';
 import EditAssetTagsModalContent from '../categorization/modal/EditAssetTagsModalContent';
 import {defaultPermissionsBulkAction} from '../default_permission/BulkDefaultPermissionModalContent';
@@ -39,6 +42,7 @@ import {handleFindAndReplace} from '../find_and_replace/utils/handleFindAndRepla
 import AssetTypeInfoPanel from '../info_panel/AssetTypeInfoPanelContent';
 import ExportTranslationModalContent from '../modal/ExportTranslationModalContent';
 import AssetNavigationModalContent from '../modal/asset_navigation_view/AssetNavigationModalContent';
+import AddAssetsToProjectModalContent from '../projects/modal/AddAssetsToProjectModalContent';
 import copyOrMoveBulkAction from './actions/copyOrMoveBulkAction';
 import ACTIONS from './actions/creationMenuActions';
 import deleteAssetEntriesBulkAction, {
@@ -59,24 +63,25 @@ import SimpleActionLinkRenderer from './cell_renderers/SimpleActionLinkRenderer'
 import SpaceRendererWithCache from './cell_renderers/SpaceRendererWithCache';
 import TypeRenderer from './cell_renderers/TypeRenderer';
 import addOnClickToCreationMenuItems from './utils/addOnClickToCreationMenuItems';
+import {
+	isScheduleDateActionId,
+	openScheduleDateModal,
+} from './utils/createScheduleDateModalOpener';
 import {executeAsyncItemAction} from './utils/executeAsyncItemAction';
 import transformFDSBulkActions from './utils/transformFDSBulkActions';
 import transformViewsItemsProps from './utils/transformViewsItemProps';
 import GalleryView from './views/GalleryView';
 
-/**
- * Transforms additionalAPIURLParameters to remove folderId filter when searching at root folder.
- * Hoisted outside component to avoid recreation
- */
+const FOLDER_ID_FILTER_REGEX = /^folderId eq (\d+)$/;
+
 export interface AdditionalAPIURLParametersTransformerArgs {
 	additionalAPIURLParameters: string;
-	rootFolder?: boolean;
 	searchParam: string;
 }
 const additionalAPIURLParametersTransformer = (
 	args: AdditionalAPIURLParametersTransformerArgs
 ): string | undefined => {
-	const {additionalAPIURLParameters, rootFolder, searchParam} = args;
+	const {additionalAPIURLParameters, searchParam} = args;
 
 	if (!additionalAPIURLParameters) {
 		return additionalAPIURLParameters;
@@ -104,16 +109,15 @@ const additionalAPIURLParametersTransformer = (
 	const cleanedFilters = filterContent
 		.split(/\s+and\s+/i)
 		.map((part) => part.trim())
-		.filter((part) => {
-			if (part === 'cmsRoot eq true') {
-				return false;
+		.filter((part) => part !== '' && part !== 'cmsRoot eq true')
+		.map((part) => {
+			const matches = part.match(FOLDER_ID_FILTER_REGEX);
+
+			if (matches) {
+				return `treePath/any(t:t eq '${matches[1]}')`;
 			}
 
-			if (rootFolder && part.startsWith('folderId eq')) {
-				return false;
-			}
-
-			return part !== '';
+			return part;
 		});
 
 	if (!cleanedFilters.length) {
@@ -145,19 +149,23 @@ export type AdditionalProps = {
 	breadcrumbProps?: IBreadcrumbProps;
 	brokenLinksCheckerEnabled: boolean;
 	candidateAssetLibraries: AssetLibrary[];
+	cmpEnabled?: boolean;
+	cmpProjectLinkObjectDefinitionId?: number;
+	cmpProjectObjectDefinitionId?: number;
+	cmpProjectViewURL?: string;
 	cmsGroupId?: number;
 	collaboratorURLs: Record<string, string>;
 	contentViewURL: string;
 	defaultPermissionAdditionalProps?: any;
 	fileMimeTypeCssClasses: Record<string, string>;
 	fileMimeTypeIcons: Record<string, string>;
+	filter?: string;
 	galleryViewEnabled?: boolean;
 	objectDefinitionCssClasses: Record<string, string>;
 	objectDefinitionIcons: Record<string, string>;
 	objectEntryFolderExternalReferenceCode: string;
 	parentObjectEntryFolderExternalReferenceCode: string;
 	redirect: string;
-	rootFolder?: boolean;
 	rootObjectEntryFolderExternalReferenceCode: string;
 	showAdditionalItemInfo?: boolean;
 	trashEnabled?: boolean;
@@ -180,6 +188,8 @@ export default function AssetsFDSPropsTransformer({
 	itemsActions?: any[];
 	views: IView[];
 }) {
+	refreshOnContentChanged(otherProps?.id);
+
 	let mergedViews = views;
 
 	const isAllSectionView = otherProps?.id?.endsWith(
@@ -217,11 +227,8 @@ export default function AssetsFDSPropsTransformer({
 		mergedViews = [...nonDefaultViews, galleryViewRenderer];
 	}
 
-	const {
-		additionalAPIURLParameters,
-		rootFolder,
-		...remainingAdditionalProps
-	} = additionalProps || {};
+	const {additionalAPIURLParameters, ...remainingAdditionalProps} =
+		additionalProps || {};
 
 	const bulkActionAPIURL =
 		additionalAPIURLParameters && otherProps.apiURL
@@ -230,16 +237,15 @@ export default function AssetsFDSPropsTransformer({
 				}${additionalAPIURLParameters}`
 			: otherProps.apiURL;
 
+	const GENERATE_WITH_AI_ACTIONS = [
+		'generateContentWithAI',
+		'generateImageWithAI',
+	];
+
 	return {
 		...otherProps,
 		additionalAPIURLParameters,
-		additionalAPIURLParametersTransformer: (
-			args: AdditionalAPIURLParametersTransformerArgs
-		) =>
-			additionalAPIURLParametersTransformer({
-				...args,
-				rootFolder,
-			}),
+		additionalAPIURLParametersTransformer,
 		additionalProps: remainingAdditionalProps,
 		bulkActions: transformFDSBulkActions(bulkActions),
 		creationMenu: {
@@ -247,6 +253,10 @@ export default function AssetsFDSPropsTransformer({
 			primaryItems: addOnClickToCreationMenuItems(
 				creationMenu.primaryItems,
 				ACTIONS
+			).map((item) =>
+				GENERATE_WITH_AI_ACTIONS.includes(item.data?.action ?? '')
+					? {...item, className: 'cms-generate-with-ai'}
+					: item
 			),
 		},
 		customRenderers: {
@@ -314,7 +324,7 @@ export default function AssetsFDSPropsTransformer({
 				{
 					component: ({itemData}) => (
 						<SpaceRendererWithCache
-							scopeKey={itemData.embedded.scopeKey}
+							scopeKey={itemData.embedded?.scopeKey}
 							spaceExternalReferenceCode={getScopeExternalReferenceCode(
 								itemData
 							)}
@@ -339,7 +349,7 @@ export default function AssetsFDSPropsTransformer({
 							itemData?.entryClassName ===
 							OBJECT_ENTRY_FOLDER_CLASS_NAME
 						) {
-							return '--';
+							return NO_VALUE;
 						}
 
 						return (
@@ -393,14 +403,14 @@ export default function AssetsFDSPropsTransformer({
 						Boolean(item?.embedded?.file?.link?.href),
 				};
 			}
-			else if (action?.data?.id === 'actionLink') {
+			else if (
+				action?.data?.id === 'actionLink' ||
+				isScheduleDateActionId(action?.data?.id)
+			) {
 				return {
 					...action,
 					isVisible: (item: any) =>
-						Boolean(
-							item?.entryClassName !==
-								OBJECT_ENTRY_FOLDER_CLASS_NAME
-						),
+						item?.entryClassName !== OBJECT_ENTRY_FOLDER_CLASS_NAME,
 				};
 			}
 			else if (
@@ -446,7 +456,35 @@ export default function AssetsFDSPropsTransformer({
 			items: any;
 			loadData: () => {};
 		}) {
-			if (action?.data?.id === 'copy' || action?.data?.id === 'move') {
+			if (isScheduleDateActionId(action?.data?.id)) {
+				event?.preventDefault();
+
+				openScheduleDateModal({
+					actionId: action.data.id,
+					apiURL: bulkActionAPIURL,
+					dataSetId: otherProps.id,
+					itemData,
+				});
+			}
+			else if (action?.data?.id === 'addToLaunch') {
+				event?.preventDefault();
+
+				if (!itemData.embedded?.systemProperties?.version) {
+					return;
+				}
+
+				Liferay.fire('addToLaunch', {
+					className: OBJECT_ENTRY_CLASS_NAME,
+					classPK: itemData.embedded.id,
+					classVersion: String(
+						itemData.embedded.systemProperties.version.number
+					),
+				});
+			}
+			else if (
+				action?.data?.id === 'copy' ||
+				action?.data?.id === 'move'
+			) {
 				openFolderItemSelectorAction(
 					action?.data?.id,
 					additionalProps.assetLibraries,
@@ -494,7 +532,7 @@ export default function AssetsFDSPropsTransformer({
 								'edit-and-propagate-default-permissions',
 							apiURL: bulkActionAPIURL,
 							classExternalReferenceCode:
-								itemData.embedded.externalReferenceCode,
+								itemData.embedded?.externalReferenceCode,
 							className: itemData.entryClassName,
 							closeModal,
 							section:
@@ -507,7 +545,7 @@ export default function AssetsFDSPropsTransformer({
 			else if (action?.data?.id === 'delete') {
 				const title =
 					itemData.title ||
-					itemData.embedded.title ||
+					itemData.embedded?.title ||
 					Liferay.Language.get('untitled-asset');
 
 				const confirmationMessage =
@@ -580,11 +618,19 @@ export default function AssetsFDSPropsTransformer({
 			else if (action?.data?.id === 'import-translation') {
 				event?.preventDefault();
 
+				if (!itemData.embedded) {
+					return;
+				}
+
 				const formattedHref = replaceTokens(action.href, itemData);
 
 				ACTIONS.importTranslation(itemData, formattedHref, loadData);
 			}
 			else if (action?.data?.id === 'reset-to-default-permissions') {
+				if (!itemData.embedded) {
+					return;
+				}
+
 				openResetAssetPermissionModal({
 					className: itemData.entryClassName,
 					classPK: itemData.embedded.id,
@@ -592,6 +638,10 @@ export default function AssetsFDSPropsTransformer({
 				});
 			}
 			else if (action?.data?.id === 'share') {
+				if (!itemData.embedded) {
+					return;
+				}
+
 				const {autocompleteURL, collaboratorURLs} = additionalProps;
 
 				shareAction({
@@ -600,7 +650,7 @@ export default function AssetsFDSPropsTransformer({
 					creator: itemData.embedded.creator,
 					entryClassName: itemData.entryClassName,
 					itemId: itemData.embedded.id,
-					title: itemData.embedded?.title,
+					title: itemData.embedded.title,
 				});
 			}
 			else if (
@@ -609,13 +659,17 @@ export default function AssetsFDSPropsTransformer({
 			) {
 				event?.preventDefault();
 
+				if (!itemData.embedded) {
+					return;
+				}
+
 				const filteredItems = items.filter(
 					(item: any) =>
 						item?.entryClassName !== OBJECT_ENTRY_FOLDER_CLASS_NAME
 				);
 
 				const currentItemPos = filteredItems.findIndex(
-					(item: any) => item.embedded.id === itemData.embedded.id
+					(item: any) => item.embedded?.id === itemData.embedded.id
 				);
 
 				openCMSModal({
@@ -637,7 +691,38 @@ export default function AssetsFDSPropsTransformer({
 			action: any;
 			selectedData: any;
 		}) => {
-			if (action?.data?.id === 'edit-categories') {
+			if (isScheduleDateActionId(action?.data?.id)) {
+				openScheduleDateModal({
+					actionId: action.data.id,
+					apiURL: bulkActionAPIURL,
+					dataSetId: otherProps.id,
+					selectedData,
+				});
+			}
+			else if (action?.data?.id === 'add-assets-to-project') {
+				openCMSModal({
+					center: true,
+					containerProps: {
+						className: 'modal-height-lg',
+					},
+					contentComponent: ({
+						closeModal,
+					}: {
+						closeModal: () => void;
+					}) =>
+						AddAssetsToProjectModalContent({
+							apiURL: bulkActionAPIURL,
+							closeModal,
+							cmpProjectObjectDefinitionId:
+								additionalProps.cmpProjectObjectDefinitionId as number,
+							cmpProjectViewURL:
+								additionalProps.cmpProjectViewURL,
+							selectedData,
+						}),
+					size: 'md',
+				});
+			}
+			else if (action?.data?.id === 'edit-categories') {
 				openCMSModal({
 					center: true,
 					containerProps: {

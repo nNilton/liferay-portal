@@ -75,7 +75,7 @@ liferay-default:
                 envFrom:
                     -   secretRef:
                             name: managed-service-details
-                image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.1
+                image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.25.4
                 name: cloud-sql-proxy
                 restartPolicy: Always
                 securityContext:
@@ -111,10 +111,6 @@ liferay-default:
     customLabels:
         origin: liferay-gcp
     customVolumeMounts:
-        x-license:
-            -   mountPath: /etc/liferay/mount/files/deploy/license.xml
-                name: liferay-license
-                subPath: license.xml
         x-liferay-gcp:
             -   mountPath: /opt/liferay/osgi/configs/com.liferay.portal.search.elasticsearch7.configuration.ElasticsearchConfiguration.config
                 name: liferay-configmap
@@ -126,15 +122,18 @@ liferay-default:
                 name: liferay-configmap
                 subPath: com.liferay.portal.store.gcs.configuration.GCSStoreConfiguration.config
     customVolumes:
-        x-license:
-            -   name: liferay-license
-                secret:
-                    secretName: liferay-license
         x-liferay-init-scripts-gcp:
             -   configMap:
                     defaultMode: 0755
                     name: liferay-init-scripts-gcp
                 name: liferay-init-scripts-gcp
+    marketplace:
+        csi:
+            driver: filestore.csi.storage.gke.io
+            volumeAttributes:
+                protocol: NFS_V3
+                volume: marketplace
+        size: 10Gi
     network:
         enabled: true
         hostnames: []
@@ -145,6 +144,8 @@ liferay-default:
         copy: []
         enabled: false
         type: gcs
+    persistence:
+        defaultStorageClassName: standard-rwo
     podSecurityContext:
         fsGroup: 1000
         runAsNonRoot: true
@@ -188,4 +189,3 @@ liferay-default:
                 resources:
                     requests:
                         storage: 10Gi
-                storageClassName: standard-rwo

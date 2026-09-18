@@ -37,10 +37,16 @@ const CKEditor5ReactClassicEditor = ({
 				'italic',
 				'underline',
 				'|',
+				'link',
+				'|',
 				'bookmark',
 				'|',
 				'headlessImageSelector',
 				'headlessVideoSelector',
+
+				...(editorConfig.showSourceEditingEnhanced
+					? ['|', 'sourceEditingEnhanced']
+					: ['|', 'sourceEditing']),
 			],
 		},
 	};

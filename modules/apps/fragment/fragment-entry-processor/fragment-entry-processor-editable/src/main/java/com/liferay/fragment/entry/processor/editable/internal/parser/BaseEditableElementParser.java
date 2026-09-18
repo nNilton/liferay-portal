@@ -7,6 +7,7 @@ package com.liferay.fragment.entry.processor.editable.internal.parser;
 
 import com.liferay.fragment.entry.processor.editable.parser.EditableElementParser;
 import com.liferay.fragment.exception.FragmentEntryContentException;
+import com.liferay.petra.string.CharPool;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.util.ResourceBundleUtil;
 
@@ -36,6 +37,19 @@ public abstract class BaseEditableElementParser
 					resourceBundle,
 					"editable-fields-cannot-include-nested-editables-drop-" +
 						"zones-or-widgets-in-it"));
+		}
+	}
+
+	protected void replaceContent(Element element, String value) {
+		if ((value.indexOf(CharPool.AMPERSAND) == -1) &&
+			(value.indexOf(CharPool.LESS_THAN) == -1)) {
+
+			element.empty();
+
+			element.appendText(value);
+		}
+		else {
+			element.html(value);
 		}
 	}
 

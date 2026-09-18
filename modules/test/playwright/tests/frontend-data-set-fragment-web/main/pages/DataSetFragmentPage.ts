@@ -21,6 +21,7 @@ export class DataSetFragmentPage {
 	readonly emptyStateTitle: Locator;
 	readonly filterButton: Locator;
 	readonly filterConfirmButton: Locator;
+	readonly filterResumeBadge: Locator;
 	readonly filterResumeButton: Locator;
 	readonly fragmentWidgetSearchInput: Locator;
 	readonly fragmentSelectionArea: Locator;
@@ -31,6 +32,7 @@ export class DataSetFragmentPage {
 	readonly paginationWrapper: Locator;
 	readonly publishPageButton: Locator;
 	readonly removeFilterButton: Locator;
+	readonly searchInput: Locator;
 	readonly selectDataSetModal: {
 		cancelButton: Locator;
 		container: Locator;
@@ -71,7 +73,7 @@ export class DataSetFragmentPage {
 	// Unresolved API URL preview rendered by the fragment in edit mode
 
 	readonly unresolvedPreview: {
-		alert: Locator;
+		alerts: Locator;
 		container: Locator;
 		skeletonBars: Locator;
 		urlBox: Locator;
@@ -99,6 +101,7 @@ export class DataSetFragmentPage {
 		this.filterConfirmButton = page.getByRole('button', {
 			name: /add filter|show results|delete filter/i,
 		});
+		this.filterResumeBadge = page.locator('.filter-resume-badge');
 		this.filterResumeButton = page.locator('.filter-resume');
 		this.fragmentSelectionArea = page.getByText('Select a data set');
 		this.fragmentWidgetSearchInput = page.getByLabel(
@@ -116,6 +119,7 @@ export class DataSetFragmentPage {
 			exact: true,
 			name: 'Remove Filter',
 		});
+		this.searchInput = page.locator('.fds').getByRole('searchbox');
 
 		const selectDataSetModalContainer = page
 			.locator('.modal')
@@ -190,7 +194,7 @@ export class DataSetFragmentPage {
 		);
 
 		this.unresolvedPreview = {
-			alert: unresolvedPreviewContainer.locator('.alert-info'),
+			alerts: unresolvedPreviewContainer.locator('.alert-info'),
 			container: unresolvedPreviewContainer,
 			skeletonBars: unresolvedPreviewContainer.locator(
 				'.data-set-skeleton-bar'
@@ -298,7 +302,11 @@ export class DataSetFragmentPage {
 	}
 
 	async editPage({layout}: {layout: Layout}) {
-		await this.page.goto(`/web/guest${layout.friendlyURL}?p_l_mode=edit`);
+		await this.page.goto(
+			`/web/guest${layout.draftLayout?.friendlyURL || layout.friendlyURL}?p_l_mode=edit`
+		);
+
+		await expect(this.fragmentWidgetSearchInput).toBeVisible();
 	}
 
 	async goToPage({layout}: {layout: Layout}) {

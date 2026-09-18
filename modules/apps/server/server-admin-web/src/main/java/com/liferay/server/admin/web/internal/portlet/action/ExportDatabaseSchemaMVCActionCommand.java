@@ -7,7 +7,6 @@ package com.liferay.server.admin.web.internal.portlet.action;
 
 import com.liferay.captcha.util.CaptchaUtil;
 import com.liferay.portal.db.migration.schema.exporter.DBMigrationSchemaExporter;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.BaseMVCActionCommand;
@@ -26,6 +25,7 @@ import com.liferay.portal.kernel.util.WebKeys;
 import jakarta.portlet.ActionRequest;
 import jakarta.portlet.ActionResponse;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.osgi.service.component.annotations.Component;
@@ -55,12 +55,6 @@ public class ExportDatabaseSchemaMVCActionCommand extends BaseMVCActionCommand {
 		ThemeDisplay themeDisplay = (ThemeDisplay)actionRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				themeDisplay.getCompanyId(), "LPD-23840")) {
-
-			return;
-		}
-
 		PermissionChecker permissionChecker =
 			themeDisplay.getPermissionChecker();
 
@@ -80,6 +74,10 @@ public class ExportDatabaseSchemaMVCActionCommand extends BaseMVCActionCommand {
 			actionRequest, "exportFilesPath");
 
 		try {
+			File exportFilesDirectory = new File(exportFilesPath);
+
+			exportFilesPath = exportFilesDirectory.getCanonicalPath();
+
 			_dbMigrationSchemaExporter.export(exportFilesPath);
 		}
 		catch (IOException ioException) {
@@ -93,7 +91,8 @@ public class ExportDatabaseSchemaMVCActionCommand extends BaseMVCActionCommand {
 
 		hideDefaultSuccessMessage(actionRequest);
 
-		SessionMessages.add(actionRequest, "databaseSchemaExported");
+		SessionMessages.add(
+			actionRequest, "databaseSchemaExported", exportFilesPath);
 
 		sendRedirect(actionRequest, actionResponse);
 	}

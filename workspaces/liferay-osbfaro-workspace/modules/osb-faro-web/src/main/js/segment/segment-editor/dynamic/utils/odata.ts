@@ -1,4 +1,5 @@
 import {
+	ATTRIBUTE_PROPERTY_PREFIX,
 	Conjunctions,
 	CUSTOM_FUNCTION_OPERATOR_KEY_MAP,
 	CustomFunctionOperators,
@@ -190,6 +191,11 @@ const PARAM_REGEX = /\s+((?:criterionGroup|operator|value)=)/g;
 export const trimSpacesBeforeParams = (queryString: string): string =>
 	queryString.replace(PARAM_REGEX, '$1');
 
+const buildBetweenExpression = (
+	propertyName: string | undefined,
+	{end, start}: {end: string; start: string}
+): string => `between(${propertyName},'${start}','${end}')`;
+
 const buildRemoteFilterString = (
 	criterionGroup: any,
 	criterionType: RemoteCriterionType
@@ -243,7 +249,9 @@ const buildRemoteFilterString = (
 
 	if (dayItem) {
 		parts.push(
-			`${dayItem.propertyName} ${dayItem.operatorName} '${dayItem.value}'`
+			dayItem.operatorName === FunctionalOperators.Between
+				? buildBetweenExpression(dayItem.propertyName, dayItem.value)
+				: `${dayItem.propertyName} ${dayItem.operatorName} '${dayItem.value}'`
 		);
 	}
 
@@ -264,6 +272,12 @@ const buildQueryString = (
 ): string =>
 	criteria
 		.filter(Boolean)
+		.filter(
+			(criterion) =>
+				isCriterionGroup(criterion) ||
+				(criterion as Criterion).propertyName !==
+					ATTRIBUTE_PROPERTY_PREFIX
+		)
 		.reduce((queryString: string, criterion: Criteria, index: number) => {
 			if (index > 0) {
 				queryString = queryString.concat(` ${queryConjunction} `);
@@ -379,10 +393,8 @@ const buildQueryString = (
 				}
 				else if (isValueType(FunctionalOperators, operatorName)) {
 					if (operatorName === FunctionalOperators.Between) {
-						const {end, start} = parsedValue;
-
 						queryString = queryString.concat(
-							`between(${propertyName},'${start}','${end}')`
+							buildBetweenExpression(propertyName, parsedValue)
 						);
 					}
 					else {
@@ -884,6 +896,21 @@ const buildInnerFilterItems = (
 		}
 	}
 
+	const objectDefinitionNameMatch = innerFilter.match(
+		/objectDefinitionName eq '([^']+)'/
+	);
+
+	if (objectDefinitionNameMatch) {
+		items.push({
+			operatorName: RelationalOperators.EQ,
+			propertyName: 'objectDefinitionName',
+			rowId: generateRowId(),
+			touched: false,
+			valid: true,
+			value: objectDefinitionNameMatch[1],
+		} as unknown as Criterion);
+	}
+
 	if (matchedType?.supportsCategories) {
 		const catRegex =
 			/\(categories\/id eq '([^']+)' and categories\/name eq '([^']+)'\)/g;
@@ -906,9 +933,27 @@ const buildInnerFilterItems = (
 		}
 	}
 
+	// A date range is a function call, not a relational comparison, so it needs
+	// its own pattern. Without it the day item is dropped on reload and the
+	// conjunction falls back to "ever".
+
+	const dayBetweenMatch = innerFilter.match(
+		/between\(day,'([^']*)','([^']*)'\)/
+	);
+
 	const dayMatch = innerFilter.match(/day (gt|ge|lt|le|eq|ne) '([^']+)'/);
 
-	if (dayMatch) {
+	if (dayBetweenMatch) {
+		items.push({
+			operatorName: FunctionalOperators.Between,
+			propertyName: 'day',
+			rowId: generateRowId(),
+			touched: false,
+			valid: true,
+			value: {end: dayBetweenMatch[2], start: dayBetweenMatch[1]},
+		} as unknown as Criterion);
+	}
+	else if (dayMatch) {
 		items.push({
 			operatorName: dayMatch[1],
 			propertyName: 'day',
@@ -919,7 +964,76 @@ const buildInnerFilterItems = (
 		} as unknown as Criterion);
 	}
 
+	const attributeItem = parseAttributeFilterItem(innerFilter);
+
+	if (attributeItem) {
+		items.push(attributeItem);
+	}
+
 	return {entityId, items, matchedType};
+};
+
+const buildAttributeCriterion = (
+	attributeId: string,
+	operatorName: string,
+	value: unknown
+): Criterion =>
+	({
+		operatorName,
+		propertyName: `attribute/${attributeId}`,
+		rowId: generateRowId(),
+		touched: false,
+		valid: true,
+		value,
+	}) as unknown as Criterion;
+
+const parseAttributeFilterItem = (
+	innerFilter: string
+): Criterion | undefined => {
+	const containsMatch = innerFilter.match(
+		/(not\s+)?contains\(attribute\/([^\s,]+),\s*'([^']*)'\)/
+	);
+
+	if (containsMatch) {
+		const [, notPrefix, attributeId, value] = containsMatch;
+
+		return buildAttributeCriterion(
+			attributeId,
+			notPrefix ? NotOperators.NotContains : FunctionalOperators.Contains,
+			value
+		);
+	}
+
+	const betweenMatch = innerFilter.match(
+		/between\(attribute\/([^\s,]+),'([^']*)','([^']*)'\)/
+	);
+
+	if (betweenMatch) {
+		const [, attributeId, start, end] = betweenMatch;
+
+		return buildAttributeCriterion(
+			attributeId,
+			FunctionalOperators.Between,
+			{end, start}
+		);
+	}
+
+	const relationalMatch = innerFilter.match(
+		/attribute\/([^\s,]+) (eq|ne|gt|lt|ge|le) (?:'([^']*)'|(-?\d+(?:\.\d+)?))/
+	);
+
+	if (relationalMatch) {
+		const [, attributeId, operatorName, quotedValue, numericValue] =
+			relationalMatch;
+
+		return buildAttributeCriterion(
+			attributeId,
+			operatorName,
+			quotedValue !== undefined ? quotedValue : Number(numericValue)
+		);
+	}
+
+	return undefined;
 };
 
 const parseRemoteFilterByCount = (
@@ -1307,6 +1421,19 @@ const transformConjunctionNode = (context: Context): Criteria[] => {
 			];
 };
 
+type BehaviorCriterionState = {
+	asset: boolean;
+	attribute: boolean;
+	attributeValue: boolean;
+	occurenceCount: boolean;
+};
+
+type EventCriterionState = {
+	attribute: boolean;
+	attributeValue: boolean;
+	occurenceCount: boolean;
+};
+
 /**
  * Transform a custom function expression node into a criterion for the criteria
  * builder.
@@ -1416,22 +1543,8 @@ const transformCustomFunctionNode = ({oDataASTNode}: Context): Criterion[] => {
 				detectedEntityId
 			: firstItemPropertyName;
 
-	let touched:
-		| boolean
-		| {asset: boolean; occurenceCount: boolean}
-		| {
-				attribute: boolean;
-				attributeValue: boolean;
-				occurenceCount: boolean;
-		  } = false;
-	let valid:
-		| boolean
-		| {asset: boolean; occurenceCount: boolean}
-		| {
-				attribute: boolean;
-				attributeValue: boolean;
-				occurenceCount: boolean;
-		  } = true;
+	let touched: boolean | BehaviorCriterionState | EventCriterionState = false;
+	let valid: boolean | BehaviorCriterionState | EventCriterionState = true;
 
 	// TODO: Prob need one here for PropertyTypes.Event
 
@@ -1440,8 +1553,18 @@ const transformCustomFunctionNode = ({oDataASTNode}: Context): Criterion[] => {
 			operatorName
 		)
 	) {
-		touched = {asset: false, occurenceCount: false};
-		valid = {asset: true, occurenceCount: true};
+		touched = {
+			asset: false,
+			attribute: false,
+			attributeValue: false,
+			occurenceCount: false,
+		};
+		valid = {
+			asset: true,
+			attribute: true,
+			attributeValue: true,
+			occurenceCount: true,
+		};
 	}
 	else if (
 		SUPPORTED_PROPERTY_TYPES_MAP[PropertyTypes.Event].includes(operatorName)

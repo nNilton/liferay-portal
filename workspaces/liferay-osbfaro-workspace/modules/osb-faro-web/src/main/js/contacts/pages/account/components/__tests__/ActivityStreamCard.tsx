@@ -2,7 +2,7 @@ import ActivityStreamCard from '../ActivityStreamCard';
 import mockStore from 'test/mock-store';
 import React from 'react';
 import {act, fireEvent, render} from '@testing-library/react';
-import {MemoryRouter} from 'react-router-dom';
+import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {
 	mockAccountEventMetricsReq,
 	mockAccountEventsTrendReq,
@@ -14,6 +14,12 @@ import {RangeKeyTimeRanges} from 'shared/util/constants';
 import {waitForLoadingToBeRemoved} from 'test/helpers';
 
 jest.unmock('react-dom');
+
+jest.mock('shared/hooks/useTimeZone', () => ({
+	useTimeZone: () => ({
+		timeZoneId: 'UTC',
+	}),
+}));
 
 jest.mock('recharts', () => {
 	const OriginalModule = jest.requireActual('recharts');
@@ -31,24 +37,33 @@ jest.mock('recharts', () => {
 const SEARCH_KEYWORDS = 'add to cart';
 
 interface WrapperProps {
+	accountName?: string;
 	mocks: any[];
 }
 
-const Wrapper: React.FC<WrapperProps> = ({mocks}) => (
+const Wrapper: React.FC<WrapperProps> = ({accountName, mocks}) => (
 	<Provider store={mockStore()}>
-		<MemoryRouter>
-			<MockedProvider mocks={mocks}>
-				<ActivityStreamCard
-					accountId="abc"
-					channelId="123123"
-					interval="D"
-					rangeSelectors={{
-						rangeEnd: null,
-						rangeKey: RangeKeyTimeRanges.Last30Days,
-						rangeStart: null,
-					}}
+		<MemoryRouter initialEntries={['/workspace/liferay.com']}>
+			<Routes>
+				<Route
+					element={
+						<MockedProvider mocks={mocks}>
+							<ActivityStreamCard
+								accountId="abc"
+								accountName={accountName}
+								channelId="123123"
+								interval="D"
+								rangeSelectors={{
+									rangeEnd: null,
+									rangeKey: RangeKeyTimeRanges.Last30Days,
+									rangeStart: null,
+								}}
+							/>
+						</MockedProvider>
+					}
+					path="/workspace/:groupId"
 				/>
-			</MockedProvider>
+			</Routes>
 		</MemoryRouter>
 	</Provider>
 );
@@ -71,22 +86,102 @@ describe('ActivityStreamCard', () => {
 		expect(getByText('Jane Doe')).toBeInTheDocument();
 	});
 
-	it('drives pagination from the activity stream event total, not the session count', async () => {
-		const {container} = render(
+	it('shows the experience label for a page view served by a non-default experience', async () => {
+		const {container, getByText} = render(
 			<Wrapper
 				mocks={[
 					mockAccountEventMetricsReq(),
 					mockAccountEventsTrendReq(),
-					mockAccountUserSessionsReq({totalEvents: 186}),
+					mockAccountUserSessionsReq({
+						sessions: [
+							{
+								__typename: 'UserSession',
+								browserName: 'Chrome',
+								completeDate: '2024-04-03T08:30:00.000Z',
+								contentLanguageId: 'en-US',
+								createDate: '2024-04-03T08:00:00.000Z',
+								devicePixelRatio: 1,
+								deviceType: 'Desktop',
+								events: [
+									{
+										__typename: 'Event',
+										applicationId: 'Page',
+										assetTitle: 'Home',
+										canonicalUrl:
+											'https://liferay.com/home',
+										createDate: '2024-04-03T08:05:00.000Z',
+										eventDate: '2024-04-03T08:05:00.000Z',
+										eventId: 'pageViewed',
+										experienceId: '39201',
+										experienceName: 'Q3 Promo Experience',
+										name: 'pageViewed',
+										pageDescription: '',
+										pageGroupId: 'https://liferay.com/home',
+										pageKeywords: '',
+										pageTitle: 'Home',
+										properties: [],
+										referrer: '',
+										url: 'https://liferay.com/home',
+									},
+								],
+								individualId: 'jane-doe-id',
+								languageId: 'en-US',
+								screenHeight: 1080,
+								screenWidth: 1920,
+								timezoneOffset: '-03:00',
+								userAgent: 'Mozilla/5.0',
+								userId: 'jane-doe-id',
+								userName: 'Jane Doe',
+							},
+						] as any,
+					}),
 				]}
 			/>
 		);
 
 		await waitForLoadingToBeRemoved(container);
 
-		expect(
-			container.querySelector('.pagination-results')
-		).toHaveTextContent('186');
+		expect(getByText('Experience')).toBeInTheDocument();
+	});
+
+	it('includes accountId and accountName as query params on a page event link', async () => {
+		const {container} = render(
+			<Wrapper
+				accountName="Acme Corporation"
+				mocks={[
+					mockAccountEventMetricsReq(),
+					mockAccountEventsTrendReq(),
+					mockAccountUserSessionsReq(),
+				]}
+			/>
+		);
+
+		await waitForLoadingToBeRemoved(container);
+
+		const link = container.querySelector(
+			'.page-row .title'
+		) as HTMLAnchorElement;
+
+		expect(link.getAttribute('href')).toContain('accountId=abc');
+		expect(link.getAttribute('href')).toContain('accountName=Acme');
+	});
+
+	it('drives pagination from the activity stream page group total, not the event count', async () => {
+		const {container} = render(
+			<Wrapper
+				mocks={[
+					mockAccountEventMetricsReq(),
+					mockAccountEventsTrendReq(),
+					mockAccountUserSessionsReq({totalPageGroups: 186}),
+				]}
+			/>
+		);
+
+		await waitForLoadingToBeRemoved(container);
+
+		const pagers = container.querySelectorAll('.pagination-results');
+
+		expect(pagers[pagers.length - 1]).toHaveTextContent('186');
 	});
 
 	it('renders the empty state when the histogram has no events', async () => {
@@ -99,7 +194,10 @@ describe('ActivityStreamCard', () => {
 						trendClassification: 'NEUTRAL',
 						value: 0,
 					}),
-					mockAccountUserSessionsReq({sessions: [], totalEvents: 0}),
+					mockAccountUserSessionsReq({
+						sessions: [],
+						totalPageGroups: 0,
+					}),
 				]}
 			/>
 		);
@@ -127,7 +225,7 @@ describe('ActivityStreamCard', () => {
 					mockAccountUserSessionsReq({
 						keywords: SEARCH_KEYWORDS,
 						sessions: [],
-						totalEvents: 0,
+						totalPageGroups: 0,
 					}),
 					mockAccountEventMetricsReq(),
 					mockAccountEventsTrendReq(),
@@ -151,7 +249,7 @@ describe('ActivityStreamCard', () => {
 			await jest.advanceTimersByTimeAsync(500);
 		});
 
-		expect(getByText('There are no results found.')).toBeInTheDocument();
+		expect(getByText('No results were found.')).toBeInTheDocument();
 
 		fireEvent.click(getByText('Clear Search'));
 

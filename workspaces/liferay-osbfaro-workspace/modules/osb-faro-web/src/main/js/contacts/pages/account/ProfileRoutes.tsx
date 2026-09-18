@@ -5,10 +5,14 @@ import BundleRouter from 'route-middleware/BundleRouter';
 import ErrorPage from 'shared/pages/ErrorPage';
 import Loading from 'shared/components/Loading';
 import React, {lazy, Suspense, useContext} from 'react';
-import RouteNotFound from 'shared/components/RouteNotFound';
 import {ACCOUNTS, Routes, toRoute} from 'shared/util/router';
 import {ChannelContext} from 'shared/context/channel';
-import {Switch, useParams} from 'react-router-dom';
+import {
+	Navigate,
+	Route,
+	Routes as RouterRoutes,
+	useParams,
+} from 'react-router-dom';
 import {useRequest} from 'shared/hooks/useRequest';
 
 const Activities = lazy(
@@ -17,12 +21,20 @@ const Activities = lazy(
 const Profile = lazy(
 	() => import(/* webpackChunkName: "AccountProfile" */ './Profile')
 );
+const Overview = lazy(
+	() => import(/* webpackChunkName: "Overview" */ './Overview')
+);
 
 const NAV_ITEMS = [
 	{
 		exact: true,
+		label: Liferay.Language.get('overview'),
+		route: Routes.CONTACTS_ACCOUNT_OVERVIEW,
+	},
+	{
+		exact: true,
 		label: Liferay.Language.get('activities'),
-		route: Routes.CONTACTS_ACCOUNT,
+		route: Routes.CONTACTS_ACCOUNT_ACTIVITIES,
 	},
 	{
 		exact: true,
@@ -99,22 +111,56 @@ const AccountProfileRoutes = () => {
 
 			<BasePage.Body>
 				<Suspense fallback={<Loading />}>
-					<Switch>
-						<BundleRouter
-							componentProps={{account: data, loading}}
-							data={Profile}
-							exact
-							path={Routes.CONTACTS_ACCOUNT_PROFILE}
+					<RouterRoutes>
+						<Route
+							element={
+								<BundleRouter
+									componentProps={{account: data, loading}}
+									data={Profile}
+								/>
+							}
+							path="profile"
 						/>
 
-						<BundleRouter
-							data={Activities}
-							exact
-							path={Routes.CONTACTS_ACCOUNT}
+						<Route
+							element={
+								<BundleRouter
+									componentProps={{accountName}}
+									data={Activities}
+								/>
+							}
+							path="activities"
 						/>
 
-						<RouteNotFound />
-					</Switch>
+						<Route
+							element={
+								<BundleRouter
+									componentProps={{account: data}}
+									data={Overview}
+								/>
+							}
+							path="overview"
+						/>
+
+						<Route
+							element={
+								<Navigate
+									replace
+									to={toRoute(
+										Routes.CONTACTS_ACCOUNT_OVERVIEW,
+										{
+											channelId: channelId!,
+											groupId: groupId!,
+											id: id!,
+										}
+									)}
+								/>
+							}
+							index
+						/>
+
+						<Route element={<ErrorPage />} path="*" />
+					</RouterRoutes>
 				</Suspense>
 			</BasePage.Body>
 		</BasePage>

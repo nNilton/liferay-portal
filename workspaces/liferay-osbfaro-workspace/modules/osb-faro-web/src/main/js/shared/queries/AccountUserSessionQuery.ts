@@ -2,14 +2,23 @@ import {gql} from '@apollo/client';
 import {SessionEntityTypes} from 'shared/util/constants';
 
 export interface AccountUserSessionEvent {
+	acquisitionProperties: Array<{name: string; value: string}>;
 	applicationId: string;
 	assetTitle: string;
+	campaignId: string | null;
+	campaignName: string | null;
 	canonicalUrl: string;
 	createDate: string;
+	eventDate: string;
+	eventId: string;
+	experienceId?: string | null;
+	experienceName?: string | null;
 	name: string;
 	pageDescription: string;
+	pageGroupId?: string | null;
 	pageKeywords: string;
 	pageTitle: string;
+	properties: Array<{name: string; value: string}>;
 	referrer: string;
 	url: string;
 }
@@ -22,17 +31,20 @@ export interface AccountUserSession {
 	devicePixelRatio: number;
 	deviceType: string;
 	events: AccountUserSessionEvent[];
+	individualId: string | null;
+	jobTitle?: string | null;
 	languageId: string;
 	screenHeight: number;
 	screenWidth: number;
 	timezoneOffset: string;
 	userAgent: string;
+	userId: string | null;
 	userName: string | null;
 }
 
 export interface AccountUserSessionData {
 	eventsByUserSessions: {
-		totalEventsMetric: {value: number} | null;
+		totalPageGroupsMetric: {value: number} | null;
 		userSessions: AccountUserSession[];
 	};
 }
@@ -76,7 +88,7 @@ export default gql`
 			rangeStart: $rangeStart
 			size: $size
 		) {
-			totalEventsMetric {
+			totalPageGroupsMetric {
 				value
 			}
 			userSessions {
@@ -88,22 +100,39 @@ export default gql`
 					devicePixelRatio
 					deviceType
 					events {
+						acquisitionProperties {
+							name
+							value
+						}
 						applicationId
 						assetTitle
+						campaignId
+						campaignName
 						canonicalUrl
 						createDate
+						eventDate
+						eventId
+						experienceId
+						experienceName
 						name
 						pageDescription
+						pageGroupId
 						pageKeywords
 						pageTitle
+						properties {
+							name
+							value
+						}
 						referrer
 						url
 					}
+					individualId
 					languageId
 					screenHeight
 					screenWidth
 					timezoneOffset
 					userAgent
+					userId
 					userName
 				}
 			}

@@ -67,6 +67,18 @@ public class DynamicObjectDefinitionLocalizationTable
 			});
 	}
 
+	@Override
+	public DynamicObjectDefinitionLocalizationTable as(String alias) {
+		DynamicObjectDefinitionLocalizationTable
+			dynamicObjectDefinitionLocalizationTable =
+				new DynamicObjectDefinitionLocalizationTable(
+					_objectDefinition, _objectFields);
+
+		dynamicObjectDefinitionLocalizationTable.setAlias(alias);
+
+		return dynamicObjectDefinitionLocalizationTable;
+	}
+
 	public String getCreateTableSQL() {
 		StringBundler sb = new StringBundler();
 
@@ -74,7 +86,7 @@ public class DynamicObjectDefinitionLocalizationTable
 		sb.append(_objectDefinition.getLocalizationDBTableName());
 		sb.append(" (");
 		sb.append(_objectDefinition.getPKObjectFieldDBColumnName());
-		sb.append(" LONG not null, languageId VARCHAR(10) not null");
+		sb.append(" LONG not null, languageId VARCHAR(75) not null");
 
 		for (ObjectField objectField : _objectFields) {
 			sb.append(", ");

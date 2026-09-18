@@ -11,24 +11,27 @@ import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryGroupRelLocalService;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.layout.test.util.LayoutTestUtil;
-import com.liferay.portal.kernel.feature.flag.constants.FeatureFlagConstants;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
+import com.liferay.portal.kernel.test.util.FeatureFlagTestUtil;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
-import com.liferay.portal.kernel.util.PropsUtil;
+import com.liferay.portal.props.test.util.PropsTemporarySwapper;
+import com.liferay.portal.test.rule.FeatureFlag;
+import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.style.book.model.StyleBookEntry;
 import com.liferay.style.book.service.StyleBookEntryLocalService;
 import com.liferay.style.book.util.StyleBookEntryProviderUtil;
+import com.liferay.style.book.util.comparator.StyleBookEntryNameComparator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +45,7 @@ import org.junit.runner.RunWith;
 
 /**
  * @author Gabriel Lima
+ * @author Thiago Buarque
  */
 @RunWith(Arquillian.class)
 public class StyleBookEntryProviderUtilTest {
@@ -78,8 +82,71 @@ public class StyleBookEntryProviderUtilTest {
 	}
 
 	@Test
+	public void testGetStyleBookEntriesPaginated() throws Exception {
+		String themeId = RandomTestUtil.randomString();
+
+		StyleBookEntry styleBookEntry1 = _addStyleBookEntry(
+			_group.getGroupId(), "Alpha", themeId);
+		StyleBookEntry styleBookEntry2 = _addStyleBookEntry(
+			_group.getGroupId(), "Beta", themeId);
+
+		Assert.assertEquals(
+			2,
+			StyleBookEntryProviderUtil.getStyleBookEntriesCount(
+				_group.getCompanyId(), _group.getGroupId(), null, themeId));
+
+		List<StyleBookEntry> styleBookEntries =
+			StyleBookEntryProviderUtil.getStyleBookEntries(
+				_group.getCompanyId(), _group.getGroupId(), null, themeId, 0, 1,
+				StyleBookEntryNameComparator.getInstance(true));
+
+		Assert.assertEquals(
+			styleBookEntries.toString(), 1, styleBookEntries.size());
+		Assert.assertEquals(styleBookEntry1, styleBookEntries.get(0));
+
+		Assert.assertEquals(
+			1,
+			StyleBookEntryProviderUtil.getStyleBookEntriesCount(
+				_group.getCompanyId(), _group.getGroupId(), "Beta", themeId));
+
+		styleBookEntries = StyleBookEntryProviderUtil.getStyleBookEntries(
+			_group.getCompanyId(), _group.getGroupId(), "Beta", themeId, 0, 10,
+			StyleBookEntryNameComparator.getInstance(true));
+
+		Assert.assertEquals(
+			styleBookEntries.toString(), 1, styleBookEntries.size());
+		Assert.assertEquals(styleBookEntry2, styleBookEntries.get(0));
+	}
+
+	@FeatureFlag("LPD-57283")
+	@Test
+	@TestInfo("LPD-98556")
+	public void testGetStyleBookEntriesWhenChildSiteIsUsed() throws Exception {
+		Group parentGroup = _addGroup();
+
+		StyleBookEntry parentStyleBookEntry = _addStyleBookEntry(
+			parentGroup.getGroupId());
+
+		Group childGroup = GroupTestUtil.addGroup(parentGroup.getGroupId());
+
+		_groups.add(0, childGroup);
+
+		List<StyleBookEntry> styleBookEntries =
+			StyleBookEntryProviderUtil.getStyleBookEntries(
+				TestPropsValues.getCompanyId(), childGroup.getGroupId());
+
+		Assert.assertFalse(
+			styleBookEntries.toString(),
+			styleBookEntries.contains(parentStyleBookEntry));
+	}
+
+	@FeatureFlags(featureFlags = @FeatureFlag("LPD-57283"))
+	@Test
 	@TestInfo("LPD-88081")
 	public void testGetStyleBookEntry() throws Exception {
+		FeatureFlagTestUtil.invokeFeatureFlagListeners(
+			TestPropsValues.getCompanyId(), true, "LPD-57283");
+
 		StyleBookEntry styleBookEntry = _addStyleBookEntry(_group.getGroupId());
 
 		_testGetStyleBookEntry(
@@ -116,17 +183,15 @@ public class StyleBookEntryProviderUtilTest {
 		DepotEntry depotEntry = _depotEntryLocalService.addDepotEntry(
 			RandomTestUtil.randomLocaleStringMap(),
 			RandomTestUtil.randomLocaleStringMap(),
-			DepotConstants.TYPE_ASSET_LIBRARY,
+			DepotConstants.TYPE_DESIGN_LIBRARY,
 			ServiceContextTestUtil.getServiceContext(_group.getGroupId()));
 
 		_depotEntryGroupRelLocalService.addDepotEntryGroupRel(
 			depotEntry.getDepotEntryId(), _group.getGroupId());
 
-		Group group = depotEntry.getGroup();
+		_depotEntries.add(depotEntry);
 
-		_groups.add(group);
-
-		return group;
+		return depotEntry.getGroup();
 	}
 
 	private StyleBookEntry _addDepotEntryStyleBookEntry() throws Exception {
@@ -150,9 +215,17 @@ public class StyleBookEntryProviderUtilTest {
 	private StyleBookEntry _addStyleBookEntry(long groupId, String themeId)
 		throws Exception {
 
+		return _addStyleBookEntry(
+			groupId, RandomTestUtil.randomString(), themeId);
+	}
+
+	private StyleBookEntry _addStyleBookEntry(
+			long groupId, String name, String themeId)
+		throws Exception {
+
 		return _styleBookEntryLocalService.addStyleBookEntry(
 			RandomTestUtil.randomString(), TestPropsValues.getUserId(), groupId,
-			false, null, RandomTestUtil.randomString(), null, themeId, null);
+			false, null, null, name, null, themeId, null);
 	}
 
 	private void _testGetStyleBookEntries(
@@ -162,12 +235,10 @@ public class StyleBookEntryProviderUtilTest {
 			StyleBookEntry styleBookEntry)
 		throws Exception {
 
-		try (FeatureFlagTemporarySwapper featureFlagTemporarySwapper1 =
-				new FeatureFlagTemporarySwapper(
-					connectedDepotEntriesEnabled, "LPD-17564");
-			FeatureFlagTemporarySwapper featureFlagTemporarySwapper2 =
-				new FeatureFlagTemporarySwapper(
-					connectedDepotEntriesEnabled, "LPD-57283")) {
+		try (PropsTemporarySwapper propsTemporarySwapper =
+				new PropsTemporarySwapper(
+					"feature.flag.LPD-57283",
+					String.valueOf(connectedDepotEntriesEnabled))) {
 
 			List<StyleBookEntry> styleBookEntries =
 				StyleBookEntryProviderUtil.getStyleBookEntries(
@@ -204,34 +275,31 @@ public class StyleBookEntryProviderUtilTest {
 			String styleBookEntryScopeERC)
 		throws Exception {
 
-		try (FeatureFlagTemporarySwapper featureFlagTemporarySwapper1 =
-				new FeatureFlagTemporarySwapper(true, "LPD-17564");
-			FeatureFlagTemporarySwapper featureFlagTemporarySwapper2 =
-				new FeatureFlagTemporarySwapper(true, "LPD-57283")) {
+		_layout.setStyleBookEntryERC(styleBookEntryERC);
+		_layout.setStyleBookEntryScopeERC(styleBookEntryScopeERC);
 
-			_layout.setStyleBookEntryERC(styleBookEntryERC);
-			_layout.setStyleBookEntryScopeERC(styleBookEntryScopeERC);
+		_layout = _layoutLocalService.updateLayout(_layout);
 
-			_layout = _layoutLocalService.updateLayout(_layout);
+		StyleBookEntry actualStyleBookEntry =
+			StyleBookEntryProviderUtil.getStyleBookEntry(_layout);
 
-			StyleBookEntry actualStyleBookEntry =
-				StyleBookEntryProviderUtil.getStyleBookEntry(_layout);
+		if (expectedStyleBookEntry == null) {
+			Assert.assertNull(actualStyleBookEntry);
 
-			if (expectedStyleBookEntry == null) {
-				Assert.assertNull(actualStyleBookEntry);
-
-				return;
-			}
-
-			Assert.assertEquals(
-				expectedStyleBookEntry.getStyleBookEntryId(),
-				actualStyleBookEntry.getStyleBookEntryId());
+			return;
 		}
+
+		Assert.assertEquals(
+			expectedStyleBookEntry.getStyleBookEntryId(),
+			actualStyleBookEntry.getStyleBookEntryId());
 	}
 
 	private static final String _THEME_ID_CLASSIC = "classic_WAR_classictheme";
 
 	private static final String _THEME_ID_OTHER = "other_WAR_othertheme";
+
+	@DeleteAfterTestRun
+	private List<DepotEntry> _depotEntries = new ArrayList<>();
 
 	@Inject
 	private DepotEntryGroupRelLocalService _depotEntryGroupRelLocalService;
@@ -251,25 +319,5 @@ public class StyleBookEntryProviderUtilTest {
 
 	@Inject
 	private StyleBookEntryLocalService _styleBookEntryLocalService;
-
-	private static class FeatureFlagTemporarySwapper implements AutoCloseable {
-
-		public FeatureFlagTemporarySwapper(boolean enabled, String key) {
-			_key = FeatureFlagConstants.getKey(key);
-
-			_originalValue = PropsUtil.get(_key);
-
-			PropsUtil.set(_key, String.valueOf(enabled));
-		}
-
-		@Override
-		public void close() {
-			PropsUtil.set(_key, _originalValue);
-		}
-
-		private final String _key;
-		private final String _originalValue;
-
-	}
 
 }

@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
@@ -24,6 +25,8 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 
 import java.io.Serializable;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -137,6 +140,48 @@ public class BatchTestEntity implements Serializable {
 	@JsonIgnore
 	private Supplier<com.liferay.portal.vulcan.custom.field.CustomField[]>
 		_customFieldsSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema
+	@Valid
+	public Object getEmbeddedNestedField() {
+		if (_embeddedNestedFieldSupplier != null) {
+			embeddedNestedField = _embeddedNestedFieldSupplier.get();
+
+			_embeddedNestedFieldSupplier = null;
+		}
+
+		return embeddedNestedField;
+	}
+
+	public void setEmbeddedNestedField(Object embeddedNestedField) {
+		this.embeddedNestedField = embeddedNestedField;
+
+		_embeddedNestedFieldSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setEmbeddedNestedField(
+		UnsafeSupplier<Object, Exception> embeddedNestedFieldUnsafeSupplier) {
+
+		_embeddedNestedFieldSupplier = () -> {
+			try {
+				return embeddedNestedFieldUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected Object embeddedNestedField;
+
+	@JsonIgnore
+	private Supplier<Object> _embeddedNestedFieldSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema
 	public String getExternalReferenceCode() {
@@ -258,29 +303,29 @@ public class BatchTestEntity implements Serializable {
 	private Supplier<String> _nameSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema
-	public String getNestedField() {
-		if (_nestedFieldSupplier != null) {
-			nestedField = _nestedFieldSupplier.get();
+	public String getNestedField1() {
+		if (_nestedField1Supplier != null) {
+			nestedField1 = _nestedField1Supplier.get();
 
-			_nestedFieldSupplier = null;
+			_nestedField1Supplier = null;
 		}
 
-		return nestedField;
+		return nestedField1;
 	}
 
-	public void setNestedField(String nestedField) {
-		this.nestedField = nestedField;
+	public void setNestedField1(String nestedField1) {
+		this.nestedField1 = nestedField1;
 
-		_nestedFieldSupplier = null;
+		_nestedField1Supplier = null;
 	}
 
 	@JsonIgnore
-	public void setNestedField(
-		UnsafeSupplier<String, Exception> nestedFieldUnsafeSupplier) {
+	public void setNestedField1(
+		UnsafeSupplier<String, Exception> nestedField1UnsafeSupplier) {
 
-		_nestedFieldSupplier = () -> {
+		_nestedField1Supplier = () -> {
 			try {
-				return nestedFieldUnsafeSupplier.get();
+				return nestedField1UnsafeSupplier.get();
 			}
 			catch (RuntimeException runtimeException) {
 				throw runtimeException;
@@ -293,10 +338,51 @@ public class BatchTestEntity implements Serializable {
 
 	@GraphQLField
 	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
-	protected String nestedField;
+	protected String nestedField1;
 
 	@JsonIgnore
-	private Supplier<String> _nestedFieldSupplier;
+	private Supplier<String> _nestedField1Supplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema
+	public String getNestedField2() {
+		if (_nestedField2Supplier != null) {
+			nestedField2 = _nestedField2Supplier.get();
+
+			_nestedField2Supplier = null;
+		}
+
+		return nestedField2;
+	}
+
+	public void setNestedField2(String nestedField2) {
+		this.nestedField2 = nestedField2;
+
+		_nestedField2Supplier = null;
+	}
+
+	@JsonIgnore
+	public void setNestedField2(
+		UnsafeSupplier<String, Exception> nestedField2UnsafeSupplier) {
+
+		_nestedField2Supplier = () -> {
+			try {
+				return nestedField2UnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String nestedField2;
+
+	@JsonIgnore
+	private Supplier<String> _nestedField2Supplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema
 	@Valid
@@ -405,6 +491,18 @@ public class BatchTestEntity implements Serializable {
 			sb.append("]");
 		}
 
+		Object embeddedNestedField = getEmbeddedNestedField();
+
+		if (embeddedNestedField != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"embeddedNestedField\": ");
+
+			sb.append(_toJSON(embeddedNestedField));
+		}
+
 		String externalReferenceCode = getExternalReferenceCode();
 
 		if (externalReferenceCode != null) {
@@ -449,18 +547,34 @@ public class BatchTestEntity implements Serializable {
 			sb.append("\"");
 		}
 
-		String nestedField = getNestedField();
+		String nestedField1 = getNestedField1();
 
-		if (nestedField != null) {
+		if (nestedField1 != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
 			}
 
-			sb.append("\"nestedField\": ");
+			sb.append("\"nestedField1\": ");
 
 			sb.append("\"");
 
-			sb.append(_escape(nestedField));
+			sb.append(_escape(nestedField1));
+
+			sb.append("\"");
+		}
+
+		String nestedField2 = getNestedField2();
+
+		if (nestedField2 != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"nestedField2\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(nestedField2));
 
 			sb.append("\"");
 		}
@@ -571,6 +685,27 @@ public class BatchTestEntity implements Serializable {
 		return sb.toString();
 	}
 
+	private static String _toJSON(Object value) {
+		if (value instanceof Collection) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray((Collection<?>)value));
+		}
+		else if (value instanceof Map) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONObject((Map<?, ?>)value));
+		}
+		else if (value instanceof Object[]) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray(
+					Arrays.asList((Object[])value)));
+		}
+		else if (value instanceof String) {
+			return StringBundler.concat("\"", _escape(value), "\"");
+		}
+
+		return String.valueOf(value);
+	}
+
 	private static final String[][] _JSON_ESCAPE_STRINGS = {
 		{"\\", "\"", "\b", "\f", "\n", "\r", "\t"},
 		{"\\\\", "\\\"", "\\b", "\\f", "\\n", "\\r", "\\t"}
@@ -579,4 +714,4 @@ public class BatchTestEntity implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:306781238
+// LIFERAY-REST-BUILDER-HASH:1764240379

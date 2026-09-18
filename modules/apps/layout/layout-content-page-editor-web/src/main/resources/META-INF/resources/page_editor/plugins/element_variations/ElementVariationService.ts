@@ -15,7 +15,18 @@ interface AddElementVariationParameters {
 interface DeleteElementVariationParameters {
 	deleteElementVariationURL: string;
 	externalReferenceCode: string;
-	plid: number;
+}
+
+interface UpdateAudiencesPriorityParameters {
+	audienceEntryERCs: string[];
+	segmentsExperienceERC: string;
+	updateAudiencesPriorityURL: string;
+}
+
+interface UpdateElementVariationParameters {
+	active: boolean;
+	externalReferenceCode: string;
+	updateElementVariationURL: string;
 }
 
 export default {
@@ -27,10 +38,11 @@ export default {
 		return serviceFetch<void>(addElementVariationURL, {
 			body: {
 				elementVariation: JSON.stringify({
+					active: elementVariation.active,
 					audienceEntryERCs: elementVariation.audienceEntryERCs,
 					externalReferenceCode:
 						elementVariation.externalReferenceCode,
-					hideMap: elementVariation.hide,
+					hide: String(elementVariation.hide),
 					htmlMap: elementVariation.html,
 					jsMap: elementVariation.js,
 					name: elementVariation.name,
@@ -46,12 +58,36 @@ export default {
 	deleteElementVariation({
 		deleteElementVariationURL,
 		externalReferenceCode,
-		plid,
 	}: DeleteElementVariationParameters) {
 		return serviceFetch<void>(deleteElementVariationURL, {
 			body: {
 				externalReferenceCode,
-				plid: String(plid),
+			},
+		});
+	},
+
+	updateAudiencesPriority({
+		audienceEntryERCs,
+		segmentsExperienceERC,
+		updateAudiencesPriorityURL,
+	}: UpdateAudiencesPriorityParameters) {
+		return serviceFetch<void>(updateAudiencesPriorityURL, {
+			body: {
+				audienceEntryERCs: JSON.stringify(audienceEntryERCs),
+				segmentsExperienceERC,
+			},
+		});
+	},
+
+	updateElementVariation({
+		active,
+		externalReferenceCode,
+		updateElementVariationURL,
+	}: UpdateElementVariationParameters) {
+		return serviceFetch<void>(updateElementVariationURL, {
+			body: {
+				active: String(active),
+				externalReferenceCode,
 			},
 		});
 	},

@@ -66,7 +66,9 @@ import org.osgi.service.component.annotations.Reference;
  * @author Mikel Lorza
  */
 @Component(
-	property = "dto.class.name=com.liferay.sharing.model.SharingEntry",
+	property = {
+		"default=true", "dto.class.name=com.liferay.sharing.model.SharingEntry"
+	},
 	service = DTOConverter.class
 )
 public class SharedAssetDTOConverter
@@ -83,7 +85,7 @@ public class SharedAssetDTOConverter
 
 	@Override
 	public String getContentType() {
-		return SharingEntry.class.getSimpleName();
+		return SharedAsset.class.getSimpleName();
 	}
 
 	@Override
@@ -301,7 +303,9 @@ public class SharedAssetDTOConverter
 		return fileEntry;
 	}
 
-	private String _getMimeType(SharingEntry sharingEntry) {
+	private String _getMimeType(SharingEntry sharingEntry)
+		throws PortalException {
+
 		if (StringUtil.equals(
 				ObjectEntryFolder.class.getName(),
 				sharingEntry.getClassName())) {
@@ -357,16 +361,10 @@ public class SharedAssetDTOConverter
 			return null;
 		}
 
-		com.liferay.portal.kernel.repository.model.FileEntry fileEntry = null;
+		com.liferay.portal.kernel.repository.model.FileEntry fileEntry =
+			_dlAppLocalService.fetchFileEntry(file);
 
-		try {
-			fileEntry = _dlAppLocalService.getFileEntry(file);
-		}
-		catch (PortalException portalException) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(portalException);
-			}
-
+		if (fileEntry == null) {
 			return null;
 		}
 

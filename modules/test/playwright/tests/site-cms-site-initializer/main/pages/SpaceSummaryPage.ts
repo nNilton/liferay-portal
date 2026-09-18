@@ -8,17 +8,21 @@ import {Locator, Page, expect} from '@playwright/test';
 import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVisible';
 import {PORTLET_URLS} from '../../../../utils/portletUrls';
 import {waitForAlert} from '../../../../utils/waitForAlert';
+import {DataSetPage} from './DataSetPage';
 
 type UserOrUserGroupType = 'groups' | 'users';
 
 export class SpaceSummaryPage {
 	readonly page: Page;
 
+	readonly dataSetFragmentPage: DataSetPage;
+
 	readonly addContentButton: Locator;
 	readonly addFileButton: Locator;
 	readonly addMembersButton: Locator;
 	readonly closeButton: Locator;
 	readonly galleryPreview: Locator;
+	readonly moreActionsButton: Locator;
 	readonly userGroupsTab: Locator;
 	readonly usersTab: Locator;
 	readonly viewAllContentLink: Locator;
@@ -28,6 +32,8 @@ export class SpaceSummaryPage {
 
 	constructor(page: Page) {
 		this.page = page;
+
+		this.dataSetFragmentPage = new DataSetPage(page);
 
 		this.addContentButton = page.getByRole('button', {name: `Add Content`});
 
@@ -43,6 +49,10 @@ export class SpaceSummaryPage {
 			.getByLabel('Close', {exact: true});
 
 		this.galleryPreview = page.locator('.fds-gallery-view__preview');
+
+		this.moreActionsButton = page.getByRole('button', {
+			name: 'More Actions',
+		});
 
 		this.userGroupsTab = page.getByRole('tab', {name: 'User Groups'});
 
@@ -66,18 +76,78 @@ export class SpaceSummaryPage {
 	}
 
 	async goto(spaceName: string) {
-		await this.page.goto(PORTLET_URLS.cms);
-		await this.page.getByRole('menuitem', {name: spaceName}).click();
-		await this.page
-			.getByRole('heading', {exact: true, name: spaceName})
-			.waitFor();
+		await expect(async () => {
+
+			// All Spaces renders the product menu as well, so landing here
+			// keeps both routes to the space one navigation away.
+
+			await this.page.goto(PORTLET_URLS.cmsAllSpaces);
+
+			const spaceMenuItem = this.page.getByRole('menuitem', {
+				name: spaceName,
+			});
+
+			// The product menu only lists the first few spaces, so the space is
+			// missing from it once enough of them exist. Wait for the menu to
+			// render, anchoring on the Home entry it always contains, so that
+			// the space entry is present by then if the menu lists it at all.
+
+			await spaceMenuItem
+				.or(
+					this.page.getByRole('menuitem', {exact: true, name: 'Home'})
+				)
+				.first()
+				.waitFor();
+
+			// Open the space from the menu when it is listed, and search the
+			// data set when it is not.
+
+			if (await spaceMenuItem.isVisible()) {
+				await spaceMenuItem.click({timeout: 3000});
+			}
+			else {
+				await this.dataSetFragmentPage.search(spaceName);
+
+				await this.page
+					.getByRole('link', {exact: true, name: spaceName})
+					.click({timeout: 3000});
+			}
+
+			await this.page
+				.getByRole('heading', {exact: true, name: spaceName})
+				.waitFor({timeout: 3000});
+		}).toPass({timeout: 60000});
 	}
 
-	async addRoleToSpaceMember(roleName: string, userName: string) {
+	async clickActionsMenuItem(menuitem: string) {
+		await this.moreActionsButton.waitFor();
+
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: this.page.getByRole('menuitem', {
+				exact: true,
+				name: menuitem,
+			}),
+			trigger: this.moreActionsButton,
+		});
+	}
+
+	async closeMembersDialog() {
+		await Promise.all([
+			this.page.waitForEvent('load', {timeout: 15000}),
+			this.closeButton.click(),
+		]);
+	}
+
+	async openMembersDialog() {
 		await clickAndExpectToBeVisible({
 			target: this.page.getByRole('dialog'),
 			trigger: this.viewAllMembersLink,
 		});
+	}
+
+	async addRoleToSpaceMember(roleName: string, userName: string) {
+		await this.openMembersDialog();
 
 		const userRow = this.page
 			.getByRole('listitem')
@@ -112,10 +182,7 @@ export class SpaceSummaryPage {
 	}
 
 	async addUserOrUserGroup(name: string, type: UserOrUserGroupType) {
-		await clickAndExpectToBeVisible({
-			target: this.page.getByRole('dialog'),
-			trigger: this.viewAllMembersLink,
-		});
+		await this.openMembersDialog();
 
 		const dialog = this.page.getByRole('dialog');
 
@@ -147,9 +214,7 @@ export class SpaceSummaryPage {
 	}
 
 	async removeUserOrUserGroup(name: string, type: UserOrUserGroupType) {
-		await this.viewAllMembersLink.click();
-
-		await this.page.getByRole('dialog').waitFor();
+		await this.openMembersDialog();
 
 		await this.page
 			.getByLabel('Add People to Collaborate', {exact: true})
@@ -169,7 +234,7 @@ export class SpaceSummaryPage {
 			{autoClose: false}
 		);
 
-		await this.closeButton.click();
+		await this.closeMembersDialog();
 	}
 
 	async createContentFolder(name: string) {
@@ -211,11 +276,9 @@ export class SpaceSummaryPage {
 	async connectSite(siteName: string) {
 		await this.openConnectSitesDialog();
 
-		await this.page.getByLabel('Sites', {exact: true}).click();
-
-		await this.page
-			.getByRole('option', {exact: true, name: 'Sites'})
-			.click();
+		await expect(this.page.getByLabel('Sites', {exact: true})).toHaveText(
+			'Sites'
+		);
 
 		await this.page
 			.getByPlaceholder('Select a Site', {exact: true})

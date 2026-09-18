@@ -6,25 +6,45 @@
 import React, {useMemo} from 'react';
 
 import ChartLegend from '../../chart_legend/ChartLegend';
+import {toPercent} from '../../percent';
 import {PieDatum} from '../types/PieDatum';
-import {toPercent} from '../utils/percent';
 
 import type {
 	ChartLegendColumn,
 	ChartLegendItem,
 	ChartLegendLayout,
 } from '../../chart_legend/types';
+import type {PieChartLegendValue} from '../PieChart';
 
 interface PieChartLegendProps {
 	activeIndex: number | null;
 	colors: string[];
 	data: PieDatum[];
 	legend: ChartLegendLayout;
+	legendTableDividers?: boolean;
+	legendValue: PieChartLegendValue;
 	onFocus: (index: number) => void;
 	onHover: (index: number) => void;
 	onHoverEnd: () => void;
+	position?: 'bottom' | 'end';
 	titleId: string;
 	total: number;
+}
+
+function getListValue(
+	legendValue: PieChartLegendValue,
+	value: number,
+	total: number
+): string | undefined {
+	if (legendValue === 'name') {
+		return undefined;
+	}
+
+	if (legendValue === 'value') {
+		return value.toLocaleString();
+	}
+
+	return `${toPercent(value, total)}%`;
 }
 
 export default function PieChartLegend({
@@ -32,9 +52,12 @@ export default function PieChartLegend({
 	colors,
 	data,
 	legend,
+	legendTableDividers,
+	legendValue,
 	onFocus,
 	onHover,
 	onHoverEnd,
+	position,
 	titleId,
 	total,
 }: PieChartLegendProps) {
@@ -44,7 +67,7 @@ export default function PieChartLegend({
 				active: activeIndex === index,
 				id: index,
 				label: datum.label,
-				listValue: `${toPercent(datum.value, total)}%`,
+				listValue: getListValue(legendValue, datum.value, total),
 				sortValue: datum.value,
 				visual: (
 					<span
@@ -53,7 +76,7 @@ export default function PieChartLegend({
 					/>
 				),
 			})),
-		[activeIndex, colors, data, total]
+		[activeIndex, colors, data, legendValue, total]
 	);
 
 	const columns = useMemo<ChartLegendColumn[]>(
@@ -78,6 +101,8 @@ export default function PieChartLegend({
 			onActivate={onHover}
 			onDeactivate={() => onHoverEnd()}
 			onSelect={onFocus}
+			position={position}
+			tableDividers={legendTableDividers}
 			titleId={titleId}
 		/>
 	);

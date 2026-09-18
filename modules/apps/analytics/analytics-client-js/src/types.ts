@@ -56,6 +56,7 @@ export namespace Analytics {
 
 	export type Config = {
 		channelId: string;
+		cookieDomain?: string;
 		dataSourceId: string;
 		demandbaseAccountEndpoint: string;
 		endpointUrl: string;
@@ -63,6 +64,7 @@ export namespace Analytics {
 		flushInterval: number;
 		identity: {
 			emailAddressHashed: string;
+			fields?: Field[];
 		};
 		identityEndpoint: string;
 		projectId: string;
@@ -116,6 +118,7 @@ export namespace Analytics {
 			[Analytics.DataSetList.AnalyticsAssetTitle]?: string;
 			[Analytics.DataSetList.AnalyticsAssetType]: Analytics.ElementType;
 			[Analytics.DataSetList.AnalyticsAssetVocabularies]?: string;
+			[Analytics.DataSetList.AnalyticsCmpProjects]?: string;
 			[Analytics.DataSetList.AnalyticsExternalReferenceCode]: string;
 			[Analytics.DataSetList.AnalyticsObjectDefinitionName]: string;
 			[Analytics.DataSetList.AnalyticsObjectType]?: string;
@@ -135,6 +138,7 @@ export namespace Analytics {
 		AnalyticsAssetType = 'analyticsAssetType',
 		AnalyticsAssetVersion = 'analyticsAssetVersion',
 		AnalyticsAssetVocabularies = 'analyticsAssetVocabularies',
+		AnalyticsCmpProjects = 'analyticsCmpProjects',
 		AnalyticsExternalReferenceCode = 'analyticsExternalReferenceCode',
 		AnalyticsObjectDefinitionName = 'analyticsObjectDefinitionName',
 		AnalyticsObjectType = 'analyticsObjectType',
@@ -156,12 +160,24 @@ export namespace Analytics {
 		assetType?: Analytics.ApplicationId;
 	};
 
+	export type Field = {
+		name: string;
+		value: string;
+	};
+
 	export type Identity = {
 		channelId: string;
 		dataSourceId: string;
 		emailAddressHashed: string;
+		fields?: Field[];
 		id: string;
 		userId: string;
+	};
+
+	export type SetIdentity = {
+		email?: string;
+		fields?: Field[];
+		name?: string;
 	};
 
 	export type Context = {

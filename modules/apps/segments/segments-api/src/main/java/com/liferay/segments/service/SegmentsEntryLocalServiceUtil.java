@@ -53,27 +53,16 @@ public class SegmentsEntryLocalServiceUtil {
 	}
 
 	public static SegmentsEntry addSegmentsEntry(
-			String segmentsEntryKey, Map<java.util.Locale, String> nameMap,
+			String externalReferenceCode, String segmentsEntryKey,
+			Map<java.util.Locale, String> nameMap,
 			Map<java.util.Locale, String> descriptionMap, boolean active,
-			String criteria,
+			String criteria, String source, int type,
 			com.liferay.portal.kernel.service.ServiceContext serviceContext)
 		throws PortalException {
 
 		return getService().addSegmentsEntry(
-			segmentsEntryKey, nameMap, descriptionMap, active, criteria,
-			serviceContext);
-	}
-
-	public static SegmentsEntry addSegmentsEntry(
-			String segmentsEntryKey, Map<java.util.Locale, String> nameMap,
-			Map<java.util.Locale, String> descriptionMap, boolean active,
-			String criteria, String source,
-			com.liferay.portal.kernel.service.ServiceContext serviceContext)
-		throws PortalException {
-
-		return getService().addSegmentsEntry(
-			segmentsEntryKey, nameMap, descriptionMap, active, criteria, source,
-			serviceContext);
+			externalReferenceCode, segmentsEntryKey, nameMap, descriptionMap,
+			active, criteria, source, type, serviceContext);
 	}
 
 	public static void addSegmentsEntryClassPKs(
@@ -346,11 +335,11 @@ public class SegmentsEntryLocalServiceUtil {
 	}
 
 	public static List<SegmentsEntry> getSegmentsEntries(
-		long groupId, String[] sources, int start, int end,
+		long groupId, String[] sources, int[] types, int start, int end,
 		OrderByComparator<SegmentsEntry> orderByComparator) {
 
 		return getService().getSegmentsEntries(
-			groupId, sources, start, end, orderByComparator);
+			groupId, sources, types, start, end, orderByComparator);
 	}
 
 	public static List<SegmentsEntry> getSegmentsEntries(
@@ -366,11 +355,19 @@ public class SegmentsEntryLocalServiceUtil {
 	}
 
 	public static List<SegmentsEntry> getSegmentsEntriesBySource(
-		String source, int start, int end,
+		long companyId, String source, int[] types, int start, int end,
 		OrderByComparator<SegmentsEntry> orderByComparator) {
 
 		return getService().getSegmentsEntriesBySource(
-			source, start, end, orderByComparator);
+			companyId, source, types, start, end, orderByComparator);
+	}
+
+	public static List<SegmentsEntry> getSegmentsEntriesBySource(
+		String source, int[] types, int start, int end,
+		OrderByComparator<SegmentsEntry> orderByComparator) {
+
+		return getService().getSegmentsEntriesBySource(
+			source, types, start, end, orderByComparator);
 	}
 
 	/**
@@ -418,8 +415,10 @@ public class SegmentsEntryLocalServiceUtil {
 		return getService().getSegmentsEntriesCount(groupId);
 	}
 
-	public static int getSegmentsEntriesCount(long groupId, String[] sources) {
-		return getService().getSegmentsEntriesCount(groupId, sources);
+	public static int getSegmentsEntriesCount(
+		long groupId, String[] sources, int[] types) {
+
+		return getService().getSegmentsEntriesCount(groupId, sources, types);
 	}
 
 	/**
@@ -477,19 +476,6 @@ public class SegmentsEntryLocalServiceUtil {
 		return getService().searchSegmentsEntries(searchContext);
 	}
 
-	public static SegmentsEntry updateSegmentsEntry(
-			long segmentsEntryId, String segmentsEntryKey,
-			Map<java.util.Locale, String> nameMap,
-			Map<java.util.Locale, String> descriptionMap, boolean active,
-			String criteria,
-			com.liferay.portal.kernel.service.ServiceContext serviceContext)
-		throws PortalException {
-
-		return getService().updateSegmentsEntry(
-			segmentsEntryId, segmentsEntryKey, nameMap, descriptionMap, active,
-			criteria, serviceContext);
-	}
-
 	/**
 	 * Updates the segments entry in the database or adds it if it does not yet exist. Also notifies the appropriate model listeners.
 	 *
@@ -506,6 +492,19 @@ public class SegmentsEntryLocalServiceUtil {
 		return getService().updateSegmentsEntry(segmentsEntry);
 	}
 
+	public static SegmentsEntry updateSegmentsEntry(
+			String externalReferenceCode, long segmentsEntryId,
+			String segmentsEntryKey, Map<java.util.Locale, String> nameMap,
+			Map<java.util.Locale, String> descriptionMap, boolean active,
+			String criteria, int type,
+			com.liferay.portal.kernel.service.ServiceContext serviceContext)
+		throws PortalException {
+
+		return getService().updateSegmentsEntry(
+			externalReferenceCode, segmentsEntryId, segmentsEntryKey, nameMap,
+			descriptionMap, active, criteria, type, serviceContext);
+	}
+
 	public static SegmentsEntryLocalService getService() {
 		return _serviceSnapshot.get();
 	}
@@ -516,4 +515,4 @@ public class SegmentsEntryLocalServiceUtil {
 			SegmentsEntryLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1670083519
+// LIFERAY-SERVICE-BUILDER-HASH:558184410

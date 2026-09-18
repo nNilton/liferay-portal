@@ -3,7 +3,7 @@ import mockStore from 'test/mock-store';
 import React from 'react';
 import {act, fireEvent, render} from '@testing-library/react';
 import {Individual} from 'shared/util/records';
-import {MemoryRouter, Route} from 'react-router-dom';
+import {MemoryRouter, Route, Routes as RouterRoutes} from 'react-router-dom';
 import {MockedProvider} from '@apollo/client/testing';
 import {
 	mockEventMetrics,
@@ -26,7 +26,12 @@ const DefaultComponent = ({children}: {children: React.ReactNode}) => (
 				'/workspace/23/123123/contacts/individuals/known-individuals/4423123123',
 			]}
 		>
-			<Route path={Routes.CONTACTS_INDIVIDUAL}>{children}</Route>
+			<RouterRoutes>
+				<Route
+					element={children}
+					path={`${Routes.CONTACTS_INDIVIDUAL}/*`}
+				/>
+			</RouterRoutes>
 		</MemoryRouter>
 	</Provider>
 );
@@ -90,6 +95,10 @@ describe('IndividualProfileCard', () => {
 				eventsByUserSessions: {
 					__typename: 'EventsByUserSession',
 					totalEvents: 0,
+					totalPageGroupsMetric: {
+						__typename: 'Metric',
+						value: 0,
+					},
 					userSessions: [],
 				},
 			},
@@ -134,7 +143,7 @@ describe('IndividualProfileCard', () => {
 
 		jest.runAllTimers();
 
-		expect(getByText('There are no results found.')).toBeInTheDocument();
+		expect(getByText('No results were found.')).toBeInTheDocument();
 	});
 
 	it('should clear search input when clear button is clicked', async () => {

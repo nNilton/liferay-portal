@@ -75,8 +75,7 @@ public class
 				).put(
 					"externalReferenceCode", externalReferenceCode
 				).put(
-					"hideMap",
-					JSONUtil.put("en_US", RandomTestUtil.randomString())
+					"hide", "true"
 				).put(
 					"htmlMap",
 					JSONUtil.put("en_US", RandomTestUtil.randomString())
@@ -108,13 +107,17 @@ public class
 				layoutPageTemplateStructureRelElementVariations.get(0);
 
 		_assertAudienceEntryERCs(
-			externalReferenceCode,
-			Arrays.asList(audienceEntryERC1, audienceEntryERC2));
+			Arrays.asList(audienceEntryERC1, audienceEntryERC2),
+			externalReferenceCode, group.getGroupId());
 
+		Assert.assertTrue(
+			layoutPageTemplateStructureRelElementVariation.isActive());
 		Assert.assertEquals(
 			externalReferenceCode,
 			layoutPageTemplateStructureRelElementVariation.
 				getExternalReferenceCode());
+		Assert.assertEquals(
+			"true", layoutPageTemplateStructureRelElementVariation.getHide());
 		Assert.assertEquals(
 			name, layoutPageTemplateStructureRelElementVariation.getName());
 		Assert.assertEquals(
@@ -128,13 +131,14 @@ public class
 		_mvcActionCommand.processAction(
 			_getMockLiferayPortletActionRequest(
 				JSONUtil.put(
+					"active", false
+				).put(
 					"audienceEntryERCs",
 					JSONUtil.putAll(updatedAudienceEntryERC)
 				).put(
 					"externalReferenceCode", externalReferenceCode
 				).put(
-					"hideMap",
-					JSONUtil.put("en_US", RandomTestUtil.randomString())
+					"hide", "false"
 				).put(
 					"htmlMap",
 					JSONUtil.put("en_US", RandomTestUtil.randomString())
@@ -164,9 +168,11 @@ public class
 			layoutPageTemplateStructureRelElementVariations.get(0);
 
 		_assertAudienceEntryERCs(
-			externalReferenceCode,
-			Collections.singletonList(updatedAudienceEntryERC));
+			Collections.singletonList(updatedAudienceEntryERC),
+			externalReferenceCode, group.getGroupId());
 
+		Assert.assertFalse(
+			layoutPageTemplateStructureRelElementVariation.isActive());
 		Assert.assertEquals(
 			updatedName,
 			layoutPageTemplateStructureRelElementVariation.getName());
@@ -176,14 +182,15 @@ public class
 	}
 
 	private void _assertAudienceEntryERCs(
-		String externalReferenceCode, List<String> audienceEntryERCs) {
+		List<String> audienceEntryERCs, String externalReferenceCode,
+		long groupId) {
 
 		Collections.sort(audienceEntryERCs);
 
 		List<String> actualAudienceEntryERCs = TransformUtil.transform(
 			_layoutPageTemplateStructureRelElementVariationAudienceEntryRelLocalService.
 				getLayoutPageTemplateStructureRelElementVariationAudienceEntryRels(
-					externalReferenceCode),
+					groupId, externalReferenceCode),
 			LayoutPageTemplateStructureRelElementVariationAudienceEntryRel::
 				getAudienceEntryERC);
 

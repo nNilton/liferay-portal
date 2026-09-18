@@ -25,7 +25,10 @@ import org.osgi.service.component.annotations.Reference;
  * @author Alessio Antonio Rendina
  */
 @Component(
-	property = "dto.class.name=com.liferay.headless.commerce.admin.catalog.dto.v1_0.Specification",
+	property = {
+		"default=true",
+		"dto.class.name=com.liferay.headless.commerce.admin.catalog.dto.v1_0.Specification"
+	},
 	service = DTOConverter.class
 )
 public class SpecificationDTOConverter
@@ -54,6 +57,11 @@ public class SpecificationDTOConverter
 				setFacetable(cpSpecificationOption::isFacetable);
 				setId(cpSpecificationOption::getCPSpecificationOptionId);
 				setKey(cpSpecificationOption::getKey);
+				setListTypeDefinitionExternalReferenceCodes(
+					() -> TransformUtil.transformToArray(
+						cpSpecificationOption.getListTypeDefinitions(),
+						ListTypeDefinition::getExternalReferenceCode,
+						String.class));
 				setListTypeDefinitionId(
 					() -> {
 						for (ListTypeDefinition listTypeDefinition :

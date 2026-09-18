@@ -16,8 +16,6 @@ import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.Sync;
 import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.test.rule.FeatureFlag;
-import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -39,9 +37,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 /**
  * @author Fábio Alves
  */
-@FeatureFlags(
-	featureFlags = {@FeatureFlag("LPD-17564"), @FeatureFlag("LPD-58677")}
-)
 @RunWith(Arquillian.class)
 @Sync
 public class ViewWorkflowTasksSectionDisplayContextTest
@@ -60,7 +55,7 @@ public class ViewWorkflowTasksSectionDisplayContextTest
 			StringBundler.concat(
 				"/o/search/v1.0/search?emptySearch=true&entryClassNames=",
 				CLASS_NAME_KALEO_TASK_INSTANCE_TOKEN,
-				"&filter=keywords/any(k:startswith(k, 'L_CMP_TASK'))",
+				"&filter=cmpTaskObjectEntryIds/any(x:x gt 0)",
 				"&nestedFields=embedded"),
 			getAPIURL(null));
 	}
@@ -72,7 +67,7 @@ public class ViewWorkflowTasksSectionDisplayContextTest
 			null);
 
 		Assert.assertEquals(
-			bulkActionDropdownItems.toString(), 2,
+			bulkActionDropdownItems.toString(), 3,
 			bulkActionDropdownItems.size());
 
 		FDSActionDropdownItem updateDueDateFDSActionDropdownItem =
@@ -96,6 +91,17 @@ public class ViewWorkflowTasksSectionDisplayContextTest
 		Assert.assertEquals(
 			"assignToUser",
 			getValue(assignToFDSActionDropdownItem, "permissionKey"));
+
+		FDSActionDropdownItem updateStateFDSActionDropdownItem =
+			(FDSActionDropdownItem)bulkActionDropdownItems.get(2);
+
+		FrontendDataSetTestUtil.assertFDSActionDropdownItem(
+			"arrow-start", "update-state", "Update State", null,
+			updateStateFDSActionDropdownItem);
+
+		Assert.assertEquals(
+			"changeTransition",
+			getValue(updateStateFDSActionDropdownItem, "permissionKey"));
 	}
 
 	@Override

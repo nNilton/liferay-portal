@@ -87,15 +87,6 @@ public class UserSystemObjectDefinitionManager
 	}
 
 	@Override
-	public String getBaseModelExternalReferenceCode(long primaryKey)
-		throws PortalException {
-
-		User user = _userLocalService.getUser(primaryKey);
-
-		return user.getExternalReferenceCode();
-	}
-
-	@Override
 	public String getExternalReferenceCode() {
 		return "L_USER";
 	}
@@ -243,20 +234,28 @@ public class UserSystemObjectDefinitionManager
 		Map<String, Object> variables = super.getVariables(
 			contentType, objectDefinition, oldValues, payloadJSONObject);
 
-		if (variables.containsKey("firstName")) {
-			variables.put("givenName", variables.get("firstName"));
+		Object firstName = variables.get("firstName");
+
+		if (firstName != null) {
+			variables.put("givenName", firstName);
 		}
 
-		if (variables.containsKey("lastName")) {
-			variables.put("familyName", variables.get("lastName"));
+		Object lastName = variables.get("lastName");
+
+		if (lastName != null) {
+			variables.put("familyName", lastName);
 		}
 
-		if (variables.containsKey("middleName")) {
-			variables.put("additionalName", variables.get("middleName"));
+		Object middleName = variables.get("middleName");
+
+		if (middleName != null) {
+			variables.put("additionalName", middleName);
 		}
 
-		if (variables.containsKey("screenName")) {
-			variables.put("alternateName", variables.get("screenName"));
+		Object screenName = variables.get("screenName");
+
+		if (screenName != null) {
+			variables.put("alternateName", screenName);
 		}
 
 		return variables;

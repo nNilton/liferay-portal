@@ -16,14 +16,17 @@ import com.liferay.headless.asset.library.client.problem.Problem;
 import com.liferay.headless.asset.library.client.resource.v1_0.UserAccountResource;
 import com.liferay.petra.function.UnsafeRunnable;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
-import com.liferay.portal.kernel.service.RoleLocalService;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.ResourceActions;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.test.AssertUtils;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
+import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.RoleTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
@@ -34,11 +37,9 @@ import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.odata.entity.EntityField;
 import com.liferay.portal.odata.entity.IdEntityField;
 import com.liferay.portal.odata.entity.StringEntityField;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
-import com.liferay.site.cms.site.initializer.test.util.CMSTestUtil;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -55,7 +56,6 @@ import org.junit.runner.RunWith;
 /**
  * @author Roberto Díaz
  */
-@FeatureFlag("LPD-17564")
 @RunWith(Arquillian.class)
 public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 
@@ -70,8 +70,6 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 	@Override
 	public void setUp() throws Exception {
 		super.setUp();
-
-		CMSTestUtil.getOrAddGroup(UserAccountResourceTest.class);
 
 		_spaceDepotEntry = DepotEntryLocalServiceUtil.addDepotEntry(
 			Collections.singletonMap(
@@ -90,6 +88,14 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 	@Override
 	@Test
 	public void testBatchEngineDeleteImportTask() {
+	}
+
+	@Override
+	@Test
+	public void testDeleteAssetLibraryUserAccount() throws Exception {
+		super.testDeleteAssetLibraryUserAccount();
+
+		_testDeleteAssetLibraryUserAccountWithAssignMembersAndViewPermission();
 	}
 
 	@Override
@@ -133,6 +139,16 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 			_spaceDepotEntry.getGroup(), cmsAdministratorUserAccountResource);
 
 		_testGetAssetLibraryUserAccountsPageWithSortId();
+	}
+
+	@Override
+	@Test
+	public void testPutAssetLibraryUserAccount() throws Exception {
+		super.testPutAssetLibraryUserAccount();
+
+		_testPutAssetLibraryUserAccountWithAssignMembersAndViewPermission();
+		_testPutAssetLibraryUserAccountWithoutAssignMembersPermission();
+		_testPutAssetLibraryUserAccountWithSiteExternalReferenceCode();
 	}
 
 	@Override
@@ -259,10 +275,51 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 			RandomTestUtil.randomString(), RandomTestUtil.randomString(), null,
 			ServiceContextTestUtil.getServiceContext());
 
-		Role role = RoleTestUtil.addRole(
+		Role serviceBuilderRole = RoleTestUtil.addRole(
 			RoleConstants.CMS_ADMINISTRATOR, RoleConstants.TYPE_REGULAR);
 
-		_userLocalService.addRoleUser(role.getRoleId(), user);
+		_userLocalService.addRoleUser(serviceBuilderRole.getRoleId(), user);
+
+		return UserAccountResource.builder(
+		).authentication(
+			user.getEmailAddress(), password
+		).endpoint(
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
+		).locale(
+			LocaleUtil.getDefault()
+		).build();
+	}
+
+	private UserAccountResource _getDepotEntryUserAccountResource(
+			List<String> actionIds)
+		throws Exception {
+
+		String password = RandomTestUtil.randomString();
+
+		User user = UserTestUtil.addUser(
+			TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
+			password, RandomTestUtil.randomString() + "@liferay.com",
+			RandomTestUtil.randomString(), LocaleUtil.getDefault(),
+			RandomTestUtil.randomString(), RandomTestUtil.randomString(), null,
+			ServiceContextTestUtil.getServiceContext());
+
+		Role serviceBuilderRole = RoleTestUtil.addRole(
+			RoleConstants.TYPE_REGULAR);
+
+		_userLocalService.addRoleUser(serviceBuilderRole.getRoleId(), user);
+
+		for (String actionId : actionIds) {
+			RoleTestUtil.addResourcePermission(
+				serviceBuilderRole, DepotEntry.class.getName(),
+				ResourceConstants.SCOPE_GROUP,
+				String.valueOf(testDepotEntry.getGroupId()), actionId);
+		}
+
+		RoleTestUtil.addResourcePermission(
+			serviceBuilderRole, User.class.getName(),
+			ResourceConstants.SCOPE_COMPANY,
+			String.valueOf(TestPropsValues.getCompanyId()), ActionKeys.VIEW);
 
 		return UserAccountResource.builder(
 		).authentication(
@@ -279,6 +336,30 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 		Group group = testDepotEntry.getGroup();
 
 		return group.getExternalReferenceCode();
+	}
+
+	private void _testDeleteAssetLibraryUserAccountWithAssignMembersAndViewPermission()
+		throws Exception {
+
+		UserAccount userAccount = randomUserAccount();
+
+		userAccountResource.putAssetLibraryUserAccount(
+			testDepotEntryGroup.getExternalReferenceCode(),
+			userAccount.getExternalReferenceCode());
+
+		UserAccountResource assignMembersAndViewUserAccountResource =
+			_getDepotEntryUserAccountResource(
+				List.of(ActionKeys.ASSIGN_MEMBERS, ActionKeys.VIEW));
+
+		assignMembersAndViewUserAccountResource.deleteAssetLibraryUserAccount(
+			testDepotEntryGroup.getExternalReferenceCode(),
+			userAccount.getExternalReferenceCode());
+
+		assertHttpResponseStatusCode(
+			404,
+			userAccountResource.getAssetLibraryUserAccountHttpResponse(
+				testDepotEntryGroup.getExternalReferenceCode(),
+				userAccount.getExternalReferenceCode()));
 	}
 
 	private void _testGetAssetLibraryUserAccount(
@@ -347,8 +428,59 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 			});
 	}
 
+	private void _testPutAssetLibraryUserAccountWithAssignMembersAndViewPermission()
+		throws Exception {
+
+		UserAccountResource assignMembersAndViewUserAccountResource =
+			_getDepotEntryUserAccountResource(
+				List.of(ActionKeys.ASSIGN_MEMBERS, ActionKeys.VIEW));
+
+		UserAccount userAccount = randomUserAccount();
+
+		UserAccount putUserAccount =
+			assignMembersAndViewUserAccountResource.putAssetLibraryUserAccount(
+				testDepotEntryGroup.getExternalReferenceCode(),
+				userAccount.getExternalReferenceCode());
+
+		assertValid(putUserAccount);
+	}
+
+	private void _testPutAssetLibraryUserAccountWithoutAssignMembersPermission()
+		throws Exception {
+
+		List<String> actionIds = _resourceActions.getModelResourceActions(
+			DepotEntry.class.getName());
+
+		actionIds.remove(ActionKeys.ASSIGN_MEMBERS);
+
+		UserAccountResource withoutAssignMembersUserAccountResource =
+			_getDepotEntryUserAccountResource(actionIds);
+
+		UserAccount userAccount = randomUserAccount();
+
+		AssertUtils.assertFailure(
+			Problem.ProblemException.class, "Forbidden",
+			() ->
+				withoutAssignMembersUserAccountResource.
+					putAssetLibraryUserAccount(
+						testDepotEntryGroup.getExternalReferenceCode(),
+						userAccount.getExternalReferenceCode()));
+	}
+
+	private void _testPutAssetLibraryUserAccountWithSiteExternalReferenceCode()
+		throws Exception {
+
+		Group group = GroupTestUtil.addGroup();
+
+		assertHttpResponseStatusCode(
+			404,
+			userAccountResource.putAssetLibraryUserAccountHttpResponse(
+				group.getExternalReferenceCode(),
+				_testUser.getExternalReferenceCode()));
+	}
+
 	@Inject
-	private RoleLocalService _roleLocalService;
+	private ResourceActions _resourceActions;
 
 	private DepotEntry _spaceDepotEntry;
 	private User _testUser;

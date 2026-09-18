@@ -72,7 +72,6 @@ import com.liferay.portal.kernel.search.NestedQuery;
 import com.liferay.portal.kernel.search.QueryConfig;
 import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.search.Sort;
-import com.liferay.portal.kernel.search.SortFactoryUtil;
 import com.liferay.portal.kernel.search.TermQuery;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.service.GroupLocalService;
@@ -327,9 +326,7 @@ public class ObjectEntrySingleFormVariationInfoCollectionProvider
 		com.liferay.info.sort.Sort sort = collectionQuery.getSort();
 
 		if (sort == null) {
-			searchContext.setSorts(
-				SortFactoryUtil.create(
-					Field.CREATE_DATE, Sort.LONG_TYPE, false));
+			searchContext.setSorts(_SORTS_DEFAULT_INDEXED);
 		}
 
 		searchContext.setStart(pagination.getStart());
@@ -444,7 +441,7 @@ public class ObjectEntrySingleFormVariationInfoCollectionProvider
 					collectionQuery.getPagination()),
 				ObjectEntryInfoCollectionProviderUtil.getSearch(
 					collectionQuery),
-				null);
+				_SORTS_DEFAULT_OBJECT_ENTRY);
 
 		return InfoPage.of(
 			TransformUtil.transform(
@@ -492,6 +489,29 @@ public class ObjectEntrySingleFormVariationInfoCollectionProvider
 
 		Group scopeGroup = themeDisplay.getScopeGroup();
 
+		if (objectEntryManager instanceof
+				DefaultObjectEntryManager defaultObjectEntryManager) {
+
+			Page<ObjectEntry> objectEntriesPage =
+				defaultObjectEntryManager.getServiceBuilderObjectEntries(
+					themeDisplay.getCompanyId(), _objectDefinition,
+					scopeGroup.getGroupKey(),
+					new DefaultDTOConverterContext(
+						false, null, null, null, null, themeDisplay.getLocale(),
+						null, themeDisplay.getUser()),
+					_getFilterString(collectionQuery),
+					ObjectEntryInfoCollectionProviderUtil.getPagination(
+						collectionQuery.getPagination()),
+					ObjectEntryInfoCollectionProviderUtil.getSearch(
+						collectionQuery),
+					_SORTS_DEFAULT_OBJECT_ENTRY);
+
+			return InfoPage.of(
+				new ArrayList<>(objectEntriesPage.getItems()),
+				collectionQuery.getPagination(),
+				(int)objectEntriesPage.getTotalCount());
+		}
+
 		Page<com.liferay.object.rest.dto.v1_0.ObjectEntry> objectEntriesPage =
 			objectEntryManager.getObjectEntries(
 				themeDisplay.getCompanyId(), _objectDefinition,
@@ -504,7 +524,7 @@ public class ObjectEntrySingleFormVariationInfoCollectionProvider
 					collectionQuery.getPagination()),
 				ObjectEntryInfoCollectionProviderUtil.getSearch(
 					collectionQuery),
-				null);
+				_SORTS_DEFAULT_OBJECT_ENTRY);
 
 		return InfoPage.of(
 			TransformUtil.transform(
@@ -798,6 +818,15 @@ public class ObjectEntrySingleFormVariationInfoCollectionProvider
 
 		return false;
 	}
+
+	private static final Sort[] _SORTS_DEFAULT_INDEXED = {
+		new Sort(Field.CREATE_DATE, Sort.LONG_TYPE, false),
+		new Sort(Field.ENTRY_CLASS_PK, Sort.LONG_TYPE, false)
+	};
+
+	private static final Sort[] _SORTS_DEFAULT_OBJECT_ENTRY = {
+		new Sort("id", Sort.LONG_TYPE, false)
+	};
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		ObjectEntrySingleFormVariationInfoCollectionProvider.class);

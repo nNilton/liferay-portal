@@ -10,6 +10,7 @@ import React from 'react';
 import {getPluralMessage} from '../util/lang';
 import {PropTypes} from 'prop-types';
 import {setUriQueryValues} from 'shared/util/router';
+import {toLocale} from 'shared/util/numbers';
 
 const {cur: DEFAULT_CUR, deltaValues} = faroConstants.pagination;
 
@@ -58,6 +59,8 @@ class PaginationBar extends React.Component {
 		onDeltaChange: PropTypes.func,
 		onPageChange: PropTypes.func,
 		page: PropTypes.number,
+		resultsMessagePlural: PropTypes.string,
+		resultsMessageSingular: PropTypes.string,
 		selectedDelta: PropTypes.number,
 		showDeltaDropdown: PropTypes.bool,
 		showResultsMessage: PropTypes.bool,
@@ -77,7 +80,7 @@ class PaginationBar extends React.Component {
 			);
 		}
 
-		return currentStart.toLocaleString();
+		return toLocale(currentStart);
 	}
 
 	startItem(start, selectedDelta) {
@@ -91,6 +94,8 @@ class PaginationBar extends React.Component {
 			href,
 			onDeltaChange,
 			onPageChange,
+			resultsMessagePlural,
+			resultsMessageSingular,
 			showDeltaDropdown,
 			showResultsMessage,
 			size,
@@ -159,8 +164,14 @@ class PaginationBar extends React.Component {
 						key='PAGINATION_RESULTS'
 					>
 						{getPluralMessage(
-							Liferay.Language.get('showing-x-to-x-of-x-entry'),
-							Liferay.Language.get('showing-x-to-x-of-x-entries'),
+							resultsMessageSingular ||
+								Liferay.Language.get(
+									'showing-x-to-x-of-x-entry'
+								),
+							resultsMessagePlural ||
+								Liferay.Language.get(
+									'showing-x-to-x-of-x-entries'
+								),
 							totalItems,
 							true,
 							[
@@ -169,8 +180,8 @@ class PaginationBar extends React.Component {
 									selectedDelta,
 									totalItems
 								),
-								Math.min(start, totalItems).toLocaleString(),
-								totalItems.toLocaleString()
+								toLocale(Math.min(start, totalItems)),
+								toLocale(totalItems)
 							]
 						)}
 					</div>

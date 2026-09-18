@@ -107,6 +107,7 @@ export function Summary() {
 						deltas: [{label: 10}, {label: 20}],
 						initialDelta: 10,
 					}}
+					searchAsYouType={true}
 					showPagination
 					style="fluid"
 					views={[
@@ -202,7 +203,7 @@ function ListItem({item}: {item: ReplaceItem}) {
 		openToast({
 			message: sub(
 				Liferay.Language.get('changes-applied-to-x'),
-				item.title
+				Liferay.Util.escapeHTML(item.title)
 			),
 			type: 'success',
 		});
