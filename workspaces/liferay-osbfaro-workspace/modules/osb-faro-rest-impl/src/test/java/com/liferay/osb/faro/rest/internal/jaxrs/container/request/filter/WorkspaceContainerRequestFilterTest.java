@@ -162,18 +162,18 @@ public class WorkspaceContainerRequestFilterTest {
 			_filter(_GROUP_ID, _ALL_USERS_CHANNEL_ID, _MEMBER_USER_ID));
 		Assert.assertNull(_filter(_GROUP_ID, null, _OMNIADMIN_USER_ID));
 
-		_assertStatus(
+		_assertResponseStatus(
 			Response.Status.NOT_FOUND, _filter(999L, null, _MEMBER_USER_ID));
-		_assertStatus(
+		_assertResponseStatus(
 			Response.Status.UNAUTHORIZED,
 			_filter(_GROUP_ID, null, _GUEST_USER_ID));
-		_assertStatus(
+		_assertResponseStatus(
 			Response.Status.FORBIDDEN,
 			_filter(_GROUP_ID, null, _OUTSIDER_USER_ID));
-		_assertStatus(
+		_assertResponseStatus(
 			Response.Status.NOT_FOUND,
 			_filter(_GROUP_ID, "unknown", _MEMBER_USER_ID));
-		_assertStatus(
+		_assertResponseStatus(
 			Response.Status.FORBIDDEN,
 			_filter(_GROUP_ID, _SELECT_USERS_CHANNEL_ID, _MEMBER_USER_ID));
 
@@ -193,13 +193,15 @@ public class WorkspaceContainerRequestFilterTest {
 			false
 		);
 
-		_assertStatus(
+		_assertResponseStatus(
 			Response.Status.FORBIDDEN,
 			_filter(_GROUP_ID, null, _MEMBER_USER_ID));
 		Assert.assertNull(_filter(_GROUP_ID, null, _OMNIADMIN_USER_ID));
 	}
 
-	private void _assertStatus(Response.Status status, Response response) {
+	private void _assertResponseStatus(
+		Response.Status status, Response response) {
+
 		Assert.assertNotNull(response);
 		Assert.assertEquals(status.getStatusCode(), response.getStatus());
 	}
