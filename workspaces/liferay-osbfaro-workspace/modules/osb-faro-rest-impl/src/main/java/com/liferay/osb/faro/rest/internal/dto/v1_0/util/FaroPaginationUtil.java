@@ -55,6 +55,12 @@ public class FaroPaginationUtil {
 	}
 
 	public static List<OrderByField> toOrderByFields(Sort[] sorts) {
+		return toOrderByFields(sorts, false);
+	}
+
+	public static List<OrderByField> toOrderByFields(
+		Sort[] sorts, boolean system) {
+
 		if (ArrayUtil.isEmpty(sorts)) {
 			return null;
 		}
@@ -69,7 +75,8 @@ public class FaroPaginationUtil {
 			}
 
 			orderByFields.add(
-				new OrderByField(fieldName, sort.isReverse() ? "desc" : "asc"));
+				new OrderByField(
+					fieldName, sort.isReverse() ? "desc" : "asc", system));
 		}
 
 		return orderByFields;
