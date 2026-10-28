@@ -58,7 +58,7 @@ public class ResponseErrorHandler extends DefaultResponseErrorHandler {
 			throw new InvalidFilterException(response);
 		}
 
-		throw new FaroEngineClientException(response);
+		throw new FaroEngineClientException(response, statusCode);
 	}
 
 }
