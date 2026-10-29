@@ -119,7 +119,11 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 		MultivaluedMap<String, String> pathParameters,
 		MultivaluedMap<String, String> queryParameters) {
 
-		for (String name : new String[] {"individualSegmentId", "segmentId"}) {
+		for (String name :
+				new String[] {
+					"accountLifecycleId", "individualSegmentId", "segmentId"
+				}) {
+
 			_validateId(name, pathParameters.getFirst(name));
 			_validateId(name, queryParameters.getFirst(name));
 		}
@@ -215,7 +219,6 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 
 		for (String sortString : sortStrings) {
 			String fieldName = sortString;
-
 			String orderBy = StringUtil.extractLast(sortString, CharPool.COLON);
 
 			if (orderBy != null) {
@@ -224,7 +227,7 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 				if (!orderBy.equals("asc") && !orderBy.equals("desc")) {
 					throw new BadRequestException(
 						"\"sort\" must be a comma separated list of " +
-							"column:asc or column:desc expressions");
+							"\"column:asc\" or \"column:desc\" expressions");
 				}
 			}
 
@@ -259,6 +262,9 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 				"accountId", "accountName", "fromAccountLifecycleStageId",
 				"toAccountLifecycleStageId", "transitionDate"
 			}
+		).put(
+			"getWorkspaceGroupChannelAccountLifecyclesPage",
+			new String[] {"id", "modifiedDate", "name"}
 		).put(
 			"getWorkspaceGroupChannelAccountsPage",
 			new String[] {

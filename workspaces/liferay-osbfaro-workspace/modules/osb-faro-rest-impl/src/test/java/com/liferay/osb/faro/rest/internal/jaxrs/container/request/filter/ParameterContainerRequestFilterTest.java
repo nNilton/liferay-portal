@@ -63,6 +63,9 @@ public class ParameterContainerRequestFilterTest {
 		Assert.assertNull(_filter(null, null));
 
 		_assertTitle(
+			"\"accountLifecycleId\" must be a numeric ID",
+			_filter("accountLifecycleId", "PIPELINE"));
+		_assertTitle(
 			"\"bogusColumn\" is not a sortable column. Sortable columns: " +
 				"accountId, accountName, fromAccountLifecycleStageId, " +
 					"toAccountLifecycleStageId, transitionDate",
@@ -88,8 +91,8 @@ public class ParameterContainerRequestFilterTest {
 					}
 				}));
 		_assertTitle(
-			"\"sort\" must be a comma separated list of column:asc or " +
-				"column:desc expressions",
+			"\"sort\" must be a comma separated list of \"column:asc\" or " +
+				"\"column:desc\" expressions",
 			_filter("sort", "accountName:sideways"));
 	}
 

@@ -6,6 +6,9 @@
 package com.liferay.osb.faro.rest.internal.graphql.query.v1_0;
 
 import com.liferay.osb.faro.rest.dto.v1_0.Account;
+import com.liferay.osb.faro.rest.dto.v1_0.AccountLifecycle;
+import com.liferay.osb.faro.rest.dto.v1_0.AccountLifecycleHistory;
+import com.liferay.osb.faro.rest.dto.v1_0.AccountLifecycleStageMetric;
 import com.liferay.osb.faro.rest.dto.v1_0.AccountLifecycleStageTransition;
 import com.liferay.osb.faro.rest.dto.v1_0.AssetSummaryMetric;
 import com.liferay.osb.faro.rest.dto.v1_0.Channel;
@@ -20,6 +23,9 @@ import com.liferay.osb.faro.rest.dto.v1_0.PageMetric;
 import com.liferay.osb.faro.rest.dto.v1_0.SearchTerm;
 import com.liferay.osb.faro.rest.dto.v1_0.UserSession;
 import com.liferay.osb.faro.rest.dto.v1_0.Workspace;
+import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleHistoryResource;
+import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleResource;
+import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleStageMetricResource;
 import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleStageTransitionResource;
 import com.liferay.osb.faro.rest.resource.v1_0.AccountResource;
 import com.liferay.osb.faro.rest.resource.v1_0.AssetSummaryMetricResource;
@@ -72,6 +78,32 @@ public class Query {
 
 		_accountResourceComponentServiceObjects =
 			accountResourceComponentServiceObjects;
+	}
+
+	public static void setAccountLifecycleResourceComponentServiceObjects(
+		ComponentServiceObjects<AccountLifecycleResource>
+			accountLifecycleResourceComponentServiceObjects) {
+
+		_accountLifecycleResourceComponentServiceObjects =
+			accountLifecycleResourceComponentServiceObjects;
+	}
+
+	public static void
+		setAccountLifecycleHistoryResourceComponentServiceObjects(
+			ComponentServiceObjects<AccountLifecycleHistoryResource>
+				accountLifecycleHistoryResourceComponentServiceObjects) {
+
+		_accountLifecycleHistoryResourceComponentServiceObjects =
+			accountLifecycleHistoryResourceComponentServiceObjects;
+	}
+
+	public static void
+		setAccountLifecycleStageMetricResourceComponentServiceObjects(
+			ComponentServiceObjects<AccountLifecycleStageMetricResource>
+				accountLifecycleStageMetricResourceComponentServiceObjects) {
+
+		_accountLifecycleStageMetricResourceComponentServiceObjects =
+			accountLifecycleStageMetricResourceComponentServiceObjects;
 	}
 
 	public static void
@@ -217,7 +249,7 @@ public class Query {
 	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {workspaceGroupChannelAccounts(accountLifecycleId: ___, channelId: ___, groupId: ___, lifecycleStage: ___, page: ___, pageSize: ___, rangeEnd: ___, rangeKey: ___, rangeStart: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
 	 */
 	@GraphQLField(
-		description = "List or search accounts synced to an LDP workspace. Optionally narrow results to a single channel (also known as property). Optionally narrow results to a single lifecycle stage with `lifecycleStage`, passing one of AT_RISK, AWARE, ENGAGED, ESTABLISHED, ONBOARDING, PIPELINE; the stage is looked up in the account lifecycle given by `accountLifecycleId`, or in the first account lifecycle of the channel when it is omitted. Use this to browse or search accounts by name. To fetch a single account by ID, use `getWorkspaceGroupAccount`. Wide date ranges can take a while. If the response says the query is still running, wait the stated number of seconds and repeat the identical call."
+		description = "List or search accounts synced to an LDP workspace. Optionally narrow results to a single channel (also known as property). Optionally narrow results to a single lifecycle stage with `lifecycleStage`, passing one of AT_RISK, AWARE, ENGAGED, ESTABLISHED, ONBOARDING, PIPELINE; the stage is looked up in the account lifecycle given by `accountLifecycleId`, or in the channel's default account lifecycle when it is omitted. A channel can have several account lifecycles; use `getWorkspaceGroupChannelAccountLifecyclesPage` to list them. Use this to browse or search accounts by name. To fetch a single account by ID, use `getWorkspaceGroupAccount`. Wide date ranges can take a while. If the response says the query is still running, wait the stated number of seconds and repeat the identical call."
 	)
 	public AccountPage workspaceGroupChannelAccounts(
 			@GraphQLName("groupId") Long groupId,
@@ -242,6 +274,86 @@ public class Query {
 					rangeEnd, rangeKey, rangeStart, search,
 					Pagination.of(page, pageSize),
 					_sortsBiFunction.apply(accountResource, sortsString))));
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {workspaceGroupChannelAccountLifecycles(channelId: ___, groupId: ___, page: ___, pageSize: ___, search: ___, sorts: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
+	 */
+	@GraphQLField(
+		description = "List the account lifecycles of a channel (also known as property), each with its stages in display order. A channel can have several lifecycles, and exactly one of them is its default. Use this to find the `accountLifecycleId` that the other account lifecycle tools and `getWorkspaceGroupChannelAccountsPage` take, and the stage types and descriptions that the stage filters accept."
+	)
+	public AccountLifecyclePage workspaceGroupChannelAccountLifecycles(
+			@GraphQLName("groupId") Long groupId,
+			@GraphQLName("channelId") String channelId,
+			@GraphQLName("search") String search,
+			@GraphQLName("pageSize") int pageSize,
+			@GraphQLName("page") int page,
+			@GraphQLName("sort") String sortsString)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_accountLifecycleResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			accountLifecycleResource -> new AccountLifecyclePage(
+				accountLifecycleResource.
+					getWorkspaceGroupChannelAccountLifecyclesPage(
+						groupId, channelId, search,
+						Pagination.of(page, pageSize),
+						_sortsBiFunction.apply(
+							accountLifecycleResource, sortsString))));
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {workspaceGroupAccountAccountLifecycleHistory(accountId: ___, accountLifecycleId: ___, groupId: ___){accountLifecycleStageHistories, id, name}}"}' -u 'test@liferay.com:test'
+	 */
+	@GraphQLField(
+		description = "The stage history of one account in an account lifecycle: every stage of the lifecycle in display order, with when the account most recently entered and left it. The stage with a `startDate` and no `endDate` is the one the account is in now. Use this to answer 'how long has this account been in its stage' or 'when did it become a customer' style questions. To see moves across many accounts, use `getWorkspaceGroupAccountLifecycleStageTransitionsPage` instead."
+	)
+	public AccountLifecycleHistory workspaceGroupAccountAccountLifecycleHistory(
+			@GraphQLName("groupId") Long groupId,
+			@GraphQLName("accountId") String accountId,
+			@GraphQLName("accountLifecycleId") String accountLifecycleId)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_accountLifecycleHistoryResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			accountLifecycleHistoryResource ->
+				accountLifecycleHistoryResource.
+					getWorkspaceGroupAccountAccountLifecycleHistory(
+						groupId, accountId, accountLifecycleId));
+	}
+
+	/**
+	 * Invoke this method with the command line:
+	 *
+	 * curl -H 'Content-Type: text/plain; charset=utf-8' -X 'POST' 'http://localhost:8080/o/graphql' -d $'{"query": "query {workspaceGroupAccountLifecycleStageMetrics(accountLifecycleId: ___, country: ___, groupId: ___, industry: ___, segmentId: ___){items {__}, page, pageSize, totalCount}}"}' -u 'test@liferay.com:test'
+	 */
+	@GraphQLField(
+		description = "Per-stage metrics of an account lifecycle, one entry per stage in display order: how many accounts are in each stage now, their share of the lifecycle, the average days spent in the stage and the conversion rate to the next stage. Durations and conversion rates cover the last 90 days; the date range can't be changed. Use this to answer 'where do accounts stall' style questions. Optionally narrow the accounts by country, industry or segment membership."
+	)
+	public AccountLifecycleStageMetricPage
+			workspaceGroupAccountLifecycleStageMetrics(
+				@GraphQLName("groupId") Long groupId,
+				@GraphQLName("accountLifecycleId") String accountLifecycleId,
+				@GraphQLName("country") String country,
+				@GraphQLName("industry") String industry,
+				@GraphQLName("segmentId") Long segmentId)
+		throws Exception {
+
+		return _applyComponentServiceObjects(
+			_accountLifecycleStageMetricResourceComponentServiceObjects,
+			this::_populateResourceContext,
+			accountLifecycleStageMetricResource ->
+				new AccountLifecycleStageMetricPage(
+					accountLifecycleStageMetricResource.
+						getWorkspaceGroupAccountLifecycleStageMetricsPage(
+							groupId, accountLifecycleId, country, industry,
+							segmentId)));
 	}
 
 	/**
@@ -846,6 +958,107 @@ public class Query {
 
 	}
 
+	@GraphQLName("AccountLifecyclePage")
+	public class AccountLifecyclePage {
+
+		public AccountLifecyclePage(Page accountLifecyclePage) {
+			actions = accountLifecyclePage.getActions();
+
+			items = accountLifecyclePage.getItems();
+			lastPage = accountLifecyclePage.getLastPage();
+			page = accountLifecyclePage.getPage();
+			pageSize = accountLifecyclePage.getPageSize();
+			totalCount = accountLifecyclePage.getTotalCount();
+		}
+
+		@GraphQLField
+		protected Map<String, Map<String, String>> actions;
+
+		@GraphQLField
+		protected java.util.Collection<AccountLifecycle> items;
+
+		@GraphQLField
+		protected long lastPage;
+
+		@GraphQLField
+		protected long page;
+
+		@GraphQLField
+		protected long pageSize;
+
+		@GraphQLField
+		protected long totalCount;
+
+	}
+
+	@GraphQLName("AccountLifecycleHistoryPage")
+	public class AccountLifecycleHistoryPage {
+
+		public AccountLifecycleHistoryPage(Page accountLifecycleHistoryPage) {
+			actions = accountLifecycleHistoryPage.getActions();
+
+			items = accountLifecycleHistoryPage.getItems();
+			lastPage = accountLifecycleHistoryPage.getLastPage();
+			page = accountLifecycleHistoryPage.getPage();
+			pageSize = accountLifecycleHistoryPage.getPageSize();
+			totalCount = accountLifecycleHistoryPage.getTotalCount();
+		}
+
+		@GraphQLField
+		protected Map<String, Map<String, String>> actions;
+
+		@GraphQLField
+		protected java.util.Collection<AccountLifecycleHistory> items;
+
+		@GraphQLField
+		protected long lastPage;
+
+		@GraphQLField
+		protected long page;
+
+		@GraphQLField
+		protected long pageSize;
+
+		@GraphQLField
+		protected long totalCount;
+
+	}
+
+	@GraphQLName("AccountLifecycleStageMetricPage")
+	public class AccountLifecycleStageMetricPage {
+
+		public AccountLifecycleStageMetricPage(
+			Page accountLifecycleStageMetricPage) {
+
+			actions = accountLifecycleStageMetricPage.getActions();
+
+			items = accountLifecycleStageMetricPage.getItems();
+			lastPage = accountLifecycleStageMetricPage.getLastPage();
+			page = accountLifecycleStageMetricPage.getPage();
+			pageSize = accountLifecycleStageMetricPage.getPageSize();
+			totalCount = accountLifecycleStageMetricPage.getTotalCount();
+		}
+
+		@GraphQLField
+		protected Map<String, Map<String, String>> actions;
+
+		@GraphQLField
+		protected java.util.Collection<AccountLifecycleStageMetric> items;
+
+		@GraphQLField
+		protected long lastPage;
+
+		@GraphQLField
+		protected long page;
+
+		@GraphQLField
+		protected long pageSize;
+
+		@GraphQLField
+		protected long totalCount;
+
+	}
+
 	@GraphQLName("AccountLifecycleStageTransitionPage")
 	public class AccountLifecycleStageTransitionPage {
 
@@ -1357,6 +1570,72 @@ public class Query {
 	}
 
 	private void _populateResourceContext(
+			AccountLifecycleResource accountLifecycleResource)
+		throws Exception {
+
+		accountLifecycleResource.setContextAcceptLanguage(_acceptLanguage);
+		accountLifecycleResource.setContextCompany(_company);
+		accountLifecycleResource.setContextHttpServletRequest(
+			_httpServletRequest);
+		accountLifecycleResource.setContextHttpServletResponse(
+			_httpServletResponse);
+		accountLifecycleResource.setContextUriInfo(_uriInfo);
+		accountLifecycleResource.setContextUser(_user);
+		accountLifecycleResource.setGroupLocalService(_groupLocalService);
+		accountLifecycleResource.setResourceActionLocalService(
+			_resourceActionLocalService);
+		accountLifecycleResource.setResourcePermissionLocalService(
+			_resourcePermissionLocalService);
+		accountLifecycleResource.setRoleLocalService(_roleLocalService);
+	}
+
+	private void _populateResourceContext(
+			AccountLifecycleHistoryResource accountLifecycleHistoryResource)
+		throws Exception {
+
+		accountLifecycleHistoryResource.setContextAcceptLanguage(
+			_acceptLanguage);
+		accountLifecycleHistoryResource.setContextCompany(_company);
+		accountLifecycleHistoryResource.setContextHttpServletRequest(
+			_httpServletRequest);
+		accountLifecycleHistoryResource.setContextHttpServletResponse(
+			_httpServletResponse);
+		accountLifecycleHistoryResource.setContextUriInfo(_uriInfo);
+		accountLifecycleHistoryResource.setContextUser(_user);
+		accountLifecycleHistoryResource.setGroupLocalService(
+			_groupLocalService);
+		accountLifecycleHistoryResource.setResourceActionLocalService(
+			_resourceActionLocalService);
+		accountLifecycleHistoryResource.setResourcePermissionLocalService(
+			_resourcePermissionLocalService);
+		accountLifecycleHistoryResource.setRoleLocalService(_roleLocalService);
+	}
+
+	private void _populateResourceContext(
+			AccountLifecycleStageMetricResource
+				accountLifecycleStageMetricResource)
+		throws Exception {
+
+		accountLifecycleStageMetricResource.setContextAcceptLanguage(
+			_acceptLanguage);
+		accountLifecycleStageMetricResource.setContextCompany(_company);
+		accountLifecycleStageMetricResource.setContextHttpServletRequest(
+			_httpServletRequest);
+		accountLifecycleStageMetricResource.setContextHttpServletResponse(
+			_httpServletResponse);
+		accountLifecycleStageMetricResource.setContextUriInfo(_uriInfo);
+		accountLifecycleStageMetricResource.setContextUser(_user);
+		accountLifecycleStageMetricResource.setGroupLocalService(
+			_groupLocalService);
+		accountLifecycleStageMetricResource.setResourceActionLocalService(
+			_resourceActionLocalService);
+		accountLifecycleStageMetricResource.setResourcePermissionLocalService(
+			_resourcePermissionLocalService);
+		accountLifecycleStageMetricResource.setRoleLocalService(
+			_roleLocalService);
+	}
+
+	private void _populateResourceContext(
 			AccountLifecycleStageTransitionResource
 				accountLifecycleStageTransitionResource)
 		throws Exception {
@@ -1634,6 +1913,12 @@ public class Query {
 
 	private static ComponentServiceObjects<AccountResource>
 		_accountResourceComponentServiceObjects;
+	private static ComponentServiceObjects<AccountLifecycleResource>
+		_accountLifecycleResourceComponentServiceObjects;
+	private static ComponentServiceObjects<AccountLifecycleHistoryResource>
+		_accountLifecycleHistoryResourceComponentServiceObjects;
+	private static ComponentServiceObjects<AccountLifecycleStageMetricResource>
+		_accountLifecycleStageMetricResourceComponentServiceObjects;
 	private static ComponentServiceObjects
 		<AccountLifecycleStageTransitionResource>
 			_accountLifecycleStageTransitionResourceComponentServiceObjects;
@@ -1683,4 +1968,4 @@ public class Query {
 	private com.liferay.portal.kernel.model.User _user;
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1901491401
+// LIFERAY-REST-BUILDER-HASH:-1402693437

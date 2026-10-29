@@ -7,6 +7,9 @@ package com.liferay.osb.faro.rest.internal.graphql.servlet.v1_0;
 
 import com.liferay.osb.faro.rest.internal.graphql.mutation.v1_0.Mutation;
 import com.liferay.osb.faro.rest.internal.graphql.query.v1_0.Query;
+import com.liferay.osb.faro.rest.internal.resource.v1_0.AccountLifecycleHistoryResourceImpl;
+import com.liferay.osb.faro.rest.internal.resource.v1_0.AccountLifecycleResourceImpl;
+import com.liferay.osb.faro.rest.internal.resource.v1_0.AccountLifecycleStageMetricResourceImpl;
 import com.liferay.osb.faro.rest.internal.resource.v1_0.AccountLifecycleStageTransitionResourceImpl;
 import com.liferay.osb.faro.rest.internal.resource.v1_0.AccountResourceImpl;
 import com.liferay.osb.faro.rest.internal.resource.v1_0.AssetSummaryMetricResourceImpl;
@@ -22,6 +25,9 @@ import com.liferay.osb.faro.rest.internal.resource.v1_0.PageMetricResourceImpl;
 import com.liferay.osb.faro.rest.internal.resource.v1_0.SearchTermResourceImpl;
 import com.liferay.osb.faro.rest.internal.resource.v1_0.UserSessionResourceImpl;
 import com.liferay.osb.faro.rest.internal.resource.v1_0.WorkspaceResourceImpl;
+import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleHistoryResource;
+import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleResource;
+import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleStageMetricResource;
 import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleStageTransitionResource;
 import com.liferay.osb.faro.rest.resource.v1_0.AccountResource;
 import com.liferay.osb.faro.rest.resource.v1_0.AssetSummaryMetricResource;
@@ -64,6 +70,12 @@ public class ServletDataImpl implements ServletData {
 	public void activate(BundleContext bundleContext) {
 		Query.setAccountResourceComponentServiceObjects(
 			_accountResourceComponentServiceObjects);
+		Query.setAccountLifecycleResourceComponentServiceObjects(
+			_accountLifecycleResourceComponentServiceObjects);
+		Query.setAccountLifecycleHistoryResourceComponentServiceObjects(
+			_accountLifecycleHistoryResourceComponentServiceObjects);
+		Query.setAccountLifecycleStageMetricResourceComponentServiceObjects(
+			_accountLifecycleStageMetricResourceComponentServiceObjects);
 		Query.setAccountLifecycleStageTransitionResourceComponentServiceObjects(
 			_accountLifecycleStageTransitionResourceComponentServiceObjects);
 		Query.setAssetSummaryMetricResourceComponentServiceObjects(
@@ -140,6 +152,21 @@ public class ServletDataImpl implements ServletData {
 						new ObjectValuePair<>(
 							AccountResourceImpl.class,
 							"getWorkspaceGroupChannelAccountsPage"));
+					put(
+						"query#workspaceGroupChannelAccountLifecycles",
+						new ObjectValuePair<>(
+							AccountLifecycleResourceImpl.class,
+							"getWorkspaceGroupChannelAccountLifecyclesPage"));
+					put(
+						"query#workspaceGroupAccountAccountLifecycleHistory",
+						new ObjectValuePair<>(
+							AccountLifecycleHistoryResourceImpl.class,
+							"getWorkspaceGroupAccountAccountLifecycleHistory"));
+					put(
+						"query#workspaceGroupAccountLifecycleStageMetrics",
+						new ObjectValuePair<>(
+							AccountLifecycleStageMetricResourceImpl.class,
+							"getWorkspaceGroupAccountLifecycleStageMetricsPage"));
 					put(
 						"query#workspaceGroupAccountLifecycleStageTransitions",
 						new ObjectValuePair<>(
@@ -248,6 +275,18 @@ public class ServletDataImpl implements ServletData {
 		_accountResourceComponentServiceObjects;
 
 	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
+	private ComponentServiceObjects<AccountLifecycleResource>
+		_accountLifecycleResourceComponentServiceObjects;
+
+	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
+	private ComponentServiceObjects<AccountLifecycleHistoryResource>
+		_accountLifecycleHistoryResourceComponentServiceObjects;
+
+	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
+	private ComponentServiceObjects<AccountLifecycleStageMetricResource>
+		_accountLifecycleStageMetricResourceComponentServiceObjects;
+
+	@Reference(scope = ReferenceScope.PROTOTYPE_REQUIRED)
 	private ComponentServiceObjects<AccountLifecycleStageTransitionResource>
 		_accountLifecycleStageTransitionResourceComponentServiceObjects;
 
@@ -305,4 +344,4 @@ public class ServletDataImpl implements ServletData {
 		_workspaceResourceComponentServiceObjects;
 
 }
-// LIFERAY-REST-BUILDER-HASH:-149085200
+// LIFERAY-REST-BUILDER-HASH:1041104910
