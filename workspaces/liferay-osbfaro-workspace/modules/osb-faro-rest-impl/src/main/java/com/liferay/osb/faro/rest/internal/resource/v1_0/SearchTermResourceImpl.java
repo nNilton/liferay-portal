@@ -18,6 +18,7 @@ import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
 
 import java.util.Collections;
+import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -34,8 +35,9 @@ public class SearchTermResourceImpl extends BaseSearchTermResourceImpl {
 
 	@Override
 	public Page<SearchTerm> getWorkspaceGroupChannelSearchTermsPage(
-			Long groupId, String channelId, String rangeEnd, String rangeKey,
-			String rangeStart, Pagination pagination)
+			Long groupId, String channelId, String accountId, String rangeEnd,
+			String rangeKey, String rangeStart, String search, Long segmentId,
+			Pagination pagination)
 		throws Exception {
 
 		int cur = FaroPaginationUtil.getCur(pagination);
@@ -48,13 +50,19 @@ public class SearchTermResourceImpl extends BaseSearchTermResourceImpl {
 					_faroProjectLocalService.getFaroProjectByGroupId(groupId),
 					"getWorkspaceGroupChannelSearchTermsPage",
 					HashMapBuilder.<String, Object>put(
+						"accountId", accountId
+					).put(
 						"channelId", channelId
+					).put(
+						"keywords", search
 					).put(
 						"rangeEnd", rangeEnd
 					).put(
 						"rangeKey", TimeRange.getRangeKey(rangeKey)
 					).put(
 						"rangeStart", rangeStart
+					).put(
+						"segmentId", Objects.toString(segmentId, null)
 					).put(
 						"size", delta
 					).put(

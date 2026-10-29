@@ -71,6 +71,9 @@ public class ParameterContainerRequestFilterTest {
 					"toAccountLifecycleStageId, transitionDate",
 			_filter("sort", "bogusColumn:desc"));
 		_assertTitle(
+			"\"objectType\" must be one of CONTENT, FILE",
+			_filter("objectType", "content"));
+		_assertTitle(
 			"\"pageSize\" must be a whole number from 1 to 500",
 			_filter("pageSize", "501"));
 		_assertTitle(

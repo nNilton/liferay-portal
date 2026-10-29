@@ -310,6 +310,8 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 				"PIPELINE"
 			}
 		).put(
+			"objectType", new String[] {"CONTENT", "FILE"}
+		).put(
 			"profileType", new String[] {"ANONYMOUS", "KNOWN"}
 		).put(
 			"rangeKey", _getNames(TimeRange.values())
