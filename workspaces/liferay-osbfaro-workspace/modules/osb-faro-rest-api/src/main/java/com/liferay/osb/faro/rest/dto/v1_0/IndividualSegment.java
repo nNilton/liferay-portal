@@ -65,6 +65,49 @@ public class IndividualSegment implements Serializable {
 	}
 
 	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Number of accounts in the segment."
+	)
+	public Long getAccountCount() {
+		if (_accountCountSupplier != null) {
+			accountCount = _accountCountSupplier.get();
+
+			_accountCountSupplier = null;
+		}
+
+		return accountCount;
+	}
+
+	public void setAccountCount(Long accountCount) {
+		this.accountCount = accountCount;
+
+		_accountCountSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setAccountCount(
+		UnsafeSupplier<Long, Exception> accountCountUnsafeSupplier) {
+
+		_accountCountSupplier = () -> {
+			try {
+				return accountCountUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(description = "Number of accounts in the segment.")
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected Long accountCount;
+
+	@JsonIgnore
+	private Supplier<Long> _accountCountSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "Number of individuals currently in the segment who have been active."
 	)
 	public Long getActiveIndividualCount() {
@@ -552,6 +595,52 @@ public class IndividualSegment implements Serializable {
 	private Supplier<Date> _lastActivityDateSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "When the segment membership was last recalculated."
+	)
+	public Date getLastMembershipUpdateDate() {
+		if (_lastMembershipUpdateDateSupplier != null) {
+			lastMembershipUpdateDate = _lastMembershipUpdateDateSupplier.get();
+
+			_lastMembershipUpdateDateSupplier = null;
+		}
+
+		return lastMembershipUpdateDate;
+	}
+
+	public void setLastMembershipUpdateDate(Date lastMembershipUpdateDate) {
+		this.lastMembershipUpdateDate = lastMembershipUpdateDate;
+
+		_lastMembershipUpdateDateSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setLastMembershipUpdateDate(
+		UnsafeSupplier<Date, Exception>
+			lastMembershipUpdateDateUnsafeSupplier) {
+
+		_lastMembershipUpdateDateSupplier = () -> {
+			try {
+				return lastMembershipUpdateDateUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "When the segment membership was last recalculated."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected Date lastMembershipUpdateDate;
+
+	@JsonIgnore
+	private Supplier<Date> _lastMembershipUpdateDateSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "Display name of the segment."
 	)
 	public String getName() {
@@ -788,6 +877,18 @@ public class IndividualSegment implements Serializable {
 		DateFormat liferayToJSONDateFormat = new SimpleDateFormat(
 			"yyyy-MM-dd'T'HH:mm:ss'Z'");
 
+		Long accountCount = getAccountCount();
+
+		if (accountCount != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"accountCount\": ");
+
+			sb.append(accountCount);
+		}
+
 		Long activeIndividualCount = getActiveIndividualCount();
 
 		if (activeIndividualCount != null) {
@@ -940,6 +1041,22 @@ public class IndividualSegment implements Serializable {
 			sb.append("\"");
 
 			sb.append(liferayToJSONDateFormat.format(lastActivityDate));
+
+			sb.append("\"");
+		}
+
+		Date lastMembershipUpdateDate = getLastMembershipUpdateDate();
+
+		if (lastMembershipUpdateDate != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"lastMembershipUpdateDate\": ");
+
+			sb.append("\"");
+
+			sb.append(liferayToJSONDateFormat.format(lastMembershipUpdateDate));
 
 			sb.append("\"");
 		}
@@ -1238,4 +1355,4 @@ public class IndividualSegment implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:398042786
+// LIFERAY-REST-BUILDER-HASH:1912999155

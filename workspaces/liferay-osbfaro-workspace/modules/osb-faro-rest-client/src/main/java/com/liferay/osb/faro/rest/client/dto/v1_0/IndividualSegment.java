@@ -26,6 +26,27 @@ public class IndividualSegment implements Cloneable, Serializable {
 		return IndividualSegmentSerDes.toDTO(json);
 	}
 
+	public Long getAccountCount() {
+		return accountCount;
+	}
+
+	public void setAccountCount(Long accountCount) {
+		this.accountCount = accountCount;
+	}
+
+	public void setAccountCount(
+		UnsafeSupplier<Long, Exception> accountCountUnsafeSupplier) {
+
+		try {
+			accountCount = accountCountUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected Long accountCount;
+
 	public Long getActiveIndividualCount() {
 		return activeIndividualCount;
 	}
@@ -257,6 +278,29 @@ public class IndividualSegment implements Cloneable, Serializable {
 	}
 
 	protected Date lastActivityDate;
+
+	public Date getLastMembershipUpdateDate() {
+		return lastMembershipUpdateDate;
+	}
+
+	public void setLastMembershipUpdateDate(Date lastMembershipUpdateDate) {
+		this.lastMembershipUpdateDate = lastMembershipUpdateDate;
+	}
+
+	public void setLastMembershipUpdateDate(
+		UnsafeSupplier<Date, Exception>
+			lastMembershipUpdateDateUnsafeSupplier) {
+
+		try {
+			lastMembershipUpdateDate =
+				lastMembershipUpdateDateUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected Date lastMembershipUpdateDate;
 
 	public String getName() {
 		return name;
@@ -493,4 +537,4 @@ public class IndividualSegment implements Cloneable, Serializable {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-2102082135
+// LIFERAY-REST-BUILDER-HASH:1588188552

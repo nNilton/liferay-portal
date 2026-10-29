@@ -20,12 +20,24 @@ components:
                     format: int64
                     readOnly: true
                     type: integer
+                activityStatus:
+                    description:
+                        "ACTIVE or INACTIVE, based on whether any individual associated with the account has recent activity."
+                    readOnly: true
+                    type: string
                 annualRevenue:
                     description:
                         "Annual revenue of the account."
                     format: double
                     readOnly: true
                     type: number
+                calculatedFields:
+                    description:
+                        "Values LDP calculates for the account, such as the Salesforce metrics closedWonAmount90d, openPipelineAmount90d and hasActivePipeline."
+                    items:
+                        $ref: "#/components/schemas/CalculatedField"
+                    readOnly: true
+                    type: array
                 country:
                     description:
                         "Country name where the account is headquartered."
@@ -59,11 +71,13 @@ components:
                     format: date-time
                     readOnly: true
                     type: string
-                lifecycleStage:
+                lifecycleStages:
                     description:
-                        "Sales/marketing lifecycle stage of the account (e.g. 'Prospect', 'Customer')."
+                        "Current stage of the account in each account lifecycle it belongs to. A channel can have several lifecycles, so an account can have one stage per lifecycle."
+                    items:
+                        $ref: "#/components/schemas/LifecycleStage"
                     readOnly: true
-                    type: string
+                    type: array
                 numberOfEmployees:
                     description:
                         "Number of employees reported for the account."
@@ -345,6 +359,32 @@ components:
                     readOnly: true
                     type: number
             type: object
+        CalculatedField:
+            description:
+                "A value LDP calculates for an account from its synced data."
+            properties:
+                dateModified:
+                    description:
+                        "When the value was last calculated."
+                    format: date-time
+                    readOnly: true
+                    type: string
+                name:
+                    description:
+                        "Name of the calculated field, such as closedWonAmount90d."
+                    readOnly: true
+                    type: string
+                namespace:
+                    description:
+                        "Source of the calculated field, such as salesforce or profile."
+                    readOnly: true
+                    type: string
+                value:
+                    description:
+                        "Calculated value, as text."
+                    readOnly: true
+                    type: string
+            type: object
         Channel:
             description:
                 "A logical grouping of data coming from configured data sources (e.g. a website, a CRM connection) under which asset metrics, events, individuals, and segments are scoped. Also known as property."
@@ -392,9 +432,15 @@ components:
                     format: date-time
                     readOnly: true
                     type: string
-                individualId:
+                eventDate:
                     description:
-                        "ID of the individual that emitted the event. Null for anonymous individuals. Use with `getWorkspaceGroupIndividual` to fetch the individual."
+                        "When the event happened on the visitor's device. `createDate` is when LDP recorded it."
+                    format: date-time
+                    readOnly: true
+                    type: string
+                individualName:
+                    description:
+                        "Full name of the individual that emitted the event. Null for anonymous individuals and individuals without a name."
                     readOnly: true
                     type: string
                 name:
@@ -462,6 +508,13 @@ components:
                         "Display name of the account this Individual is primarily associated with."
                     readOnly: true
                     type: string
+                accounts:
+                    description:
+                        "Accounts the individual is associated with. Only returned by `getWorkspaceGroupIndividual`; list tools leave it empty."
+                    items:
+                        $ref: "#/components/schemas/Account"
+                    readOnly: true
+                    type: array
                 activitiesCount:
                     description:
                         "Total number of tracked activities attributed to this individual."
@@ -581,6 +634,12 @@ components:
             description:
                 "A saved audience definition that selects individuals matching a filter expression."
             properties:
+                accountCount:
+                    description:
+                        "Number of accounts in the segment."
+                    format: int64
+                    readOnly: true
+                    type: integer
                 activeIndividualCount:
                     description:
                         "Number of individuals currently in the segment who have been active."
@@ -640,6 +699,12 @@ components:
                 lastActivityDate:
                     description:
                         "Most recent activity by any individual currently in the segment."
+                    format: date-time
+                    readOnly: true
+                    type: string
+                lastMembershipUpdateDate:
+                    description:
+                        "When the segment membership was last recalculated."
                     format: date-time
                     readOnly: true
                     type: string
@@ -754,6 +819,21 @@ components:
                     $ref: "#/components/schemas/Metric"
                 removedIndividuals:
                     $ref: "#/components/schemas/Metric"
+            type: object
+        LifecycleStage:
+            description:
+                "The stage an account is currently in, within one account lifecycle."
+            properties:
+                lifecycleName:
+                    description:
+                        "Name of the account lifecycle. Use `getWorkspaceGroupChannelAccountLifecyclesPage` to find its ID."
+                    readOnly: true
+                    type: string
+                stageType:
+                    description:
+                        "Stage type: AWARE, ENGAGED, PIPELINE, ONBOARDING, ESTABLISHED, or AT_RISK."
+                    readOnly: true
+                    type: string
             type: object
         Metric:
             description:
@@ -931,6 +1011,11 @@ components:
                         $ref: "#/components/schemas/Event"
                     readOnly: true
                     type: array
+                individualId:
+                    description:
+                        "ID of the individual the session belongs to. Use it with `getWorkspaceGroupIndividual` to fetch the individual."
+                    readOnly: true
+                    type: string
             type: object
         Workspace:
             description:
@@ -1473,6 +1558,13 @@ paths:
                     name: search
                     schema:
                         type: string
+                -   in: query
+                    description:
+                        "Only count events and sessions of individuals that are members of this segment."
+                    name: segmentId
+                    schema:
+                        format: int64
+                        type: integer
             responses:
                 200:
                     content:
@@ -1598,6 +1690,13 @@ paths:
                         "ID of an individual. When set, narrow the metrics to activity from that individual."
                     name: individualId
                     schema:
+                        type: string
+                -   in: query
+                    description:
+                        "Only include assets of this kind: FILE for documents and file object entries, or CONTENT for every other asset."
+                    name: objectType
+                    schema:
+                        enum: [CONTENT, FILE]
                         type: string
                 -   in: query
                     description:
@@ -2014,6 +2113,13 @@ paths:
                     name: search
                     schema:
                         type: string
+                -   in: query
+                    description:
+                        "Only count events and sessions of individuals that are members of this segment."
+                    name: segmentId
+                    schema:
+                        format: int64
+                        type: integer
             responses:
                 200:
                     content:
@@ -2237,6 +2343,12 @@ paths:
                         type: string
                 -   in: query
                     description:
+                        "Only count searches by individuals associated with this account."
+                    name: accountId
+                    schema:
+                        type: string
+                -   in: query
+                    description:
                         "Page number (starts at 1)."
                     name: page
                     schema:
@@ -2270,6 +2382,19 @@ paths:
                     name: rangeStart
                     schema:
                         type: string
+                -   in: query
+                    description:
+                        "Only include search terms that contain this text, ignoring case."
+                    name: search
+                    schema:
+                        type: string
+                -   in: query
+                    description:
+                        "Only count searches by individuals that are members of this segment."
+                    name: segmentId
+                    schema:
+                        format: int64
+                        type: integer
             responses:
                 200:
                     content:

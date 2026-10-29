@@ -283,31 +283,31 @@ public class Event implements Serializable {
 	private Supplier<Date> _createDateSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
-		description = "ID of the individual that emitted the event. Null for anonymous individuals. Use with `getWorkspaceGroupIndividual` to fetch the individual."
+		description = "When the event happened on the visitor's device. `createDate` is when LDP recorded it."
 	)
-	public String getIndividualId() {
-		if (_individualIdSupplier != null) {
-			individualId = _individualIdSupplier.get();
+	public Date getEventDate() {
+		if (_eventDateSupplier != null) {
+			eventDate = _eventDateSupplier.get();
 
-			_individualIdSupplier = null;
+			_eventDateSupplier = null;
 		}
 
-		return individualId;
+		return eventDate;
 	}
 
-	public void setIndividualId(String individualId) {
-		this.individualId = individualId;
+	public void setEventDate(Date eventDate) {
+		this.eventDate = eventDate;
 
-		_individualIdSupplier = null;
+		_eventDateSupplier = null;
 	}
 
 	@JsonIgnore
-	public void setIndividualId(
-		UnsafeSupplier<String, Exception> individualIdUnsafeSupplier) {
+	public void setEventDate(
+		UnsafeSupplier<Date, Exception> eventDateUnsafeSupplier) {
 
-		_individualIdSupplier = () -> {
+		_eventDateSupplier = () -> {
 			try {
-				return individualIdUnsafeSupplier.get();
+				return eventDateUnsafeSupplier.get();
 			}
 			catch (RuntimeException runtimeException) {
 				throw runtimeException;
@@ -319,13 +319,58 @@ public class Event implements Serializable {
 	}
 
 	@GraphQLField(
-		description = "ID of the individual that emitted the event. Null for anonymous individuals. Use with `getWorkspaceGroupIndividual` to fetch the individual."
+		description = "When the event happened on the visitor's device. `createDate` is when LDP recorded it."
 	)
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
-	protected String individualId;
+	protected Date eventDate;
 
 	@JsonIgnore
-	private Supplier<String> _individualIdSupplier;
+	private Supplier<Date> _eventDateSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Full name of the individual that emitted the event. Null for anonymous individuals and individuals without a name."
+	)
+	public String getIndividualName() {
+		if (_individualNameSupplier != null) {
+			individualName = _individualNameSupplier.get();
+
+			_individualNameSupplier = null;
+		}
+
+		return individualName;
+	}
+
+	public void setIndividualName(String individualName) {
+		this.individualName = individualName;
+
+		_individualNameSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setIndividualName(
+		UnsafeSupplier<String, Exception> individualNameUnsafeSupplier) {
+
+		_individualNameSupplier = () -> {
+			try {
+				return individualNameUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "Full name of the individual that emitted the event. Null for anonymous individuals and individuals without a name."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected String individualName;
+
+	@JsonIgnore
+	private Supplier<String> _individualNameSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "Name of the event type (e.g. 'pageViewed', 'formSubmitted', etc.). The set of available names varies per channel and per integration."
@@ -695,18 +740,34 @@ public class Event implements Serializable {
 			sb.append("\"");
 		}
 
-		String individualId = getIndividualId();
+		Date eventDate = getEventDate();
 
-		if (individualId != null) {
+		if (eventDate != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
 			}
 
-			sb.append("\"individualId\": ");
+			sb.append("\"eventDate\": ");
 
 			sb.append("\"");
 
-			sb.append(_escape(individualId));
+			sb.append(liferayToJSONDateFormat.format(eventDate));
+
+			sb.append("\"");
+		}
+
+		String individualName = getIndividualName();
+
+		if (individualName != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"individualName\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(individualName));
 
 			sb.append("\"");
 		}
@@ -929,4 +990,4 @@ public class Event implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:469690464
+// LIFERAY-REST-BUILDER-HASH:1448694378

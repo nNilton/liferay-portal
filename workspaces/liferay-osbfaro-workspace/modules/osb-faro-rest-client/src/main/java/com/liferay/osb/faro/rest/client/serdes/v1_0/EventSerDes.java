@@ -117,16 +117,30 @@ public class EventSerDes {
 			sb.append("\"");
 		}
 
-		if (event.getIndividualId() != null) {
+		if (event.getEventDate() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
 			}
 
-			sb.append("\"individualId\": ");
+			sb.append("\"eventDate\": ");
 
 			sb.append("\"");
 
-			sb.append(_escape(event.getIndividualId()));
+			sb.append(liferayToJSONDateFormat.format(event.getEventDate()));
+
+			sb.append("\"");
+		}
+
+		if (event.getIndividualName() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"individualName\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(event.getIndividualName()));
 
 			sb.append("\"");
 		}
@@ -273,11 +287,21 @@ public class EventSerDes {
 				liferayToJSONDateFormat.format(event.getCreateDate()));
 		}
 
-		if (event.getIndividualId() == null) {
-			map.put("individualId", null);
+		if (event.getEventDate() == null) {
+			map.put("eventDate", null);
 		}
 		else {
-			map.put("individualId", String.valueOf(event.getIndividualId()));
+			map.put(
+				"eventDate",
+				liferayToJSONDateFormat.format(event.getEventDate()));
+		}
+
+		if (event.getIndividualName() == null) {
+			map.put("individualName", null);
+		}
+		else {
+			map.put(
+				"individualName", String.valueOf(event.getIndividualName()));
 		}
 
 		if (event.getName() == null) {
@@ -355,7 +379,10 @@ public class EventSerDes {
 			else if (Objects.equals(jsonParserFieldName, "createDate")) {
 				return false;
 			}
-			else if (Objects.equals(jsonParserFieldName, "individualId")) {
+			else if (Objects.equals(jsonParserFieldName, "eventDate")) {
+				return false;
+			}
+			else if (Objects.equals(jsonParserFieldName, "individualName")) {
 				return false;
 			}
 			else if (Objects.equals(jsonParserFieldName, "name")) {
@@ -411,9 +438,14 @@ public class EventSerDes {
 					event.setCreateDate(toDate((String)jsonParserFieldValue));
 				}
 			}
-			else if (Objects.equals(jsonParserFieldName, "individualId")) {
+			else if (Objects.equals(jsonParserFieldName, "eventDate")) {
 				if (jsonParserFieldValue != null) {
-					event.setIndividualId((String)jsonParserFieldValue);
+					event.setEventDate(toDate((String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(jsonParserFieldName, "individualName")) {
+				if (jsonParserFieldValue != null) {
+					event.setIndividualName((String)jsonParserFieldValue);
 				}
 			}
 			else if (Objects.equals(jsonParserFieldName, "name")) {
@@ -533,4 +565,4 @@ public class EventSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-371656595
+// LIFERAY-REST-BUILDER-HASH:-1223260760

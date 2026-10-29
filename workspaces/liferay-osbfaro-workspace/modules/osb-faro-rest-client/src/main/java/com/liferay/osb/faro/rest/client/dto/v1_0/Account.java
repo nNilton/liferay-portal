@@ -89,6 +89,27 @@ public class Account implements Cloneable, Serializable {
 
 	protected Long activitiesCount;
 
+	public String getActivityStatus() {
+		return activityStatus;
+	}
+
+	public void setActivityStatus(String activityStatus) {
+		this.activityStatus = activityStatus;
+	}
+
+	public void setActivityStatus(
+		UnsafeSupplier<String, Exception> activityStatusUnsafeSupplier) {
+
+		try {
+			activityStatus = activityStatusUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected String activityStatus;
+
 	public Double getAnnualRevenue() {
 		return annualRevenue;
 	}
@@ -109,6 +130,28 @@ public class Account implements Cloneable, Serializable {
 	}
 
 	protected Double annualRevenue;
+
+	public CalculatedField[] getCalculatedFields() {
+		return calculatedFields;
+	}
+
+	public void setCalculatedFields(CalculatedField[] calculatedFields) {
+		this.calculatedFields = calculatedFields;
+	}
+
+	public void setCalculatedFields(
+		UnsafeSupplier<CalculatedField[], Exception>
+			calculatedFieldsUnsafeSupplier) {
+
+		try {
+			calculatedFields = calculatedFieldsUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected CalculatedField[] calculatedFields;
 
 	public String getCountry() {
 		return country;
@@ -234,26 +277,27 @@ public class Account implements Cloneable, Serializable {
 
 	protected Date lastActivityDate;
 
-	public String getLifecycleStage() {
-		return lifecycleStage;
+	public LifecycleStage[] getLifecycleStages() {
+		return lifecycleStages;
 	}
 
-	public void setLifecycleStage(String lifecycleStage) {
-		this.lifecycleStage = lifecycleStage;
+	public void setLifecycleStages(LifecycleStage[] lifecycleStages) {
+		this.lifecycleStages = lifecycleStages;
 	}
 
-	public void setLifecycleStage(
-		UnsafeSupplier<String, Exception> lifecycleStageUnsafeSupplier) {
+	public void setLifecycleStages(
+		UnsafeSupplier<LifecycleStage[], Exception>
+			lifecycleStagesUnsafeSupplier) {
 
 		try {
-			lifecycleStage = lifecycleStageUnsafeSupplier.get();
+			lifecycleStages = lifecycleStagesUnsafeSupplier.get();
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	protected String lifecycleStage;
+	protected LifecycleStage[] lifecycleStages;
 
 	public Integer getNumberOfEmployees() {
 		return numberOfEmployees;
@@ -329,4 +373,4 @@ public class Account implements Cloneable, Serializable {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:1858872924
+// LIFERAY-REST-BUILDER-HASH:463247107

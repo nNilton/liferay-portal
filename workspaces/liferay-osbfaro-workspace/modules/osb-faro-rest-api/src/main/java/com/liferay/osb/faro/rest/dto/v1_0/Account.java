@@ -19,6 +19,8 @@ import com.liferay.portal.vulcan.util.ObjectMapperUtil;
 
 import jakarta.annotation.Generated;
 
+import jakarta.validation.Valid;
+
 import jakarta.xml.bind.annotation.XmlRootElement;
 
 import java.io.Serializable;
@@ -193,6 +195,51 @@ public class Account implements Serializable {
 	private Supplier<Long> _activitiesCountSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "ACTIVE or INACTIVE, based on whether any individual associated with the account has recent activity."
+	)
+	public String getActivityStatus() {
+		if (_activityStatusSupplier != null) {
+			activityStatus = _activityStatusSupplier.get();
+
+			_activityStatusSupplier = null;
+		}
+
+		return activityStatus;
+	}
+
+	public void setActivityStatus(String activityStatus) {
+		this.activityStatus = activityStatus;
+
+		_activityStatusSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setActivityStatus(
+		UnsafeSupplier<String, Exception> activityStatusUnsafeSupplier) {
+
+		_activityStatusSupplier = () -> {
+			try {
+				return activityStatusUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "ACTIVE or INACTIVE, based on whether any individual associated with the account has recent activity."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected String activityStatus;
+
+	@JsonIgnore
+	private Supplier<String> _activityStatusSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "Annual revenue of the account."
 	)
 	public Double getAnnualRevenue() {
@@ -234,6 +281,53 @@ public class Account implements Serializable {
 
 	@JsonIgnore
 	private Supplier<Double> _annualRevenueSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Values LDP calculates for the account, such as the Salesforce metrics closedWonAmount90d, openPipelineAmount90d and hasActivePipeline."
+	)
+	@Valid
+	public CalculatedField[] getCalculatedFields() {
+		if (_calculatedFieldsSupplier != null) {
+			calculatedFields = _calculatedFieldsSupplier.get();
+
+			_calculatedFieldsSupplier = null;
+		}
+
+		return calculatedFields;
+	}
+
+	public void setCalculatedFields(CalculatedField[] calculatedFields) {
+		this.calculatedFields = calculatedFields;
+
+		_calculatedFieldsSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setCalculatedFields(
+		UnsafeSupplier<CalculatedField[], Exception>
+			calculatedFieldsUnsafeSupplier) {
+
+		_calculatedFieldsSupplier = () -> {
+			try {
+				return calculatedFieldsUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "Values LDP calculates for the account, such as the Salesforce metrics closedWonAmount90d, openPipelineAmount90d and hasActivePipeline."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected CalculatedField[] calculatedFields;
+
+	@JsonIgnore
+	private Supplier<CalculatedField[]> _calculatedFieldsSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "Country name where the account is headquartered."
@@ -504,31 +598,33 @@ public class Account implements Serializable {
 	private Supplier<Date> _lastActivityDateSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
-		description = "Sales/marketing lifecycle stage of the account (e.g. 'Prospect', 'Customer')."
+		description = "Current stage of the account in each account lifecycle it belongs to. A channel can have several lifecycles, so an account can have one stage per lifecycle."
 	)
-	public String getLifecycleStage() {
-		if (_lifecycleStageSupplier != null) {
-			lifecycleStage = _lifecycleStageSupplier.get();
+	@Valid
+	public LifecycleStage[] getLifecycleStages() {
+		if (_lifecycleStagesSupplier != null) {
+			lifecycleStages = _lifecycleStagesSupplier.get();
 
-			_lifecycleStageSupplier = null;
+			_lifecycleStagesSupplier = null;
 		}
 
-		return lifecycleStage;
+		return lifecycleStages;
 	}
 
-	public void setLifecycleStage(String lifecycleStage) {
-		this.lifecycleStage = lifecycleStage;
+	public void setLifecycleStages(LifecycleStage[] lifecycleStages) {
+		this.lifecycleStages = lifecycleStages;
 
-		_lifecycleStageSupplier = null;
+		_lifecycleStagesSupplier = null;
 	}
 
 	@JsonIgnore
-	public void setLifecycleStage(
-		UnsafeSupplier<String, Exception> lifecycleStageUnsafeSupplier) {
+	public void setLifecycleStages(
+		UnsafeSupplier<LifecycleStage[], Exception>
+			lifecycleStagesUnsafeSupplier) {
 
-		_lifecycleStageSupplier = () -> {
+		_lifecycleStagesSupplier = () -> {
 			try {
-				return lifecycleStageUnsafeSupplier.get();
+				return lifecycleStagesUnsafeSupplier.get();
 			}
 			catch (RuntimeException runtimeException) {
 				throw runtimeException;
@@ -540,13 +636,13 @@ public class Account implements Serializable {
 	}
 
 	@GraphQLField(
-		description = "Sales/marketing lifecycle stage of the account (e.g. 'Prospect', 'Customer')."
+		description = "Current stage of the account in each account lifecycle it belongs to. A channel can have several lifecycles, so an account can have one stage per lifecycle."
 	)
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
-	protected String lifecycleStage;
+	protected LifecycleStage[] lifecycleStages;
 
 	@JsonIgnore
-	private Supplier<String> _lifecycleStageSupplier;
+	private Supplier<LifecycleStage[]> _lifecycleStagesSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
 		description = "Number of employees reported for the account."
@@ -708,6 +804,22 @@ public class Account implements Serializable {
 			sb.append(activitiesCount);
 		}
 
+		String activityStatus = getActivityStatus();
+
+		if (activityStatus != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"activityStatus\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(activityStatus));
+
+			sb.append("\"");
+		}
+
 		Double annualRevenue = getAnnualRevenue();
 
 		if (annualRevenue != null) {
@@ -718,6 +830,28 @@ public class Account implements Serializable {
 			sb.append("\"annualRevenue\": ");
 
 			sb.append(annualRevenue);
+		}
+
+		CalculatedField[] calculatedFields = getCalculatedFields();
+
+		if (calculatedFields != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"calculatedFields\": ");
+
+			sb.append("[");
+
+			for (int i = 0; i < calculatedFields.length; i++) {
+				sb.append(String.valueOf(calculatedFields[i]));
+
+				if ((i + 1) < calculatedFields.length) {
+					sb.append(", ");
+				}
+			}
+
+			sb.append("]");
 		}
 
 		String country = getCountry();
@@ -816,20 +950,26 @@ public class Account implements Serializable {
 			sb.append("\"");
 		}
 
-		String lifecycleStage = getLifecycleStage();
+		LifecycleStage[] lifecycleStages = getLifecycleStages();
 
-		if (lifecycleStage != null) {
+		if (lifecycleStages != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
 			}
 
-			sb.append("\"lifecycleStage\": ");
+			sb.append("\"lifecycleStages\": ");
 
-			sb.append("\"");
+			sb.append("[");
 
-			sb.append(_escape(lifecycleStage));
+			for (int i = 0; i < lifecycleStages.length; i++) {
+				sb.append(String.valueOf(lifecycleStages[i]));
 
-			sb.append("\"");
+				if ((i + 1) < lifecycleStages.length) {
+					sb.append(", ");
+				}
+			}
+
+			sb.append("]");
 		}
 
 		Integer numberOfEmployees = getNumberOfEmployees();
@@ -982,4 +1122,4 @@ public class Account implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:1684215780
+// LIFERAY-REST-BUILDER-HASH:1788035950

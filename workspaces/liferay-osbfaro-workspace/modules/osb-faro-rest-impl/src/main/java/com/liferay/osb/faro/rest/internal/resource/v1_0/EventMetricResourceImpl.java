@@ -14,6 +14,8 @@ import com.liferay.osb.faro.service.FaroProjectLocalService;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 
+import java.util.Objects;
+
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ServiceScope;
@@ -30,30 +32,31 @@ public class EventMetricResourceImpl extends BaseEventMetricResourceImpl {
 	@Override
 	public EventMetric getWorkspaceGroupChannelAccountEventMetric(
 			Long groupId, String channelId, String accountId, String interval,
-			String rangeEnd, String rangeKey, String rangeStart, String search)
+			String rangeEnd, String rangeKey, String rangeStart, String search,
+			Long segmentId)
 		throws Exception {
 
 		return _getEventMetric(
 			accountId, channelId, "", groupId, interval, rangeEnd, rangeKey,
-			rangeStart, search);
+			rangeStart, search, segmentId);
 	}
 
 	@Override
 	public EventMetric getWorkspaceGroupChannelIndividualEventMetric(
 			Long groupId, String channelId, String individualId,
 			String interval, String rangeEnd, String rangeKey,
-			String rangeStart, String search)
+			String rangeStart, String search, Long segmentId)
 		throws Exception {
 
 		return _getEventMetric(
 			null, channelId, individualId, groupId, interval, rangeEnd,
-			rangeKey, rangeStart, search);
+			rangeKey, rangeStart, search, segmentId);
 	}
 
 	private EventMetric _getEventMetric(
 			String accountId, String channelId, String entityId, Long groupId,
 			String interval, String rangeEnd, String rangeKey,
-			String rangeStart, String search)
+			String rangeStart, String search, Long segmentId)
 		throws Exception {
 
 		GetWorkspaceGroupChannelEventMetricsResponse
@@ -80,6 +83,8 @@ public class EventMetricResourceImpl extends BaseEventMetricResourceImpl {
 						"rangeKey", TimeRange.getRangeKey(rangeKey)
 					).put(
 						"rangeStart", rangeStart
+					).put(
+						"segmentId", Objects.toString(segmentId, null)
 					).build());
 
 		return _eventMetricDTOConverter.toDTO(

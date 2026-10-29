@@ -133,26 +133,47 @@ public class Event implements Cloneable, Serializable {
 
 	protected Date createDate;
 
-	public String getIndividualId() {
-		return individualId;
+	public Date getEventDate() {
+		return eventDate;
 	}
 
-	public void setIndividualId(String individualId) {
-		this.individualId = individualId;
+	public void setEventDate(Date eventDate) {
+		this.eventDate = eventDate;
 	}
 
-	public void setIndividualId(
-		UnsafeSupplier<String, Exception> individualIdUnsafeSupplier) {
+	public void setEventDate(
+		UnsafeSupplier<Date, Exception> eventDateUnsafeSupplier) {
 
 		try {
-			individualId = individualIdUnsafeSupplier.get();
+			eventDate = eventDateUnsafeSupplier.get();
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	protected String individualId;
+	protected Date eventDate;
+
+	public String getIndividualName() {
+		return individualName;
+	}
+
+	public void setIndividualName(String individualName) {
+		this.individualName = individualName;
+	}
+
+	public void setIndividualName(
+		UnsafeSupplier<String, Exception> individualNameUnsafeSupplier) {
+
+		try {
+			individualName = individualNameUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected String individualName;
 
 	public String getName() {
 		return name;
@@ -308,4 +329,4 @@ public class Event implements Cloneable, Serializable {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1695356563
+// LIFERAY-REST-BUILDER-HASH:1600853330
