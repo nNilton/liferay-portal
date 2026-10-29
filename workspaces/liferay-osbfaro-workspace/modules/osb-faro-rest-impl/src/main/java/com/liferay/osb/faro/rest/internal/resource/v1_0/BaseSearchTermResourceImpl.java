@@ -65,6 +65,11 @@ public abstract class BaseSearchTermResourceImpl implements SearchTermResource {
 				name = "channelId", required = true
 			),
 			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Only count searches by individuals associated with this account.",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "accountId"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
 				description = "Page number (starts at 1).",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
 				name = "page"
@@ -89,6 +94,16 @@ public abstract class BaseSearchTermResourceImpl implements SearchTermResource {
 				description = "Custom range start as a `yyyy-MM-dd` date (e.g. 2026-01-01). Set together with `rangeEnd`; together they take precedence over `rangeKey`.",
 				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
 				name = "rangeStart"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Only include search terms that contain this text, ignoring case.",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "search"
+			),
+			@io.swagger.v3.oas.annotations.Parameter(
+				description = "Only count searches by individuals that are members of this segment.",
+				in = io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY,
+				name = "segmentId"
 			)
 		}
 	)
@@ -111,6 +126,9 @@ public abstract class BaseSearchTermResourceImpl implements SearchTermResource {
 			@jakarta.ws.rs.PathParam("channelId")
 			String channelId,
 			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@jakarta.ws.rs.QueryParam("accountId")
+			String accountId,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
 			@jakarta.ws.rs.QueryParam("rangeEnd")
 			String rangeEnd,
 			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
@@ -119,6 +137,12 @@ public abstract class BaseSearchTermResourceImpl implements SearchTermResource {
 			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
 			@jakarta.ws.rs.QueryParam("rangeStart")
 			String rangeStart,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@jakarta.ws.rs.QueryParam("search")
+			String search,
+			@io.swagger.v3.oas.annotations.Parameter(hidden = true)
+			@jakarta.ws.rs.QueryParam("segmentId")
+			Long segmentId,
 			@jakarta.ws.rs.core.Context Pagination pagination)
 		throws Exception {
 
@@ -570,4 +594,4 @@ public abstract class BaseSearchTermResourceImpl implements SearchTermResource {
 		LogFactoryUtil.getLog(BaseSearchTermResourceImpl.class);
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1307045373
+// LIFERAY-REST-BUILDER-HASH:-1604775001

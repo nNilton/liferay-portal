@@ -173,7 +173,7 @@ public abstract class BaseEventResourceTestCase {
 		event.setApplicationId(regex);
 		event.setAssetTitle(regex);
 		event.setCanonicalUrl(regex);
-		event.setIndividualId(regex);
+		event.setIndividualName(regex);
 		event.setName(regex);
 		event.setPageDescription(regex);
 		event.setPageKeywords(regex);
@@ -190,7 +190,7 @@ public abstract class BaseEventResourceTestCase {
 		Assert.assertEquals(regex, event.getApplicationId());
 		Assert.assertEquals(regex, event.getAssetTitle());
 		Assert.assertEquals(regex, event.getCanonicalUrl());
-		Assert.assertEquals(regex, event.getIndividualId());
+		Assert.assertEquals(regex, event.getIndividualName());
 		Assert.assertEquals(regex, event.getName());
 		Assert.assertEquals(regex, event.getPageDescription());
 		Assert.assertEquals(regex, event.getPageKeywords());
@@ -500,8 +500,16 @@ public abstract class BaseEventResourceTestCase {
 				continue;
 			}
 
-			if (Objects.equals("individualId", additionalAssertFieldName)) {
-				if (event.getIndividualId() == null) {
+			if (Objects.equals("eventDate", additionalAssertFieldName)) {
+				if (event.getEventDate() == null) {
+					valid = false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals("individualName", additionalAssertFieldName)) {
+				if (event.getIndividualName() == null) {
 					valid = false;
 				}
 
@@ -722,9 +730,20 @@ public abstract class BaseEventResourceTestCase {
 				continue;
 			}
 
-			if (Objects.equals("individualId", additionalAssertFieldName)) {
+			if (Objects.equals("eventDate", additionalAssertFieldName)) {
 				if (!Objects.deepEquals(
-						event1.getIndividualId(), event2.getIndividualId())) {
+						event1.getEventDate(), event2.getEventDate())) {
+
+					return false;
+				}
+
+				continue;
+			}
+
+			if (Objects.equals("individualName", additionalAssertFieldName)) {
+				if (!Objects.deepEquals(
+						event1.getIndividualName(),
+						event2.getIndividualName())) {
 
 					return false;
 				}
@@ -1068,8 +1087,37 @@ public abstract class BaseEventResourceTestCase {
 			return sb.toString();
 		}
 
-		if (entityFieldName.equals("individualId")) {
-			Object object = event.getIndividualId();
+		if (entityFieldName.equals("eventDate")) {
+			if (operator.equals("between")) {
+				Date date = event.getEventDate();
+
+				sb = new StringBundler();
+
+				sb.append("(");
+				sb.append(entityFieldName);
+				sb.append(" gt ");
+				sb.append(_format.format(date.getTime() - (2 * Time.SECOND)));
+				sb.append(" and ");
+				sb.append(entityFieldName);
+				sb.append(" lt ");
+				sb.append(_format.format(date.getTime() + (2 * Time.SECOND)));
+				sb.append(")");
+			}
+			else {
+				sb.append(entityFieldName);
+
+				sb.append(" ");
+				sb.append(operator);
+				sb.append(" ");
+
+				sb.append(_format.format(event.getEventDate()));
+			}
+
+			return sb.toString();
+		}
+
+		if (entityFieldName.equals("individualName")) {
+			Object object = event.getIndividualName();
 
 			String value = String.valueOf(object);
 
@@ -1444,7 +1492,8 @@ public abstract class BaseEventResourceTestCase {
 				canonicalUrl = StringUtil.toLowerCase(
 					RandomTestUtil.randomString());
 				createDate = RandomTestUtil.nextDate();
-				individualId = StringUtil.toLowerCase(
+				eventDate = RandomTestUtil.nextDate();
+				individualName = StringUtil.toLowerCase(
 					RandomTestUtil.randomString());
 				name = StringUtil.toLowerCase(RandomTestUtil.randomString());
 				pageDescription = StringUtil.toLowerCase(
@@ -1680,4 +1729,4 @@ public abstract class BaseEventResourceTestCase {
 		_eventResource;
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1177331485
+// LIFERAY-REST-BUILDER-HASH:-973968195
