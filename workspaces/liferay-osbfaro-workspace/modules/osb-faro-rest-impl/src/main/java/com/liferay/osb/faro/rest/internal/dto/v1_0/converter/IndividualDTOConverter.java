@@ -6,9 +6,11 @@
 package com.liferay.osb.faro.rest.internal.dto.v1_0.converter;
 
 import com.liferay.osb.faro.engine.client.model.Field;
+import com.liferay.osb.faro.rest.dto.v1_0.Account;
 import com.liferay.osb.faro.rest.dto.v1_0.Individual;
 import com.liferay.osb.faro.rest.dto.v1_0.IndividualDemographicField;
 import com.liferay.osb.faro.rest.internal.dto.v1_0.util.FaroEnumUtil;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -54,6 +56,7 @@ public class IndividualDTOConverter
 		return new Individual() {
 			{
 				setAccountName(individual::getAccountName);
+				setAccounts(() -> _toAccounts(individual.getAccounts()));
 				setActivitiesCount(individual::getActivitiesCount);
 				setActivityStatus(individual::getActivityStatus);
 				setAverageSessionDuration(
@@ -117,6 +120,26 @@ public class IndividualDTOConverter
 		}
 
 		return name;
+	}
+
+	private Account[] _toAccounts(
+		List<com.liferay.osb.faro.engine.client.model.Individual.Account>
+			accounts) {
+
+		return TransformUtil.transformToArray(
+			accounts,
+			account -> new Account() {
+				{
+					setAccountName(account::getAccountName);
+					setAccountType(account::getAccountType);
+					setAnnualRevenue(account::getAnnualRevenue);
+					setCountry(account::getCountry);
+					setId(account::getId);
+					setIndustry(account::getIndustry);
+					setLastActivityDate(account::getLastActivityDate);
+				}
+			},
+			Account.class);
 	}
 
 	private Map<String, List<IndividualDemographicField>>

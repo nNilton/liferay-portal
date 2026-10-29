@@ -49,7 +49,8 @@ public class EventDTOConverter
 				setAttributes(() -> _getAttributes(event.getProperties()));
 				setCanonicalUrl(event::getCanonicalUrl);
 				setCreateDate(event::getCreateDate);
-				setIndividualId(event::getEmailAddressHashed);
+				setEventDate(event::getEventDate);
+				setIndividualName(event::getIndividualName);
 				setName(event::getName);
 				setPageDescription(event::getPageDescription);
 				setPageKeywords(event::getPageKeywords);

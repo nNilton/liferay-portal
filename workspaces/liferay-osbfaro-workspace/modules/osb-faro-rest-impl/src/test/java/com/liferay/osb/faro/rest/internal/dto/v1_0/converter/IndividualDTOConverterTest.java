@@ -6,11 +6,13 @@
 package com.liferay.osb.faro.rest.internal.dto.v1_0.converter;
 
 import com.liferay.osb.faro.engine.client.model.Field;
+import com.liferay.osb.faro.rest.dto.v1_0.Account;
 import com.liferay.osb.faro.rest.dto.v1_0.Individual;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +44,28 @@ public class IndividualDTOConverterTest {
 		com.liferay.osb.faro.engine.client.model.Individual
 			engineClientIndividual = _createEngineClientIndividual(null);
 
+		com.liferay.osb.faro.engine.client.model.Individual.Account
+			engineClientAccount =
+				new com.liferay.osb.faro.engine.client.model.Individual.
+					Account();
+
+		engineClientAccount.setAccountName(RandomTestUtil.randomString());
+		engineClientAccount.setId(RandomTestUtil.randomString());
+
+		engineClientIndividual.setAccounts(
+			Collections.singletonList(engineClientAccount));
+
 		Individual individual = _toDTO(engineClientIndividual);
+
+		Account[] accounts = individual.getAccounts();
+
+		Assert.assertEquals(Arrays.toString(accounts), 1, accounts.length);
+
+		Account account = accounts[0];
+
+		Assert.assertEquals(
+			engineClientAccount.getAccountName(), account.getAccountName());
+		Assert.assertEquals(engineClientAccount.getId(), account.getId());
 
 		Assert.assertEquals(
 			engineClientIndividual.getActivityStatus(),
