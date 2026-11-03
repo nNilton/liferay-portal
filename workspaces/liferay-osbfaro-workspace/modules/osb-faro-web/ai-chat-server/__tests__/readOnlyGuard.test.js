@@ -8,7 +8,7 @@ const {test} = require('node:test');
 
 const {evaluateToolCall} = require('../readOnlyGuard');
 
-const CALL = 'mcp__liferay-ac-stg__call-http-endpoint';
+const CALL = 'mcp__ldp__call-http-endpoint';
 const CHART = 'mcp__faro_chart__render_chart';
 
 test('allows a GET call-http-endpoint', () => {
@@ -47,11 +47,11 @@ test('treats the method case-insensitively', () => {
 
 test('allows the discovery tools get-openapis and get-openapi', () => {
 	assert.strictEqual(
-		evaluateToolCall('mcp__liferay-ac-stg__get-openapis', {}).allow,
+		evaluateToolCall('mcp__ldp__get-openapis', {}).allow,
 		true
 	);
 	assert.strictEqual(
-		evaluateToolCall('mcp__liferay-ac-stg__get-openapi', {name: 'x'}).allow,
+		evaluateToolCall('mcp__ldp__get-openapi', {name: 'x'}).allow,
 		true
 	);
 });
@@ -63,7 +63,7 @@ test('allows the ldp read tools', () => {
 		'getWorkspaceGroupIndividual'
 	]) {
 		assert.strictEqual(
-			evaluateToolCall(`mcp__liferay-ac-stg__${name}`, {}).allow,
+			evaluateToolCall(`mcp__ldp__${name}`, {}).allow,
 			true,
 			`expected ${name} to be allowed`
 		);
@@ -77,7 +77,7 @@ test('denies the ldp write tools', () => {
 		'patchWorkspaceGroupAccount',
 		'deleteWorkspaceGroupAccount'
 	]) {
-		const result = evaluateToolCall(`mcp__liferay-ac-stg__${name}`, {});
+		const result = evaluateToolCall(`mcp__ldp__${name}`, {});
 
 		assert.strictEqual(result.allow, false, `expected ${name} to be denied`);
 		assert.match(result.reason, /not allowed/i);

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-const MCP_SERVER = 'mcp__liferay-ac-stg__';
+const MCP_SERVER = 'mcp__ldp__';
 const CHART_TOOL = 'mcp__faro_chart__render_chart';
 
 const CALL_HTTP_ENDPOINT = `${MCP_SERVER}call-http-endpoint`;

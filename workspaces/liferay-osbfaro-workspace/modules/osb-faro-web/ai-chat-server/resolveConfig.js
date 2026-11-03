@@ -13,7 +13,7 @@ function resolveApiKey(body) {
 }
 
 // Model comes from the settings page (request) only, falling back to the
-// built-in default. The AC_CHAT_MODEL env var is intentionally NOT consulted.
+// built-in default. The LDP_CHAT_MODEL env var is intentionally NOT consulted.
 function resolveModel(body) {
 	return (body && body.model) || DEFAULT_MODEL;
 }

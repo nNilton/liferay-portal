@@ -128,7 +128,7 @@ export const AiAssistantForm = () => {
 			</div>
 
 			<h5 className='mt-4'>
-				{Liferay.Language.get('analytics-cloud-credentials')}
+				{Liferay.Language.get('liferay-data-platform-credentials')}
 			</h5>
 
 			<div className='form-group'>

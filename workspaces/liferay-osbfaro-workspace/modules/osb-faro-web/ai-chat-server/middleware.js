@@ -13,16 +13,16 @@ const {
 
 const CHART_SERVER = 'faro_chart';
 const CHART_TOOL = `mcp__${CHART_SERVER}__render_chart`;
-const MCP_SERVER = 'liferay-ac-stg';
+const MCP_SERVER = 'ldp';
 
 // Endpoint discovery over a large API surface can need several turns; a low cap
-// makes the agent stop without an answer. Override with AC_CHAT_MAX_TURNS.
-const MAX_TURNS = Number(process.env.AC_CHAT_MAX_TURNS) || 20;
+// makes the agent stop without an answer. Override with LDP_CHAT_MAX_TURNS.
+const MAX_TURNS = Number(process.env.LDP_CHAT_MAX_TURNS) || 20;
 
 const PATH = '/ai-chat';
 const VALIDATE_PATH = '/ai-chat/validate';
 
-// Resolves the Analytics Cloud MCP server config. The Authorization header
+// Resolves the LDP MCP server config. The Authorization header
 // comes from the request (the settings page); env vars are not consulted.
 function resolveMcpServer(requestAuth) {
 	const base = (
@@ -46,7 +46,7 @@ function buildSystemPrompt(context, history) {
 		context && context.channelId ? context.channelId : 'unknown';
 
 	const lines = [
-		'You are an analytics assistant embedded in Liferay Analytics Cloud.',
+		'You are an analytics assistant embedded in Liferay Data Platform (LDP).',
 		'Answer questions about the analytics data using ONLY the available tools.',
 		'',
 		'Tools:',

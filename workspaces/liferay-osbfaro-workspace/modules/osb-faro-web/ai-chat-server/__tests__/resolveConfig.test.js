@@ -31,8 +31,8 @@ test('model comes from the request, else default; env is ignored', () => {
 	assert.equal(resolveModel({model: 'm-req'}), 'm-req');
 	assert.equal(resolveModel({}), DEFAULT_MODEL);
 
-	// AC_CHAT_MODEL must NOT be consulted, even if present.
-	assert.equal(resolveModel({}, {AC_CHAT_MODEL: 'm-env'}), DEFAULT_MODEL);
+	// LDP_CHAT_MODEL must NOT be consulted, even if present.
+	assert.equal(resolveModel({}, {LDP_CHAT_MODEL: 'm-env'}), DEFAULT_MODEL);
 });
 
 test('missingKeyError returns an error object when key is empty', () => {
