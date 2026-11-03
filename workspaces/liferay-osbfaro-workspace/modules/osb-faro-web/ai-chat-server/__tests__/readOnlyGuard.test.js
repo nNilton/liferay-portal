@@ -56,6 +56,45 @@ test('allows the discovery tools get-openapis and get-openapi', () => {
 	);
 });
 
+test('allows the ldp read tools', () => {
+	for (const name of [
+		'getWorkspacesPage',
+		'getWorkspaceGroupChannelAccountsPage',
+		'getWorkspaceGroupIndividual'
+	]) {
+		assert.strictEqual(
+			evaluateToolCall(`mcp__liferay-ac-stg__${name}`, {}).allow,
+			true,
+			`expected ${name} to be allowed`
+		);
+	}
+});
+
+test('denies the ldp write tools', () => {
+	for (const name of [
+		'postWorkspaceGroupAccount',
+		'putWorkspaceGroupAccount',
+		'patchWorkspaceGroupAccount',
+		'deleteWorkspaceGroupAccount'
+	]) {
+		const result = evaluateToolCall(`mcp__liferay-ac-stg__${name}`, {});
+
+		assert.strictEqual(result.allow, false, `expected ${name} to be denied`);
+		assert.match(result.reason, /not allowed/i);
+	}
+});
+
+test('denies get tools from any other MCP server', () => {
+	assert.strictEqual(
+		evaluateToolCall('mcp__other__getWorkspacesPage', {}).allow,
+		false
+	);
+	assert.strictEqual(
+		evaluateToolCall('mcp__faro_chart__getAnything', {}).allow,
+		false
+	);
+});
+
 test('allows the render_chart tool', () => {
 	assert.strictEqual(
 		evaluateToolCall(CHART, {type: 'bar', title: 't'}).allow,

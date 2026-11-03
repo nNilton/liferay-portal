@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-const {ALLOWED_TOOLS, evaluateToolCall} = require('./readOnlyGuard');
+const {evaluateToolCall} = require('./readOnlyGuard');
 const {CHART_TYPES, validateChartSpec} = require('./chartSpec');
 const {
 	missingKeyError,
@@ -37,7 +37,7 @@ function resolveMcpServer(requestAuth) {
 
 	// alwaysLoad: with built-in tools disabled there is no tool search, so the
 	// MCP tools must be loaded straight into the prompt instead of deferred.
-	return {alwaysLoad: true, headers, type: 'http', url: `${base}/o/mcp`};
+	return {alwaysLoad: true, headers, type: 'http', url: `${base}/o/mcp/ldp`};
 }
 
 function buildSystemPrompt(context, history) {
@@ -46,12 +46,13 @@ function buildSystemPrompt(context, history) {
 		context && context.channelId ? context.channelId : 'unknown';
 
 	const lines = [
-		'You are an analytics assistant embedded in Liferay Analytics Cloud (staging).',
+		'You are an analytics assistant embedded in Liferay Analytics Cloud.',
 		'Answer questions about the analytics data using ONLY the available tools.',
 		'',
 		'Tools:',
-		`- Use mcp__${MCP_SERVER}__get-openapis and get-openapi to discover endpoints.`,
-		`- Use mcp__${MCP_SERVER}__call-http-endpoint (GET only) to read data. Never attempt POST/PUT/PATCH/DELETE — you are strictly read-only.`,
+		`- Read data with the mcp__${MCP_SERVER}__get* tools. Call getWorkspacesPage only if you need to find a workspace; otherwise use the workspace-group and channel-scoped tools (getWorkspaceGroup…) directly with the context below.`,
+		'- You are strictly read-only: never try to create, update, or delete anything. Only get* tools are permitted; any other tool call is refused.',
+		'- If a tool call is refused or fails, say so plainly and quote the error. Do not guess at causes such as expired sessions or outages.',
 		`- When the answer is clearer as a chart, call render_chart with {type (${CHART_TYPES.join(
 			'|'
 		)}), title, data, xKey, series}.`,
@@ -185,7 +186,6 @@ async function handleChat(req, res) {
 	try {
 		const response = query({
 			options: {
-				allowedTools: ALLOWED_TOOLS,
 				canUseTool: async (toolName, input) => {
 					const {allow, reason} = evaluateToolCall(toolName, input);
 

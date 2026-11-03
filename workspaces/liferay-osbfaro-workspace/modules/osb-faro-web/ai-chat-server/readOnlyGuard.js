@@ -7,18 +7,17 @@ const MCP_SERVER = 'mcp__liferay-ac-stg__';
 const CHART_TOOL = 'mcp__faro_chart__render_chart';
 
 const CALL_HTTP_ENDPOINT = `${MCP_SERVER}call-http-endpoint`;
-
-// The only tools the assistant is allowed to invoke. Everything else (Bash,
-// Read, Write, and any other built-in) is denied so the chat can only read
-// Analytics Cloud data through the MCP server or render a chart.
-const ALLOWED_TOOLS = new Set([
-	`${MCP_SERVER}get-openapis`,
-	`${MCP_SERVER}get-openapi`,
-	CALL_HTTP_ENDPOINT,
-	CHART_TOOL
-]);
+const READ_TOOL_PREFIX = `${MCP_SERVER}get`;
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function isAllowedTool(toolName) {
+	return (
+		toolName === CHART_TOOL ||
+		toolName === CALL_HTTP_ENDPOINT ||
+		toolName.startsWith(READ_TOOL_PREFIX)
+	);
+}
 
 /**
  * Decides whether a tool call is allowed under the read-only POC contract.
@@ -28,7 +27,7 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * @returns {{allow: boolean, reason?: string}}
  */
 function evaluateToolCall(toolName, input = {}) {
-	if (!ALLOWED_TOOLS.has(toolName)) {
+	if (!isAllowedTool(toolName)) {
 		return {allow: false, reason: `Tool "${toolName}" is not allowed.`};
 	}
 
@@ -46,4 +45,4 @@ function evaluateToolCall(toolName, input = {}) {
 	return {allow: true};
 }
 
-module.exports = {ALLOWED_TOOLS: [...ALLOWED_TOOLS], evaluateToolCall};
+module.exports = {evaluateToolCall};
