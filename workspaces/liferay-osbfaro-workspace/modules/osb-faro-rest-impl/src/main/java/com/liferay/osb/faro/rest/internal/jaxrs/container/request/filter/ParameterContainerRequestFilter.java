@@ -115,14 +115,9 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 		MultivaluedMap<String, String> pathParameters,
 		MultivaluedMap<String, String> queryParameters) {
 
-		for (String name :
-				new String[] {
-					"accountLifecycleId", "individualSegmentId", "segmentId"
-				}) {
-
-			_validateId(name, pathParameters.getFirst(name));
-			_validateId(name, queryParameters.getFirst(name));
-		}
+		_validateId("accountLifecycleId", pathParameters, queryParameters);
+		_validateId("individualSegmentId", pathParameters, queryParameters);
+		_validateId("segmentId", pathParameters, queryParameters);
 
 		for (Map.Entry<String, String[]> entry : _validValues.entrySet()) {
 			_validateValue(
@@ -139,8 +134,16 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 		_validateSort(queryParameters.getFirst("sort"));
 	}
 
-	private void _validateId(String name, String value) {
-		if ((value != null) && !Validator.isNumber(value)) {
+	private void _validateId(
+		String name, MultivaluedMap<String, String> pathParameters,
+		MultivaluedMap<String, String> queryParameters) {
+
+		String pathParameter = pathParameters.getFirst(name);
+		String queryParameter = queryParameters.getFirst(name);
+
+		if (((pathParameter != null) && !Validator.isNumber(pathParameter)) ||
+			((queryParameter != null) && !Validator.isNumber(queryParameter))) {
+
 			throw new BadRequestException(
 				StringBundler.concat("\"", name, "\" must be a numeric ID"));
 		}
