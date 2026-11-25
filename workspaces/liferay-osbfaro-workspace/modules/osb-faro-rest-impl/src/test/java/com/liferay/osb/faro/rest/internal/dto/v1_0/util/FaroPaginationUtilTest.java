@@ -29,26 +29,11 @@ public class FaroPaginationUtilTest {
 			RandomTestUtil.randomString());
 
 		Assert.assertEquals(
+			Collections.emptyList(),
+			FaroPaginationUtil.paginate(items, Pagination.of(2, 5)));
+		Assert.assertEquals(
 			items.subList(2, 4),
 			FaroPaginationUtil.paginate(items, Pagination.of(2, 2)));
-	}
-
-	@Test
-	public void testPaginateWithStartPositionPastEnd() {
-		List<String> items = Collections.nCopies(
-			20, RandomTestUtil.randomString());
-
-		List<String> paginatedItems = FaroPaginationUtil.paginate(
-			items, Pagination.of(2, 20));
-
-		Assert.assertTrue(paginatedItems.isEmpty());
-	}
-
-	@Test
-	public void testPaginateWithoutPagination() {
-		List<String> items = List.of(
-			RandomTestUtil.randomString(), RandomTestUtil.randomString());
-
 		Assert.assertSame(items, FaroPaginationUtil.paginate(items, null));
 	}
 

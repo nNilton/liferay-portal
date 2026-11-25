@@ -50,76 +50,10 @@ public class AccountLifecycleHelperTest {
 			_accountLifecycleHelper.getAccountLifecycle(
 				accountLifecycle.getId(), String.valueOf(_CHANNEL_ID),
 				_faroProject));
-	}
 
-	@Test
-	public void testGetAccountLifecycleWithAnotherChannel() {
-		AccountLifecycle accountLifecycle = _mockAccountLifecycle(
-			RandomTestUtil.randomString());
-
-		_mockAccountLifecycles(accountLifecycle, _CHANNEL_ID);
-
-		_assertNotFoundException(
-			accountLifecycle.getId(), String.valueOf(_CHANNEL_ID));
-
-		_mockAccountLifecycles(
-			accountLifecycle, _CHANNEL_ID,
-			_mockAccountLifecycle(RandomTestUtil.randomString()));
-
-		_assertNotFoundException(
-			accountLifecycle.getId(), String.valueOf(_CHANNEL_ID));
-	}
-
-	@Test
-	public void testGetAccountLifecycleWithEngineError() {
-		String accountLifecycleId = RandomTestUtil.randomString();
-		FaroEngineClientException faroEngineClientException1 =
-			new FaroEngineClientException(RandomTestUtil.randomString(), 500);
-
-		Mockito.when(
-			_contactsEngineClient.getAccountLifecycle(
-				_faroProject, accountLifecycleId)
-		).thenThrow(
-			faroEngineClientException1
-		);
-
-		try {
-			_accountLifecycleHelper.getAccountLifecycle(
-				accountLifecycleId, String.valueOf(_CHANNEL_ID), _faroProject);
-
-			Assert.fail();
-		}
-		catch (FaroEngineClientException faroEngineClientException2) {
-			Assert.assertSame(
-				faroEngineClientException1, faroEngineClientException2);
-		}
-	}
-
-	@Test
-	public void testGetAccountLifecycleWithNonexistentAccountLifecycle() {
-		String accountLifecycleId1 = RandomTestUtil.randomString();
-
-		Mockito.when(
-			_contactsEngineClient.getAccountLifecycle(
-				_faroProject, accountLifecycleId1)
-		).thenThrow(
-			new NoSuchEntryException(RandomTestUtil.randomString())
-		);
-
-		_assertNotFoundException(
-			accountLifecycleId1, String.valueOf(_CHANNEL_ID));
-
-		String accountLifecycleId2 = RandomTestUtil.randomString();
-
-		Mockito.when(
-			_contactsEngineClient.getAccountLifecycle(
-				_faroProject, accountLifecycleId2)
-		).thenThrow(
-			new FaroEngineClientException(RandomTestUtil.randomString(), 400)
-		);
-
-		_assertNotFoundException(
-			accountLifecycleId2, String.valueOf(_CHANNEL_ID));
+		_testGetAccountLifecycleWithAnotherChannel();
+		_testGetAccountLifecycleWithEngineError();
+		_testGetAccountLifecycleWithNonexistentAccountLifecycle();
 	}
 
 	private void _assertNotFoundException(
@@ -176,6 +110,73 @@ public class AccountLifecycleHelperTest {
 				Arrays.asList(channelAccountLifecycles),
 				channelAccountLifecycles.length)
 		);
+	}
+
+	private void _testGetAccountLifecycleWithAnotherChannel() {
+		AccountLifecycle accountLifecycle = _mockAccountLifecycle(
+			RandomTestUtil.randomString());
+
+		_mockAccountLifecycles(accountLifecycle, _CHANNEL_ID);
+
+		_assertNotFoundException(
+			accountLifecycle.getId(), String.valueOf(_CHANNEL_ID));
+
+		_mockAccountLifecycles(
+			accountLifecycle, _CHANNEL_ID,
+			_mockAccountLifecycle(RandomTestUtil.randomString()));
+
+		_assertNotFoundException(
+			accountLifecycle.getId(), String.valueOf(_CHANNEL_ID));
+	}
+
+	private void _testGetAccountLifecycleWithEngineError() {
+		String accountLifecycleId = RandomTestUtil.randomString();
+		FaroEngineClientException faroEngineClientException1 =
+			new FaroEngineClientException(RandomTestUtil.randomString(), 500);
+
+		Mockito.when(
+			_contactsEngineClient.getAccountLifecycle(
+				_faroProject, accountLifecycleId)
+		).thenThrow(
+			faroEngineClientException1
+		);
+
+		try {
+			_accountLifecycleHelper.getAccountLifecycle(
+				accountLifecycleId, String.valueOf(_CHANNEL_ID), _faroProject);
+
+			Assert.fail();
+		}
+		catch (FaroEngineClientException faroEngineClientException2) {
+			Assert.assertSame(
+				faroEngineClientException1, faroEngineClientException2);
+		}
+	}
+
+	private void _testGetAccountLifecycleWithNonexistentAccountLifecycle() {
+		String accountLifecycleId1 = RandomTestUtil.randomString();
+
+		Mockito.when(
+			_contactsEngineClient.getAccountLifecycle(
+				_faroProject, accountLifecycleId1)
+		).thenThrow(
+			new NoSuchEntryException(RandomTestUtil.randomString())
+		);
+
+		_assertNotFoundException(
+			accountLifecycleId1, String.valueOf(_CHANNEL_ID));
+
+		String accountLifecycleId2 = RandomTestUtil.randomString();
+
+		Mockito.when(
+			_contactsEngineClient.getAccountLifecycle(
+				_faroProject, accountLifecycleId2)
+		).thenThrow(
+			new FaroEngineClientException(RandomTestUtil.randomString(), 400)
+		);
+
+		_assertNotFoundException(
+			accountLifecycleId2, String.valueOf(_CHANNEL_ID));
 	}
 
 	private static final long _CHANNEL_ID = RandomTestUtil.randomLong();
