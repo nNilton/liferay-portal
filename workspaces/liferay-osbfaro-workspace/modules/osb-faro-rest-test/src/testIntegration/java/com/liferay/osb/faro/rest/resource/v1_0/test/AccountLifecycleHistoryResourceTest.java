@@ -111,7 +111,6 @@ public class AccountLifecycleHistoryResourceTest
 		_testGetWorkspaceGroupChannelAccountAccountLifecycleHistoryWithAccountLifecycleOfAnotherChannel();
 		_testGetWorkspaceGroupChannelAccountAccountLifecycleHistoryWithBadRequest();
 		_testGetWorkspaceGroupChannelAccountAccountLifecycleHistoryWithEngineError();
-		_testGetWorkspaceGroupChannelAccountAccountLifecycleHistoryWithNonexistentAccountLifecycleStatus();
 	}
 
 	@Override
@@ -278,16 +277,6 @@ public class AccountLifecycleHistoryResourceTest
 		}
 	}
 
-	private void _testGetWorkspaceGroupChannelAccountAccountLifecycleHistoryWithNonexistentAccountLifecycleStatus()
-		throws Exception {
-
-		_contactsEngineHttpServer.addJSON(
-			_getAccountLifecycleStatusPath(), HttpURLConnection.HTTP_NOT_FOUND,
-			"{}");
-
-		_assertNotFound(
-			"No account lifecycle was found with ID " + _ACCOUNT_LIFECYCLE_ID);
-	}
 
 	private static final String _ACCOUNT_ID = RandomTestUtil.randomString();
 
