@@ -65,20 +65,6 @@ public class AccountLifecycleDTOConverterTest {
 		AccountLifecycle accountLifecycle = _accountLifecycleDTOConverter.toDTO(
 			null, engineClientAccountLifecycle);
 
-		Assert.assertEquals(
-			engineClientAccountLifecycle.getModifiedDate(),
-			accountLifecycle.getDateModified());
-		Assert.assertEquals(
-			engineClientAccountLifecycle.isDefaultAccountLifecycle(),
-			accountLifecycle.getDefaultAccountLifecycle());
-		Assert.assertEquals(
-			engineClientAccountLifecycle.getDescription(),
-			accountLifecycle.getDescription());
-		Assert.assertEquals(
-			engineClientAccountLifecycle.getId(), accountLifecycle.getId());
-		Assert.assertEquals(
-			engineClientAccountLifecycle.getName(), accountLifecycle.getName());
-
 		AccountLifecycleStage[] accountLifecycleStages =
 			accountLifecycle.getAccountLifecycleStages();
 
@@ -97,6 +83,20 @@ public class AccountLifecycleDTOConverterTest {
 		Assert.assertEquals(
 			engineClientAccountLifecycleStage.getPosition(),
 			accountLifecycleStage.getPosition());
+
+		Assert.assertEquals(
+			engineClientAccountLifecycle.getModifiedDate(),
+			accountLifecycle.getDateModified());
+		Assert.assertEquals(
+			engineClientAccountLifecycle.isDefaultAccountLifecycle(),
+			accountLifecycle.getDefaultAccountLifecycle());
+		Assert.assertEquals(
+			engineClientAccountLifecycle.getDescription(),
+			accountLifecycle.getDescription());
+		Assert.assertEquals(
+			engineClientAccountLifecycle.getId(), accountLifecycle.getId());
+		Assert.assertEquals(
+			engineClientAccountLifecycle.getName(), accountLifecycle.getName());
 	}
 
 	private final AccountLifecycleDTOConverter _accountLifecycleDTOConverter =

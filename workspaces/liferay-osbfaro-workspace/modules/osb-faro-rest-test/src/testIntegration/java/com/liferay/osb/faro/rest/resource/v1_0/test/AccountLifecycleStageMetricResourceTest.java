@@ -257,7 +257,7 @@ public class AccountLifecycleStageMetricResourceTest
 		_contactsEngineHttpServer.addJSON(
 			"/account-lifecycles/" + _ACCOUNT_LIFECYCLE_ID + "/stages", "null");
 
-		Page<AccountLifecycleStageMetric> accountLifecycleStageMetricsPage =
+		Page<AccountLifecycleStageMetric> page =
 			accountLifecycleStageMetricResource.
 				getWorkspaceGroupChannelAccountLifecycleStageMetricsPage(
 					_faroProject.getGroupId(), _CHANNEL_ID,
@@ -266,10 +266,8 @@ public class AccountLifecycleStageMetricResourceTest
 
 		Assert.assertEquals(
 			Collections.emptyList(),
-			(List<AccountLifecycleStageMetric>)
-				accountLifecycleStageMetricsPage.getItems());
-		Assert.assertEquals(
-			0, accountLifecycleStageMetricsPage.getTotalCount());
+			(List<AccountLifecycleStageMetric>)page.getItems());
+		Assert.assertEquals(0, page.getTotalCount());
 	}
 
 	private static final String _ACCOUNT_LIFECYCLE_ID = String.valueOf(

@@ -234,7 +234,7 @@ public class AccountLifecycleStageHistory implements Serializable {
 	private Supplier<Integer> _maxDurationSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
-		description = "Name of the stage, unique within the lifecycle ignoring case (e.g. 'Pipeline' or 'At Risk')."
+		description = "Name of the stage, unique within the lifecycle ignoring case (e.g. 'At Risk' or 'Pipeline')."
 	)
 	public String getName() {
 		if (_nameSupplier != null) {
@@ -268,7 +268,7 @@ public class AccountLifecycleStageHistory implements Serializable {
 	}
 
 	@GraphQLField(
-		description = "Name of the stage, unique within the lifecycle ignoring case (e.g. 'Pipeline' or 'At Risk')."
+		description = "Name of the stage, unique within the lifecycle ignoring case (e.g. 'At Risk' or 'Pipeline')."
 	)
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 	protected String name;
@@ -624,4 +624,4 @@ public class AccountLifecycleStageHistory implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:1067080253
+// LIFERAY-REST-BUILDER-HASH:1025153149
