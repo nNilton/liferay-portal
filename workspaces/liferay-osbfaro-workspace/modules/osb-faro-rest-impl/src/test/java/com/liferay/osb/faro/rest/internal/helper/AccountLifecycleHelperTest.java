@@ -40,10 +40,12 @@ public class AccountLifecycleHelperTest {
 
 	@Test
 	public void testGetAccountLifecycle() {
-		AccountLifecycle accountLifecycle = _mockAccountLifecycle(
+		AccountLifecycle accountLifecycle = _getAccountLifecycle(
 			RandomTestUtil.randomString());
 
-		_mockAccountLifecycles(accountLifecycle, _CHANNEL_ID, accountLifecycle);
+		_getAccountLifecycles(
+			accountLifecycle, new AccountLifecycle[] {accountLifecycle},
+			_CHANNEL_ID);
 
 		Assert.assertSame(
 			accountLifecycle,
@@ -80,7 +82,7 @@ public class AccountLifecycleHelperTest {
 		}
 	}
 
-	private AccountLifecycle _mockAccountLifecycle(String accountLifecycleId) {
+	private AccountLifecycle _getAccountLifecycle(String accountLifecycleId) {
 		AccountLifecycle accountLifecycle = new AccountLifecycle();
 
 		accountLifecycle.setExternalReferenceCode(
@@ -97,9 +99,9 @@ public class AccountLifecycleHelperTest {
 		return accountLifecycle;
 	}
 
-	private void _mockAccountLifecycles(
-		AccountLifecycle accountLifecycle, long channelId,
-		AccountLifecycle... channelAccountLifecycles) {
+	private void _getAccountLifecycles(
+		AccountLifecycle accountLifecycle, AccountLifecycle[] accountLifecycles,
+		long channelId) {
 
 		Mockito.when(
 			_contactsEngineClient.getAccountLifecycles(
@@ -107,23 +109,26 @@ public class AccountLifecycleHelperTest {
 				accountLifecycle.getExternalReferenceCode(), null, 1, 1, null)
 		).thenReturn(
 			new Results<>(
-				Arrays.asList(channelAccountLifecycles),
-				channelAccountLifecycles.length)
+				Arrays.asList(accountLifecycles), accountLifecycles.length)
 		);
 	}
 
 	private void _testGetAccountLifecycleWithAnotherChannel() {
-		AccountLifecycle accountLifecycle = _mockAccountLifecycle(
+		AccountLifecycle accountLifecycle = _getAccountLifecycle(
 			RandomTestUtil.randomString());
 
-		_mockAccountLifecycles(accountLifecycle, _CHANNEL_ID);
+		_getAccountLifecycles(
+			accountLifecycle, new AccountLifecycle[0], _CHANNEL_ID);
 
 		_assertNotFoundException(
 			accountLifecycle.getId(), String.valueOf(_CHANNEL_ID));
 
-		_mockAccountLifecycles(
-			accountLifecycle, _CHANNEL_ID,
-			_mockAccountLifecycle(RandomTestUtil.randomString()));
+		_getAccountLifecycles(
+			accountLifecycle,
+			new AccountLifecycle[] {
+				_getAccountLifecycle(RandomTestUtil.randomString())
+			},
+			_CHANNEL_ID);
 
 		_assertNotFoundException(
 			accountLifecycle.getId(), String.valueOf(_CHANNEL_ID));
