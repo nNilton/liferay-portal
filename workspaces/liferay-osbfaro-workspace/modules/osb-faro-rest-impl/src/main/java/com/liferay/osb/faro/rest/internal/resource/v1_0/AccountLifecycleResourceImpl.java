@@ -39,17 +39,16 @@ public class AccountLifecycleResourceImpl
 			Pagination pagination, Sort[] sorts)
 		throws Exception {
 
-		String sortString = StringUtil.replaceFirst(
-			GetterUtil.getString(
-				FaroPaginationUtil.toSortString(sorts), "name:asc"),
-			"dateModified:", "modifiedDate:");
-
 		Results<com.liferay.osb.faro.engine.client.model.AccountLifecycle>
 			results = _contactsEngineClient.getAccountLifecycles(
 				_faroProjectLocalService.getFaroProjectByGroupId(groupId),
 				GetterUtil.getLong(channelId), null, null, search,
 				FaroPaginationUtil.getCur(pagination),
-				FaroPaginationUtil.getDelta(pagination), sortString);
+				FaroPaginationUtil.getDelta(pagination),
+				StringUtil.replaceFirst(
+					GetterUtil.getString(
+						FaroPaginationUtil.toSortString(sorts), "name:asc"),
+					"dateModified:", "modifiedDate:"));
 
 		return Page.of(
 			transform(
