@@ -31,20 +31,13 @@ public class AccountLifecycleHelper {
 		String accountLifecycleId, String channelId, FaroProject faroProject) {
 
 		try {
-			long parsedChannelId = GetterUtil.getLong(channelId);
-
-			if (parsedChannelId <= 0) {
-				throw ProblemUtil.getNotFoundException(
-					_getNotFoundExceptionTitle(accountLifecycleId));
-			}
-
 			AccountLifecycle accountLifecycle =
 				_contactsEngineClient.getAccountLifecycle(
 					faroProject, accountLifecycleId);
 
 			Results<AccountLifecycle> results =
 				_contactsEngineClient.getAccountLifecycles(
-					faroProject, parsedChannelId, null,
+					faroProject, GetterUtil.getLong(channelId), null,
 					accountLifecycle.getExternalReferenceCode(), null, 1, 1,
 					null);
 

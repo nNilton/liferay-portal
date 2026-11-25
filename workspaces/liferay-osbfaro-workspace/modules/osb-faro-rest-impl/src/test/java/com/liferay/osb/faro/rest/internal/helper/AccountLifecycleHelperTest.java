@@ -60,8 +60,6 @@ public class AccountLifecycleHelperTest {
 		_mockAccountLifecycles(accountLifecycle, _CHANNEL_ID);
 
 		_assertNotFoundException(
-			accountLifecycle.getId(), RandomTestUtil.randomString());
-		_assertNotFoundException(
 			accountLifecycle.getId(), String.valueOf(_CHANNEL_ID));
 
 		_mockAccountLifecycles(
