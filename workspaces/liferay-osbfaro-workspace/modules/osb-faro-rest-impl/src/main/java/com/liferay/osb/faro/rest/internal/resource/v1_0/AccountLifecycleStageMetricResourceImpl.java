@@ -47,7 +47,7 @@ public class AccountLifecycleStageMetricResourceImpl
 			_faroProjectLocalService.getFaroProjectByGroupId(groupId);
 
 		_accountLifecycleHelper.getAccountLifecycle(
-			faroProject, channelId, accountLifecycleId);
+			accountLifecycleId, channelId, faroProject);
 
 		List
 			<com.liferay.osb.faro.engine.client.model.

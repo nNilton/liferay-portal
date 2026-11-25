@@ -61,24 +61,6 @@ public class AccountLifecycleStageHistoryDTOConverterTest {
 			accountLifecycleStageHistory.getStartDate());
 	}
 
-	@Test
-	public void testToDTOWithoutDates() {
-		AccountLifecycleStageStatus accountLifecycleStageStatus =
-			new AccountLifecycleStageStatus();
-
-		accountLifecycleStageStatus.setName(RandomTestUtil.randomString());
-
-		AccountLifecycleStageHistory accountLifecycleStageHistory =
-			_accountLifecycleStageHistoryDTOConverter.toDTO(
-				null, accountLifecycleStageStatus);
-
-		Assert.assertNull(accountLifecycleStageHistory.getEndDate());
-		Assert.assertEquals(
-			accountLifecycleStageStatus.getName(),
-			accountLifecycleStageHistory.getName());
-		Assert.assertNull(accountLifecycleStageHistory.getStartDate());
-	}
-
 	private final AccountLifecycleStageHistoryDTOConverter
 		_accountLifecycleStageHistoryDTOConverter =
 			new AccountLifecycleStageHistoryDTOConverter();

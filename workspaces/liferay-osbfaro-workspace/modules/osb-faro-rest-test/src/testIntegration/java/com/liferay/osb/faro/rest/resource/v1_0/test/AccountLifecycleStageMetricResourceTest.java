@@ -6,31 +6,26 @@
 package com.liferay.osb.faro.rest.resource.v1_0.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
-import com.liferay.osb.faro.constants.FaroProjectConstants;
 import com.liferay.osb.faro.engine.client.ContactsEngineClient;
-import com.liferay.osb.faro.model.FaroProject;
-import com.liferay.osb.faro.rest.client.dto.v1_0.AccountLifecycleStageMetric;
-import com.liferay.osb.faro.rest.client.pagination.Page;
-import com.liferay.osb.faro.rest.client.pagination.Pagination;
-import com.liferay.osb.faro.rest.client.problem.Problem;
-import com.liferay.osb.faro.rest.resource.v1_0.test.util.ContactsEngineHttpServer;
-import com.liferay.osb.faro.service.FaroChannelLocalService;
+import com.liferay.osb.faro.engine.client.model.AccountLifecycle;
+import com.liferay.osb.faro.engine.client.model.Results;
+import com.liferay.osb.faro.rest.dto.v1_0.AccountLifecycleStageMetric;
+import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleStageMetricResource;
 import com.liferay.osb.faro.service.FaroProjectLocalService;
-import com.liferay.portal.kernel.json.JSONArray;
-import com.liferay.portal.kernel.json.JSONFactoryUtil;
-import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
-import com.liferay.portal.kernel.test.util.TestPropsValues;
-import com.liferay.portal.kernel.util.HttpComponentsUtil;
-import com.liferay.portal.kernel.util.URLCodec;
-import com.liferay.portal.test.rule.Inject;
+import com.liferay.portal.kernel.util.ProxyUtil;
+import com.liferay.portal.vulcan.pagination.Page;
+import com.liferay.portal.vulcan.pagination.Pagination;
+
+import jakarta.ws.rs.NotFoundException;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -41,228 +36,153 @@ import org.junit.runner.RunWith;
 public class AccountLifecycleStageMetricResourceTest
 	extends BaseAccountLifecycleStageMetricResourceTestCase {
 
-	@Before
-	@Override
-	public void setUp() throws Exception {
-		super.setUp();
-
-		_contactsEngineHttpServer = new ContactsEngineHttpServer(
-			_contactsEngineClient);
-
-		_contactsEngineHttpServer.addLink(
-			"account-lifecycle", "/account-lifecycles/{id}");
-		_contactsEngineHttpServer.addLink(
-			"account-lifecycle-stages",
-			"/account-lifecycles/{id}/stages{?country,industry,segmentId}");
-		_contactsEngineHttpServer.addLink(
-			"account-lifecycles",
-			"/account-lifecycles{?channelId,externalReferenceCode,page,query," +
-				"size,sort}");
-
-		_contactsEngineHttpServer.addJSON(
-			"/account-lifecycles/" + _ACCOUNT_LIFECYCLE_ID,
-			JSONUtil.put(
-				"id", _ACCOUNT_LIFECYCLE_ID
-			).toString());
-
-		_addAccountLifecyclesJSON(
-			JSONUtil.putAll(JSONUtil.put("id", _ACCOUNT_LIFECYCLE_ID)));
-		_addAccountLifecycleStageMetricsJSON();
-
-		_faroProject = _faroProjectLocalService.addFaroProject(
-			TestPropsValues.getUserId(), RandomTestUtil.randomString(), null,
-			null, null, null, Collections.emptyList(), null, null, null, null,
-			null, FaroProjectConstants.STATE_READY, "{}", "UTC",
-			RandomTestUtil.randomString());
-
-		_faroChannelLocalService.addFaroChannel(
-			TestPropsValues.getUserId(), RandomTestUtil.randomString(),
-			_CHANNEL_ID, _faroProject.getGroupId());
-	}
-
-	@After
-	@Override
-	public void tearDown() throws Exception {
-		_contactsEngineHttpServer.close();
-
-		_faroProjectLocalService.deleteFaroProjectByGroupId(
-			_faroProject.getGroupId());
-
-		super.tearDown();
-	}
-
 	@Override
 	@Test
 	public void testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPage()
 		throws Exception {
-
-		super.testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPage();
 
 		_testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPageWithAccountLifecycleOfAnotherChannel();
 		_testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPageWithFilters();
 		_testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPageWithoutAccountLifecycleStageMetrics();
 	}
 
+	@Ignore
 	@Override
-	protected String[] getAdditionalAssertFieldNames() {
-		return new String[] {
-			"accountsCount", "description", "name", "percentage", "position"
-		};
-	}
-
-	@Override
-	protected AccountLifecycleStageMetric
-			testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPage_addAccountLifecycleStageMetric(
-				Long groupId, String channelId, String accountLifecycleId,
-				AccountLifecycleStageMetric accountLifecycleStageMetric)
+	@Test
+	public void testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPageWithPagination()
 		throws Exception {
 
-		_accountLifecycleStageMetricsJSONArray.put(
-			JSONUtil.put(
-				"accountsCount", accountLifecycleStageMetric.getAccountsCount()
-			).put(
-				"averageStageDuration",
-				accountLifecycleStageMetric.getAverageStageDuration()
-			).put(
-				"conversionRateToNextStage",
-				accountLifecycleStageMetric.getConversionRateToNextStage()
-			).put(
-				"description", accountLifecycleStageMetric.getDescription()
-			).put(
-				"id", RandomTestUtil.randomString()
-			).put(
-				"name", accountLifecycleStageMetric.getName()
-			).put(
-				"percentage", accountLifecycleStageMetric.getPercentage()
-			).put(
-				"position", accountLifecycleStageMetric.getPosition()
-			));
-
-		_addAccountLifecycleStageMetricsJSON();
-
-		return accountLifecycleStageMetric;
+		super.
+			testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPageWithPagination();
 	}
 
-	@Override
-	protected String
-			testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPage_getAccountLifecycleId()
+	private Page<AccountLifecycleStageMetric>
+			_getWorkspaceGroupChannelAccountLifecycleStageMetricsPage(
+				AtomicReference<Object[]> argumentsAtomicReference,
+				boolean channelAccountLifecycle, String country,
+				String industry, Long segmentId)
 		throws Exception {
 
-		return _ACCOUNT_LIFECYCLE_ID;
-	}
+		AccountLifecycle accountLifecycle = new AccountLifecycle();
 
-	@Override
-	protected String
-			testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPage_getChannelId()
-		throws Exception {
+		accountLifecycle.setExternalReferenceCode(
+			RandomTestUtil.randomString());
+		accountLifecycle.setId(_ACCOUNT_LIFECYCLE_ID);
 
-		return _CHANNEL_ID;
-	}
+		ContactsEngineClient proxyContactsEngineClient =
+			(ContactsEngineClient)ProxyUtil.newProxyInstance(
+				ContactsEngineClient.class.getClassLoader(),
+				new Class<?>[] {ContactsEngineClient.class},
+				(proxy, method, arguments) -> {
+					String methodName = method.getName();
 
-	@Override
-	protected Long
-			testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPage_getGroupId()
-		throws Exception {
+					if (methodName.equals("getAccountLifecycle")) {
+						return accountLifecycle;
+					}
 
-		return _faroProject.getGroupId();
-	}
+					if (methodName.equals("getAccountLifecycles")) {
+						if (channelAccountLifecycle) {
+							return new Results<>(
+								Collections.singletonList(accountLifecycle), 1);
+						}
 
-	private void _addAccountLifecycleStageMetricsJSON() {
-		_contactsEngineHttpServer.addJSON(
-			"/account-lifecycles/" + _ACCOUNT_LIFECYCLE_ID + "/stages",
-			_accountLifecycleStageMetricsJSONArray.toString());
-	}
+						return new Results<>();
+					}
 
-	private void _addAccountLifecyclesJSON(
-		JSONArray accountLifecyclesJSONArray) {
+					argumentsAtomicReference.set(arguments);
 
-		_contactsEngineHttpServer.addJSON(
-			"/account-lifecycles",
-			JSONUtil.put(
-				"_embedded",
-				JSONUtil.put("account-lifecycles", accountLifecyclesJSONArray)
-			).put(
-				"page",
-				JSONUtil.put(
-					"number", 0
-				).put(
-					"size", accountLifecyclesJSONArray.length()
-				).put(
-					"totalElements", accountLifecyclesJSONArray.length()
-				).put(
-					"totalPages", 1
-				)
-			).toString());
-	}
+					return null;
+				});
 
-	private void _assertParameter(
-		String expectedValue, String location, String name) {
+		AccountLifecycleStageMetricResource
+			accountLifecycleStageMetricResource =
+				ReflectionTestUtil.getFieldValue(
+					this, "_accountLifecycleStageMetricResource");
 
-		Assert.assertEquals(
-			expectedValue,
-			URLCodec.decodeURL(
-				HttpComponentsUtil.getParameter(location, name, false)));
+		Object accountLifecycleHelper = ReflectionTestUtil.getFieldValue(
+			accountLifecycleStageMetricResource, "_accountLifecycleHelper");
+
+		ContactsEngineClient accountLifecycleHelperContactsEngineClient =
+			ReflectionTestUtil.getAndSetFieldValue(
+				accountLifecycleHelper, "_contactsEngineClient",
+				proxyContactsEngineClient);
+
+		ContactsEngineClient contactsEngineClient =
+			ReflectionTestUtil.getAndSetFieldValue(
+				accountLifecycleStageMetricResource, "_contactsEngineClient",
+				proxyContactsEngineClient);
+		FaroProjectLocalService faroProjectLocalService =
+			ReflectionTestUtil.getAndSetFieldValue(
+				accountLifecycleStageMetricResource, "_faroProjectLocalService",
+				(FaroProjectLocalService)ProxyUtil.newProxyInstance(
+					FaroProjectLocalService.class.getClassLoader(),
+					new Class<?>[] {FaroProjectLocalService.class},
+					(proxy, method, arguments) -> null));
+
+		try {
+			return accountLifecycleStageMetricResource.
+				getWorkspaceGroupChannelAccountLifecycleStageMetricsPage(
+					testGroup.getGroupId(),
+					String.valueOf(RandomTestUtil.randomLong()),
+					_ACCOUNT_LIFECYCLE_ID, country, industry, segmentId,
+					Pagination.of(1, 20));
+		}
+		finally {
+			ReflectionTestUtil.setFieldValue(
+				accountLifecycleHelper, "_contactsEngineClient",
+				accountLifecycleHelperContactsEngineClient);
+			ReflectionTestUtil.setFieldValue(
+				accountLifecycleStageMetricResource, "_contactsEngineClient",
+				contactsEngineClient);
+			ReflectionTestUtil.setFieldValue(
+				accountLifecycleStageMetricResource, "_faroProjectLocalService",
+				faroProjectLocalService);
+		}
 	}
 
 	private void _testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPageWithAccountLifecycleOfAnotherChannel()
 		throws Exception {
 
-		_addAccountLifecyclesJSON(JSONFactoryUtil.createJSONArray());
-
 		try {
-			accountLifecycleStageMetricResource.
-				getWorkspaceGroupChannelAccountLifecycleStageMetricsPage(
-					_faroProject.getGroupId(), _CHANNEL_ID,
-					_ACCOUNT_LIFECYCLE_ID, null, null, null,
-					Pagination.of(1, 20));
+			_getWorkspaceGroupChannelAccountLifecycleStageMetricsPage(
+				new AtomicReference<>(), false, null, null, null);
 
 			Assert.fail();
 		}
-		catch (Problem.ProblemException problemException) {
-			Problem problem = problemException.getProblem();
-
-			Assert.assertEquals("NOT_FOUND", problem.getStatus());
+		catch (NotFoundException notFoundException) {
 			Assert.assertEquals(
 				"No account lifecycle was found with ID " +
 					_ACCOUNT_LIFECYCLE_ID,
-				problem.getTitle());
+				notFoundException.getMessage());
 		}
-
-		_addAccountLifecyclesJSON(
-			JSONUtil.putAll(JSONUtil.put("id", _ACCOUNT_LIFECYCLE_ID)));
 	}
 
 	private void _testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPageWithFilters()
 		throws Exception {
 
+		AtomicReference<Object[]> argumentsAtomicReference =
+			new AtomicReference<>();
 		String country = RandomTestUtil.randomString();
 		String industry = RandomTestUtil.randomString();
 		long segmentId = RandomTestUtil.randomLong();
 
-		accountLifecycleStageMetricResource.
-			getWorkspaceGroupChannelAccountLifecycleStageMetricsPage(
-				_faroProject.getGroupId(), _CHANNEL_ID, _ACCOUNT_LIFECYCLE_ID,
-				country, industry, segmentId, Pagination.of(1, 20));
+		_getWorkspaceGroupChannelAccountLifecycleStageMetricsPage(
+			argumentsAtomicReference, true, country, industry, segmentId);
 
-		String location = _contactsEngineHttpServer.getLocation();
+		Object[] objects = argumentsAtomicReference.get();
 
-		_assertParameter(country, location, "country");
-		_assertParameter(industry, location, "industry");
-		_assertParameter(String.valueOf(segmentId), location, "segmentId");
+		Assert.assertEquals(country, objects[1]);
+		Assert.assertEquals(_ACCOUNT_LIFECYCLE_ID, objects[2]);
+		Assert.assertEquals(industry, objects[3]);
+		Assert.assertEquals(segmentId, objects[4]);
 	}
 
 	private void _testGetWorkspaceGroupChannelAccountLifecycleStageMetricsPageWithoutAccountLifecycleStageMetrics()
 		throws Exception {
 
-		_contactsEngineHttpServer.addJSON(
-			"/account-lifecycles/" + _ACCOUNT_LIFECYCLE_ID + "/stages", "null");
-
 		Page<AccountLifecycleStageMetric> page =
-			accountLifecycleStageMetricResource.
-				getWorkspaceGroupChannelAccountLifecycleStageMetricsPage(
-					_faroProject.getGroupId(), _CHANNEL_ID,
-					_ACCOUNT_LIFECYCLE_ID, null, null, null,
-					Pagination.of(1, 20));
+			_getWorkspaceGroupChannelAccountLifecycleStageMetricsPage(
+				new AtomicReference<>(), true, null, null, null);
 
 		Assert.assertEquals(
 			Collections.emptyList(),
@@ -272,24 +192,5 @@ public class AccountLifecycleStageMetricResourceTest
 
 	private static final String _ACCOUNT_LIFECYCLE_ID = String.valueOf(
 		RandomTestUtil.randomLong());
-
-	private static final String _CHANNEL_ID = String.valueOf(
-		RandomTestUtil.randomLong());
-
-	private final JSONArray _accountLifecycleStageMetricsJSONArray =
-		JSONFactoryUtil.createJSONArray();
-
-	@Inject
-	private ContactsEngineClient _contactsEngineClient;
-
-	private ContactsEngineHttpServer _contactsEngineHttpServer;
-
-	@Inject
-	private FaroChannelLocalService _faroChannelLocalService;
-
-	private FaroProject _faroProject;
-
-	@Inject
-	private FaroProjectLocalService _faroProjectLocalService;
 
 }

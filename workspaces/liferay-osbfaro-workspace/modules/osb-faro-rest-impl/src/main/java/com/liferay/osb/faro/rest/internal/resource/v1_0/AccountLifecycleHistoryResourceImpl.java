@@ -7,7 +7,6 @@ package com.liferay.osb.faro.rest.internal.resource.v1_0;
 
 import com.liferay.osb.faro.engine.client.ContactsEngineClient;
 import com.liferay.osb.faro.engine.client.exception.FaroEngineClientException;
-import com.liferay.osb.faro.engine.client.exception.NoSuchEntryException;
 import com.liferay.osb.faro.engine.client.model.AccountLifecycleStatus;
 import com.liferay.osb.faro.model.FaroProject;
 import com.liferay.osb.faro.rest.dto.v1_0.AccountLifecycleHistory;
@@ -46,7 +45,7 @@ public class AccountLifecycleHistoryResourceImpl
 			_faroProjectLocalService.getFaroProjectByGroupId(groupId);
 
 		_accountLifecycleHelper.getAccountLifecycle(
-			faroProject, channelId, accountLifecycleId);
+			accountLifecycleId, channelId, faroProject);
 
 		try {
 			return _accountLifecycleHistoryDTOConverter.toDTO(
@@ -58,12 +57,6 @@ public class AccountLifecycleHistoryResourceImpl
 					faroProject, accountLifecycleId, accountId));
 		}
 		catch (FaroEngineClientException faroEngineClientException) {
-			if (faroEngineClientException instanceof NoSuchEntryException) {
-				throw ProblemUtil.getNotFoundException(
-					"No account lifecycle was found with ID " +
-						accountLifecycleId);
-			}
-
 			if (faroEngineClientException.getStatus() ==
 					HttpServletResponse.SC_BAD_REQUEST) {
 

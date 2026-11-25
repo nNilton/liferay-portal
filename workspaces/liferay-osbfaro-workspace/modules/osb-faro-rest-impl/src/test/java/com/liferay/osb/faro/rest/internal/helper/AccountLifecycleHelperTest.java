@@ -40,40 +40,101 @@ public class AccountLifecycleHelperTest {
 
 	@Test
 	public void testGetAccountLifecycle() {
-		AccountLifecycle accountLifecycle = _mockAccountLifecycle(
+		AccountLifecycle accountLifecycle = _getAccountLifecycle(
 			RandomTestUtil.randomString());
 
-		_mockAccountLifecycles(accountLifecycle, _CHANNEL_ID, accountLifecycle);
+		_getAccountLifecycles(
+			accountLifecycle, new AccountLifecycle[] {accountLifecycle},
+			_CHANNEL_ID);
 
 		Assert.assertSame(
 			accountLifecycle,
 			_accountLifecycleHelper.getAccountLifecycle(
-				_faroProject, String.valueOf(_CHANNEL_ID),
-				accountLifecycle.getId()));
+				accountLifecycle.getId(), String.valueOf(_CHANNEL_ID),
+				_faroProject));
+
+		_testGetAccountLifecycleWithAnotherChannel();
+		_testGetAccountLifecycleWithEngineError();
+		_testGetAccountLifecycleWithNonexistentAccountLifecycle();
 	}
 
-	@Test
-	public void testGetAccountLifecycleWithAnotherChannel() {
-		AccountLifecycle accountLifecycle = _mockAccountLifecycle(
+	private void _assertNotFoundException(
+		String accountLifecycleId, String channelId) {
+
+		try {
+			_accountLifecycleHelper.getAccountLifecycle(
+				accountLifecycleId, channelId, _faroProject);
+
+			Assert.fail();
+		}
+		catch (NotFoundException notFoundException) {
+			String expectedTitle =
+				"No account lifecycle was found with ID " + accountLifecycleId;
+
+			Assert.assertEquals(expectedTitle, notFoundException.getMessage());
+
+			Response response = notFoundException.getResponse();
+
+			Problem problem = (Problem)response.getEntity();
+
+			Assert.assertEquals(Response.Status.NOT_FOUND, problem.getStatus());
+			Assert.assertEquals(expectedTitle, problem.getTitle());
+		}
+	}
+
+	private AccountLifecycle _getAccountLifecycle(String accountLifecycleId) {
+		AccountLifecycle accountLifecycle = new AccountLifecycle();
+
+		accountLifecycle.setExternalReferenceCode(
+			RandomTestUtil.randomString());
+		accountLifecycle.setId(accountLifecycleId);
+
+		Mockito.when(
+			_contactsEngineClient.getAccountLifecycle(
+				_faroProject, accountLifecycleId)
+		).thenReturn(
+			accountLifecycle
+		);
+
+		return accountLifecycle;
+	}
+
+	private void _getAccountLifecycles(
+		AccountLifecycle accountLifecycle, AccountLifecycle[] accountLifecycles,
+		long channelId) {
+
+		Mockito.when(
+			_contactsEngineClient.getAccountLifecycles(
+				_faroProject, channelId, null,
+				accountLifecycle.getExternalReferenceCode(), null, 1, 1, null)
+		).thenReturn(
+			new Results<>(
+				Arrays.asList(accountLifecycles), accountLifecycles.length)
+		);
+	}
+
+	private void _testGetAccountLifecycleWithAnotherChannel() {
+		AccountLifecycle accountLifecycle = _getAccountLifecycle(
 			RandomTestUtil.randomString());
 
-		_mockAccountLifecycles(accountLifecycle, _CHANNEL_ID);
+		_getAccountLifecycles(
+			accountLifecycle, new AccountLifecycle[0], _CHANNEL_ID);
 
-		_assertNotFoundException(
-			accountLifecycle.getId(), RandomTestUtil.randomString());
 		_assertNotFoundException(
 			accountLifecycle.getId(), String.valueOf(_CHANNEL_ID));
 
-		_mockAccountLifecycles(
-			accountLifecycle, _CHANNEL_ID,
-			_mockAccountLifecycle(RandomTestUtil.randomString()));
+		_getAccountLifecycles(
+			accountLifecycle,
+			new AccountLifecycle[] {
+				_getAccountLifecycle(RandomTestUtil.randomString())
+			},
+			_CHANNEL_ID);
 
 		_assertNotFoundException(
 			accountLifecycle.getId(), String.valueOf(_CHANNEL_ID));
 	}
 
-	@Test
-	public void testGetAccountLifecycleWithEngineError() {
+	private void _testGetAccountLifecycleWithEngineError() {
 		String accountLifecycleId = RandomTestUtil.randomString();
 		FaroEngineClientException faroEngineClientException1 =
 			new FaroEngineClientException(RandomTestUtil.randomString(), 500);
@@ -87,7 +148,7 @@ public class AccountLifecycleHelperTest {
 
 		try {
 			_accountLifecycleHelper.getAccountLifecycle(
-				_faroProject, String.valueOf(_CHANNEL_ID), accountLifecycleId);
+				accountLifecycleId, String.valueOf(_CHANNEL_ID), _faroProject);
 
 			Assert.fail();
 		}
@@ -97,8 +158,7 @@ public class AccountLifecycleHelperTest {
 		}
 	}
 
-	@Test
-	public void testGetAccountLifecycleWithNonexistentAccountLifecycle() {
+	private void _testGetAccountLifecycleWithNonexistentAccountLifecycle() {
 		String accountLifecycleId1 = RandomTestUtil.randomString();
 
 		Mockito.when(
@@ -122,62 +182,6 @@ public class AccountLifecycleHelperTest {
 
 		_assertNotFoundException(
 			accountLifecycleId2, String.valueOf(_CHANNEL_ID));
-	}
-
-	private void _assertNotFoundException(
-		String accountLifecycleId, String channelId) {
-
-		try {
-			_accountLifecycleHelper.getAccountLifecycle(
-				_faroProject, channelId, accountLifecycleId);
-
-			Assert.fail();
-		}
-		catch (NotFoundException notFoundException) {
-			String expectedTitle =
-				"No account lifecycle was found with ID " + accountLifecycleId;
-
-			Assert.assertEquals(expectedTitle, notFoundException.getMessage());
-
-			Response response = notFoundException.getResponse();
-
-			Problem problem = (Problem)response.getEntity();
-
-			Assert.assertEquals(Response.Status.NOT_FOUND, problem.getStatus());
-			Assert.assertEquals(expectedTitle, problem.getTitle());
-		}
-	}
-
-	private AccountLifecycle _mockAccountLifecycle(String accountLifecycleId) {
-		AccountLifecycle accountLifecycle = new AccountLifecycle();
-
-		accountLifecycle.setExternalReferenceCode(
-			RandomTestUtil.randomString());
-		accountLifecycle.setId(accountLifecycleId);
-
-		Mockito.when(
-			_contactsEngineClient.getAccountLifecycle(
-				_faroProject, accountLifecycleId)
-		).thenReturn(
-			accountLifecycle
-		);
-
-		return accountLifecycle;
-	}
-
-	private void _mockAccountLifecycles(
-		AccountLifecycle accountLifecycle, long channelId,
-		AccountLifecycle... channelAccountLifecycles) {
-
-		Mockito.when(
-			_contactsEngineClient.getAccountLifecycles(
-				_faroProject, channelId, null,
-				accountLifecycle.getExternalReferenceCode(), null, 1, 1, null)
-		).thenReturn(
-			new Results<>(
-				Arrays.asList(channelAccountLifecycles),
-				channelAccountLifecycles.length)
-		);
 	}
 
 	private static final long _CHANNEL_ID = RandomTestUtil.randomLong();
