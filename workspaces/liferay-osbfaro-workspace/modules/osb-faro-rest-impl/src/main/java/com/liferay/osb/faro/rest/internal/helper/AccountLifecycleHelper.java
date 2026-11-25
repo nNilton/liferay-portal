@@ -28,7 +28,7 @@ import org.osgi.service.component.annotations.Reference;
 public class AccountLifecycleHelper {
 
 	public AccountLifecycle getAccountLifecycle(
-		FaroProject faroProject, String channelId, String accountLifecycleId) {
+		String accountLifecycleId, String channelId, FaroProject faroProject) {
 
 		try {
 			long parsedChannelId = GetterUtil.getLong(channelId);

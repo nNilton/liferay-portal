@@ -46,7 +46,7 @@ public class AccountLifecycleHistoryResourceImpl
 			_faroProjectLocalService.getFaroProjectByGroupId(groupId);
 
 		_accountLifecycleHelper.getAccountLifecycle(
-			faroProject, channelId, accountLifecycleId);
+			accountLifecycleId, channelId, faroProject);
 
 		try {
 			return _accountLifecycleHistoryDTOConverter.toDTO(

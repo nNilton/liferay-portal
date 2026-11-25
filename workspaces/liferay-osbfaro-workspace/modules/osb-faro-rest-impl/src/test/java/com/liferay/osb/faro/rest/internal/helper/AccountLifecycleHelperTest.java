@@ -48,8 +48,8 @@ public class AccountLifecycleHelperTest {
 		Assert.assertSame(
 			accountLifecycle,
 			_accountLifecycleHelper.getAccountLifecycle(
-				_faroProject, String.valueOf(_CHANNEL_ID),
-				accountLifecycle.getId()));
+				accountLifecycle.getId(), String.valueOf(_CHANNEL_ID),
+				_faroProject));
 	}
 
 	@Test
@@ -87,7 +87,7 @@ public class AccountLifecycleHelperTest {
 
 		try {
 			_accountLifecycleHelper.getAccountLifecycle(
-				_faroProject, String.valueOf(_CHANNEL_ID), accountLifecycleId);
+				accountLifecycleId, String.valueOf(_CHANNEL_ID), _faroProject);
 
 			Assert.fail();
 		}
@@ -129,7 +129,7 @@ public class AccountLifecycleHelperTest {
 
 		try {
 			_accountLifecycleHelper.getAccountLifecycle(
-				_faroProject, channelId, accountLifecycleId);
+				accountLifecycleId, channelId, _faroProject);
 
 			Assert.fail();
 		}
