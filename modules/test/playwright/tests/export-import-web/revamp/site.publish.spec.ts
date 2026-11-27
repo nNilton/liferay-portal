@@ -11,6 +11,7 @@ import {isolatedSiteTest} from '../../../fixtures/isolatedSiteTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {pageEditorPagesTest} from '../../../fixtures/pageEditorPagesTest';
 import getRandomString from '../../../utils/getRandomString';
+import {performUserSwitch, userData} from '../../../utils/performLogin';
 import {enableLocalStaging} from '../../../utils/staging';
 import {exportImportPagesTest} from './fixtures/exportImportPagesTest';
 
@@ -23,6 +24,32 @@ export const test = mergeTests(
 	isolatedSiteTest,
 	loginTest(),
 	pageEditorPagesTest
+);
+
+test(
+	'Can publish a site from the revamped Staging application',
+	{tag: '@LPD-116356'},
+	async ({apiHelpers, exportImportPage, page, site}) => {
+		await enableLocalStaging(apiHelpers, page, site);
+
+		await page.goto(
+			`/group${site.friendlyUrlPath}-staging/~/control_panel/manage?p_p_id=com_liferay_staging_processes_web_portlet_StagingProcessesPortlet`
+		);
+
+		await exportImportPage.clickNew();
+
+		await expect(
+			page.getByRole('heading', {name: 'New Publish Process'})
+		).toBeVisible();
+
+		const name = `Publication-${getRandomString()}`;
+
+		await exportImportPage.nameInput.fill(name);
+
+		await page.getByRole('button', {name: 'Publish to Live'}).click();
+
+		await expect(exportImportPage.taskStatusLabel(name)).toBeVisible();
+	}
 );
 
 test(
@@ -93,5 +120,57 @@ test(
 			await expect(page).toHaveURL(/tabs1=processes/);
 			await expect(exportImportPage.taskStatusLabel(name)).toBeVisible();
 		});
+	}
+);
+
+test(
+	'Can view the publications without the publish permission',
+	{tag: '@LPD-116356'},
+	async ({apiHelpers, exportImportPage, page, site}) => {
+		await enableLocalStaging(apiHelpers, page, site);
+
+		const role = await apiHelpers.headlessAdminUser.postRole({
+			name: getRandomString(),
+			rolePermissions: [
+				{
+					actionIds: ['VIEW_SITE_ADMINISTRATION', 'VIEW_STAGING'],
+					primaryKey: '0',
+					resourceName: 'com.liferay.portal.kernel.model.Group',
+					scope: 3,
+				},
+			],
+			roleType: 'site',
+		});
+
+		const user = await apiHelpers.headlessAdminUser.postUserAccount();
+
+		userData[user.alternateName] = {
+			name: user.givenName,
+			password: 'test',
+			surname: user.familyName,
+		};
+
+		await apiHelpers.headlessAdminUser.assignUserToSite(
+			role.id,
+			site.id,
+			user.id
+		);
+
+		await performUserSwitch(page, user.alternateName);
+
+		await page.goto(
+			`/group${site.friendlyUrlPath}-staging/~/control_panel/manage?p_p_id=com_liferay_staging_processes_web_portlet_StagingProcessesPortlet`
+		);
+
+		await expect(
+			page.getByRole('link', {exact: true, name: 'Scheduled'})
+		).toBeVisible();
+		await expect(
+			page.locator('.cell-status').getByText('Successful', {exact: true})
+		).toBeVisible();
+
+		await expect(exportImportPage.newButton).toBeHidden();
+
+		await performUserSwitch(page, 'test');
 	}
 );

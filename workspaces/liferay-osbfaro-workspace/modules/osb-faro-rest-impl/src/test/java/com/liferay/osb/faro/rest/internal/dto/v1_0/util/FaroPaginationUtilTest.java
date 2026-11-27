@@ -22,6 +22,23 @@ import org.junit.Test;
 public class FaroPaginationUtilTest {
 
 	@Test
+	public void testGetGraphQLPage() {
+		Assert.assertEquals(
+			0,
+			FaroPaginationUtil.getGraphQLPage(
+				Pagination.of(0, RandomTestUtil.randomInt())));
+
+		int page = RandomTestUtil.randomInt();
+
+		Assert.assertEquals(
+			page - 1,
+			FaroPaginationUtil.getGraphQLPage(
+				Pagination.of(page, RandomTestUtil.randomInt())));
+
+		Assert.assertEquals(0, FaroPaginationUtil.getGraphQLPage(null));
+	}
+
+	@Test
 	public void testPaginate() {
 		List<String> items = List.of(
 			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
